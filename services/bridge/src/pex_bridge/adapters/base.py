@@ -597,8 +597,7 @@ def verified_inline_permission_outcome(
     if (
         getattr(intervention, "session_id", None) != session.id
         or getattr(intervention, "trigger", None) != expected_trigger.value
-        or getattr(intervention, "action_taken", None)
-        != InterventionType.RESPOND_PERMISSION.value
+        or getattr(intervention, "action_taken", None) != InterventionType.RESPOND_PERMISSION.value
         or action.type != InterventionType.RESPOND_PERMISSION
         or action.session_id != session.id
         or not any(str(item).strip() for item in getattr(intervention, "evidence", []))
@@ -606,9 +605,7 @@ def verified_inline_permission_outcome(
         return None
     payload = action.payload if isinstance(action.payload, dict) else {}
     request_id = str(payload.get("request_id") or "").strip()
-    if not request_id or (
-        expected_request_id is not None and request_id != expected_request_id
-    ):
+    if not request_id or (expected_request_id is not None and request_id != expected_request_id):
         return None
     requested = str(payload.get("decision") or "").strip().lower()
     if getattr(intervention, "policy_verdict", None) == PolicyVerdict.ASK_HUMAN:
@@ -642,10 +639,7 @@ def _bundle_as_prompt(bundle: ContextBundle) -> str:
         paths = [
             value
             for value in raw[:16]
-            if isinstance(value, str)
-            and value
-            and len(value) <= 512
-            and "\x00" not in value
+            if isinstance(value, str) and value and len(value) <= 512 and "\x00" not in value
         ]
         return f"; files={','.join(paths)}" if paths else ""
 

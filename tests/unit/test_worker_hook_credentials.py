@@ -47,9 +47,7 @@ def test_python_worker_integrations_ignore_operator_credentials(tmp_path, monkey
 
 
 def test_opencode_worker_plugin_has_no_operator_token_fallback():
-    source = (ROOT / "integrations/opencode-plugin/pex-plugin.js").read_text(
-        encoding="utf-8"
-    )
+    source = (ROOT / "integrations/opencode-plugin/pex-plugin.js").read_text(encoding="utf-8")
     assert "PEX_OPENCODE_HOOK_TOKEN" in source
     assert "PEX_HOOK_TOKEN" in source
     assert "process.env.PEX_TOKEN" not in source

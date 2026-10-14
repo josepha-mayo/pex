@@ -107,9 +107,7 @@ class ClaudeCodeAdapter(HarnessAdapter):
             approve=active_permission,
             deny=active_permission,
             permission_response_mode=(
-                PermissionResponseMode.INLINE
-                if active_permission
-                else PermissionResponseMode.NONE
+                PermissionResponseMode.INLINE if active_permission else PermissionResponseMode.NONE
             ),
             resume=active_stop,
             modify_system_instructions=False,
@@ -225,9 +223,11 @@ class ClaudeCodeAdapter(HarnessAdapter):
         payload_session_id = (
             payload.get("session_id") or payload.get("conversation_id") or payload.get("sessionId")
         )
-        if payload_session_id and bounded_adapter_id(
-            payload_session_id, field="Claude Code session_id"
-        ) != bound.vendor_session_id:
+        if (
+            payload_session_id
+            and bounded_adapter_id(payload_session_id, field="Claude Code session_id")
+            != bound.vendor_session_id
+        ):
             raise ValueError("Claude Code hook payload session mismatch")
         session = bound
         hook_name = bounded_adapter_id(
@@ -328,9 +328,7 @@ class ClaudeCodeAdapter(HarnessAdapter):
                 # configured permission behavior. In particular, a PEX policy
                 # rejection is not an active denial of the worker's request.
                 return {}
-            reason = _bounded_response_text(
-                intervention.diagnosis or f"PEX policy {decision}"
-            )
+            reason = _bounded_response_text(intervention.diagnosis or f"PEX policy {decision}")
             return {
                 "hookSpecificOutput": {
                     "hookEventName": "PreToolUse",

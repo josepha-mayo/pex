@@ -19,8 +19,13 @@ def execution(tmp_path, monkeypatch):
     monkeypatch.setattr(opencode_session, "monotonic", lambda: clock[0])
     monkeypatch.setattr(opencode_session, "run_turn", execute)
     arguments = dict(
-        executable=tmp_path / "opencode", workspace=tmp_path, model="controlled/pinned",
-        prompt="Original public task", environment={}, log_directory=tmp_path, deadline=20.0,
+        executable=tmp_path / "opencode",
+        workspace=tmp_path,
+        model="controlled/pinned",
+        prompt="Original public task",
+        environment={},
+        log_directory=tmp_path,
+        deadline=20.0,
     )
     return arguments, calls, clock
 
@@ -41,9 +46,11 @@ async def test_repairs_keep_original_session_and_shared_deadline(execution):
     async def review(turns):
         observed.append(turns)
         clock[0] += 2
-        return {"type": "SEND_NUDGE", "payload": {"text": "Exact repair instruction"}} if (
-            len(turns) == 1
-        ) else {"type": "NOOP"}
+        return (
+            {"type": "SEND_NUDGE", "payload": {"text": "Exact repair instruction"}}
+            if (len(turns) == 1)
+            else {"type": "NOOP"}
+        )
 
     result = await opencode_session.run_session(**arguments, review=review)
     assert result.actions == ("SEND_NUDGE", "NOOP")
@@ -134,9 +141,16 @@ async def test_followup_limit_records_refusal_without_sending(execution):
     assert len(calls) == 1
 
 
-@pytest.mark.parametrize("decision", [None, {}, {"type": "MOVE_SESSION"},
-                                     {"type": "SEND_NUDGE", "payload": {"text": " "}},
-                                     {"type": "CONTINUE_SESSION", "payload": {"text": "a\x00"}}])
+@pytest.mark.parametrize(
+    "decision",
+    [
+        None,
+        {},
+        {"type": "MOVE_SESSION"},
+        {"type": "SEND_NUDGE", "payload": {"text": " "}},
+        {"type": "CONTINUE_SESSION", "payload": {"text": "a\x00"}},
+    ],
+)
 async def test_unsupported_or_unusable_actions_never_launch_repair(execution, decision):
     arguments, calls, _ = execution
 

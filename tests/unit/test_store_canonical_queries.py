@@ -241,8 +241,7 @@ async def test_context_kind_counts_cover_full_goal_and_exclude_private_rows(tmp_
     await store.connect()
     public_rows = [_context(f"ctx-fact-{index}") for index in range(1001)]
     public_rows.extend(
-        _context(f"ctx-decision-{index}", kind=ContextKind.DECISION)
-        for index in range(2)
+        _context(f"ctx-decision-{index}", kind=ContextKind.DECISION) for index in range(2)
     )
     excluded_rows = [
         _context("ctx-secret", kind=ContextKind.WARNING, sensitivity=Sensitivity.SECRET),

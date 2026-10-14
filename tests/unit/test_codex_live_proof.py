@@ -435,9 +435,7 @@ async def test_reuse_gate_rejects_mutated_process_source_binding_and_durable_row
         )
 
     mutations = {
-        "old proof schema": lambda value: value.__setitem__(
-            "schema", "pex.codex.closed_loop.v3"
-        ),
+        "old proof schema": lambda value: value.__setitem__("schema", "pex.codex.closed_loop.v3"),
         "run id": lambda value: value.__setitem__("run_id", "codexproof_not-a-uuid"),
         "timestamp": lambda value: value.__setitem__(
             "completed_at",
@@ -526,9 +524,7 @@ async def test_reuse_gate_enforces_intervention_outcome_semantics(tmp_path, monk
         result="continued",
     )
     initial.metadata["verification"] = {"acceptance_status": "unsatisfied"}
-    initial.metadata["independent_verifier"] = _independent_verifier(
-        "codex:thread-proof:turn:one"
-    )
+    initial.metadata["independent_verifier"] = _independent_verifier("codex:thread-proof:turn:one")
     main_observations, main_refs = _main_evidence("codex:thread-proof:turn:one")
     initial.metadata["evidence_observations"] = main_observations
     initial.metadata["evidence_refs"] = main_refs
@@ -588,28 +584,22 @@ async def test_reuse_gate_enforces_intervention_outcome_semantics(tmp_path, monk
         initial_audit = next(
             row
             for row in reserved["audit_receipts"]["audit_rows"]
-            if row["intervention_id"] == "int_initial"
-            and row["record_type"] == "created"
+            if row["intervention_id"] == "int_initial" and row["record_type"] == "created"
         )
         initial_audit["record_type"] = "delivery_reserved"
         initial_audit["payload"]["record_type"] = "delivery_reserved"
-        initial_audit["payload_sha256"] = proof._canonical_fingerprint(
-            initial_audit["payload"]
-        )
+        initial_audit["payload_sha256"] = proof._canonical_fingerprint(initial_audit["payload"])
         proof.validate_proof(reserved)
 
         noop_reserved = copy.deepcopy(receipt)
         final_audit = next(
             row
             for row in noop_reserved["audit_receipts"]["audit_rows"]
-            if row["intervention_id"] == "int_final"
-            and row["record_type"] == "created"
+            if row["intervention_id"] == "int_final" and row["record_type"] == "created"
         )
         final_audit["record_type"] = "delivery_reserved"
         final_audit["payload"]["record_type"] = "delivery_reserved"
-        final_audit["payload_sha256"] = proof._canonical_fingerprint(
-            final_audit["payload"]
-        )
+        final_audit["payload_sha256"] = proof._canonical_fingerprint(final_audit["payload"])
         with pytest.raises(AssertionError, match="audit history is incomplete"):
             proof.validate_proof(noop_reserved)
 
@@ -617,13 +607,9 @@ async def test_reuse_gate_enforces_intervention_outcome_semantics(tmp_path, monk
             delivery = value["interventions"][0]["worker_delivery_receipt"]
             delivery["vendor_turn_id"] = "unrelated-turn"
             canonical = value["audit_receipts"]["sqlite_interventions"][0]
-            canonical_delivery = canonical["payload"]["metadata"][
-                "worker_delivery_receipt"
-            ]
+            canonical_delivery = canonical["payload"]["metadata"]["worker_delivery_receipt"]
             canonical_delivery["vendor_turn_id"] = "unrelated-turn"
-            canonical["payload_sha256"] = proof._canonical_fingerprint(
-                canonical["payload"]
-            )
+            canonical["payload_sha256"] = proof._canonical_fingerprint(canonical["payload"])
 
         def mutate_verifier_everywhere(value, mutate):
             """Keep all durable projections aligned to reach the semantic gate."""
@@ -694,9 +680,7 @@ async def test_reuse_gate_enforces_intervention_outcome_semantics(tmp_path, monk
             ),
             lambda value: mutate_verifier_everywhere(
                 value,
-                lambda verifier: verifier["evidence_observations"][0].__setitem__(
-                    "stage", "main"
-                ),
+                lambda verifier: verifier["evidence_observations"][0].__setitem__("stage", "main"),
             ),
             lambda value: mutate_verifier_everywhere(
                 value,
@@ -730,9 +714,7 @@ async def test_reuse_gate_enforces_intervention_outcome_semantics(tmp_path, monk
             ),
             lambda value: mutate_verifier_everywhere(
                 value,
-                lambda verifier: verifier.__setitem__(
-                    "evidence_refs", ["pexobs_" + "f" * 32]
-                ),
+                lambda verifier: verifier.__setitem__("evidence_refs", ["pexobs_" + "f" * 32]),
             ),
             lambda value: mutate_verifier_everywhere(
                 value,
@@ -741,14 +723,10 @@ async def test_reuse_gate_enforces_intervention_outcome_semantics(tmp_path, monk
                     for observation in verifier["evidence_observations"]
                 ],
             ),
-            lambda value: value["turns"][1].__setitem__(
-                "requested_model", "different-model"
-            ),
+            lambda value: value["turns"][1].__setitem__("requested_model", "different-model"),
             lambda value: value["turns"][1].__setitem__("requested_model", []),
             lambda value: value["interventions"][0].__setitem__("observed_event_refs", []),
-            lambda value: value["interventions"][0].__setitem__(
-                "evidence", ["unrelated evidence"]
-            ),
+            lambda value: value["interventions"][0].__setitem__("evidence", ["unrelated evidence"]),
             lambda value: value["interventions"][0]["action_payload"].__setitem__(
                 "text", "continue"
             ),

@@ -70,10 +70,7 @@ def test_preflight_reports_ready_only_with_arm64_image_and_full_toolchain(monkey
     module = _load_preflight()
     monkeypatch.setattr(module.shutil, "which", _tools)
     monkeypatch.setattr(module, "_run", _ready_run)
-    runtime_arn = (
-        "arn:aws:bedrock-agentcore:eu-north-1:123456789012:"
-        "runtime/PexRuntime-ABCDEFGHIJ"
-    )
+    runtime_arn = "arn:aws:bedrock-agentcore:eu-north-1:123456789012:runtime/PexRuntime-ABCDEFGHIJ"
     monkeypatch.setenv("PEX_AGENTCORE_RUNTIME_ARN", runtime_arn)
     report = module.check()
     assert report["deployable"] is True
@@ -88,12 +85,8 @@ def test_preflight_reports_ready_only_with_arm64_image_and_full_toolchain(monkey
 
 def test_deploy_context_and_dockerfile_are_secret_safe_and_arm64():
     dockerignore = (ROOT / ".dockerignore").read_text(encoding="utf-8")
-    dockerfile = (ROOT / "deploy" / "agentcore" / "Dockerfile").read_text(
-        encoding="utf-8"
-    )
-    requirements = (ROOT / "deploy" / "agentcore" / "requirements.lock").read_text(
-        encoding="utf-8"
-    )
+    dockerfile = (ROOT / "deploy" / "agentcore" / "Dockerfile").read_text(encoding="utf-8")
+    requirements = (ROOT / "deploy" / "agentcore" / "requirements.lock").read_text(encoding="utf-8")
     assert ".env" in dockerignore
     assert ".git" in dockerignore
     assert ".venv" in dockerignore

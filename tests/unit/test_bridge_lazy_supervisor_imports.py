@@ -7,11 +7,15 @@ import sys
 
 def test_bridge_without_a_model_does_not_import_strands(tmp_path):
     environment = {name: value for name, value in os.environ.items() if not name.startswith("PEX_")}
-    environment.update({
-        "PEX_HOME": str(tmp_path), "PEX_SUPERVISOR_DISABLE": "1",
-        "PEX_CLOUD_REASONING": "false", "PEX_CODEX_ATTACH": "false",
-        "PEX_CURSOR_ATTACH": "false",
-    })
+    environment.update(
+        {
+            "PEX_HOME": str(tmp_path),
+            "PEX_SUPERVISOR_DISABLE": "1",
+            "PEX_CLOUD_REASONING": "false",
+            "PEX_CODEX_ATTACH": "false",
+            "PEX_CURSOR_ATTACH": "false",
+        }
+    )
     script = """
 import importlib.abc
 import sys
@@ -32,8 +36,12 @@ assert 'strands' not in sys.modules
 print('bridge_without_model_ready')
 """
     result = subprocess.run(
-        [sys.executable, "-c", script], env=environment, cwd=tmp_path,
-        capture_output=True, text=True, timeout=90,
+        [sys.executable, "-c", script],
+        env=environment,
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=90,
         creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
     )
     assert result.returncode == 0, result.stderr
@@ -42,12 +50,15 @@ print('bridge_without_model_ready')
 
 def test_chat_only_model_does_not_import_responses_adapter(tmp_path):
     environment = {name: value for name, value in os.environ.items() if not name.startswith("PEX_")}
-    environment.update({
-        "PEX_HOME": str(tmp_path), "PEX_SUPERVISOR_PROVIDER": "zen",
-        # Muse uses Responses; this test exercises a chat-completions route.
-        "PEX_SUPERVISOR_MODEL": "big-pickle",
-        "PEX_SUPERVISOR_API_KEY": "fixture-key",
-    })
+    environment.update(
+        {
+            "PEX_HOME": str(tmp_path),
+            "PEX_SUPERVISOR_PROVIDER": "zen",
+            # Muse uses Responses; this test exercises a chat-completions route.
+            "PEX_SUPERVISOR_MODEL": "big-pickle",
+            "PEX_SUPERVISOR_API_KEY": "fixture-key",
+        }
+    )
     script = """
 import asyncio
 import importlib.abc
@@ -73,8 +84,12 @@ else:
 print('chat_only_model_ready')
 """
     result = subprocess.run(
-        [sys.executable, "-c", script], env=environment, cwd=tmp_path,
-        capture_output=True, text=True, timeout=90,
+        [sys.executable, "-c", script],
+        env=environment,
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=90,
         creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
     )
     assert result.returncode == 0, result.stderr

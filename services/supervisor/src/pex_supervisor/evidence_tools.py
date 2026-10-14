@@ -73,7 +73,10 @@ _EVIDENCE_TOOL_ORDER = (
 
 
 def goal_boundaries_truncated(
-    request: SupervisorRequest, *, count: int = 12, width: int = 200,
+    request: SupervisorRequest,
+    *,
+    count: int = 12,
+    width: int = 200,
 ) -> bool:
     goal = request.goal
     return goal is not None and any(
@@ -94,9 +97,15 @@ def _goal_boundary_values(request: SupervisorRequest) -> Iterator[tuple[str, int
     goal = request.goal
     if goal is None:
         return
-    local_values = tuple(value for value in (
-        request.session.cwd, request.session.repo, request.session.external_url,
-    ) if value)
+    local_values = tuple(
+        value
+        for value in (
+            request.session.cwd,
+            request.session.repo,
+            request.session.external_url,
+        )
+        if value
+    )
     for field in ("constraints", "forbidden_outcomes", "non_goals"):
         for index, value in enumerate(getattr(goal, field)):
             masked = _mask_local_strings(value, local_values)
@@ -108,8 +117,10 @@ def _goal_boundary_chunks(request: SupervisorRequest) -> Iterator[dict[str, obje
     for field, index, value in _goal_boundary_values(request):
         for offset in range(0, max(1, len(value)), _BOUNDARY_CHUNK_WIDTH):
             yield {
-                "field": field, "index": index, "offset": offset,
-                "text": value[offset:offset + _BOUNDARY_CHUNK_WIDTH],
+                "field": field,
+                "index": index,
+                "offset": offset,
+                "text": value[offset : offset + _BOUNDARY_CHUNK_WIDTH],
             }
 
 
@@ -173,7 +184,8 @@ class _WorkspaceEvidenceGuard:
 
 
 _WORKSPACE_EVIDENCE_GUARD: ContextVar[_WorkspaceEvidenceGuard | None] = ContextVar(
-    "pex_workspace_evidence_guard", default=None,
+    "pex_workspace_evidence_guard",
+    default=None,
 )
 
 
@@ -190,7 +202,9 @@ def _workspace_target(session: HarnessSession) -> str:
             "cwd": session.cwd,
             "workspace_binding": binding,
         },
-        sort_keys=True, separators=(",", ":"), allow_nan=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
     )
     if len(rendered.encode("utf-8")) > 65_536:
         raise ValueError("workspace evidence binding exceeds its bound")
@@ -199,7 +213,8 @@ def _workspace_target(session: HarnessSession) -> str:
 
 @contextmanager
 def workspace_evidence_guard(
-    session: HarnessSession, check: Callable[[], None],
+    session: HarnessSession,
+    check: Callable[[], None],
 ) -> Iterator[None]:
     """Install server-owned authority for one local evidence invocation.
 
@@ -256,8 +271,7 @@ def _bounded(value: object, *, depth: int = 0, string_limit: int = 1_200) -> obj
         }
     if isinstance(value, (list, tuple)):
         return [
-            _bounded(item, depth=depth + 1, string_limit=string_limit)
-            for item in list(value)[:40]
+            _bounded(item, depth=depth + 1, string_limit=string_limit) for item in list(value)[:40]
         ]
     return _clip(value, 300)
 
@@ -328,8 +342,7 @@ def _context_item_summary(item: SupervisorContextItem) -> dict[str, object]:
         "verified": bool(getattr(item, "verified", False)),
         "content_preview": _clip(getattr(item, "content", ""), 240),
         "source_content_truncated": item.content_truncated,
-        "source_session_id": _clip(getattr(item, "source_session_id", ""), 200)
-        or None,
+        "source_session_id": _clip(getattr(item, "source_session_id", ""), 200) or None,
     }
 
 
@@ -347,9 +360,7 @@ def _context_item_detail(item: SupervisorContextItem) -> dict[str, object]:
         "relevance_tags_omitted": max(0, len(tags) - 8),
         "confidence": getattr(item, "confidence", None),
         "valid_from": item.valid_from.isoformat(),
-        "stale_after": (
-            item.stale_after.isoformat() if item.stale_after is not None else None
-        ),
+        "stale_after": (item.stale_after.isoformat() if item.stale_after is not None else None),
         "supersedes": _clip(getattr(item, "supersedes", ""), 200) or None,
         "sensitivity": str(getattr(item, "sensitivity", "")),
     }
@@ -365,8 +376,7 @@ def _decision_summary(item: SupervisorDecisionItem) -> dict[str, object]:
         "source": str(getattr(item, "source", "")),
         "status": str(getattr(item, "status", "")),
         "confidence": getattr(item, "confidence", None),
-        "source_session_id": _clip(getattr(item, "source_session_id", ""), 200)
-        or None,
+        "source_session_id": _clip(getattr(item, "source_session_id", ""), 200) or None,
     }
 
 
@@ -437,9 +447,7 @@ def build_evidence_tools(
         cleaned_arguments, _ = redact_mapping({"arguments": raw_arguments})
         return collector.record(
             tool_name=name,
-            arguments_json=canonical_arguments(
-                (cleaned_arguments or {}).get("arguments") or {}
-            ),
+            arguments_json=canonical_arguments((cleaned_arguments or {}).get("arguments") or {}),
             value=(cleaned or {}).get("evidence"),
         )
 
@@ -449,7 +457,8 @@ def build_evidence_tools(
         arguments: dict[str, object] | None = None,
     ) -> str:
         unavailable = {
-            "available": False, "observed": False,
+            "available": False,
+            "observed": False,
             "error": "workspace_authority_unavailable",
         }
         if not _workspace_read_allowed(request.session):
@@ -458,7 +467,8 @@ def build_evidence_tools(
             value = read()
         except Exception:
             value = {
-                "available": False, "observed": False,
+                "available": False,
+                "observed": False,
                 "error": "local_evidence_read_failed",
             }
         # Recheck even after a failed read. Never collect or return stale bytes
@@ -487,11 +497,17 @@ def build_evidence_tools(
             return record(
                 "get_goal",
                 {
-                    "attached": True, "boundary_page": boundary_page,
-                    "boundary_page_count": pages, "boundary_page_complete": True,
-                    "chunks": list(islice(
-                        _goal_boundary_chunks(request), start, start + _BOUNDARY_PAGE_SIZE,
-                    )),
+                    "attached": True,
+                    "boundary_page": boundary_page,
+                    "boundary_page_count": pages,
+                    "boundary_page_complete": True,
+                    "chunks": list(
+                        islice(
+                            _goal_boundary_chunks(request),
+                            start,
+                            start + _BOUNDARY_PAGE_SIZE,
+                        )
+                    ),
                 },
                 arguments,
             )
@@ -506,12 +522,12 @@ def build_evidence_tools(
                     _clip(item, 1_000) for item in goal.acceptance_criteria[:40]
                 ],
                 "constraints": [_clip(item, 1_000) for item in goal.constraints[:40]],
-                "forbidden_outcomes": [
-                    _clip(item, 1_000) for item in goal.forbidden_outcomes[:40]
-                ],
+                "forbidden_outcomes": [_clip(item, 1_000) for item in goal.forbidden_outcomes[:40]],
                 "non_goals": [_clip(item, 1_000) for item in goal.non_goals[:40]],
                 "boundaries_complete": not goal_boundaries_truncated(
-                    request, count=40, width=1_000,
+                    request,
+                    count=40,
+                    width=1_000,
                 ),
                 "evidence_requirements": [
                     _clip(item, 1_000) for item in goal.evidence_requirements[:40]
@@ -612,7 +628,8 @@ def build_evidence_tools(
             event
             for event in request.recent_events
             if (
-                event.event_type in {
+                event.event_type
+                in {
                     EventType.AGENT_RESPONSE,
                     EventType.AGENT_THOUGHT,
                     EventType.FILE_EDIT,
@@ -647,7 +664,8 @@ def build_evidence_tools(
                 }
         else:
             verification = {
-                "status": "unavailable", "reason": "no local verification receipt",
+                "status": "unavailable",
+                "reason": "no local verification receipt",
             }
         payload: dict[str, object] = {
             "verification": verification,
@@ -737,8 +755,7 @@ def build_evidence_tools(
                 "context_next_offset": (
                     _CONTEXT_PAGE_SIZE
                     if request.supervisor_context is not None
-                    and len(request.supervisor_context.offered_context_ids)
-                    > _CONTEXT_PAGE_SIZE
+                    and len(request.supervisor_context.offered_context_ids) > _CONTEXT_PAGE_SIZE
                     else None
                 ),
                 "context_next_ids": list(
@@ -761,8 +778,7 @@ def build_evidence_tools(
                 "decision_next_offset": (
                     _CONTEXT_PAGE_SIZE
                     if request.supervisor_context is not None
-                    and len(request.supervisor_context.offered_decision_ids)
-                    > _CONTEXT_PAGE_SIZE
+                    and len(request.supervisor_context.offered_decision_ids) > _CONTEXT_PAGE_SIZE
                     else None
                 ),
                 "decision_next_ids": list(
@@ -832,9 +848,7 @@ def build_evidence_tools(
         if next_offset >= len(envelope.context_items):
             next_offset = None
         next_ids = (
-            envelope.offered_context_ids[
-                next_offset : next_offset + _CONTEXT_PAGE_SIZE
-            ]
+            envelope.offered_context_ids[next_offset : next_offset + _CONTEXT_PAGE_SIZE]
             if next_offset is not None
             else ()
         )
@@ -909,9 +923,7 @@ def build_evidence_tools(
         if next_offset >= len(envelope.decisions):
             next_offset = None
         next_ids = (
-            envelope.offered_decision_ids[
-                next_offset : next_offset + _CONTEXT_PAGE_SIZE
-            ]
+            envelope.offered_decision_ids[next_offset : next_offset + _CONTEXT_PAGE_SIZE]
             if next_offset is not None
             else ()
         )
@@ -977,7 +989,8 @@ def build_evidence_tools(
             return local_record("inspect_git", read)
         git = ((request.scores.features or {}).get("prefetched_evidence") or {}).get("git")
         return local_record(
-            "inspect_git", lambda: git or {"available": False, "reason": "git not prefetched"},
+            "inspect_git",
+            lambda: git or {"available": False, "reason": "git not prefetched"},
         )
 
     @tool(
@@ -1000,18 +1013,17 @@ def build_evidence_tools(
             from pex_supervisor.workspace import read_visible
 
             return local_record(
-                "inspect_file", lambda: read_visible(Path(cwd), rel, limit=1_200),
+                "inspect_file",
+                lambda: read_visible(Path(cwd), rel, limit=1_200),
                 {"path": path},
             )
         files = ((request.scores.features or {}).get("prefetched_evidence") or {}).get(
             "files"
         ) or []
-        names = [
-            str(item.get("path") if isinstance(item, dict) else item)
-            for item in files[:80]
-        ]
+        names = [str(item.get("path") if isinstance(item, dict) else item) for item in files[:80]]
         return local_record(
-            "inspect_file", lambda: {
+            "inspect_file",
+            lambda: {
                 "path": rel,
                 "in_inventory": rel in names or any(name.endswith(rel) for name in names),
                 "content": "unavailable_remote",
@@ -1063,8 +1075,10 @@ def build_evidence_tools(
                         resolved_rel = target.relative_to(root)
                     except ValueError:
                         return {"error": "path escapes workspace"}
-                    if any(part.startswith(".") or part.casefold() in PRUNED_DIRECTORIES
-                           for part in resolved_rel.parts):
+                    if any(
+                        part.startswith(".") or part.casefold() in PRUNED_DIRECTORIES
+                        for part in resolved_rel.parts
+                    ):
                         return {"error": "hidden"}
                     # Do not use an ordinary output name to read a hidden or
                     # out-of-workspace file through a link alias.
@@ -1074,23 +1088,20 @@ def build_evidence_tools(
                     if "error" in visible:
                         return visible
                     return {
-                        **visible, "path": rel, "preview_kind": "head",
+                        **visible,
+                        "path": rel,
+                        "preview_kind": "head",
                         "truncated": visible["bytes"] > 800,
                     }
                 return {"artifacts": tails[:12]}
 
             return local_record("inspect_artifact", read, {"path": path})
-        artifacts = (
-            ((request.scores.features or {}).get("prefetched_evidence") or {}).get("artifacts")
-            or []
-        )
+        artifacts = ((request.scores.features or {}).get("prefetched_evidence") or {}).get(
+            "artifacts"
+        ) or []
         if rel:
             match = next(
-                (
-                    item
-                    for item in artifacts
-                    if isinstance(item, dict) and item.get("path") == rel
-                ),
+                (item for item in artifacts if isinstance(item, dict) and item.get("path") == rel),
                 None,
             )
             return local_record(
@@ -1099,7 +1110,9 @@ def build_evidence_tools(
                 {"path": path},
             )
         return local_record(
-            "inspect_artifact", lambda: {"artifacts": artifacts[:12]}, {"path": path},
+            "inspect_artifact",
+            lambda: {"artifacts": artifacts[:12]},
+            {"path": path},
         )
 
     @tool(
@@ -1110,8 +1123,7 @@ def build_evidence_tools(
         abandoned = (request.scores.features or {}).get("abandoned_background")
         return record(
             "inspect_process",
-            abandoned
-            or {"observed": False, "reason": "no abandoned background job on this STOP"},
+            abandoned or {"observed": False, "reason": "no abandoned background job on this STOP"},
         )
 
     @tool(

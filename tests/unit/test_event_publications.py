@@ -125,9 +125,7 @@ async def test_get_events_exposes_decimal_cursors_and_rejects_bad_ranges(tmp_pat
                     params={"after": "2", "through": "1"},
                 )
             ).status_code == 400
-            assert (
-                await client.get("/v1/events", params={"after": "01"})
-            ).status_code == 422
+            assert (await client.get("/v1/events", params={"after": "01"})).status_code == 422
     finally:
         await state.pipeline.close_presentations()
         await store.close()
@@ -176,8 +174,7 @@ async def test_caught_up_event_page_does_not_scan_publication_history(tmp_path, 
                     f"evt-idle-{index}",
                     seed.session_id,
                     seed.ts.isoformat(),
-                    seed.model_copy(update={"event_id": f"evt-idle-{index}"})
-                    .model_dump_json(),
+                    seed.model_copy(update={"event_id": f"evt-idle-{index}"}).model_dump_json(),
                 )
                 for index in range(count)
             ],

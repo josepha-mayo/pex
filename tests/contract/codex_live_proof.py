@@ -198,9 +198,7 @@ def capture_process_provenance(transport: Any, binary: str) -> dict[str, Any]:
     """Bind the receipt to the exact live child and executable bytes."""
 
     executable = Path(binary).resolve(strict=True)
-    command = _validate_codex_command(
-        getattr(transport, "command", None), binary_path=executable
-    )
+    command = _validate_codex_command(getattr(transport, "command", None), binary_path=executable)
     process = getattr(transport, "_proc", None)
     if process is None or not isinstance(process.pid, int) or process.pid <= 0:
         raise AssertionError("Codex App Server child has no verified process id")
@@ -312,17 +310,13 @@ def intervention_receipt(intervention: Intervention) -> dict[str, Any]:
         "action_payload": dict(intervention.proposed_action.payload),
         "action_rationale": intervention.proposed_action.rationale,
         "delivery_result": intervention.result,
-        "worker_delivery_receipt": (
-            dict(raw_delivery) if isinstance(raw_delivery, dict) else None
-        ),
+        "worker_delivery_receipt": (dict(raw_delivery) if isinstance(raw_delivery, dict) else None),
         "evidence": list(intervention.evidence),
         "outcome": intervention.outcome,
         "helped": intervention.helped,
         "observed_event_refs": list(metadata.get("outcome_event_ids") or []),
         "verification": metadata.get("verification") or {},
-        "independent_verifier": (
-            dict(raw_verifier) if isinstance(raw_verifier, dict) else None
-        ),
+        "independent_verifier": (dict(raw_verifier) if isinstance(raw_verifier, dict) else None),
         "supervisor": supervisor_receipt(intervention),
     }
 
@@ -361,9 +355,7 @@ async def correlated_audit_receipts(
         f"FROM interventions WHERE id IN ({placeholders})",  # noqa: S608
         parameters,
     )
-    stored_interventions = {
-        str(row["id"]): row for row in await intervention_cursor.fetchall()
-    }
+    stored_interventions = {str(row["id"]): row for row in await intervention_cursor.fetchall()}
     if set(stored_interventions) != set(expected):
         raise AssertionError("canonical SQLite intervention row is missing")
 
@@ -722,8 +714,7 @@ def _assert_proof_semantics(
             initial.get("proposed_action") != action
             or delivery_by_action.get(action) != initial.get("delivery_result")
             or not isinstance(delivery, dict)
-            or (initial.get("verification") or {}).get("acceptance_status")
-            != "unsatisfied"
+            or (initial.get("verification") or {}).get("acceptance_status") != "unsatisfied"
             or not any("report.txt" in item for item in initial_evidence)
             or "report" not in worker_text.casefold()
             or worker_text.startswith("PEX:")
@@ -755,16 +746,13 @@ def _assert_proof_semantics(
             )
         initial_model = canonical[str(initial["intervention_id"])]
         final_model = canonical[str(final["intervention_id"])]
-        raw_main_observations = (initial.get("supervisor") or {}).get(
-            "evidence_observations"
-        )
+        raw_main_observations = (initial.get("supervisor") or {}).get("evidence_observations")
         raw_main_refs = (initial.get("supervisor") or {}).get("evidence_refs")
         if not isinstance(raw_main_observations, list):
             raise AssertionError("initial intervention has invalid main evidence")
         try:
             main_observations = [
-                SupervisorEvidenceObservation.model_validate(item)
-                for item in raw_main_observations
+                SupervisorEvidenceObservation.model_validate(item) for item in raw_main_observations
             ]
         except (TypeError, ValueError) as exc:
             raise AssertionError("initial intervention has invalid main evidence") from exc
@@ -982,9 +970,7 @@ def validate_proof(receipt: dict[str, Any]) -> None:
         if index == 0 and requested_model != worker_model_requested:
             raise AssertionError("proof initial turn does not request the bound worker model")
         if index > 0 and requested_model not in (None, worker_model_requested):
-            raise AssertionError(
-                "proof turn does not preserve the exact requested worker model"
-            )
+            raise AssertionError("proof turn does not preserve the exact requested worker model")
 
     events = receipt.get("events")
     if not isinstance(events, list) or not events:
@@ -1024,7 +1010,8 @@ def validate_proof(receipt: dict[str, Any]) -> None:
             raise AssertionError("proof event raw reference is not canonical JSON") from exc
         if (
             not isinstance(vendor_ref, dict)
-            or set(vendor_ref) not in (
+            or set(vendor_ref)
+            not in (
                 {"schema", "thread_id", "turn_id"},
                 {"schema", "thread_id", "turn_id", "item_id"},
             )

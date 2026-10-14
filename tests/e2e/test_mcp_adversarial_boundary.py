@@ -86,9 +86,7 @@ async def _seed_session_for_goal(client: AsyncClient, goal_id: str) -> str:
 async def _seed_two_sessions(client: AsyncClient) -> tuple[str, str, str]:
     goal = await _create_goal(client)
     source_id = await _seed_session_for_goal(client, goal["id"])
-    sibling = state.adapters.synthetic.seed_session(
-        vendor_id=new_id("adversarial_sibling_")
-    )
+    sibling = state.adapters.synthetic.seed_session(vendor_id=new_id("adversarial_sibling_"))
     sibling.project_id = "demo"
     await state.store.upsert_session(sibling)
     attached = await client.post(
@@ -116,11 +114,7 @@ def _structured(result) -> dict:
     assert result.isError is False
     payload = result.structuredContent
     if payload is None:
-        texts = [
-            block.text
-            for block in (result.content or [])
-            if getattr(block, "text", None)
-        ]
+        texts = [block.text for block in (result.content or []) if getattr(block, "text", None)]
         assert texts, "MCP tool returned neither structured content nor text"
         payload = json.loads(texts[0])
     if (
@@ -144,19 +138,13 @@ async def _durable_snapshot(store: Store) -> dict[str, object]:
     ):
         cursor = await store.db.execute(f"SELECT COUNT(*) AS count FROM {table}")
         counts[table] = int((await cursor.fetchone())["count"])
-    audit = (
-        store.audit_path.read_text(encoding="utf-8")
-        if store.audit_path.exists()
-        else ""
-    )
+    audit = store.audit_path.read_text(encoding="utf-8") if store.audit_path.exists() else ""
     return {"counts": counts, "audit": audit}
 
 
 def _error_text(result) -> str:
     return "\n".join(
-        str(block.text)
-        for block in (result.content or [])
-        if getattr(block, "text", None)
+        str(block.text) for block in (result.content or []) if getattr(block, "text", None)
     )
 
 
@@ -425,9 +413,7 @@ async def test_report_progress_rejects_untrusted_evidence_without_durable_deltas
                                     {
                                         "session_id": source_id,
                                         "report": {
-                                            "idempotency_key": (
-                                                f"rejected-{index:02d}-{label}"
-                                            ),
+                                            "idempotency_key": (f"rejected-{index:02d}-{label}"),
                                             "summary": (
                                                 "This report must not survive its "
                                                 f"{label} evidence."
@@ -481,9 +467,7 @@ async def test_report_progress_exact_retry_replays_and_changed_payload_conflicts
                     "report": {
                         "idempotency_key": "exact-replay-progress-0001",
                         "summary": "Implemented and tested the bounded MCP mutation.",
-                        "evidence_refs": [
-                            {"type": "event", "id": evidence.event_id}
-                        ],
+                        "evidence_refs": [{"type": "event", "id": evidence.event_id}],
                     },
                 }
 
@@ -523,19 +507,14 @@ async def test_report_progress_exact_retry_replays_and_changed_payload_conflicts
                             assert replayed["replayed"] is True
                             assert replayed["mutation_id"] == created["mutation_id"]
                             assert replayed["item"]["id"] == created["item"]["id"]
-                            assert (
-                                replayed["intervention"]["id"]
-                                == created["intervention"]["id"]
-                            )
+                            assert replayed["intervention"]["id"] == created["intervention"]["id"]
                             assert await _durable_snapshot(store) == after_create
 
                             changed = {
                                 **payload,
                                 "report": {
                                     **payload["report"],
-                                    "summary": (
-                                        "A materially different report reused the key."
-                                    ),
+                                    "summary": ("A materially different report reused the key."),
                                 },
                             }
                             conflict = await mcp.call_tool(
@@ -543,9 +522,7 @@ async def test_report_progress_exact_retry_replays_and_changed_payload_conflicts
                                 changed,
                             )
                             assert conflict.isError is True
-                            assert "reused with new content" in _error_text(
-                                conflict
-                            ).casefold()
+                            assert "reused with new content" in _error_text(conflict).casefold()
                             assert await _durable_snapshot(store) == after_create
     finally:
         await store.close()

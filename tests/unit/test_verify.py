@@ -196,11 +196,18 @@ def test_goal_required_unittest_without_result_mints_exact_typed_probe():
 )
 def test_explicit_both_framework_goal_needs_independent_results(runs, status, probe):
     goal = _goal(evidence_requirements=["pytest and python -m unittest must both pass."])
-    claims = [{"statement": "All requested tests passed", "kind": "tests_pass",
-               "polarity": "asserted", "source_event_id": "stop"}]
+    claims = [
+        {
+            "statement": "All requested tests passed",
+            "kind": "tests_pass",
+            "polarity": "asserted",
+            "source_event_id": "stop",
+        }
+    ]
     events = [
         _event(
-            event_id=f"{framework}-{index}", event_type=EventType.SHELL,
+            event_id=f"{framework}-{index}",
+            event_type=EventType.SHELL,
             command="pytest" if framework == "pytest" else "python -m unittest",
             process_state={framework: {"ok": code == 0, "exit_code": code, "passed": 4}},
         )
@@ -1639,7 +1646,9 @@ def test_ok_true_with_nonzero_exit_cannot_support():
 def test_nonzero_pytest_exit_is_unfinished_without_completion_claim(ok, exit_code):
     events = [
         _event(
-            event_id="failed-run", event_type=EventType.SHELL, command="pytest -q",
+            event_id="failed-run",
+            event_type=EventType.SHELL,
+            command="pytest -q",
             process_state={"pytest": {"ok": ok, "exit_code": exit_code}},
         ),
         _event(event_id="stop", event_type=EventType.STOP),
@@ -1659,8 +1668,11 @@ def test_nonzero_pytest_exit_is_unfinished_without_completion_claim(ok, exit_cod
 @pytest.mark.parametrize("exit_code", [True, "1", None])
 def test_untyped_pytest_exit_is_not_failure_proof_without_claim(exit_code):
     events = [
-        _event(event_type=EventType.SHELL, command="pytest -q",
-               process_state={"pytest": {"exit_code": exit_code}}),
+        _event(
+            event_type=EventType.SHELL,
+            command="pytest -q",
+            process_state={"pytest": {"exit_code": exit_code}},
+        ),
         _event(event_type=EventType.STOP),
     ]
     result = verify_claims([], events, _goal(acceptance_criteria=["tests pass"]), {})
@@ -1793,9 +1805,7 @@ def test_modified_acceptance_file_downgrades_supported_claim(tmp_path):
     assert result["status"] == "uncertain"
     assert result["acceptance_status"] == "uncertain"
     assert result["acceptance_surface"]["modified"] == ["tests/test_core.py"]
-    verdict_evidence = [
-        item for verdict in result["verdicts"] for item in verdict["evidence"]
-    ]
+    verdict_evidence = [item for verdict in result["verdicts"] for item in verdict["evidence"]]
     assert "acceptance_surface_modified:tests/test_core.py" in verdict_evidence
     assert all(item["status"] != "supported" for item in result["verdicts"])
 
@@ -1850,9 +1860,7 @@ def test_added_runner_config_downgrades_supported_claim(tmp_path):
         "files": acceptance_fingerprints(snapshot(tmp_path)),
         "files_complete": True,
     }
-    (tmp_path / "pytest.ini").write_text(
-        "[pytest]\naddopts = --deselect tests/test_core.py\n"
-    )
+    (tmp_path / "pytest.ini").write_text("[pytest]\naddopts = --deselect tests/test_core.py\n")
 
     result = verify_claims(
         _tests_pass_claims(),
@@ -1961,9 +1969,7 @@ def test_unobserved_workspace_with_baseline_cannot_support_claim(tmp_path):
     assert result["status"] == "uncertain"
     surface = result["acceptance_surface"]
     assert surface["baselined"] is True and surface["checked"] is False
-    verdict_evidence = [
-        item for verdict in result["verdicts"] for item in verdict["evidence"]
-    ]
+    verdict_evidence = [item for verdict in result["verdicts"] for item in verdict["evidence"]]
     assert "acceptance_surface_check_incomplete" in verdict_evidence
 
 

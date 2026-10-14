@@ -330,8 +330,7 @@ async def test_restore_partial_failure_never_rolls_back_and_finalizes_all_childr
         monkeypatch.setattr(executor, "_move_restore_entry", fail_second)
         result = await _restore(executor, intervention_id, key="restore-partial-0001")
         assert result["code"] == (
-            "cleanup_restore_delivery_uncertain:"
-            "restored=1,not_restored=1,conflict=0"
+            "cleanup_restore_delivery_uncertain:restored=1,not_restored=1,conflict=0"
         )
         assert paths[0].read_text(encoding="utf-8") == "payload-0"
         assert not paths[1].exists()
@@ -486,9 +485,12 @@ async def test_restore_atomic_noreplace_loses_race_without_overwrite(
 async def test_legacy_raw_restore_manifest_remains_fail_closed(tmp_path: Path):
     store, _, executor, _ = await _runtime(tmp_path)
     try:
-        assert await executor.restore_cleanup(
-            "synthetic:source",
-            [{"resource_id": "forged", "quarantine_path": str(tmp_path)}],
-        ) == "cleanup_restore_reservation_required"
+        assert (
+            await executor.restore_cleanup(
+                "synthetic:source",
+                [{"resource_id": "forged", "quarantine_path": str(tmp_path)}],
+            )
+            == "cleanup_restore_reservation_required"
+        )
     finally:
         await store.close()

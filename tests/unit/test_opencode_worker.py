@@ -8,7 +8,9 @@ from benchmarks import opencode_worker as worker
 
 @pytest.mark.parametrize("supervised", [False, True])
 async def test_common_worker_environment_has_no_host_credentials_and_condition_only_review(
-    tmp_path, monkeypatch, supervised,
+    tmp_path,
+    monkeypatch,
+    supervised,
 ):
     captured = {}
     monkeypatch.setattr(worker.sys, "platform", "linux")
@@ -21,10 +23,16 @@ async def test_common_worker_environment_has_no_host_credentials_and_condition_o
 
     monkeypatch.setattr(worker, "run_session", session)
     result = await worker.run_worker(
-        executable=tmp_path / "opencode", workspace=tmp_path / "workspace",
-        socket_path=str(tmp_path / "relay.sock"), model="pinned", prompt="public task",
-        log_directory=tmp_path / "logs", state_home=tmp_path / "state",
-        deadline=time.monotonic() + 10, supervised=supervised, max_followups=0,
+        executable=tmp_path / "opencode",
+        workspace=tmp_path / "workspace",
+        socket_path=str(tmp_path / "relay.sock"),
+        model="pinned",
+        prompt="public task",
+        log_directory=tmp_path / "logs",
+        state_home=tmp_path / "state",
+        deadline=time.monotonic() + 10,
+        supervised=supervised,
+        max_followups=0,
     )
     assert result == "completed"
     environment = captured["environment"]
@@ -38,10 +46,16 @@ async def test_common_worker_environment_has_no_host_credentials_and_condition_o
     assert captured["model"] == "controlled/pinned"
     with pytest.raises(FileExistsError):
         await worker.run_worker(
-            executable=tmp_path / "opencode", workspace=tmp_path / "workspace",
-            socket_path=str(tmp_path / "relay.sock"), model="pinned", prompt="public task",
-            log_directory=tmp_path / "other-logs", state_home=tmp_path / "state",
-            deadline=time.monotonic() + 10, supervised=supervised, max_followups=0,
+            executable=tmp_path / "opencode",
+            workspace=tmp_path / "workspace",
+            socket_path=str(tmp_path / "relay.sock"),
+            model="pinned",
+            prompt="public task",
+            log_directory=tmp_path / "other-logs",
+            state_home=tmp_path / "state",
+            deadline=time.monotonic() + 10,
+            supervised=supervised,
+            max_followups=0,
         )
 
 
@@ -54,10 +68,16 @@ async def test_expired_worker_never_opens_proxy_or_logs(tmp_path, monkeypatch):
     monkeypatch.setattr(worker, "make_server", forbidden)
     with pytest.raises(TimeoutError):
         await worker.run_worker(
-            executable=tmp_path / "opencode", workspace=tmp_path / "workspace",
-            socket_path=str(tmp_path / "relay.sock"), model="pinned", prompt="public task",
-            log_directory=tmp_path / "logs", state_home=tmp_path / "state",
-            deadline=time.monotonic() - 1, supervised=False, max_followups=0,
+            executable=tmp_path / "opencode",
+            workspace=tmp_path / "workspace",
+            socket_path=str(tmp_path / "relay.sock"),
+            model="pinned",
+            prompt="public task",
+            log_directory=tmp_path / "logs",
+            state_home=tmp_path / "state",
+            deadline=time.monotonic() - 1,
+            supervised=False,
+            max_followups=0,
         )
     assert not (tmp_path / "logs").exists()
 
@@ -87,8 +107,14 @@ async def test_proxy_teardown_cannot_publish_success_after_shared_deadline(tmp_p
     monkeypatch.setattr(worker, "run_session", session)
     with pytest.raises(TimeoutError, match="teardown"):
         await worker.run_worker(
-            executable=tmp_path / "opencode", workspace=tmp_path / "workspace",
-            socket_path=str(tmp_path / "relay.sock"), model="pinned", prompt="public task",
-            log_directory=tmp_path / "logs", state_home=tmp_path / "state",
-            deadline=101, supervised=False, max_followups=0,
+            executable=tmp_path / "opencode",
+            workspace=tmp_path / "workspace",
+            socket_path=str(tmp_path / "relay.sock"),
+            model="pinned",
+            prompt="public task",
+            log_directory=tmp_path / "logs",
+            state_home=tmp_path / "state",
+            deadline=101,
+            supervised=False,
+            max_followups=0,
         )

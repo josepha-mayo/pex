@@ -123,8 +123,10 @@ def _context_rank(
         # Human commitments remain binding even when a busy goal has produced
         # enough verified results to fill the packet. This includes project-wide
         # constraints; verification proves results, not authority over intent.
-        1 if item.provenance == SourceKind.HUMAN
-        and item.kind in {ContextKind.CONSTRAINT, ContextKind.DECISION} else 0,
+        1
+        if item.provenance == SourceKind.HUMAN
+        and item.kind in {ContextKind.CONSTRAINT, ContextKind.DECISION}
+        else 0,
         1 if item.goal_id == goal_id else 0,
         1 if _context_verified(item) else 0,
         1 if item.provenance in _STRONG_PROVENANCE else 0,
@@ -191,7 +193,8 @@ def build_supervisor_context(
     # replacement itself is expired or too sensitive to disclose to the model.
     # Expiry invalidates the replacement; it does not revive a retired fact.
     human_commitments = {
-        item.id for item in in_scope
+        item.id
+        for item in in_scope
         if item.provenance == SourceKind.HUMAN
         and item.kind in {ContextKind.CONSTRAINT, ContextKind.DECISION}
     }
@@ -220,9 +223,7 @@ def build_supervisor_context(
         semantic_kind = _clean_label(metadata.get("kind"), 80) or None
         source_refs = _unique_ids(item.source_refs)
         relevance_tags = tuple(
-            value
-            for value in (_clean_label(tag, 120) for tag in item.relevance_tags[:16])
-            if value
+            value for value in (_clean_label(tag, 120) for tag in item.relevance_tags[:16]) if value
         )
         relevance_tags = tuple(dict.fromkeys(relevance_tags))
         selected_context.append(
@@ -283,8 +284,8 @@ def build_supervisor_context(
         alternatives_truncated = len(cleaned_alternatives) > 12 or any(
             len(value) > 1_000 for value in cleaned_alternatives[:12]
         )
-        cost = len(statement) + len(rationale) + len(scope) + sum(
-            len(value) for value in alternatives
+        cost = (
+            len(statement) + len(rationale) + len(scope) + sum(len(value) for value in alternatives)
         )
         if not statement or decision_text + cost > _MAX_DECISION_TEXT:
             continue
@@ -294,9 +295,9 @@ def build_supervisor_context(
             SupervisorDecisionItem(
                 id=decision.id,
                 kind=(
-                    decision_kind if decision_kind in {
-                        "decision", "rejected_approach", "unresolved_question"
-                    } else "decision"
+                    decision_kind
+                    if decision_kind in {"decision", "rejected_approach", "unresolved_question"}
+                    else "decision"
                 ),
                 goal_id=goal_id,
                 statement=statement,

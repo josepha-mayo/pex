@@ -157,13 +157,15 @@ def _matching_decisions(
             continue
         rejected = (
             [decision.statement, *decision.alternatives_rejected]
-            if kind == "rejected_approach" else decision.alternatives_rejected
+            if kind == "rejected_approach"
+            else decision.alternatives_rejected
         )
         # Each rejected choice is independently meaningful. Concatenation can
         # require a duplicated verb or mistake the accepted choice for a ban.
         if any(
             _matches_forbidden_terms(
-                text, [token for token in _WORD.findall(choice.lower()) if len(token) > 3][:4],
+                text,
+                [token for token in _WORD.findall(choice.lower()) if len(token) > 3][:4],
             )
             for choice in rejected
         ):
@@ -217,7 +219,8 @@ def _matches_forbidden_terms(text: str, terms: list[str]) -> bool:
         # a later prohibition. Keep sentence and contrast boundaries intact.
         clause = re.split(
             r"[.!?;](?:\s|$)|\b(?:but|however|instead|nevertheless)\b",
-            text[occurrence.start() : occurrence.start() + 560], maxsplit=1,
+            text[occurrence.start() : occurrence.start() + 560],
+            maxsplit=1,
         )[0]
         clause_words = _WORD.findall(clause)
         cursor = 0

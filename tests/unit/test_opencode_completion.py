@@ -106,7 +106,9 @@ def test_read_only_worker_poll_cancels_a_hung_read_at_shared_deadline():
     async def check():
         with pytest.raises(TimeoutError):
             await poll_opencode_get(
-                transport, "/session/status", deadline=time.monotonic() + 0.03,
+                transport,
+                "/session/status",
+                deadline=time.monotonic() + 0.03,
             )
         assert transport.cancelled
         assert transport.calls == 1
@@ -151,7 +153,9 @@ def test_read_only_worker_poll_rejects_a_late_result_after_cancel_suppression():
     async def check():
         with pytest.raises(TimeoutError, match="proof window"):
             await poll_opencode_get(
-                transport, "/session/status", deadline=time.monotonic() + 0.03,
+                transport,
+                "/session/status",
+                deadline=time.monotonic() + 0.03,
             )
         assert transport.calls == 1
         assert transport.cancellation_suppressed
@@ -164,7 +168,8 @@ def test_read_only_worker_poll_rejects_a_late_result_after_cancel_suppression():
 
 @pytest.mark.parametrize("convert_to_read_timeout", [False, True])
 def test_expired_poll_timeout_rejects_suppressed_cancel_before_clock_deadline(
-    monkeypatch, convert_to_read_timeout,
+    monkeypatch,
+    convert_to_read_timeout,
 ):
     import benchmarks.opencode_completion as completion
 
@@ -200,9 +205,13 @@ def test_poll_preserves_caller_cancellation_when_transport_suppresses_it():
                 except asyncio.CancelledError:
                     return {"late": True}
 
-        task = asyncio.create_task(poll_opencode_get(
-            Transport(), "/session/status", deadline=time.monotonic() + 5,
-        ))
+        task = asyncio.create_task(
+            poll_opencode_get(
+                Transport(),
+                "/session/status",
+                deadline=time.monotonic() + 5,
+            )
+        )
         await entered.wait()
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
@@ -241,9 +250,14 @@ def test_deterministic_recovery_rejects_paid_worker_before_creating_a_run(tmp_pa
     assert not run_directory.exists()
     result = subprocess.run(
         [
-            sys.executable, str(runner), "--run-name", "must-not-exist",
-            "--pex-mode", "deterministic",
-            "--worker-model", "nvidia/nemotron-3-super-120b-a12b",
+            sys.executable,
+            str(runner),
+            "--run-name",
+            "must-not-exist",
+            "--pex-mode",
+            "deterministic",
+            "--worker-model",
+            "nvidia/nemotron-3-super-120b-a12b",
         ],
         cwd=tmp_path,
         capture_output=True,
@@ -298,18 +312,25 @@ def test_free_worker_route_accepts_an_explicit_separate_worker_credential():
 
 def test_native_free_worker_route_needs_no_saved_provider_credential():
     assert proof_worker_route(
-        "nebius", "nemotron-3-ultra-free", native_free=True,
+        "nebius",
+        "nemotron-3-ultra-free",
+        native_free=True,
     ) == ("opencode", "OpenCode Zen")
     from benchmarks.opencode_proof_route import proof_worker_config
 
     config = proof_worker_config(
-        "opencode", "nemotron-3-ultra-free", "OpenCode Zen", native_free=True,
+        "opencode",
+        "nemotron-3-ultra-free",
+        "OpenCode Zen",
+        native_free=True,
     )
     assert config["model"] == "opencode/nemotron-3-ultra-free"
     assert "provider" not in config
     with pytest.raises(RuntimeError, match="listed free OpenCode model"):
         proof_worker_config(
-            "nebius", "nvidia/Nemotron-3_5-Lightning", "Nebius Token Factory",
+            "nebius",
+            "nvidia/Nemotron-3_5-Lightning",
+            "Nebius Token Factory",
             native_free=True,
         )
 
@@ -319,11 +340,15 @@ def test_native_free_worker_environment_excludes_host_credentials(tmp_path):
 
     environment = native_free_worker_environment(
         {
-            "PATH": "C:/tools", "SystemRoot": "C:/Windows",
-            "OPENAI_API_KEY": "secret", "OPENCODE_API_KEY": "secret",
-            "PEX_ZEN_API_KEY": "secret", "NEBIUS_API_KEY": "secret",
+            "PATH": "C:/tools",
+            "SystemRoot": "C:/Windows",
+            "OPENAI_API_KEY": "secret",
+            "OPENCODE_API_KEY": "secret",
+            "PEX_ZEN_API_KEY": "secret",
+            "NEBIUS_API_KEY": "secret",
             "OPENCODE_CONFIG_CONTENT": "host config",
-            "HOME": "host-home", "APPDATA": "host-appdata",
+            "HOME": "host-home",
+            "APPDATA": "host-appdata",
         },
         tmp_path,
     )
@@ -408,7 +433,7 @@ def test_quiet_runner_binds_route_before_secret_access_and_is_cross_platform():
     assert '"PEX_PROOF_FREE_SUPERVISOR_KEY" not in os.environ' in source
     assert 'env.pop("PEX_PROOF_FREE_SUPERVISOR_KEY", None)' in source
     assert 'supervisor_provider = "zen"' in source
-    assert source.index('choices=FREE_OPENCODE_MODELS') < source.index('_EARLY_CLI = _parse_cli()')
+    assert source.index("choices=FREE_OPENCODE_MODELS") < source.index("_EARLY_CLI = _parse_cli()")
 
     recovery_source = (
         Path(__file__).resolve().parents[2] / "scripts/opencode_recovery_once.py"
@@ -421,9 +446,16 @@ def test_quiet_runner_rejects_opencode_only_free_supervisor_before_work(tmp_path
     runner = Path(__file__).resolve().parents[2] / "scripts/opencode_quiet_ten.py"
     result = subprocess.run(
         [
-            sys.executable, str(runner), "--run-name", "rejected-free-supervisor",
-            "--arm", "pex", "--pex-mode", "semantic",
-            "--free-supervisor-model", "mimo-v2.6-flash-free",
+            sys.executable,
+            str(runner),
+            "--run-name",
+            "rejected-free-supervisor",
+            "--arm",
+            "pex",
+            "--pex-mode",
+            "semantic",
+            "--free-supervisor-model",
+            "mimo-v2.6-flash-free",
         ],
         cwd=tmp_path,
         capture_output=True,
@@ -433,6 +465,7 @@ def test_quiet_runner_rejects_opencode_only_free_supervisor_before_work(tmp_path
     assert result.returncode == 2
     assert "only inside OpenCode" in result.stderr
     assert list(tmp_path.iterdir()) == []
+
 
 def test_quiet_baseline_uses_the_same_public_contract_without_a_pex_pipeline():
     baseline = public_case_contract(CASES[0])
@@ -461,18 +494,19 @@ def test_recovery_runner_reserves_review_time_after_each_late_stop():
     assert _recovery_deadline(started, initial, initial - 1.0) == (
         initial - 1.0 + POST_STOP_SETTLEMENT_SECONDS
     )
-    assert _recovery_deadline(
-        started, initial, started + MAX_PROOF_SECONDS - 1.0
-    ) == started + MAX_PROOF_SECONDS
+    assert (
+        _recovery_deadline(started, initial, started + MAX_PROOF_SECONDS - 1.0)
+        == started + MAX_PROOF_SECONDS
+    )
 
 
 def test_false_claim_verdict_does_not_require_failure_output_before_verification():
     runner = Path(__file__).resolve().parents[2] / "scripts/opencode_recovery_once.py"
     source = runner.read_text(encoding="utf-8")
 
-    pass_block = source[source.index("passed = bool(") : source.index(
-        "# The immutable initial observation"
-    )]
+    pass_block = source[
+        source.index("passed = bool(") : source.index("# The immutable initial observation")
+    ]
     assert 'first_stop["false_test_claim_observed"]' in pass_block
     assert 'first_stop["failing_test_output_observed"]' not in pass_block
 
@@ -526,12 +560,14 @@ def test_recovery_accepts_verified_continue_session_route():
 def test_deterministic_recovery_requires_no_model_correction_and_supported_noop():
     rows, followups = recovery_rows()
     for row in rows:
-        row["metadata"].update({
-            "used_llm": False,
-            "inference_status": "not_attempted",
-            "model_call_count": 0,
-            "independent_verifier": None,
-        })
+        row["metadata"].update(
+            {
+                "used_llm": False,
+                "inference_status": "not_attempted",
+                "model_call_count": 0,
+                "independent_verifier": None,
+            }
+        )
     assert recovery_interventions_succeeded(rows, followups, semantic=False)
     assert not recovery_interventions_succeeded(rows, followups, semantic=True)
 
@@ -539,48 +575,57 @@ def test_deterministic_recovery_requires_no_model_correction_and_supported_noop(
     assert not recovery_interventions_succeeded(rows, followups, semantic=False)
 
 
-@pytest.mark.parametrize("mutation", [
-    lambda rows, followups: followups.append("again"),
-    lambda rows, followups: followups.__setitem__(0, "different"),
-    lambda rows, followups: rows[0].__setitem__("action_taken", "CONTINUE"),
-    lambda rows, followups: rows[0].__setitem__("outcome", "worker_responded"),
-    lambda rows, followups: rows[0].__setitem__("helped", None),
-    lambda rows, followups: rows[0].__setitem__("worker_response", ""),
-    lambda rows, followups: rows[0]["metadata"].__setitem__("outcome_final", False),
-    lambda rows, followups: rows[0]["metadata"]["independent_verifier"].__setitem__(
-        "approved", False
-    ),
-    lambda rows, followups: rows[1]["metadata"]["verification"].__setitem__(
-        "acceptance_status", "unknown"
-    ),
-    lambda rows, followups: rows[1].__setitem__("created_at", rows[0]["created_at"]),
-    lambda rows, followups: rows[1].__setitem__("created_at", "invalid"),
-    lambda rows, followups: rows.pop(),
-])
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda rows, followups: followups.append("again"),
+        lambda rows, followups: followups.__setitem__(0, "different"),
+        lambda rows, followups: rows[0].__setitem__("action_taken", "CONTINUE"),
+        lambda rows, followups: rows[0].__setitem__("outcome", "worker_responded"),
+        lambda rows, followups: rows[0].__setitem__("helped", None),
+        lambda rows, followups: rows[0].__setitem__("worker_response", ""),
+        lambda rows, followups: rows[0]["metadata"].__setitem__("outcome_final", False),
+        lambda rows, followups: rows[0]["metadata"]["independent_verifier"].__setitem__(
+            "approved", False
+        ),
+        lambda rows, followups: rows[1]["metadata"]["verification"].__setitem__(
+            "acceptance_status", "unknown"
+        ),
+        lambda rows, followups: rows[1].__setitem__("created_at", rows[0]["created_at"]),
+        lambda rows, followups: rows[1].__setitem__("created_at", "invalid"),
+        lambda rows, followups: rows.pop(),
+    ],
+)
 def test_recovery_rejects_missing_or_ambiguous_causal_proof(mutation):
     rows, followups = recovery_rows()
     mutation(rows, followups)
     assert not recovery_interventions_succeeded(rows, followups)
 
 
-@pytest.mark.parametrize("expected,event_session,observed_session,accepted", [
-    (None, "case", "case", False),
-    ("", "", "", False),
-    ("case", "case", "case", True),
-    ("case", "previous-case", "previous-case", False),
-    ("case", "previous-case", "case", False),
-    ("case", "case", "previous-case", False),
-    ("case", None, "case", False),
-    ("case", "case", None, False),
-])
+@pytest.mark.parametrize(
+    "expected,event_session,observed_session,accepted",
+    [
+        (None, "case", "case", False),
+        ("", "", "", False),
+        ("case", "case", "case", True),
+        ("case", "previous-case", "previous-case", False),
+        ("case", "previous-case", "case", False),
+        ("case", "case", "previous-case", False),
+        ("case", None, "case", False),
+        ("case", "case", None, False),
+    ],
+)
 def test_global_events_are_bound_to_the_ready_case(
     expected, event_session, observed_session, accepted
 ):
-    assert belongs_to_case(
-        SimpleNamespace(session_id=event_session),
-        SimpleNamespace(id=observed_session),
-        expected,
-    ) is accepted
+    assert (
+        belongs_to_case(
+            SimpleNamespace(session_id=event_session),
+            SimpleNamespace(id=observed_session),
+            expected,
+        )
+        is accepted
+    )
 
 
 def test_missing_event_or_session_is_not_a_case_observation():
@@ -593,15 +638,22 @@ def test_runner_filters_before_capture_and_ingestion_and_binds_before_prompt():
     guard = source.index("if not belongs_to_case(event, observed_session, case_session_id):")
     assert guard < source.index('if event.event_type.value == "stop"')
     assert guard < source.index("await pipeline.ingest_event(event, observed_session)")
-    assert source.index("await store.upsert_session(session)") < source.index(
-        "case_session_id = session.id"
-    ) < source.index('f"/session/{vendor}/prompt_async"')
+    assert (
+        source.index("await store.upsert_session(session)")
+        < source.index("case_session_id = session.id")
+        < source.index('f"/session/{vendor}/prompt_async"')
+    )
 
 
 def review(used_llm=True, status="completed"):
-    return {"plan": {"supervisor_result": {
-        "used_llm": used_llm, "inference_status": status,
-    }}}
+    return {
+        "plan": {
+            "supervisor_result": {
+                "used_llm": used_llm,
+                "inference_status": status,
+            }
+        }
+    }
 
 
 def test_quiet_case_requires_a_real_completed_review():
@@ -618,11 +670,19 @@ def test_prior_success_cannot_hide_inference_failure(used_llm, status):
     assert not semantic_reviews_succeeded([failed, review()])
 
 
-@pytest.mark.parametrize("invalid", [
-    None, {"plan": "bad"}, {"plan": {"supervisor_result": "bad"}},
-    review(False, "completed"), review(True, "not_attempted"),
-    review("true", "completed"), review(True, None), review(True, "unknown"),
-])
+@pytest.mark.parametrize(
+    "invalid",
+    [
+        None,
+        {"plan": "bad"},
+        {"plan": {"supervisor_result": "bad"}},
+        review(False, "completed"),
+        review(True, "not_attempted"),
+        review("true", "completed"),
+        review(True, None),
+        review(True, "unknown"),
+    ],
+)
 def test_malformed_or_contradictory_reviews_cannot_be_hidden(invalid):
     assert not semantic_reviews_succeeded([review(), invalid])
 
@@ -639,9 +699,7 @@ def test_quiet_runner_reserves_a_full_review_window_after_late_worker_stop():
     assert _case_deadline(started, None) == started + CASE_TIMEOUT_SECONDS
     assert _case_deadline(started, started + 10.0) == started + CASE_TIMEOUT_SECONDS
     late_stop = started + CASE_TIMEOUT_SECONDS - 5.0
-    assert _case_deadline(started, late_stop) == (
-        late_stop + POST_STOP_REVIEW_GRACE_SECONDS
-    )
+    assert _case_deadline(started, late_stop) == (late_stop + POST_STOP_REVIEW_GRACE_SECONDS)
 
 
 def completion_review(**changes):
@@ -658,9 +716,7 @@ def bound_review(journal, event_id="stop"):
 
 
 def bound_failed_review(journal, event_id="stop"):
-    return review_failed_for_event(
-        journal, event_id=event_id, session_id="session", goal_id="goal"
-    )
+    return review_failed_for_event(journal, event_id=event_id, session_id="session", goal_id="goal")
 
 
 def test_terminal_review_failure_requires_the_exact_completed_stop_event():
@@ -672,12 +728,15 @@ def test_terminal_review_failure_requires_the_exact_completed_stop_event():
     assert not bound_failed_review([completion_review()])
 
 
-@pytest.mark.parametrize("changes", [
-    {"session_id": "other"},
-    {"goal_id": "other"},
-    {"state": "planned"},
-    {"plan": None},
-])
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"session_id": "other"},
+        {"goal_id": "other"},
+        {"state": "planned"},
+        {"plan": None},
+    ],
+)
 def test_terminal_review_failure_rejects_unbound_or_pending_rows(changes):
     failed = completion_review(plan=review(True, "failed")["plan"])
     failed.update(changes)
@@ -725,31 +784,37 @@ def test_deterministic_review_is_strict_and_does_not_weaken_semantic_review():
     assert deterministic_reviews_succeeded([stop_row])
 
 
-@pytest.mark.parametrize("changes", [
-    {"used_llm": True},
-    {"diagnosis": "other"},
-    {"execution_mode": "remote"},
-    {"execution_mode": "unknown_local_mode"},
-    {"inference_status": "completed"},
-    {"transport_status": "completed"},
-    {"model_call_count": 1},
-    {"input_tokens": 1},
-    {"output_tokens": 1},
-    {"provider": "nebius"},
-    {"action": {"type": "SEND_NUDGE"}},
-])
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"used_llm": True},
+        {"diagnosis": "other"},
+        {"execution_mode": "remote"},
+        {"execution_mode": "unknown_local_mode"},
+        {"inference_status": "completed"},
+        {"transport_status": "completed"},
+        {"model_call_count": 1},
+        {"input_tokens": 1},
+        {"output_tokens": 1},
+        {"provider": "nebius"},
+        {"action": {"type": "SEND_NUDGE"}},
+    ],
+)
 def test_deterministic_review_rejects_any_provider_or_action_evidence(changes):
     row = deterministic_review(**changes)
     assert not bound_deterministic_review([row])
     assert not deterministic_reviews_succeeded([row])
 
 
-@pytest.mark.parametrize("changes", [
-    {"session_id": "other"},
-    {"goal_id": "other"},
-    {"state": "planned"},
-    {"plan": None},
-])
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"session_id": "other"},
+        {"goal_id": "other"},
+        {"state": "planned"},
+        {"plan": None},
+    ],
+)
 def test_deterministic_completion_requires_exact_binding(changes):
     row = deterministic_review()
     row.update(changes)
@@ -764,12 +829,18 @@ def test_earlier_success_does_not_prove_completion_event_review():
     assert not bound_review([completion_review(), completion_review()])
 
 
-@pytest.mark.parametrize("changes", [
-    {"session_id": "other"}, {"goal_id": "other"}, {"state": "planned"},
-    {"state": "record_only_complete"}, {"plan": "bad"},
-    {"plan": review(False, "not_attempted")["plan"]},
-    {"plan": review(True, "failed")["plan"]},
-])
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"session_id": "other"},
+        {"goal_id": "other"},
+        {"state": "planned"},
+        {"state": "record_only_complete"},
+        {"plan": "bad"},
+        {"plan": review(False, "not_attempted")["plan"]},
+        {"plan": review(True, "failed")["plan"]},
+    ],
+)
 def test_completion_review_requires_exact_binding_and_finished_inference(changes):
     assert not bound_review([completion_review(**changes)])
 
@@ -779,15 +850,18 @@ def test_completion_event_must_be_observed(event_id):
     assert not bound_review([completion_review()], event_id)
 
 
-@pytest.mark.parametrize("args,code", [
-    (["--help"], 0),
-    ([], 2),
-    (["--run-name", "../outside"], 2),
-    (["--run-name", "safe", "--case-count", "0"], 2),
-    (["--run-name", "safe", "--case-count", "11"], 2),
-    (["--run-name", "safe", "--arm", "unknown"], 2),
-    (["--run-name", "safe", "--pex-mode", "unknown"], 2),
-])
+@pytest.mark.parametrize(
+    "args,code",
+    [
+        (["--help"], 0),
+        ([], 2),
+        (["--run-name", "../outside"], 2),
+        (["--run-name", "safe", "--case-count", "0"], 2),
+        (["--run-name", "safe", "--case-count", "11"], 2),
+        (["--run-name", "safe", "--arm", "unknown"], 2),
+        (["--run-name", "safe", "--pex-mode", "unknown"], 2),
+    ],
+)
 def test_live_runner_requires_explicit_valid_run_name_before_any_work(args, code):
     root = Path(__file__).resolve().parents[2]
     result = subprocess.run(
@@ -801,12 +875,15 @@ def test_live_runner_requires_explicit_valid_run_name_before_any_work(args, code
     assert "usage:" in result.stdout + result.stderr
 
 
-@pytest.mark.parametrize("args,code", [
-    (["--help"], 0),
-    ([], 2),
-    (["--run-name", "../outside"], 2),
-    (["--run-name", "safe", "--scenario", "unknown"], 2),
-])
+@pytest.mark.parametrize(
+    "args,code",
+    [
+        (["--help"], 0),
+        ([], 2),
+        (["--run-name", "../outside"], 2),
+        (["--run-name", "safe", "--scenario", "unknown"], 2),
+    ],
+)
 def test_recovery_runner_requires_explicit_valid_run_name_before_any_work(args, code):
     root = Path(__file__).resolve().parents[2]
     result = subprocess.run(

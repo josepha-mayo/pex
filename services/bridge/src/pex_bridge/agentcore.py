@@ -253,13 +253,17 @@ def compact_workspace_evidence(workspace: Mapping[str, Any] | None) -> dict[str,
     raw_files = raw.get("files")
     files = list(raw_files[:80]) if isinstance(raw_files, (list, tuple)) else []
     raw_file_meta = raw.get("file_meta")
-    file_meta = [
-        item for item in raw_file_meta[:80] if isinstance(item, Mapping)
-    ] if isinstance(raw_file_meta, (list, tuple)) else []
+    file_meta = (
+        [item for item in raw_file_meta[:80] if isinstance(item, Mapping)]
+        if isinstance(raw_file_meta, (list, tuple))
+        else []
+    )
     raw_artifacts = raw.get("artifacts")
-    artifacts = [
-        item for item in raw_artifacts[:24] if isinstance(item, Mapping)
-    ] if isinstance(raw_artifacts, (list, tuple)) else []
+    artifacts = (
+        [item for item in raw_artifacts[:24] if isinstance(item, Mapping)]
+        if isinstance(raw_artifacts, (list, tuple))
+        else []
+    )
     git = raw.get("git") if isinstance(raw.get("git"), Mapping) else {}
     pytest = raw.get("pytest") if isinstance(raw.get("pytest"), Mapping) else {}
     changed = [line for line in str(git.get("status") or "").splitlines() if line.strip()]
@@ -306,16 +310,13 @@ def compact_workspace_evidence(workspace: Mapping[str, Any] | None) -> dict[str,
                 else len(changed)
             ),
             "changed_paths": [
-                _safe_path(line.split()[-1] if line.split() else line)
-                for line in changed[:24]
+                _safe_path(line.split()[-1] if line.split() else line) for line in changed[:24]
             ],
         },
         "pytest": {
             "ok": pytest.get("ok") if isinstance(pytest.get("ok"), bool) else None,
             "exit_code": (
-                _bounded_int(
-                    pytest.get("exit_code"), minimum=-(1 << 31), maximum=(1 << 31) - 1
-                )
+                _bounded_int(pytest.get("exit_code"), minimum=-(1 << 31), maximum=(1 << 31) - 1)
                 if isinstance(pytest.get("exit_code"), int)
                 else None
             ),
@@ -345,9 +346,7 @@ def _safe_event(
         "tool_name": _safe_text(event.tool_name, 160, local_values) or None,
         "command": _safe_text(event.command, 1_000, local_values) or None,
         "file_paths": [
-            path
-            for item in event.file_paths[:32]
-            if (path := _safe_path(item, local_values))
+            path for item in event.file_paths[:32] if (path := _safe_path(item, local_values))
         ],
         "cost": event.cost if event.cost is None or isfinite(event.cost) else None,
         "error": _safe_text(event.error, 1_000, local_values) or None,
@@ -494,17 +493,11 @@ def _validate_request_binding(request: SupervisorRequest) -> None:
         raise AgentCoreProtocolError("AgentCore context has inconsistent authority binding")
     for event in request.recent_events:
         if event.session_id != session.id:
-            raise AgentCoreProtocolError(
-                "AgentCore recent event is bound to a different session"
-            )
+            raise AgentCoreProtocolError("AgentCore recent event is bound to a different session")
         if event.harness_type != session.harness_type:
-            raise AgentCoreProtocolError(
-                "AgentCore recent event is bound to a different harness"
-            )
+            raise AgentCoreProtocolError("AgentCore recent event is bound to a different harness")
         if not _project_matches(event.project_id, session.project_id):
-            raise AgentCoreProtocolError(
-                "AgentCore recent event is bound to a different project"
-            )
+            raise AgentCoreProtocolError("AgentCore recent event is bound to a different project")
 
 
 def _exact_observation_text_is_safe(value: object, local_values: tuple[str, ...]) -> bool:
@@ -537,9 +530,13 @@ def _validate_remote_observations(
     """
 
     local_values = tuple(
-        value for value in (
-            request.session.cwd, request.session.repo, request.session.external_url,
-        ) if value
+        value
+        for value in (
+            request.session.cwd,
+            request.session.repo,
+            request.session.external_url,
+        )
+        if value
     )
     verifier = result.independent_verifier
     groups = [("main", result.local_invocation_id, result.evidence_observations)]
@@ -573,7 +570,8 @@ def _validate_remote_observations(
                 if not _exact_observation_text_is_safe(parsed, local_values):
                     raise AgentCoreProtocolError("AgentCore evidence observation is not sanitized")
     if (
-        verifier is not None and verifier.evidence_observations
+        verifier is not None
+        and verifier.evidence_observations
         and verifier.invocation_id == result.local_invocation_id
     ):
         raise AgentCoreProtocolError("AgentCore verifier reused the main invocation identity")
@@ -592,8 +590,7 @@ def _remote_verifier_contract_failure(
         return "main_inference_not_completed"
     if not result.used_llm or result.model_call_count < 1:
         return "missing_main_inference"
-    if (request.event.event_type != EventType.STOP
-            and trajectory_review_candidate(request) is None):
+    if request.event.event_type != EventType.STOP and trajectory_review_candidate(request) is None:
         return None if result.evidence_refs else "missing_main_evidence_observation"
     receipt = result.independent_verifier
     if receipt is None:
@@ -619,7 +616,8 @@ def _remote_verifier_contract_failure(
     if result.model_call_count <= receipt.model_call_count:
         return "missing_main_inference"
     verifier_tools = {
-        item.tool_name for item in receipt.evidence_observations
+        item.tool_name
+        for item in receipt.evidence_observations
         if item.observation_id in receipt.evidence_refs
     }
     verification = (request.scores.features or {}).get("verification") or {}
@@ -701,9 +699,7 @@ def _read_stream(body: object, limit: int) -> bytes:
     else:
         raise AgentCoreProtocolError("AgentCore response is missing a readable body")
     if len(raw) > limit:
-        raise AgentCoreProtocolError(
-            f"AgentCore response exceeds the {limit}-byte local limit"
-        )
+        raise AgentCoreProtocolError(f"AgentCore response exceeds the {limit}-byte local limit")
     return raw
 
 
@@ -874,7 +870,9 @@ class AgentCoreSupervisorClient:
         try:
             result = SupervisorResult.model_validate(envelope["result"])
             _validate_remote_observations(
-                request, result, dispatched_request_digest=dispatched_digest,
+                request,
+                result,
+                dispatched_request_digest=dispatched_digest,
             )
         except Exception:
             raise AgentCoreDeliveryUncertainError(
@@ -904,9 +902,7 @@ class AgentCoreSupervisorClient:
             {
                 "type": remote_action.type.value,
                 "rationale": _safe_text(remote_action.rationale, 2_000),
-                "evidence": [
-                    _safe_text(item, 1_000) for item in list(remote_action.evidence)[:20]
-                ],
+                "evidence": [_safe_text(item, 1_000) for item in list(remote_action.evidence)[:20]],
                 "payload": bounded_payload if isinstance(bounded_payload, dict) else {},
                 "confidence": remote_action.confidence,
                 "risk": remote_action.risk.value,
@@ -922,24 +918,19 @@ class AgentCoreSupervisorClient:
             if value
         )
         result.diagnosis = _safe_text(result.diagnosis, 300, local_values)
-        result.traces = [
-            _safe_text(item, 500, local_values) for item in list(result.traces)[:20]
-        ]
+        result.traces = [_safe_text(item, 500, local_values) for item in list(result.traces)[:20]]
         result.evidence_tools = [
-            _safe_text(item, 200, local_values)
-            for item in list(result.evidence_tools)[:20]
+            _safe_text(item, 200, local_values) for item in list(result.evidence_tools)[:20]
         ]
         verifier = result.independent_verifier
         if verifier is not None:
             verifier.status = _safe_text(verifier.status, 120, local_values)
             verifier.rationale = _safe_text(verifier.rationale, 2_000, local_values)
             verifier.evidence = [
-                _safe_text(item, 1_000, local_values)
-                for item in list(verifier.evidence)[:20]
+                _safe_text(item, 1_000, local_values) for item in list(verifier.evidence)[:20]
             ]
             verifier.evidence_tools = [
-                _safe_text(item, 128, local_values)
-                for item in list(verifier.evidence_tools)[:20]
+                _safe_text(item, 128, local_values) for item in list(verifier.evidence_tools)[:20]
             ]
         for field in (
             "model_name",
@@ -978,8 +969,7 @@ class AgentCoreSupervisorClient:
                 },
             )
             result.diagnosis = (
-                f"{result.diagnosis}:agentcore_verifier_contract_rejected:"
-                f"{verifier_failure}"
+                f"{result.diagnosis}:agentcore_verifier_contract_rejected:{verifier_failure}"
             ).strip(":")
             result.traces = [
                 *result.traces[-19:],
@@ -1048,8 +1038,7 @@ class SupervisorRouter:
                 {
                     "type": "NOOP",
                     "rationale": (
-                        "AgentCore semantic supervision was unavailable; "
-                        "defaulting to silence."
+                        "AgentCore semantic supervision was unavailable; defaulting to silence."
                     ),
                     "evidence": [f"agentcore_unavailable:{detail}"],
                     "confidence": 1.0,
@@ -1132,6 +1121,4 @@ class SupervisorRouter:
                 transport_invocation_id=transport_invocation_id(request),
                 reason_code="unexpected_failure",
             ) from None
-        return _preserve_deterministic_truth(
-            request, plan_deterministic(request), result
-        )
+        return _preserve_deterministic_truth(request, plan_deterministic(request), result)

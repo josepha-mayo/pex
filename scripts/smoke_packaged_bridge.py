@@ -156,10 +156,7 @@ def _byok_roundtrip(*, port: int, token: str, home: Path, log_path: Path) -> Non
             token=token,
             payload={"expected_revision": 1, "clear_api_key": True},
         )
-        if (
-            cleared.get("has_api_key") is not False
-            or cleared.get("credential_source") != "none"
-        ):
+        if cleared.get("has_api_key") is not False or cleared.get("credential_source") != "none":
             raise RuntimeError("packaged BYOK clear did not update public settings")
         deadline = time.monotonic() + 10
         while time.monotonic() < deadline:

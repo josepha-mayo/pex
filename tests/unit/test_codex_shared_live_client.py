@@ -230,9 +230,15 @@ async def test_bound_session_never_creates_or_replaces_a_goal() -> None:
         assert request.url.path == "/v1/pet"
         return httpx.Response(
             200,
-            json={"sessions": [{
-                "id": TARGET.session_id, "goal_id": "existing-goal", "control_revision": 3,
-            }]},
+            json={
+                "sessions": [
+                    {
+                        "id": TARGET.session_id,
+                        "goal_id": "existing-goal",
+                        "control_revision": 3,
+                    }
+                ]
+            },
         )
 
     async with _client(httpx.MockTransport(handler)) as client:
@@ -259,15 +265,29 @@ async def test_goal_success_uses_pet_control_revision_and_exact_attach_cas() -> 
     def handler(request: httpx.Request) -> httpx.Response:
         calls.append(request)
         if request.url.path == "/v1/pet":
-            return httpx.Response(200, json={"sessions": [{
-                "id": TARGET.session_id, "goal_id": None, "control_revision": 7,
-            }]})
+            return httpx.Response(
+                200,
+                json={
+                    "sessions": [
+                        {
+                            "id": TARGET.session_id,
+                            "goal_id": None,
+                            "control_revision": 7,
+                        }
+                    ]
+                },
+            )
         if request.url.path == "/v1/goals":
             body = json.loads(request.content)
             assert "attach_idempotency_key" not in body
-            return httpx.Response(200, json={
-                "id": "goal-live-1", "intent_revision": 2, "intent_hash": "b" * 64,
-            })
+            return httpx.Response(
+                200,
+                json={
+                    "id": "goal-live-1",
+                    "intent_revision": 2,
+                    "intent_hash": "b" * 64,
+                },
+            )
         if request.url.path.endswith("/attach"):
             assert json.loads(request.content) == {
                 "idempotency_key": "attach-live-123",
@@ -277,35 +297,50 @@ async def test_goal_success_uses_pet_control_revision_and_exact_attach_cas() -> 
                 "expected_control_revision": 7,
                 "expected_goal_intent_revision": 2,
             }
-            return httpx.Response(200, json={
-                "session_goal_attachment_receipt": {
-                    "schema": "pex.session-goal-attachment-receipt.v1",
-                    "goal_id": "goal-live-1", "after_goal_id": "goal-live-1",
-                }
-            })
+            return httpx.Response(
+                200,
+                json={
+                    "session_goal_attachment_receipt": {
+                        "schema": "pex.session-goal-attachment-receipt.v1",
+                        "goal_id": "goal-live-1",
+                        "after_goal_id": "goal-live-1",
+                    }
+                },
+            )
         pytest.fail(f"unexpected request: {request.url.path}")
 
     async with _client(httpx.MockTransport(handler)) as client:
-        result = await create_goal_and_attach(client, TARGET, goal_body={
-            "project_id": TARGET.project_id,
-            "idempotency_key": "goal-live-123",
-            "attach_idempotency_key": "attach-live-123",
-            "title": "Recovery check",
-            "objective": "Report is shipped.",
-        })
+        result = await create_goal_and_attach(
+            client,
+            TARGET,
+            goal_body={
+                "project_id": TARGET.project_id,
+                "idempotency_key": "goal-live-123",
+                "attach_idempotency_key": "attach-live-123",
+                "title": "Recovery check",
+                "objective": "Report is shipped.",
+            },
+        )
 
     assert result["attachment"]["session_goal_attachment_receipt"]["goal_id"] == "goal-live-1"
     assert [request.url.path for request in calls] == [
-        "/v1/pet", "/v1/goals", "/v1/sessions/codex:thread-live-1/attach",
+        "/v1/pet",
+        "/v1/goals",
+        "/v1/sessions/codex:thread-live-1/attach",
     ]
 
 
 @pytest.mark.asyncio
 async def test_grant_success_uses_exact_fresh_scope_and_confirms_state() -> None:
     calls: list[httpx.Request] = []
-    statuses = [_correction_status(), {
-        **_correction_status(), "enabled": True, "effective_enabled": True,
-    }]
+    statuses = [
+        _correction_status(),
+        {
+            **_correction_status(),
+            "enabled": True,
+            "effective_enabled": True,
+        },
+    ]
 
     def handler(request: httpx.Request) -> httpx.Response:
         calls.append(request)
@@ -320,7 +355,10 @@ async def test_grant_success_uses_exact_fresh_scope_and_confirms_state() -> None
 
     async with _client(httpx.MockTransport(handler)) as client:
         result = await set_correction_grant(
-            client, TARGET, enabled=True, idempotency_key="grant-live-123",
+            client,
+            TARGET,
+            enabled=True,
+            idempotency_key="grant-live-123",
         )
 
     assert result["after"]["effective_enabled"] is True

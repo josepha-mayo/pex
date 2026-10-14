@@ -8,8 +8,11 @@ from benchmarks.opencode_runtime import build_runtime, measure_profile
 def runtime(tmp_path):
     binary = tmp_path / "source-opencode"
     binary.write_bytes(b"pinned binary test fixture")
-    return build_runtime(tmp_path / "runtime", binary=binary,
-                         expected_binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest())
+    return build_runtime(
+        tmp_path / "runtime",
+        binary=binary,
+        expected_binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),
+    )
 
 
 def test_runtime_is_public_only_and_profile_binds_binary_modules_and_settings(tmp_path):

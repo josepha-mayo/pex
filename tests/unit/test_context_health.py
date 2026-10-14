@@ -124,7 +124,10 @@ def test_edit_after_repeated_reads_retires_the_forgotten_fact() -> None:
     now = datetime.now(UTC)
     schema = ["src/schema.json"]
     artifact = _item(
-        "schema", "Use the old schema layout.", now - timedelta(minutes=10), files=schema,
+        "schema",
+        "Use the old schema layout.",
+        now - timedelta(minutes=10),
+        files=schema,
     )
     events = [
         _event("compact", EventType.COMPACTION, now - timedelta(minutes=4)),
@@ -140,29 +143,38 @@ def test_edit_after_repeated_reads_retires_the_forgotten_fact() -> None:
 @pytest.mark.parametrize("latest_description", ["Current parser layout.", ""])
 @pytest.mark.parametrize("stored_old_fact", [False, True])
 def test_edit_fallback_restores_latest_observed_state_after_next_compaction(
-    latest_description: str, stored_old_fact: bool,
+    latest_description: str,
+    stored_old_fact: bool,
 ) -> None:
     now = datetime.now(UTC)
     schema = ["src/schema.json"]
     events = [
         _event(
-            "old-edit", EventType.FILE_EDIT, now - timedelta(minutes=8),
-            file_paths=schema, message_delta="Old parser layout.",
+            "old-edit",
+            EventType.FILE_EDIT,
+            now - timedelta(minutes=8),
+            file_paths=schema,
+            message_delta="Old parser layout.",
         ),
         _event("first-compact", EventType.COMPACTION, now - timedelta(minutes=7)),
         _event("old-read-1", EventType.FILE_READ, now - timedelta(minutes=6), file_paths=schema),
         _event("old-read-2", EventType.FILE_READ, now - timedelta(minutes=5), file_paths=schema),
         _event(
-            "new-edit", EventType.FILE_EDIT, now - timedelta(minutes=4),
-            file_paths=schema, message_delta=latest_description,
+            "new-edit",
+            EventType.FILE_EDIT,
+            now - timedelta(minutes=4),
+            file_paths=schema,
+            message_delta=latest_description,
         ),
         _event("second-compact", EventType.COMPACTION, now - timedelta(minutes=3)),
         _event("new-read-1", EventType.FILE_READ, now - timedelta(minutes=2), file_paths=schema),
         _event("new-read-2", EventType.FILE_READ, now - timedelta(minutes=1), file_paths=schema),
     ]
-    items = [
-        _item("old-layout", "Old parser layout.", now - timedelta(minutes=8), files=schema)
-    ] if stored_old_fact else []
+    items = (
+        [_item("old-layout", "Old parser layout.", now - timedelta(minutes=8), files=schema)]
+        if stored_old_fact
+        else []
+    )
     report = assess_context_health(events, items, now=now)
     assert report.forgotten_facts == ([latest_description] if latest_description else [])
 
@@ -172,13 +184,19 @@ def test_file_edits_do_not_retire_durable_decisions_or_constraints(kind) -> None
     now = datetime.now(UTC)
     paths = ["src/schema.json"]
     item = _item(
-        "durable-rule", "Never send private schema data to an external provider.",
-        now - timedelta(minutes=8), kind=kind, files=paths,
+        "durable-rule",
+        "Never send private schema data to an external provider.",
+        now - timedelta(minutes=8),
+        kind=kind,
+        files=paths,
     )
     events = [
         _event(
-            "edit", EventType.FILE_EDIT, now - timedelta(minutes=4),
-            file_paths=paths, message_delta="Update the parser layout.",
+            "edit",
+            EventType.FILE_EDIT,
+            now - timedelta(minutes=4),
+            file_paths=paths,
+            message_delta="Update the parser layout.",
         ),
         _event("compact", EventType.COMPACTION, now - timedelta(minutes=3)),
         _event("read-1", EventType.FILE_READ, now - timedelta(minutes=2), file_paths=paths),
@@ -189,13 +207,17 @@ def test_file_edits_do_not_retire_durable_decisions_or_constraints(kind) -> None
 
 @pytest.mark.parametrize(
     "known,read",
-    [("src/config.py", "tests/config.py"), ("src/Config.py", "src/config.py"),
-     (r"src\config.py", "src/config.py")],
+    [
+        ("src/config.py", "tests/config.py"),
+        ("src/Config.py", "src/config.py"),
+        (r"src\config.py", "src/config.py"),
+    ],
 )
 def test_other_file_reads_do_not_mint_forgotten_facts(known, read):
     now = datetime.now(UTC)
-    artifact = _item("config", "Use the source configuration.", now - timedelta(minutes=10),
-                     files=[known])
+    artifact = _item(
+        "config", "Use the source configuration.", now - timedelta(minutes=10), files=[known]
+    )
     events = [
         _event("compact", EventType.COMPACTION, now - timedelta(minutes=4)),
         _event("read-1", EventType.FILE_READ, now - timedelta(minutes=3), file_paths=[read]),
@@ -208,16 +230,23 @@ def test_other_file_reads_do_not_mint_forgotten_facts(known, read):
 
 def test_editing_same_basename_in_other_directory_does_not_hide_forgotten_fact():
     now = datetime.now(UTC)
-    artifact = _item("config", "Source config is already recorded.",
-                     now - timedelta(minutes=10), files=["src/config.py"])
+    artifact = _item(
+        "config",
+        "Source config is already recorded.",
+        now - timedelta(minutes=10),
+        files=["src/config.py"],
+    )
     events = [
         _event("compact", EventType.COMPACTION, now - timedelta(minutes=4)),
-        _event("edit", EventType.FILE_EDIT, now - timedelta(minutes=3),
-               file_paths=["tests/config.py"]),
-        _event("read-1", EventType.FILE_READ, now - timedelta(minutes=2),
-               file_paths=["src/config.py"]),
-        _event("read-2", EventType.FILE_READ, now - timedelta(minutes=1),
-               file_paths=["src/config.py"]),
+        _event(
+            "edit", EventType.FILE_EDIT, now - timedelta(minutes=3), file_paths=["tests/config.py"]
+        ),
+        _event(
+            "read-1", EventType.FILE_READ, now - timedelta(minutes=2), file_paths=["src/config.py"]
+        ),
+        _event(
+            "read-2", EventType.FILE_READ, now - timedelta(minutes=1), file_paths=["src/config.py"]
+        ),
     ]
     assert assess_context_health(events, [artifact], now=now).forgotten_facts == [artifact.content]
 
@@ -226,47 +255,65 @@ def test_editing_same_basename_in_other_directory_does_not_hide_forgotten_fact()
 def test_expired_fact_is_not_restored_after_compaction(expiry):
     now = datetime.now(UTC)
     artifact = _item(
-        "expired", "Use the retired configuration.", now - timedelta(minutes=10),
+        "expired",
+        "Use the retired configuration.",
+        now - timedelta(minutes=10),
         files=["src/config.py"],
         stale_after=now - timedelta(minutes=5 if expiry == "before_compaction" else 2),
     )
     events = [
         _event("compact", EventType.COMPACTION, now - timedelta(minutes=4)),
-        _event("read-1", EventType.FILE_READ, now - timedelta(minutes=3),
-               file_paths=["src/config.py"]),
-        _event("read-2", EventType.FILE_READ, now - timedelta(minutes=1),
-               file_paths=["src/config.py"]),
+        _event(
+            "read-1", EventType.FILE_READ, now - timedelta(minutes=3), file_paths=["src/config.py"]
+        ),
+        _event(
+            "read-2", EventType.FILE_READ, now - timedelta(minutes=1), file_paths=["src/config.py"]
+        ),
     ]
     assert assess_context_health(events, [artifact], now=now).forgotten_facts == []
 
 
 def test_future_reads_do_not_prove_current_context_was_forgotten():
     now = datetime.now(UTC)
-    artifact = _item("current", "Keep the current configuration.",
-                     now - timedelta(minutes=10), files=["src/config.py"])
+    artifact = _item(
+        "current",
+        "Keep the current configuration.",
+        now - timedelta(minutes=10),
+        files=["src/config.py"],
+    )
     events = [
         _event("compact", EventType.COMPACTION, now - timedelta(minutes=4)),
-        _event("read-1", EventType.FILE_READ, now + timedelta(minutes=1),
-               file_paths=["src/config.py"]),
-        _event("read-2", EventType.FILE_READ, now + timedelta(minutes=2),
-               file_paths=["src/config.py"]),
+        _event(
+            "read-1", EventType.FILE_READ, now + timedelta(minutes=1), file_paths=["src/config.py"]
+        ),
+        _event(
+            "read-2", EventType.FILE_READ, now + timedelta(minutes=2), file_paths=["src/config.py"]
+        ),
     ]
     assert assess_context_health(events, [artifact], now=now).forgotten_facts == []
 
 
-@pytest.mark.parametrize("project,read", [
-    ("/work/pex", "/work/pex/src/config.py"),
-    (r"C:\Work\PEX", r"c:\work\pex\SRC\CONFIG.PY"),
-])
+@pytest.mark.parametrize(
+    "project,read",
+    [
+        ("/work/pex", "/work/pex/src/config.py"),
+        (r"C:\Work\PEX", r"c:\work\pex\SRC\CONFIG.PY"),
+    ],
+)
 def test_relative_context_file_matches_absolute_read_in_same_project(project, read):
     now = datetime.now(UTC)
-    artifact = _item("config", "Keep the recorded config.", now - timedelta(minutes=10),
-                     files=["src/config.py"]).model_copy(update={"project_id": project})
+    artifact = _item(
+        "config", "Keep the recorded config.", now - timedelta(minutes=10), files=["src/config.py"]
+    ).model_copy(update={"project_id": project})
     events = [
         _event("compact", EventType.COMPACTION, now - timedelta(minutes=4)),
         *[
-            _event(f"read-{index}", EventType.FILE_READ, now - timedelta(minutes=index),
-                   file_paths=[read]).model_copy(update={"project_id": project})
+            _event(
+                f"read-{index}",
+                EventType.FILE_READ,
+                now - timedelta(minutes=index),
+                file_paths=[read],
+            ).model_copy(update={"project_id": project})
             for index in (3, 1)
         ],
     ]

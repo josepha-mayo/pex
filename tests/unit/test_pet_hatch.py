@@ -355,10 +355,7 @@ def test_hatch_registry_rejects_persisted_path_escape_and_bounds_records(tmp_pat
 @pytest.mark.parametrize(
     "record",
     [
-        (
-            '{"id":"hatch_1","id":"hatch_2","pet_id":"fox",'
-            '"display_name":"Fox","description":"fox"}'
-        ),
+        ('{"id":"hatch_1","id":"hatch_2","pet_id":"fox","display_name":"Fox","description":"fox"}'),
         (
             '{"id":"hatch_1","pet_id":"fox","display_name":"Fox",'
             '"description":"fox","jobs_complete":NaN}'
@@ -369,9 +366,7 @@ def test_hatch_registry_rejects_persisted_path_escape_and_bounds_records(tmp_pat
         ),
     ],
 )
-def test_hatch_registry_rejects_ambiguous_or_unknown_persisted_fields(
-    tmp_path: Path, record: str
-):
+def test_hatch_registry_rejects_ambiguous_or_unknown_persisted_fields(tmp_path: Path, record: str):
     (tmp_path / "hatch_1.json").write_text(record, encoding="utf-8")
 
     jobs = HatchRegistry(tmp_path).list_jobs()
@@ -428,14 +423,10 @@ def _hatch_test_config():
     }
 
 
-def test_unexpected_hatch_failure_is_uncertain_without_provider_detail(
-    tmp_path, monkeypatch
-):
+def test_unexpected_hatch_failure_is_uncertain_without_provider_detail(tmp_path, monkeypatch):
     registry = HatchRegistry(tmp_path)
     cfg = _hatch_test_config()
-    job = HatchJob(
-        id="hatch_failure", pet_id="fox", display_name="Fox", description="fox"
-    )
+    job = HatchJob(id="hatch_failure", pet_id="fox", display_name="Fox", description="fox")
     _authorized_job(registry, job, cfg, key="failure")
 
     def fail_generation(*_args, **_kwargs):
@@ -453,9 +444,7 @@ def test_unexpected_hatch_failure_is_uncertain_without_provider_detail(
 def test_hatch_does_not_generate_without_bound_runtime_provider(tmp_path, monkeypatch):
     registry = HatchRegistry(tmp_path)
     cfg = _hatch_test_config()
-    job = HatchJob(
-        id="hatch_not_ready", pet_id="fox", display_name="Fox", description="fox"
-    )
+    job = HatchJob(id="hatch_not_ready", pet_id="fox", display_name="Fox", description="fox")
     _authorized_job(registry, job, cfg, key="not-ready")
     monkeypatch.setattr("pex_bridge.pets.hatch.hatch_image_config", lambda: None)
 
@@ -473,9 +462,7 @@ def test_hatch_does_not_generate_without_bound_runtime_provider(tmp_path, monkey
 def test_hatch_claim_prevents_duplicate_billable_sequence(tmp_path, monkeypatch):
     registry = HatchRegistry(tmp_path)
     cfg = _hatch_test_config()
-    job = HatchJob(
-        id="hatch_once", pet_id="fox", display_name="Fox", description="fox"
-    )
+    job = HatchJob(id="hatch_once", pet_id="fox", display_name="Fox", description="fox")
     _authorized_job(registry, job, cfg, key="once")
     source = Image.new("RGB", (8, 8), (1, 2, 3))
     encoded = BytesIO()
@@ -498,9 +485,7 @@ def test_hatch_claim_prevents_duplicate_billable_sequence(tmp_path, monkeypatch)
     assert first.jobs_complete == first.jobs_total == 1
 
 
-def test_hatch_claim_fails_unacknowledged_job_without_provider_io(
-    tmp_path, monkeypatch
-):
+def test_hatch_claim_fails_unacknowledged_job_without_provider_io(tmp_path, monkeypatch):
     registry = HatchRegistry(tmp_path)
     registry.create(
         HatchJob(id="hatch_no_ack", pet_id="fox", display_name="Fox", description="fox")

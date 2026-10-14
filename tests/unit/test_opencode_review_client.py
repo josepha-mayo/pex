@@ -18,10 +18,14 @@ def peer(monkeypatch):
         tick = 0
         timeouts = []
         pending = b""
-        transform = staticmethod(lambda envelope: {
-            "schema": client.REVIEW_SCHEMA, "request_id": envelope["request_id"], "ok": True,
-            "action": {"type": "SEND_NUDGE", "payload": {"text": "Exact public repair"}},
-        })
+        transform = staticmethod(
+            lambda envelope: {
+                "schema": client.REVIEW_SCHEMA,
+                "request_id": envelope["request_id"],
+                "ok": True,
+                "action": {"type": "SEND_NUDGE", "payload": {"text": "Exact public repair"}},
+            }
+        )
 
         def __enter__(self):
             return self
@@ -48,7 +52,7 @@ def peer(monkeypatch):
 
         def recv(self, size):
             clock[0] += self.tick
-            result, self.pending = self.pending[:min(size, 5)], self.pending[min(size, 5):]
+            result, self.pending = self.pending[: min(size, 5)], self.pending[min(size, 5) :]
             return result
 
     instance = Peer()
@@ -60,7 +64,9 @@ def peer(monkeypatch):
 
 def execute(**kwargs):
     return client.review_request(
-        "/model-relay.sock", vendor_session_id="vendor", agent_messages=("Public observation",),
+        "/model-relay.sock",
+        vendor_session_id="vendor",
+        agent_messages=("Public observation",),
         deadline=kwargs.get("deadline", 20),
     )
 
@@ -71,17 +77,20 @@ def test_matching_review_survives_fragmentation_and_closes_socket(peer):
     assert connection.connected and connection.closed and connection.calls == 1
 
 
-@pytest.mark.parametrize("mutation", [
-    lambda result: result.update(request_id="other"),
-    lambda result: result.update(schema="other"),
-    lambda result: result.update(ok=False),
-    lambda result: result.update(private="must not cross boundary"),
-    lambda result: result.update(action={"type": "MOVE_SESSION"}),
-    lambda result: result.update(action={"type": "NOOP", "payload": {}}),
-    lambda result: result["action"]["payload"].update(private="extra"),
-    lambda result: result["action"]["payload"].update(text=" "),
-    lambda result: result["action"]["payload"].update(text="x" * 20_001),
-])
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda result: result.update(request_id="other"),
+        lambda result: result.update(schema="other"),
+        lambda result: result.update(ok=False),
+        lambda result: result.update(private="must not cross boundary"),
+        lambda result: result.update(action={"type": "MOVE_SESSION"}),
+        lambda result: result.update(action={"type": "NOOP", "payload": {}}),
+        lambda result: result["action"]["payload"].update(private="extra"),
+        lambda result: result["action"]["payload"].update(text=" "),
+        lambda result: result["action"]["payload"].update(text="x" * 20_001),
+    ],
+)
 def test_mismatched_or_unbounded_reply_never_yields_action_or_retries(peer, mutation):
     connection, _ = peer
     original = connection.transform
@@ -122,8 +131,15 @@ def test_excess_response_frame_is_refused_before_decoding(peer, monkeypatch):
     assert connection.closed and connection.calls == 1
 
 
-@pytest.mark.parametrize("raw", [b'{"timestamp":1e999}', b'{"value":NaN}',
-                                  b'{"key":1,"key":2}', '{"type":"NOOP"}'.encode("utf-16")])
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b'{"timestamp":1e999}',
+        b'{"value":NaN}',
+        b'{"key":1,"key":2}',
+        '{"type":"NOOP"}'.encode("utf-16"),
+    ],
+)
 def test_worker_json_rejects_nonfinite_duplicate_or_non_utf8_response(raw):
     with pytest.raises(ValueError):
         worker_model_proxy._decode(raw)

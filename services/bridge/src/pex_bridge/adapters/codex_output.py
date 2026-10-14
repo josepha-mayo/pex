@@ -26,7 +26,10 @@ def _exact_id(value: object) -> bool:
 
 
 def bounded_shared_command_params(
-    message: dict, *, thread_id: str, received_bytes_journaled: bool = False,
+    message: dict,
+    *,
+    thread_id: str,
+    received_bytes_journaled: bool = False,
 ) -> dict | None:
     """Prepare one already-journaled, frame-bounded shared notification.
 
@@ -73,7 +76,10 @@ def bounded_shared_command_params(
     if "threadId" in item and item["threadId"] != thread_id:
         return None
     if not isinstance(item.get("status"), str) or item["status"] not in {
-        "inProgress", "completed", "failed", "declined",
+        "inProgress",
+        "completed",
+        "failed",
+        "declined",
     }:
         return None
     try:

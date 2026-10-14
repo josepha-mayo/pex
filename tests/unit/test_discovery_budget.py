@@ -103,10 +103,14 @@ async def test_discovery_timeout_does_not_swallow_caller_cancellation(isolated_d
 async def test_discovery_continues_to_healthy_peer_after_one_probe_times_out(
     isolated_discovery, monkeypatch
 ):
-    monkeypatch.setattr(discover, "PROBES", (
-        ("opencode", "http://127.0.0.1:4096/global/health", "opencode_health"),
-        ("opencode", "http://127.0.0.1:4097/global/health", "opencode_health"),
-    ))
+    monkeypatch.setattr(
+        discover,
+        "PROBES",
+        (
+            ("opencode", "http://127.0.0.1:4096/global/health", "opencode_health"),
+            ("opencode", "http://127.0.0.1:4097/global/health", "opencode_health"),
+        ),
+    )
     seen = []
 
     async def handle(request):

@@ -17,31 +17,53 @@ from pex_protocol.session import HarnessEvent, HarnessSession
 def _case(harness, *, project_id="C:/outcome-test"):
     now = datetime.now(UTC)
     session = HarnessSession(
-        id=f"{harness.value}:worker", vendor_session_id="worker",
-        harness_type=harness, project_id=project_id, goal_id="goal-outcome",
+        id=f"{harness.value}:worker",
+        vendor_session_id="worker",
+        harness_type=harness,
+        project_id=project_id,
+        goal_id="goal-outcome",
     )
     action = ProposedAction(
-        type=InterventionType.SEND_NUDGE, session_id=session.id,
-        goal_id=session.goal_id, payload={"text": "Verify the required report."},
-        rationale="An acceptance criterion is missing.", evidence=["missing:report.txt"],
+        type=InterventionType.SEND_NUDGE,
+        session_id=session.id,
+        goal_id=session.goal_id,
+        payload={"text": "Verify the required report."},
+        rationale="An acceptance criterion is missing.",
+        evidence=["missing:report.txt"],
     )
     intervention = Intervention(
-        id="int-outcome", session_id=session.id, goal_id=session.goal_id,
-        trigger=EventType.STOP.value, evidence=action.evidence,
-        diagnosis=action.rationale, proposed_action=action,
-        confidence=action.confidence, risk=action.risk.value,
+        id="int-outcome",
+        session_id=session.id,
+        goal_id=session.goal_id,
+        trigger=EventType.STOP.value,
+        evidence=action.evidence,
+        diagnosis=action.rationale,
+        proposed_action=action,
+        confidence=action.confidence,
+        risk=action.risk.value,
         authority_required=action.authority_required.value,
-        action_taken=action.type.value, policy_verdict=PolicyVerdict.ALLOW,
-        result="sent", created_at=now,
-        metadata={"worker_delivery_receipt": {
-            "schema": "pex.worker-delivery.v1", "target_session_id": session.id,
-            "vendor_session_id": session.vendor_session_id, "vendor_turn_id": "injected",
-        }},
+        action_taken=action.type.value,
+        policy_verdict=PolicyVerdict.ALLOW,
+        result="sent",
+        created_at=now,
+        metadata={
+            "worker_delivery_receipt": {
+                "schema": "pex.worker-delivery.v1",
+                "target_session_id": session.id,
+                "vendor_session_id": session.vendor_session_id,
+                "vendor_turn_id": "injected",
+            }
+        },
     )
     event = HarnessEvent(
-        event_id="unrelated-completion", ts=now, session_id=session.id,
-        harness_type=harness, project_id=project_id, goal_id=session.goal_id,
-        event_type=EventType.STOP, phase=EventPhase.TERMINAL,
+        event_id="unrelated-completion",
+        ts=now,
+        session_id=session.id,
+        harness_type=harness,
+        project_id=project_id,
+        goal_id=session.goal_id,
+        event_type=EventType.STOP,
+        phase=EventPhase.TERMINAL,
         message_delta="Done, all acceptance criteria are satisfied.",
     )
     return session, intervention, event
@@ -63,19 +85,29 @@ async def test_unsupported_correlation_records_unknown_not_helpful(tmp_path):
     store = Store(tmp_path / "outcomes.sqlite")
     await store.connect()
     pipeline = Pipeline(
-        store, AdapterRegistry(), EventBus(),
+        store,
+        AdapterRegistry(),
+        EventBus(),
         Settings.for_test(home=tmp_path, require_auth=False),
     )
     try:
         now = datetime.now(UTC)
-        await store.upsert_goal(Goal(
-            id=session.goal_id, project_id=str(tmp_path), title="Report",
-            objective="Produce the report.", created_at=now, updated_at=now,
-        ))
+        await store.upsert_goal(
+            Goal(
+                id=session.goal_id,
+                project_id=str(tmp_path),
+                title="Report",
+                objective="Produce the report.",
+                created_at=now,
+                updated_at=now,
+            )
+        )
         await store.upsert_session(session)
         await store.add_intervention(intervention)
         updates = await pipeline._observe_prior_intervention(
-            session, event, {"status": "supported", "acceptance_status": "supported"},
+            session,
+            event,
+            {"status": "supported", "acceptance_status": "supported"},
         )
         assert len(updates) == 1
         assert updates[0].helped is None

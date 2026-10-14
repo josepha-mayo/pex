@@ -17,11 +17,14 @@ CORRECTION_SCHEMA = "pex.codex-correction.v1"
 MAX_CORRECTION_TEXT_BYTES = 65_536
 MAX_ATTRIBUTION_RECORDS = 4096
 MAX_ATTRIBUTION_BYTES = 8 * 1024 * 1024
-TEXT_ACTIONS = frozenset({
-    InterventionType.SEND_NUDGE.value, InterventionType.INJECT_CONTEXT.value,
-    InterventionType.REQUEST_VERIFICATION.value,
-    InterventionType.CONTINUE_SESSION.value,
-})
+TEXT_ACTIONS = frozenset(
+    {
+        InterventionType.SEND_NUDGE.value,
+        InterventionType.INJECT_CONTEXT.value,
+        InterventionType.REQUEST_VERIFICATION.value,
+        InterventionType.CONTINUE_SESSION.value,
+    }
+)
 
 
 class CodexCorrectionMultiplicityError(ValueError):
@@ -36,15 +39,19 @@ def requires_correction(session: HarnessSession, action: dict[str, Any]) -> bool
     return (
         session.harness_type == HarnessType.CODEX
         and session.metadata.get("connection_kind") == "codex_shared"
-        and isinstance(action, dict) and isinstance(action.get("type"), str)
+        and isinstance(action, dict)
+        and isinstance(action.get("type"), str)
         and action.get("type") in TEXT_ACTIONS
     )
 
 
 def _identifier(value: Any) -> str:
     if (
-        not isinstance(value, str) or not value or value != value.strip()
-        or len(value) > 512 or any(ord(character) < 32 for character in value)
+        not isinstance(value, str)
+        or not value
+        or value != value.strip()
+        or len(value) > 512
+        or any(ord(character) < 32 for character in value)
     ):
         raise ValueError("Codex correction identity is invalid")
     return value
@@ -86,9 +93,14 @@ def correction_scope(session: HarnessSession, workspace: WorkspaceBinding) -> di
 
 
 def build_correction(
-    *, event_id: str, effect_id: str, intervention_id: str,
-    action: dict[str, Any], required_capability: Any,
-    session: HarnessSession, workspace: WorkspaceBinding,
+    *,
+    event_id: str,
+    effect_id: str,
+    intervention_id: str,
+    action: dict[str, Any],
+    required_capability: Any,
+    session: HarnessSession,
+    workspace: WorkspaceBinding,
 ) -> dict[str, Any]:
     if not isinstance(action, dict):
         raise ValueError("Codex correction action binding is invalid")
@@ -96,12 +108,15 @@ def build_correction(
     payload = action.get("payload")
     capability = (
         "resume"
-        if action.get("type") == InterventionType.CONTINUE_SESSION.value else "send_message"
+        if action.get("type") == InterventionType.CONTINUE_SESSION.value
+        else "send_message"
     )
     if (
-        not requires_correction(session, action) or required_capability != capability
+        not requires_correction(session, action)
+        or required_capability != capability
         or action.get("session_id") != session.id
-        or not session.goal_id or action.get("goal_id") != session.goal_id
+        or not session.goal_id
+        or action.get("goal_id") != session.goal_id
         or not isinstance(payload, dict)
         or {"codex_correction", "client_message_id", "clientUserMessageId"}.intersection(action)
         or {"codex_correction", "client_message_id", "clientUserMessageId"}.intersection(payload)
@@ -109,23 +124,39 @@ def build_correction(
         raise ValueError("Codex correction action binding is invalid")
     text = payload.get("text")
     if (
-        not isinstance(text, str) or not text.strip() or "\x00" in text
+        not isinstance(text, str)
+        or not text.strip()
+        or "\x00" in text
         or len(text.encode("utf-8")) > MAX_CORRECTION_TEXT_BYTES
     ):
         raise ValueError("Codex correction requires bounded exact text")
-    correlation = "pex-correction-" + hashlib.sha256(
-        canonical([CORRECTION_SCHEMA, _identifier(effect_id)]).encode("utf-8")
-    ).hexdigest()
-    return strict_json_loads(canonical({
-        "schema": CORRECTION_SCHEMA,
-        "event_id": _identifier(event_id),
-        "effect_id": effect_id,
-        "intervention_id": _identifier(intervention_id),
-        "client_message_id": correlation,
-        "content": [{"type": "text", "text": text, "text_elements": []}],
-        **{key: scope[key] for key in (
-            "session_id", "thread_id", "root_session_id", "vendor_project_id", "project_binding",
-        )},
-        "workspace_binding": workspace.model_dump(mode="json"),
-        "subscription_receipt": session.metadata["subscription_receipt"],
-    }))
+    correlation = (
+        "pex-correction-"
+        + hashlib.sha256(
+            canonical([CORRECTION_SCHEMA, _identifier(effect_id)]).encode("utf-8")
+        ).hexdigest()
+    )
+    return strict_json_loads(
+        canonical(
+            {
+                "schema": CORRECTION_SCHEMA,
+                "event_id": _identifier(event_id),
+                "effect_id": effect_id,
+                "intervention_id": _identifier(intervention_id),
+                "client_message_id": correlation,
+                "content": [{"type": "text", "text": text, "text_elements": []}],
+                **{
+                    key: scope[key]
+                    for key in (
+                        "session_id",
+                        "thread_id",
+                        "root_session_id",
+                        "vendor_project_id",
+                        "project_binding",
+                    )
+                },
+                "workspace_binding": workspace.model_dump(mode="json"),
+                "subscription_receipt": session.metadata["subscription_receipt"],
+            }
+        )
+    )

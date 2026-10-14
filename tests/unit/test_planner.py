@@ -269,9 +269,13 @@ def test_contradictory_prompt_escalates():
     assert action.requires_capability is None
 
 
-@pytest.mark.parametrize("policy_note", [
-    "", "\n\nStanding operator permission enables the private claimed-correction route.",
-])
+@pytest.mark.parametrize(
+    "policy_note",
+    [
+        "",
+        "\n\nStanding operator permission enables the private claimed-correction route.",
+    ],
+)
 def test_contradictory_prompt_names_the_active_constraint(policy_note):
     request = SupervisorRequest(
         session=_session(),
@@ -443,8 +447,7 @@ def test_repeated_premature_fingerprint_applies_evidence_overlay_on_stop():
     verification = {
         "status": "acceptance_gap",
         "correction": (
-            "report.txt is missing from the workspace. "
-            "Create that artifact before stopping."
+            "report.txt is missing from the workspace. Create that artifact before stopping."
         ),
         "evidence": ["missing:report.txt"],
     }
@@ -856,20 +859,30 @@ def test_compaction_preserves_later_goal_requirements_and_full_objective(phase):
     goal.objective = "Maintain this exact requirement. " * 12 + "Preserve the final condition."
     goal.deadline = datetime(2026, 10, 30, 17, 0, tzinfo=UTC)
     for field in (
-        "acceptance_criteria", "constraints", "forbidden_outcomes", "non_goals",
-        "evidence_requirements", "preferences",
+        "acceptance_criteria",
+        "constraints",
+        "forbidden_outcomes",
+        "non_goals",
+        "evidence_requirements",
+        "preferences",
     ):
         setattr(goal, field, [f"{field} rule {index}" for index in range(5)])
     request = SupervisorRequest(
-        session=_session(), goal=goal,
-        event=_event(EventType.COMPACTION, phase=phase), scores=TrajectoryScores(),
+        session=_session(),
+        goal=goal,
+        event=_event(EventType.COMPACTION, phase=phase),
+        scores=TrajectoryScores(),
     )
     action = plan_deterministic(request)
     text = str(action.payload.get("text") or "")
     assert goal.objective in text
     for field in (
-        "acceptance_criteria", "constraints", "forbidden_outcomes", "non_goals",
-        "evidence_requirements", "preferences",
+        "acceptance_criteria",
+        "constraints",
+        "forbidden_outcomes",
+        "non_goals",
+        "evidence_requirements",
+        "preferences",
     ):
         assert getattr(goal, field)[-1] in text
     assert "Required evidence:" in text
@@ -882,7 +895,9 @@ def test_compaction_contract_redacts_credentials_before_worker_delivery():
     secret = "sk-" + "a" * 24
     goal.objective = f"Configure the provider with api_key={secret} and verify the connection"
     request = SupervisorRequest(
-        session=_session(), goal=goal, event=_event(EventType.COMPACTION),
+        session=_session(),
+        goal=goal,
+        event=_event(EventType.COMPACTION),
         scores=TrajectoryScores(),
     )
     action = plan_deterministic(request)
@@ -901,31 +916,50 @@ def test_compaction_restores_bound_decisions_without_reviving_rejected_choices(p
     now = datetime.now(UTC)
     secret = "sk-" + "b" * 24
     rows = []
-    for index, (kind, statement, status, goal_id) in enumerate([
-        ("decision", "Keep the current database", DecisionStatus.ACTIVE, goal.id),
-        ("rejected_approach", "Replace the database", DecisionStatus.ACTIVE, goal.id),
-        ("unresolved_question", "Should storage be replicated?", DecisionStatus.UNCERTAIN, goal.id),
-        ("decision", "Retired storage choice", DecisionStatus.SUPERSEDED, goal.id),
-        ("decision", "Unrelated goal choice", DecisionStatus.ACTIVE, "other-goal"),
-        ("decision", f"Configure api_key={secret}", DecisionStatus.ACTIVE, goal.id),
-        ("decision", "Long decision " * 200, DecisionStatus.ACTIVE, goal.id),
-    ]):
-        rows.append(Decision(
-            id=f"decision-{index}", goal_id=goal_id, statement=statement,
-            alternatives_rejected=[statement] if kind == "rejected_approach" else [],
-            scope="storage", source=DecisionSource.HUMAN, status=status,
-            created_at=now, metadata={"kind": kind},
-        ))
+    for index, (kind, statement, status, goal_id) in enumerate(
+        [
+            ("decision", "Keep the current database", DecisionStatus.ACTIVE, goal.id),
+            ("rejected_approach", "Replace the database", DecisionStatus.ACTIVE, goal.id),
+            (
+                "unresolved_question",
+                "Should storage be replicated?",
+                DecisionStatus.UNCERTAIN,
+                goal.id,
+            ),
+            ("decision", "Retired storage choice", DecisionStatus.SUPERSEDED, goal.id),
+            ("decision", "Unrelated goal choice", DecisionStatus.ACTIVE, "other-goal"),
+            ("decision", f"Configure api_key={secret}", DecisionStatus.ACTIVE, goal.id),
+            ("decision", "Long decision " * 200, DecisionStatus.ACTIVE, goal.id),
+        ]
+    ):
+        rows.append(
+            Decision(
+                id=f"decision-{index}",
+                goal_id=goal_id,
+                statement=statement,
+                alternatives_rejected=[statement] if kind == "rejected_approach" else [],
+                scope="storage",
+                source=DecisionSource.HUMAN,
+                status=status,
+                created_at=now,
+                metadata={"kind": kind},
+            )
+        )
     context = build_supervisor_context(session, [], rows, now=now)
     serialized = {item.id: item.model_dump(mode="json") for item in context.decisions}
     assert "kind" not in serialized["decision-0"]
     assert "alternatives_rejected_truncated" not in serialized["decision-0"]
     assert serialized["decision-1"]["kind"] == "rejected_approach"
     assert serialized["decision-2"]["kind"] == "unresolved_question"
-    action = plan_deterministic(SupervisorRequest(
-        session=session, goal=goal, event=_event(EventType.COMPACTION, phase=phase),
-        supervisor_context=context, scores=TrajectoryScores(),
-    ))
+    action = plan_deterministic(
+        SupervisorRequest(
+            session=session,
+            goal=goal,
+            event=_event(EventType.COMPACTION, phase=phase),
+            supervisor_context=context,
+            scores=TrajectoryScores(),
+        )
+    )
     text = action.payload["text"]
     assert "Current decision (scope: storage): Keep the current database" in text
     assert "Rejected approach (scope: storage): Replace the database" in text
@@ -948,15 +982,24 @@ def test_compaction_marks_clipped_rejected_alternatives_partial(alternatives):
     session, goal = _session(), _goal()
     now = datetime.now(UTC)
     decision = Decision(
-        id="partial-alternatives", goal_id=goal.id, statement="Keep the parser",
-        alternatives_rejected=alternatives, source=DecisionSource.HUMAN, created_at=now,
+        id="partial-alternatives",
+        goal_id=goal.id,
+        statement="Keep the parser",
+        alternatives_rejected=alternatives,
+        source=DecisionSource.HUMAN,
+        created_at=now,
     )
     context = build_supervisor_context(session, [], [decision], now=now)
     assert context.decisions[0].alternatives_rejected_truncated
-    action = plan_deterministic(SupervisorRequest(
-        session=session, goal=goal, event=_event(EventType.COMPACTION),
-        supervisor_context=context, scores=TrajectoryScores(),
-    ))
+    action = plan_deterministic(
+        SupervisorRequest(
+            session=session,
+            goal=goal,
+            event=_event(EventType.COMPACTION),
+            supervisor_context=context,
+            scores=TrajectoryScores(),
+        )
+    )
     assert "Current decision: Keep the parser" in action.payload["text"]
     assert (
         "Rejected alternatives [partial; retrieve the full record before acting]: "

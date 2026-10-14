@@ -5,10 +5,15 @@ from pex_protocol.goal import Goal
 from pex_supervisor.public_task import fill_empty_goal_lists_from_objective, parse_public_task
 
 
-@pytest.mark.parametrize("heading", [
-    "# Acceptance criteria", "## Acceptance criteria:",
-    "### Acceptance criteria ###", "   ###### Acceptance criteria: ##",
-])
+@pytest.mark.parametrize(
+    "heading",
+    [
+        "# Acceptance criteria",
+        "## Acceptance criteria:",
+        "### Acceptance criteria ###",
+        "   ###### Acceptance criteria: ##",
+    ],
+)
 def test_public_task_extracts_markdown_section_headings(heading):
     task = f"# Ship the parser\n\n{heading}\n- Tests pass\n## Notes\n- Not a criterion"
     parsed = parse_public_task(task)
@@ -16,10 +21,16 @@ def test_public_task_extracts_markdown_section_headings(heading):
     assert parsed["acceptance_criteria"] == ["Tests pass"]
 
 
-@pytest.mark.parametrize("heading", [
-    "####### Acceptance criteria", "##Acceptance criteria", "> ## Acceptance criteria",
-    "    ## Acceptance criteria", "## Acceptance criteria for examples",
-])
+@pytest.mark.parametrize(
+    "heading",
+    [
+        "####### Acceptance criteria",
+        "##Acceptance criteria",
+        "> ## Acceptance criteria",
+        "    ## Acceptance criteria",
+        "## Acceptance criteria for examples",
+    ],
+)
 def test_public_task_does_not_guess_unrecognized_markdown_sections(heading):
     assert parse_public_task(f"{heading}\n- Not adopted")["acceptance_criteria"] == []
 
@@ -108,9 +119,7 @@ def _goal(**kwargs) -> Goal:
 def test_fill_empty_goal_lists_extracts_labeled_objective_sections():
     goal = _goal(
         objective=(
-            "Create the release receipt.\n\n"
-            "Acceptance criteria:\n\n"
-            "- report.txt contains shipped\n"
+            "Create the release receipt.\n\nAcceptance criteria:\n\n- report.txt contains shipped\n"
         )
     )
     filled = fill_empty_goal_lists_from_objective(goal)
@@ -121,9 +130,7 @@ def test_fill_empty_goal_lists_extracts_labeled_objective_sections():
 def test_fill_empty_goal_lists_does_not_overwrite_explicit_acceptance():
     goal = _goal(
         objective=(
-            "Create the release receipt.\n\n"
-            "Acceptance criteria:\n\n"
-            "- report.txt contains shipped\n"
+            "Create the release receipt.\n\nAcceptance criteria:\n\n- report.txt contains shipped\n"
         ),
         acceptance_criteria=["tests pass"],
     )
@@ -134,9 +141,7 @@ def test_fill_empty_goal_lists_does_not_overwrite_explicit_acceptance():
 def test_fill_empty_goal_lists_skips_explicit_empty_patch_fields():
     goal = _goal(
         objective=(
-            "Create the release receipt.\n\n"
-            "Acceptance criteria:\n\n"
-            "- report.txt contains shipped\n"
+            "Create the release receipt.\n\nAcceptance criteria:\n\n- report.txt contains shipped\n"
         ),
         acceptance_criteria=[],
     )
@@ -151,14 +156,10 @@ def test_fill_empty_goal_lists_skips_explicit_empty_patch_fields():
 
 def test_parse_public_task_lifts_preferences():
     parsed = parse_public_task(
-        "Ship the evaluator.\n\n"
-        "Preferences:\n"
-        "- Prefer the smallest reversible change\n"
+        "Ship the evaluator.\n\nPreferences:\n- Prefer the smallest reversible change\n"
     )
     assert parsed["preferences"] == ["Prefer the smallest reversible change"]
-    filled = fill_empty_goal_lists_from_objective(
-        _goal(objective=str(parsed["objective"]))
-    )
+    filled = fill_empty_goal_lists_from_objective(_goal(objective=str(parsed["objective"])))
     assert filled.preferences == ["Prefer the smallest reversible change"]
 
 
@@ -173,9 +174,7 @@ def test_parse_public_task_lifts_decisions_rejected_and_unresolved():
         "- Which checkpoint format should survive the migration?\n"
     )
     assert parsed["decisions"] == ["Use PostgreSQL for the durable ledger"]
-    assert parsed["rejected_approaches"] == [
-        "Do not rewrite the evaluator as a new service"
-    ]
+    assert parsed["rejected_approaches"] == ["Do not rewrite the evaluator as a new service"]
     assert parsed["unresolved_questions"] == [
         "Which checkpoint format should survive the migration?"
     ]

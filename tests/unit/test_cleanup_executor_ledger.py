@@ -202,9 +202,7 @@ async def test_cleanup_start_denied_performs_zero_filesystem_mutation(
 
         monkeypatch.setattr(store, "start_cleanup_operation", deny_start)
         monkeypatch.setattr(executor, "_move_cleanup_entry", move_must_not_run)
-        assert await _execute(executor, action, resolution_id) == (
-            "cleanup_dispatch_in_progress"
-        )
+        assert await _execute(executor, action, resolution_id) == ("cleanup_dispatch_in_progress")
         assert paths[0].read_text(encoding="utf-8") == "payload-0"
         assert not (tmp_path / "quarantine").exists()
     finally:
@@ -276,7 +274,8 @@ async def test_cleanup_two_calls_grant_at_most_one_move_path(
             # Hold the real Store grant open so this call observes dispatching,
             # not a valid completed-result replay after a fast first move.
             second = await asyncio.wait_for(
-                _execute(executor, action, resolution_id), timeout=10,
+                _execute(executor, action, resolution_id),
+                timeout=10,
             )
         finally:
             release.set()
@@ -430,9 +429,7 @@ async def test_cleanup_destination_symlink_contract_rejection_is_conflict(
 
         def reject_reparse_destination(path: Path, *, must_exist: bool):
             if destination is not None and Path(path) == destination:
-                raise ValueError(
-                    "lifecycle resource cannot traverse a symlink or reparse point"
-                )
+                raise ValueError("lifecycle resource cannot traverse a symlink or reparse point")
             return real_canonical(path, must_exist=must_exist)
 
         monkeypatch.setattr(store, "start_cleanup_operation", symlink_after_grant)

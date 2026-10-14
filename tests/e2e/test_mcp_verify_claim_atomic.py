@@ -101,11 +101,7 @@ def _structured(result) -> dict:
     assert result.isError is False
     payload = result.structuredContent
     if payload is None:
-        texts = [
-            block.text
-            for block in (result.content or [])
-            if getattr(block, "text", None)
-        ]
+        texts = [block.text for block in (result.content or []) if getattr(block, "text", None)]
         assert texts
         payload = json.loads(texts[0])
     if (
@@ -120,9 +116,7 @@ def _structured(result) -> dict:
 
 def _error_text(result) -> str:
     return "\n".join(
-        str(block.text)
-        for block in (result.content or [])
-        if getattr(block, "text", None)
+        str(block.text) for block in (result.content or []) if getattr(block, "text", None)
     )
 
 
@@ -178,9 +172,7 @@ async def test_typed_verify_claim_exact_retry_and_changed_payload_are_atomic(tmp
                                     "claim": "All tests passed.",
                                 },
                             }
-                            created = _structured(
-                                await mcp.call_tool("pex.verify_claim", payload)
-                            )
+                            created = _structured(await mcp.call_tool("pex.verify_claim", payload))
                             assert created["status"] == "verified"
                             assert created["outcome"] == "supported"
                             assert created["verified"] is True
@@ -195,16 +187,11 @@ async def test_typed_verify_claim_exact_retry_and_changed_payload_are_atomic(tmp
                             )
                             after_create = await _durable_counts(store)
 
-                            replayed = _structured(
-                                await mcp.call_tool("pex.verify_claim", payload)
-                            )
+                            replayed = _structured(await mcp.call_tool("pex.verify_claim", payload))
                             assert replayed["replayed"] is True
                             assert replayed["mutation_id"] == created["mutation_id"]
                             assert replayed["item"]["id"] == created["item"]["id"]
-                            assert (
-                                replayed["intervention"]["id"]
-                                == created["intervention"]["id"]
-                            )
+                            assert replayed["intervention"]["id"] == created["intervention"]["id"]
                             assert await _durable_counts(store) == after_create
 
                             changed = await mcp.call_tool(
@@ -288,8 +275,7 @@ async def test_old_goal_pytest_cannot_launder_a_new_goal_verification(tmp_path):
                 assert result["verified"] is False
                 assert old_pytest_id not in result["item"]["source_refs"]
                 assert all(
-                    old_pytest_id not in item["source_refs"]
-                    for item in result["verified_items"]
+                    old_pytest_id not in item["source_refs"] for item in result["verified_items"]
                 )
                 current_goal_context = [
                     item
@@ -298,8 +284,7 @@ async def test_old_goal_pytest_cannot_launder_a_new_goal_verification(tmp_path):
                 ]
                 assert current_goal_context
                 assert all(
-                    item.metadata.get("verified") is not True
-                    for item in current_goal_context
+                    item.metadata.get("verified") is not True for item in current_goal_context
                 )
     finally:
         await store.close()
@@ -330,9 +315,7 @@ async def test_contradicted_claim_is_durable_but_never_mints_verified_context(tm
                     goal_id=session.goal_id,
                     event_type=EventType.SHELL,
                     command="pytest -q",
-                    process_state={
-                        "pytest": {"ok": False, "exit_code": 1, "failed": 2}
-                    },
+                    process_state={"pytest": {"ok": False, "exit_code": 1, "failed": 2}},
                 )
                 accepted = await store.accept_pipeline_event(
                     failed_pytest,
@@ -375,9 +358,7 @@ async def test_contradicted_claim_is_durable_but_never_mints_verified_context(tm
                 assert stored is not None
                 assert stored.metadata["status"] == "contradicted"
                 assert stored.metadata["verified"] is False
-                intervention = await store.get_intervention(
-                    result["intervention"]["id"]
-                )
+                intervention = await store.get_intervention(result["intervention"]["id"])
                 assert intervention is not None
                 assert intervention.outcome == "claim_verification_contradicted"
     finally:

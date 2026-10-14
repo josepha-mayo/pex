@@ -83,9 +83,7 @@ def validate_cursor_hook_authority(value: object) -> dict[str, Any]:
         "discovery_generation": discovery_generation,
         "goal_id": _bounded_id(value.get("goal_id"), label="Cursor hook goal id"),
         "intent_revision": intent_revision,
-        "intent_hash": _sha256(
-            value.get("intent_hash"), label="Cursor hook goal intent hash"
-        ),
+        "intent_hash": _sha256(value.get("intent_hash"), label="Cursor hook goal intent hash"),
     }
 
 
@@ -112,9 +110,7 @@ def validate_cursor_hook_delivery_packet(value: object) -> dict[str, str]:
             value.get("vendor_session_id"), label="Cursor hook vendor session id"
         ),
         "goal_id": _bounded_id(value.get("goal_id"), label="Cursor hook goal id"),
-        "message_sha256": _sha256(
-            value.get("message_sha256"), label="Cursor hook message hash"
-        ),
+        "message_sha256": _sha256(value.get("message_sha256"), label="Cursor hook message hash"),
         "nonce": _sha256(value.get("nonce"), label="Cursor hook delivery nonce"),
     }
     if value != expected:

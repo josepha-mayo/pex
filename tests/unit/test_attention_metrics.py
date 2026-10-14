@@ -117,10 +117,7 @@ async def test_attention_metrics_empty_snapshot_preserves_unmeasured_nulls(tmp_p
     assert metrics["schema"] == "pex.attention-metrics.v1"
     assert metrics["window"]["aggregate_truncated"] is False
     assert metrics["window"]["records_considered"] == 0
-    assert [
-        row["action_kind"]
-        for row in metrics["coverage"]["actor_assured_action_coverage"]
-    ] == [
+    assert [row["action_kind"] for row in metrics["coverage"]["actor_assured_action_coverage"]] == [
         "context_handoff",
         "goal_override",
         "goal_update",
@@ -243,9 +240,7 @@ async def test_goal_control_attention_counts_only_mutation_time_execution_effect
         assert noop.changed is False
 
         metrics = await store.attention_metrics()
-        assert metrics["human_interventions"]["source_counts"][
-            "goal_control_attention"
-        ] == 1
+        assert metrics["human_interventions"]["source_counts"]["goal_control_attention"] == 1
         assert metrics["human_interventions"]["observed_count"] == 1
         assert metrics["human_interventions"]["value"] is None
         assert "goal_mutation" not in metrics["coverage"]["unmeasured_action_kinds"]
@@ -299,12 +294,8 @@ async def test_changed_goal_attachment_counts_once_and_replay_does_not_multiply(
         assert replay["replayed"] is True
 
         metrics = await store.attention_metrics()
-        assert metrics["human_interventions"]["source_counts"][
-            "goal_control_attention"
-        ] == 1
-        cursor = await store.db.execute(
-            "SELECT COUNT(*) FROM goal_control_attention_receipts"
-        )
+        assert metrics["human_interventions"]["source_counts"]["goal_control_attention"] == 1
+        cursor = await store.db.execute("SELECT COUNT(*) FROM goal_control_attention_receipts")
         assert int((await cursor.fetchone())[0]) == 1
     finally:
         await store.close()
@@ -341,9 +332,7 @@ async def test_changed_attachment_to_paused_session_is_not_attention_eligible(tm
         assert result["changed"] is True
 
         metrics = await store.attention_metrics()
-        assert metrics["human_interventions"]["source_counts"][
-            "goal_control_attention"
-        ] == 0
+        assert metrics["human_interventions"]["source_counts"]["goal_control_attention"] == 0
         cursor = await store.db.execute(
             "SELECT eligible, eligibility_reason FROM goal_control_attention_receipts"
         )
@@ -398,9 +387,7 @@ async def test_goal_override_with_multiple_live_sessions_counts_once(tmp_path):
             "synthetic:attention-second",
         }
         metrics = await store.attention_metrics()
-        assert metrics["human_interventions"]["source_counts"][
-            "goal_control_attention"
-        ] == 1
+        assert metrics["human_interventions"]["source_counts"]["goal_control_attention"] == 1
         cursor = await store.db.execute(
             "SELECT eligible, eligibility_reason, live_session_count "
             "FROM goal_control_attention_receipts"
@@ -450,9 +437,7 @@ async def test_goal_control_attention_migration_does_not_backfill_prior_operatio
     await reopened.connect()
     try:
         metrics = await reopened.attention_metrics()
-        assert metrics["human_interventions"]["source_counts"][
-            "goal_control_attention"
-        ] == 0
+        assert metrics["human_interventions"]["source_counts"]["goal_control_attention"] == 0
         assert metrics["human_interventions"]["unverified_goal_control_action_counts"] == {
             "precoverage_changed_operations": 1,
         }
@@ -504,9 +489,7 @@ async def test_goal_control_attention_receipt_failure_rolls_back_mutation(
             )
 
         assert await store.get_goal_for_authority(current.id) == current
-        operation_cursor = await store.db.execute(
-            "SELECT COUNT(*) FROM goal_control_operations"
-        )
+        operation_cursor = await store.db.execute("SELECT COUNT(*) FROM goal_control_operations")
         receipt_cursor = await store.db.execute(
             "SELECT COUNT(*) FROM goal_control_attention_receipts"
         )
@@ -573,20 +556,12 @@ async def test_attention_metrics_count_only_assured_changed_supervision_actions(
         assert replay["changed"] is False
 
         metrics = await store.attention_metrics()
-        assert metrics["human_interventions"]["source_counts"][
-            "supervision_control"
-        ] == 1
+        assert metrics["human_interventions"]["source_counts"]["supervision_control"] == 1
         assert metrics["human_interventions"]["observed_count"] == 1
         assert "pause_resume" not in metrics["coverage"]["unmeasured_action_kinds"]
-        assert "pause_resume" not in metrics["human_interventions"][
-            "unmeasured_action_kinds"
-        ]
-        assert metrics["authority"]["watermarks"][
-            "human_session_control_actions"
-        ] == 1
-        assert metrics["authority"]["watermarks"][
-            "human_session_control_coverage"
-        ] == 2
+        assert "pause_resume" not in metrics["human_interventions"]["unmeasured_action_kinds"]
+        assert metrics["authority"]["watermarks"]["human_session_control_actions"] == 1
+        assert metrics["authority"]["watermarks"]["human_session_control_coverage"] == 2
         assert paused["human_action_receipt"]["project_binding"] is not None
         assert paused["human_action_receipt"]["before_supervision_paused"] is False
         assert paused["human_action_receipt"]["after_supervision_paused"] is True
@@ -597,15 +572,12 @@ async def test_attention_metrics_count_only_assured_changed_supervision_actions(
     await reopened.connect()
     try:
         recovered = await reopened.attention_metrics()
-        assert recovered["human_interventions"]["source_counts"][
-            "supervision_control"
-        ] == 1
-        assert recovered["authority"]["watermarks"] == metrics["authority"][
-            "watermarks"
-        ]
-        assert recovered["coverage"]["actor_assured_action_coverage"] == metrics[
-            "coverage"
-        ]["actor_assured_action_coverage"]
+        assert recovered["human_interventions"]["source_counts"]["supervision_control"] == 1
+        assert recovered["authority"]["watermarks"] == metrics["authority"]["watermarks"]
+        assert (
+            recovered["coverage"]["actor_assured_action_coverage"]
+            == metrics["coverage"]["actor_assured_action_coverage"]
+        )
     finally:
         await reopened.close()
 
@@ -642,9 +614,7 @@ async def test_attention_metrics_coverage_survives_wall_clock_rollback(
         ) < datetime.fromisoformat(coverage_started_at)
 
         metrics = await store.attention_metrics()
-        assert metrics["human_interventions"]["source_counts"][
-            "supervision_control"
-        ] == 1
+        assert metrics["human_interventions"]["source_counts"]["supervision_control"] == 1
         assert metrics["human_interventions"]["observed_count"] == 1
     finally:
         await store.close()
@@ -746,10 +716,7 @@ async def test_attention_metrics_reject_self_consistent_future_control_receipt(t
                 "session_id": source["session_id"],
             }
         )
-        forged_id = (
-            "human_action_"
-            + hashlib.sha256(forged_key.encode("utf-8")).hexdigest()[:40]
-        )
+        forged_id = "human_action_" + hashlib.sha256(forged_key.encode("utf-8")).hexdigest()[:40]
         forged = {
             **source,
             "id": forged_id,
@@ -821,9 +788,7 @@ async def test_attention_metrics_exclude_valid_unbound_containment_pause(tmp_pat
         assert paused["human_action_receipt"]["project_binding"] is None
 
         metrics = await store.attention_metrics()
-        assert metrics["human_interventions"]["source_counts"][
-            "supervision_control"
-        ] == 0
+        assert metrics["human_interventions"]["source_counts"]["supervision_control"] == 0
         assert metrics["coverage"]["excluded_legacy_or_unbound_source_rows"] >= 1
     finally:
         await store.close()
@@ -980,8 +945,6 @@ async def test_attention_metrics_keep_history_but_exclude_rebound_pending_author
         assert rebound["human_intervention_requests"]["value"] == 1
         assert rebound["current_pending"]["count"] == 0
         assert rebound["human_interventions"]["observed_count"] == 1
-        assert rebound["human_interventions"]["source_counts"][
-            "project_identity_resolution"
-        ] == 1
+        assert rebound["human_interventions"]["source_counts"]["project_identity_resolution"] == 1
     finally:
         await store.close()

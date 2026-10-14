@@ -48,6 +48,8 @@ jobs:
         run: npm ci --prefix apps/desktop --no-audit --no-fund
       - name: Python lint
         run: uv run --frozen ruff check services packages tests scripts
+      - name: Python format
+        run: uv run --frozen ruff format --check services packages tests scripts
       - name: Windows native ACL smoke
         if: runner.os == 'Windows'
         run: >-

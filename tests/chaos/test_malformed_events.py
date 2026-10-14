@@ -60,7 +60,11 @@ async def test_synthetic_event_for_unbound_session_returns_409_not_500(client: A
 @pytest.mark.parametrize("limit", [None, 1])
 @pytest.mark.parametrize("configure_during_dispatch", [False, True])
 async def test_malformed_adapter_event_does_not_stop_sibling_supervision(
-    client: AsyncClient, tmp_path, monkeypatch, limit, configure_during_dispatch,
+    client: AsyncClient,
+    tmp_path,
+    monkeypatch,
+    limit,
+    configure_during_dispatch,
 ):
     monkeypatch.delenv("PEX_FORCE_LLM", raising=False)
     state.pipeline.settings.supervisor_max_dispatches_per_session = limit

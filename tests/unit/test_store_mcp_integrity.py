@@ -272,10 +272,13 @@ async def test_principal_issue_rotates_atomically_and_never_stores_raw_token(tmp
         assert digest_one in durable_text
         assert digest_two in durable_text
 
-        assert await store.revoke_mcp_principals_for_session(
-            session.id,
-            revoked_at=second_issued + timedelta(seconds=1),
-        ) == 1
+        assert (
+            await store.revoke_mcp_principals_for_session(
+                session.id,
+                revoked_at=second_issued + timedelta(seconds=1),
+            )
+            == 1
+        )
         assert await store.get_mcp_principal_by_digest(digest_two) is None
     finally:
         await store.close()

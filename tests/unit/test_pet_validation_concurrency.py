@@ -1,4 +1,5 @@
 """Cold validation must not fan out full atlas decoding under concurrent reads."""
+
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from threading import Barrier, Event, Lock

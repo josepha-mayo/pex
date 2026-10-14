@@ -660,9 +660,7 @@ async def test_home_hides_retained_opencode_session_until_server_reattaches(
         assert (await store.get_session(session.id)).status == status
 
         transport = MemoryHttpTransport()
-        transport.sessions = [
-            {"id": "retained", "title": "retained", "directory": str(tmp_path)}
-        ]
+        transport.sessions = [{"id": "retained", "title": "retained", "directory": str(tmp_path)}]
         registry.opencode.attach_transport(transport)
         pipeline._desktop_refresh_attempted_at = None
         await pipeline.refresh_desktop_sessions()

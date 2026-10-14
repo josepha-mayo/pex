@@ -162,10 +162,7 @@ async def test_untyped_credentials_fail_after_project_becomes_typed(tmp_path):
             locator=_locator("/workspace/credential-typed"),
         )
         assert await store.get_mcp_principal_by_digest("a" * 64, now=now) is None
-        assert (
-            await store.get_hook_credential_by_digest(str(hook["token_digest"]), now=now)
-            is None
-        )
+        assert await store.get_hook_credential_by_digest(str(hook["token_digest"]), now=now) is None
     finally:
         await store.close()
 
@@ -237,9 +234,7 @@ async def test_legacy_credentials_remain_unbound_inactive_and_revocable(tmp_path
     try:
         assert await restarted.get_mcp_principal_by_digest("a" * 64, now=now) is None
         assert (
-            await restarted.get_hook_credential_by_digest(
-                str(hook["token_digest"]), now=now
-            )
+            await restarted.get_hook_credential_by_digest(str(hook["token_digest"]), now=now)
             is None
         )
         rows = await restarted.db.execute_fetchall(
@@ -338,9 +333,6 @@ async def test_goal_supersede_revokes_mcp_and_hook_credentials(tmp_path):
         )
         assert await store.supersede_goal_with_ledger(goal, successor, []) == [session.id]
         assert await store.get_mcp_principal_by_digest("a" * 64, now=now) is None
-        assert (
-            await store.get_hook_credential_by_digest(str(hook["token_digest"]), now=now)
-            is None
-        )
+        assert await store.get_hook_credential_by_digest(str(hook["token_digest"]), now=now) is None
     finally:
         await store.close()

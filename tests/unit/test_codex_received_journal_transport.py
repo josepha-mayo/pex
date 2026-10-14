@@ -91,14 +91,22 @@ async def test_received_human_notification_survives_held_ack_timeout_and_queue_c
     sending = asyncio.create_task(transport._dispatch_text(**dispatch_args(transport)))
     try:
         await asyncio.wait_for(channel.written.wait(), 2)
-        await channel.emit({
-            "method": "item/completed",
-            "params": {"threadId": "thr_exact", "turnId": "turn_human", "item": {
-                "id": "human-1", "type": "userMessage", "content": [
-                    {"type": "text", "text": "new human goal", "text_elements": []}
-                ]
-            }},
-        })
+        await channel.emit(
+            {
+                "method": "item/completed",
+                "params": {
+                    "threadId": "thr_exact",
+                    "turnId": "turn_human",
+                    "item": {
+                        "id": "human-1",
+                        "type": "userMessage",
+                        "content": [
+                            {"type": "text", "text": "new human goal", "text_elements": []}
+                        ],
+                    },
+                },
+            }
+        )
         await until(lambda: len(transport.notifications) == 1)
         assert b"new human goal" in b"".join(record[2] for record in rows(transport))
         with pytest.raises(SharedCodexDeliveryUncertainError):

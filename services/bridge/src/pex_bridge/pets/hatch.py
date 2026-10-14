@@ -36,9 +36,7 @@ from pex_bridge.pets.hatch_store import (
 from pex_bridge.pets.imagegen import HatchImageError, generate_png, hatch_image_config
 
 _SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
-_TERMINAL_EFFECT_STATES = frozenset(
-    {"delivered", "failed", "delivery_uncertain", "skipped"}
-)
+_TERMINAL_EFFECT_STATES = frozenset({"delivered", "failed", "delivery_uncertain", "skipped"})
 
 
 def slugify(name: str) -> str:
@@ -114,9 +112,7 @@ def write_generated(
                 or source.height > 4096
                 or source.width * source.height > 20_000_000
             ):
-                raise HatchImageError(
-                    "image dimensions exceeded the candidate-art safety limit"
-                )
+                raise HatchImageError("image dimensions exceeded the candidate-art safety limit")
             source.verify()
         with Image.open(BytesIO(image_bytes)) as source:
             normalized = source.convert("RGBA")
@@ -132,9 +128,7 @@ def write_generated(
     destination = job_dir / "decoded" / f"{name}.png"
     _atomic_write_bytes(destination, normalized_png)
     if name == "base":
-        _atomic_write_bytes(
-            job_dir / "references" / "canonical-base.png", normalized_png
-        )
+        _atomic_write_bytes(job_dir / "references" / "canonical-base.png", normalized_png)
     return destination
 
 
@@ -222,9 +216,7 @@ def run_hatch_job(
         )
 
     try:
-        job_dir = prepare_hatch_artifact_dirs(
-            registry.root, job_id, require_empty=True
-        )
+        job_dir = prepare_hatch_artifact_dirs(registry.root, job_id, require_empty=True)
     except HatchAuthorizationError:
         return registry.note_pre_dispatch_block(
             job_id,

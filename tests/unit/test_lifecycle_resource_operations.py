@@ -427,8 +427,7 @@ async def test_resource_scalar_json_tamper_is_rejected_by_schema(tmp_path):
                 "VALUES ('raw-omission', ?, 'active', ?)",
                 (
                     session.id,
-                    '{"id":"raw-omission","session_id":"synthetic",'
-                    '"state":"active"}',
+                    '{"id":"raw-omission","session_id":"synthetic","state":"active"}',
                 ),
             )
         await store.db.rollback()
@@ -558,8 +557,7 @@ async def test_restart_corrupt_cleanup_child_link_makes_parent_uncertain(tmp_pat
     connection = sqlite3.connect(path)
     connection.execute("DROP TRIGGER trg_lifecycle_operations_bound_update")
     connection.execute(
-        "UPDATE lifecycle_operations SET json = json_set(json, '$.action_hash', ?) "
-        "WHERE id = ?",
+        "UPDATE lifecycle_operations SET json = json_set(json, '$.action_hash', ?) WHERE id = ?",
         ("forged-action-hash", operation["id"]),
     )
     connection.commit()
@@ -572,9 +570,7 @@ async def test_restart_corrupt_cleanup_child_link_makes_parent_uncertain(tmp_pat
         stored_intervention = await recovered.get_intervention(intervention.id)
         assert resolution is not None
         assert resolution["status"] == "delivery_uncertain"
-        assert resolution["delivery_result"] == (
-            "cleanup_delivery_uncertain:operation_corrupt"
-        )
+        assert resolution["delivery_result"] == ("cleanup_delivery_uncertain:operation_corrupt")
         assert resolution["downstream_operation_id"] == operation["id"]
         assert stored_intervention is not None
         assert stored_intervention.result == "cleanup_delivery_uncertain:operation_corrupt"

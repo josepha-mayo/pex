@@ -19,9 +19,7 @@ async def smoke() -> None:
         async with asyncio.timeout(15):
             await transport.ensure_ready()
             process = transport._proc
-            listed = await transport.request(
-                "thread/list", {"limit": 1, "useStateDbOnly": True}
-            )
+            listed = await transport.request("thread/list", {"limit": 1, "useStateDbOnly": True})
         threads = listed.get("data", listed.get("threads")) if isinstance(listed, dict) else None
         if not transport.initialized or not isinstance(threads, list):
             raise RuntimeError("Codex App Server did not confirm thread listing")

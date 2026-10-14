@@ -400,9 +400,7 @@ async def test_live_quarantine_listing_pages_typed_candidates_and_disappears_on_
                 "schema": "pex.project-identity-conflict-summary.v1",
                 "legacy_project_id": "listed-project",
                 "status": "quarantined",
-                "candidate_identity_ids": sorted(
-                    [first["identity"].id, second["identity"].id]
-                ),
+                "candidate_identity_ids": sorted([first["identity"].id, second["identity"].id]),
                 "candidate_count": 2,
                 "quarantined_at": second["binding"]["quarantined_at"],
                 "updated_at": second["binding"]["updated_at"],
@@ -525,9 +523,7 @@ async def test_quarantine_blocks_core_mutations_until_explicit_resolution(tmp_pa
             resolved_by="local-operator",
             rationale="The first workspace is the confirmed project.",
         )
-        resumed_goal = paused_goal.model_copy(
-            update={"updated_at": now + timedelta(seconds=3)}
-        )
+        resumed_goal = paused_goal.model_copy(update={"updated_at": now + timedelta(seconds=3)})
         with pytest.raises(
             ProjectIdentityBlockedError,
             match="goal project identity changed after creation",
@@ -538,9 +534,7 @@ async def test_quarantine_blocks_core_mutations_until_explicit_resolution(tmp_pa
             match="session project identity changed",
         ):
             await store.upsert_session(
-                paused_session.model_copy(
-                    update={"last_activity": now + timedelta(seconds=3)}
-                )
+                paused_session.model_copy(update={"last_activity": now + timedelta(seconds=3)})
             )
         with pytest.raises(ProjectIdentityBlockedError):
             await store.add_event(_event("mutation-resumed", session, goal))

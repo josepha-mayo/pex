@@ -43,14 +43,10 @@ class FakeStructuredModel(Model):
         self.verifier_approved = verifier_approved
         self.verifier_evidence_override = verifier_evidence is not None
         self.verifier_evidence = (
-            ["observable verification receipt"]
-            if verifier_evidence is None
-            else verifier_evidence
+            ["observable verification receipt"] if verifier_evidence is None else verifier_evidence
         )
         self.evidence_tool_calls = (
-            int(action_type != "NOOP")
-            if evidence_tool_calls is None
-            else evidence_tool_calls
+            int(action_type != "NOOP") if evidence_tool_calls is None else evidence_tool_calls
         )
         self.evidence_tool_name = evidence_tool_name
         self.verifier_evidence_tool_calls = verifier_evidence_tool_calls
@@ -91,7 +87,7 @@ class FakeStructuredModel(Model):
         self.captured_messages.append(serialized_messages)
         observation_ids = re.findall(r"pexobs_[a-f0-9]{32}", serialized_messages)
         evidence_refs = (
-            list(dict.fromkeys(observation_ids))[-(1 if self.cite_latest_only else 20):]
+            list(dict.fromkeys(observation_ids))[-(1 if self.cite_latest_only else 20) :]
             if self.cite_evidence
             else []
         )
@@ -146,9 +142,7 @@ class FakeStructuredModel(Model):
                     if self.verifier_refs_in_evidence_only
                     else self.verifier_evidence
                 ),
-                "evidence_refs": (
-                    [] if self.verifier_refs_in_evidence_only else evidence_refs
-                ),
+                "evidence_refs": ([] if self.verifier_refs_in_evidence_only else evidence_refs),
             }
         else:
             message = self.message
@@ -257,7 +251,9 @@ async def test_main_exact_receipt_refs_supply_missing_evidence_item_for_review()
     result = await decide_async(request, model=model)
 
     assert result.action.type.value == "SEND_NUDGE", (
-        result.diagnosis, result.traces, result.independent_verifier
+        result.diagnosis,
+        result.traces,
+        result.independent_verifier,
     )
     assert result.action.evidence == result.evidence_refs
     assert "main_evidence_items_bound_from_refs" in result.traces
@@ -270,7 +266,9 @@ async def test_main_empty_evidence_without_bound_receipt_still_fails_closed():
     result = await run_strands_async(
         _request(0.1),
         model=FakeStructuredModel(
-            "SEND_NUDGE", main_evidence_empty=True, cite_evidence=False,
+            "SEND_NUDGE",
+            main_evidence_empty=True,
+            cite_evidence=False,
         ),
     )
 
@@ -500,12 +498,23 @@ def test_wall_timeouts_are_finite_and_bounded():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("configured,expected", [
-    (None, 45.0), ("invalid", 45.0), ("999", 45.0), ("10", 10.0),
-    ("25", 25.0), ("nan", 45.0), ("inf", 45.0), ("-1", 1.0),
-])
+@pytest.mark.parametrize(
+    "configured,expected",
+    [
+        (None, 45.0),
+        ("invalid", 45.0),
+        ("999", 45.0),
+        ("10", 10.0),
+        ("25", 25.0),
+        ("nan", 45.0),
+        ("inf", 45.0),
+        ("-1", 1.0),
+    ],
+)
 async def test_independent_verifier_default_and_override_remain_bounded(
-    monkeypatch, configured, expected,
+    monkeypatch,
+    configured,
+    expected,
 ):
     import asyncio
 
@@ -515,12 +524,14 @@ async def test_independent_verifier_default_and_override_remain_bounded(
         monkeypatch.delenv("PEX_VERIFIER_WALL_TIMEOUT", raising=False)
     else:
         monkeypatch.setenv("PEX_VERIFIER_WALL_TIMEOUT", configured)
+
     class Agent:
         async def invoke_async(self, *_args, **_kwargs):
             return SimpleNamespace(structured_output=None, metrics=None)
 
     original_wait = asyncio.wait_for
     observed = []
+
     async def measured_wait(awaitable, timeout):
         observed.append(timeout)
         return await original_wait(awaitable, timeout)
@@ -592,11 +603,14 @@ async def test_verifier_cannot_approve_without_reading_long_goal_boundaries():
     request = _request(0.1)
     request.goal.constraints = ["Preserve data. " * 20]
     proposal = ProposedAction(
-        type=InterventionType.SEND_NUDGE, session_id=request.session.id,
-        rationale="Correct artifact", payload={"message": "Create report.txt"},
+        type=InterventionType.SEND_NUDGE,
+        session_id=request.session.id,
+        rationale="Correct artifact",
+        payload={"message": "Create report.txt"},
     )
     result = await run_independent_verifier_async(
-        request, proposal,
+        request,
+        proposal,
         model=FakeStructuredModel(verifier_evidence_tool_calls=1),
     )
     assert result["approved"] is False
@@ -612,8 +626,11 @@ def test_long_goal_read_requires_cited_complete_receipt(length, complete):
     collector = EvidenceObservationCollector(request, stage="main", invocation_id="boundaries")
     from pex_supervisor.evidence_tools import build_evidence_tools
 
-    tool = next(item for item in build_evidence_tools(request, [], collector=collector)
-                if item.tool_name == "get_goal")
+    tool = next(
+        item
+        for item in build_evidence_tools(request, [], collector=collector)
+        if item.tool_name == "get_goal"
+    )
     tool()
     refs = [collector.observations[0].observation_id]
     assert _goal_boundaries_observed(request, list(collector.observations), refs) is complete
@@ -627,8 +644,11 @@ def test_goal_read_transport_preview_cannot_count_as_complete_boundaries():
     request = _request(0.1)
     request.goal.constraints = ["X" * 900 for _ in range(12)]
     collector = EvidenceObservationCollector(request, stage="main", invocation_id="boundary-limit")
-    tool = next(item for item in build_evidence_tools(request, [], collector=collector)
-                if item.tool_name == "get_goal")
+    tool = next(
+        item
+        for item in build_evidence_tools(request, [], collector=collector)
+        if item.tool_name == "get_goal"
+    )
     result = json.loads(tool())
     assert result["truncated"] is True
     refs = [collector.observations[0].observation_id]
@@ -642,8 +662,11 @@ def test_goal_boundary_pages_require_every_page_cited_without_duplicates():
     request = _request(0.1)
     request.goal.constraints = ["A" * 2500]
     collector = EvidenceObservationCollector(request, stage="main", invocation_id="boundary-pages")
-    tool = next(item for item in build_evidence_tools(request, [], collector=collector)
-                if item.tool_name == "get_goal")
+    tool = next(
+        item
+        for item in build_evidence_tools(request, [], collector=collector)
+        if item.tool_name == "get_goal"
+    )
     for page in range(goal_boundary_page_count(request)):
         tool(boundary_page=page)
     observations = list(collector.observations)
@@ -660,7 +683,8 @@ async def test_paginated_goal_boundaries_allow_verified_intervention():
     request = _request(0.1)
     request.goal.constraints = ["Preserve input data. " * 100]
     request.scores.features["verification"] = {
-        "status": "acceptance_gap", "acceptance_status": "unsatisfied",
+        "status": "acceptance_gap",
+        "acceptance_status": "unsatisfied",
         "missing_files": ["report.txt"],
     }
 
@@ -672,9 +696,11 @@ async def test_paginated_goal_boundaries_allow_verified_intervention():
             self.read_stages = set()
 
         async def stream(self, messages, tool_specs=None, system_prompt=None, **kwargs):
-            stage = "verifier" if any(
-                spec["name"] == "IndependentVerifierDecision" for spec in tool_specs or []
-            ) else "main"
+            stage = (
+                "verifier"
+                if any(spec["name"] == "IndependentVerifierDecision" for spec in tool_specs or [])
+                else "main"
+            )
             if stage not in self.read_stages:
                 self.read_stages.add(stage)
                 reads = [("inspect_acceptance", {})] + [
@@ -683,17 +709,33 @@ async def test_paginated_goal_boundaries_allow_verified_intervention():
                 ]
                 yield {"messageStart": {"role": "assistant"}}
                 for index, (name, arguments) in enumerate(reads):
-                    yield {"contentBlockStart": {"start": {"toolUse": {
-                        "toolUseId": f"{stage}-{index}", "name": name,
-                    }}}}
-                    yield {"contentBlockDelta": {"delta": {"toolUse": {
-                        "input": json.dumps(arguments),
-                    }}}}
+                    yield {
+                        "contentBlockStart": {
+                            "start": {
+                                "toolUse": {
+                                    "toolUseId": f"{stage}-{index}",
+                                    "name": name,
+                                }
+                            }
+                        }
+                    }
+                    yield {
+                        "contentBlockDelta": {
+                            "delta": {
+                                "toolUse": {
+                                    "input": json.dumps(arguments),
+                                }
+                            }
+                        }
+                    }
                     yield {"contentBlockStop": {}}
                 yield {"messageStop": {"stopReason": "tool_use"}}
                 return
             async for event in super().stream(
-                messages, tool_specs, system_prompt, **kwargs,
+                messages,
+                tool_specs,
+                system_prompt,
+                **kwargs,
             ):
                 yield event
 
@@ -955,8 +997,7 @@ async def test_same_type_semantic_action_keeps_model_wording_after_verification(
         "evidence": ["pytest_exit:1", "failed:test_alpha"],
     }
     semantic_text = (
-        "test_alpha failed in the latest observed pytest run. "
-        "Fix test_alpha and rerun pytest."
+        "test_alpha failed in the latest observed pytest run. Fix test_alpha and rerun pytest."
     )
     model = FakeStructuredModel(
         "SEND_NUDGE",
@@ -1062,11 +1103,13 @@ async def test_unobserved_pytest_claim_skips_model_until_worker_returns_evidence
     request.scores.features["verification"] = {
         "status": "uncertain",
         "acceptance_status": "uncertain",
-        "verdicts": [{
-            "status": "uncertain",
-            "evidence": ["no_pytest_observed"],
-            "claim": {"kind": "tests_pass", "polarity": "asserted"},
-        }],
+        "verdicts": [
+            {
+                "status": "uncertain",
+                "evidence": ["no_pytest_observed"],
+                "claim": {"kind": "tests_pass", "polarity": "asserted"},
+            }
+        ],
         "evidence_gathering": {
             "state": "inspected",
             "reason": "typed_verification_probe_available",
@@ -1103,11 +1146,13 @@ async def test_uncertain_probe_without_unobserved_pytest_claim_still_gets_semant
     request.scores.features["verification"] = {
         "status": "uncertain",
         "acceptance_status": "uncertain",
-        "verdicts": [{
-            "status": "uncertain",
-            "evidence": ["temporarily_unreadable:report.txt"],
-            "claim": {"kind": "complete", "polarity": "asserted"},
-        }],
+        "verdicts": [
+            {
+                "status": "uncertain",
+                "evidence": ["temporarily_unreadable:report.txt"],
+                "claim": {"kind": "complete", "polarity": "asserted"},
+            }
+        ],
         "evidence_gathering": {
             "state": "inspected",
             "reason": "typed_verification_probe_available",
@@ -1142,12 +1187,16 @@ async def test_observed_failed_pytest_claim_sends_precise_correction_without_mod
             "exit_code": 1,
             "later_file_edits_observed": False,
         },
-        "verdicts": [{
-            "status": "contradicted" if claimed_success else "unsatisfied",
-            "claim": {"kind": "tests_pass", "polarity": "asserted"} if claimed_success else None,
-            "basis": "acceptance_criterion",
-            "evidence": ["pytest_event_id=evt_pytest", "pytest_exit_code=1"],
-        }],
+        "verdicts": [
+            {
+                "status": "contradicted" if claimed_success else "unsatisfied",
+                "claim": {"kind": "tests_pass", "polarity": "asserted"}
+                if claimed_success
+                else None,
+                "basis": "acceptance_criterion",
+                "evidence": ["pytest_event_id=evt_pytest", "pytest_exit_code=1"],
+            }
+        ],
     }
     model = FakeStructuredModel("NOOP")
 
@@ -1177,20 +1226,30 @@ async def test_real_no_claim_verification_flows_into_model_enabled_supervision(l
 
     request = _request(0.1)
     request.event.message_delta = ""
-    failure = request.event.model_copy(update={
-        "event_id": "observed-failure",
-        "event_type": EventType.SHELL,
-        "command": "pytest -q",
-        "process_state": {"pytest": {
-            "exit_code": 1, "output": "FAILED test_csv.py::test_quotes",
-        }},
-    })
+    failure = request.event.model_copy(
+        update={
+            "event_id": "observed-failure",
+            "event_type": EventType.SHELL,
+            "command": "pytest -q",
+            "process_state": {
+                "pytest": {
+                    "exit_code": 1,
+                    "output": "FAILED test_csv.py::test_quotes",
+                }
+            },
+        }
+    )
     events = [failure]
     if later_edit:
-        events.append(request.event.model_copy(update={
-            "event_id": "repair", "event_type": EventType.FILE_EDIT,
-            "file_paths": ["solver.py"],
-        }))
+        events.append(
+            request.event.model_copy(
+                update={
+                    "event_id": "repair",
+                    "event_type": EventType.FILE_EDIT,
+                    "file_paths": ["solver.py"],
+                }
+            )
+        )
     events.append(request.event)
     request.scores.features["verification"] = verify_claims([], events, request.goal, {})
     model = FakeStructuredModel("NOOP")
@@ -1212,7 +1271,8 @@ async def test_real_no_claim_verification_flows_into_model_enabled_supervision(l
 @pytest.mark.parametrize("unsafe_change", ["basis", "later_edit", "event_id"])
 @pytest.mark.parametrize("claimed_success", [True, False])
 async def test_failed_pytest_fast_path_needs_current_observed_command(
-    unsafe_change, claimed_success,
+    unsafe_change,
+    claimed_success,
 ):
     request = _request(0.1)
     observation = {
@@ -1233,12 +1293,16 @@ async def test_failed_pytest_fast_path_needs_current_observed_command(
         "evidence": ["pytest_event_id=evt_pytest", "pytest_exit_code=1"],
         "pytest_event_id": "evt_pytest",
         "pytest_observation": observation,
-        "verdicts": [{
-            "status": "contradicted" if claimed_success else "unsatisfied",
-            "claim": {"kind": "tests_pass", "polarity": "asserted"} if claimed_success else None,
-            "basis": "acceptance_criterion",
-            "evidence": ["pytest_event_id=evt_pytest", "pytest_exit_code=1"],
-        }],
+        "verdicts": [
+            {
+                "status": "contradicted" if claimed_success else "unsatisfied",
+                "claim": {"kind": "tests_pass", "polarity": "asserted"}
+                if claimed_success
+                else None,
+                "basis": "acceptance_criterion",
+                "evidence": ["pytest_event_id=evt_pytest", "pytest_exit_code=1"],
+            }
+        ],
     }
 
     result = await decide_async(request, model=FakeStructuredModel("NOOP"))
@@ -1555,10 +1619,7 @@ async def test_verifier_setup_failure_preserves_main_inference_provenance(
     assert result.model_call_count == 2
     assert result.action.type.value == "NOOP"
     assert "independent_verifier_rejected" in result.diagnosis
-    assert any(
-        "independent_verifier_status=failed:RuntimeError" in item
-        for item in result.traces
-    )
+    assert any("independent_verifier_status=failed:RuntimeError" in item for item in result.traces)
 
 
 @pytest.mark.asyncio

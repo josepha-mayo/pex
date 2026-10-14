@@ -30,12 +30,28 @@ SUBSCRIPTION_SCHEMA = "pex.codex-existing-thread-subscription.v1"
 RUNTIME_STATUSES = frozenset({"active", "idle", "notLoaded", "systemError"})
 # Control must not silently drop a future input-bearing item from its intent
 # digest. Unknown items remain observable; adopting a new kind needs review.
-CONTROL_HISTORY_ITEM_TYPES = frozenset({
-    "userMessage", "hookPrompt", "agentMessage", "plan", "reasoning",
-    "commandExecution", "fileChange", "mcpToolCall", "dynamicToolCall",
-    "collabAgentToolCall", "subAgentActivity", "webSearch", "imageView", "sleep",
-    "imageGeneration", "enteredReviewMode", "exitedReviewMode", "contextCompaction",
-})
+CONTROL_HISTORY_ITEM_TYPES = frozenset(
+    {
+        "userMessage",
+        "hookPrompt",
+        "agentMessage",
+        "plan",
+        "reasoning",
+        "commandExecution",
+        "fileChange",
+        "mcpToolCall",
+        "dynamicToolCall",
+        "collabAgentToolCall",
+        "subAgentActivity",
+        "webSearch",
+        "imageView",
+        "sleep",
+        "imageGeneration",
+        "enteredReviewMode",
+        "exitedReviewMode",
+        "contextCompaction",
+    }
+)
 RuntimeStatus = Literal["active", "idle", "notLoaded", "systemError", "unknown"]
 
 
@@ -259,9 +275,7 @@ def _stable_record_id(
     turn_id: str,
     item_id: str | None,
 ) -> str:
-    encoded = strict_json_dumps(
-        [source, method, turn_id, item_id], separators=(",", ":")
-    )
+    encoded = strict_json_dumps([source, method, turn_id, item_id], separators=(",", ":"))
     return f"codex:{hashlib.sha256(encoded.encode('utf-8')).hexdigest()}"
 
 
@@ -273,18 +287,13 @@ def shared_live_event_id(
     stable_id: str,
 ) -> str:
     """Return the durable event identity for one accepted shared live record."""
-    material = (
-        f"{subscription_id}:{endpoint_identity}:{connection_generation}:{stable_id}"
-    )
+    material = f"{subscription_id}:{endpoint_identity}:{connection_generation}:{stable_id}"
     return f"codex-shared:{hashlib.sha256(material.encode()).hexdigest()}"
 
 
 def _history_content_digest(records: tuple[CodexObservedRecord, ...]) -> str:
     encoded = strict_json_dumps(
-        [
-            [record.stable_id, record.method, record.payload_json]
-            for record in records
-        ],
+        [[record.stable_id, record.method, record.payload_json] for record in records],
         separators=(",", ":"),
     )
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
@@ -324,8 +333,7 @@ def _nullable_consistent(
         return None
     try:
         encoded = [
-            strict_json_dumps(value, sort_keys=True, separators=(",", ":"))
-            for value in present
+            strict_json_dumps(value, sort_keys=True, separators=(",", ":")) for value in present
         ]
     except (TypeError, ValueError, RecursionError) as exc:
         raise CodexSubscriptionError(f"Codex {field} is not strict JSON") from exc
@@ -433,9 +441,7 @@ def _history(
                 raise CodexSubscriptionError("Codex thread history repeated an item id")
             seen_items.add(item_key)
             turn_item_ids.append(item_id)
-            item_stable_id = _stable_record_id(
-                "history", "history/item", turn_id, item_id
-            )
+            item_stable_id = _stable_record_id("history", "history/item", turn_id, item_id)
             identities.append(item_stable_id)
             records.append(
                 CodexObservedRecord(
@@ -465,15 +471,11 @@ def _parse_snapshot(response: object, *, require_history: bool = True) -> _Threa
         raise CodexSubscriptionError("Codex thread history is truncated")
     thread_id = _bounded_id(thread.get("id"), "Codex thread id")
     root_session_id = _bounded_id(
-        _one_consistent(
-            [thread.get("sessionId"), frozen.get("sessionId")], "root session id"
-        ),
+        _one_consistent([thread.get("sessionId"), frozen.get("sessionId")], "root session id"),
         "Codex root session id",
     )
     if "projectId" not in thread and "projectId" not in frozen:
-        raise CodexSubscriptionError(
-            "Codex thread has no authoritative vendor project field"
-        )
+        raise CodexSubscriptionError("Codex thread has no authoritative vendor project field")
     vendor_project_id = _nullable_bounded_id(
         _nullable_consistent((thread, frozen), "projectId", "project id"),
         "Codex project id",
@@ -576,8 +578,7 @@ def _flatten_history_shape(
     for turn_id, item_ids in shape:
         identities.append(_stable_record_id("history", "history/turn", turn_id, None))
         identities.extend(
-            _stable_record_id("history", "history/item", turn_id, item_id)
-            for item_id in item_ids
+            _stable_record_id("history", "history/item", turn_id, item_id) for item_id in item_ids
         )
     return tuple(identities)
 
@@ -695,9 +696,7 @@ class CodexExistingThreadSubscription:
                 expected_vendor_project_id is not None
                 and snapshot.vendor_project_id != expected_vendor_project_id
             ):
-                raise CodexSubscriptionError(
-                    "Codex thread/read returned another vendor project"
-                )
+                raise CodexSubscriptionError("Codex thread/read returned another vendor project")
             if snapshot.cwd != expected_cwd:
                 raise CodexSubscriptionError("Codex thread/read returned another workspace")
             identity = {
@@ -819,32 +818,32 @@ class CodexExistingThreadSubscription:
             if len(encoded.encode("utf-8")) > MAX_IDENTITY_JSON_BYTES:
                 raise CodexSubscriptionError(f"Codex {field} exceeds the safety bound")
             try:
-                if strict_json_dumps(
-                    strict_json_loads(encoded), sort_keys=True, separators=(",", ":")
-                ) != encoded:
+                if (
+                    strict_json_dumps(
+                        strict_json_loads(encoded), sort_keys=True, separators=(",", ":")
+                    )
+                    != encoded
+                ):
                     raise CodexSubscriptionError(f"Codex {field} is not canonical JSON")
             except (TypeError, ValueError, RecursionError) as exc:
                 raise CodexSubscriptionError(f"Codex {field} is not strict JSON") from exc
-        if selected.can_accept_direct_input is not None and type(
-            selected.can_accept_direct_input
-        ) is not bool:
+        if (
+            selected.can_accept_direct_input is not None
+            and type(selected.can_accept_direct_input) is not bool
+        ):
             raise CodexSubscriptionError("Codex direct-input capability is malformed")
         if _flatten_history_shape(selected.history_shape) != selected.history_ids:
             raise CodexSubscriptionError("Codex selection history shape is inconsistent")
         if _history_digest(selected.history_ids) != selected.history_identity_digest:
             raise CodexSubscriptionError("Codex selection history digest is inconsistent")
         if _history_content_digest(selected.history_records) != selected.history_content_digest:
-            raise CodexSubscriptionError(
-                "Codex selection history content digest is inconsistent"
-            )
+            raise CodexSubscriptionError("Codex selection history content digest is inconsistent")
         if tuple(record.stable_id for record in selected.history_records) != selected.history_ids:
             raise CodexSubscriptionError("Codex selection history records are inconsistent")
         for record in selected.history_records:
             if record.source != "history" or record.live_sequence is not None:
                 raise CodexSubscriptionError("Codex selection contains non-history records")
-            expected_id = _stable_record_id(
-                "history", "history/turn", record.turn_id, None
-            )
+            expected_id = _stable_record_id("history", "history/turn", record.turn_id, None)
             expected_method = "history/turn"
             if record.item_id is not None:
                 expected_method = "history/item"
@@ -859,9 +858,10 @@ class CodexExistingThreadSubscription:
                 payload = strict_json_loads(record.payload_json)
                 if not isinstance(payload, dict):
                     raise CodexSubscriptionError("Codex history record is not an object")
-                if strict_json_dumps(
-                    payload, sort_keys=True, separators=(",", ":")
-                ) != record.payload_json:
+                if (
+                    strict_json_dumps(payload, sort_keys=True, separators=(",", ":"))
+                    != record.payload_json
+                ):
                     raise CodexSubscriptionError("Codex history record is not canonical JSON")
             except (TypeError, ValueError, RecursionError) as exc:
                 raise CodexSubscriptionError("Codex history record is not strict JSON") from exc
@@ -920,9 +920,7 @@ class CodexExistingThreadSubscription:
         thread_ids: list[str] = []
         try:
             if "threadId" in params:
-                thread_ids.append(
-                    _bounded_id(params["threadId"], "notification thread id")
-                )
+                thread_ids.append(_bounded_id(params["threadId"], "notification thread id"))
             thread = params.get("thread")
             if method.startswith("thread/") and isinstance(thread, dict) and "id" in thread:
                 thread_ids.append(_bounded_id(thread["id"], "notification thread id"))
@@ -931,9 +929,7 @@ class CodexExistingThreadSubscription:
             raise
         if not thread_ids or any(value != thread_ids[0] for value in thread_ids[1:]):
             self._invalidate("conflicting_notification_identity")
-            raise CodexSubscriptionError(
-                "Codex live notification has conflicting thread identity"
-            )
+            raise CodexSubscriptionError("Codex live notification has conflicting thread identity")
         return params, thread_ids[0]
 
     def _clean_queue_before_resume(
@@ -944,9 +940,7 @@ class CodexExistingThreadSubscription:
     ) -> None:
         queued = self._drain_raw()
         for notification in queued:
-            frozen, _, method = self._notification_envelope(
-                notification, connection_generation
-            )
+            frozen, _, method = self._notification_envelope(notification, connection_generation)
             if not method.startswith(("thread/", "turn/", "item/")):
                 continue
             _, observed_thread = self._notification_thread_id(frozen, method)
@@ -1009,9 +1003,7 @@ class CodexExistingThreadSubscription:
             self._require_token(token)
             try:
                 resumed = _parse_snapshot(
-                    await self.transport.request(
-                        "thread/resume", {"threadId": selected.thread_id}
-                    ),
+                    await self.transport.request("thread/resume", {"threadId": selected.thread_id}),
                     require_history=False,
                 )
                 self._require_token(token)
@@ -1106,14 +1098,12 @@ class CodexExistingThreadSubscription:
             for record in batch:
                 if not isinstance(record, dict):
                     self._invalidate("malformed_notification")
-                    raise _CodexRawDrainInterrupted(
-                        "Codex notification was not an object", records
-                    )
+                    raise _CodexRawDrainInterrupted("Codex notification was not an object", records)
                 try:
                     encoded_bytes += len(
-                        strict_json_dumps(
-                            record, sort_keys=True, separators=(",", ":")
-                        ).encode("utf-8")
+                        strict_json_dumps(record, sort_keys=True, separators=(",", ":")).encode(
+                            "utf-8"
+                        )
                     )
                 except (TypeError, ValueError, RecursionError) as exc:
                     self._invalidate("malformed_notification")
@@ -1161,9 +1151,7 @@ class CodexExistingThreadSubscription:
                 # worker remains available. Do not auto-resume an archived or
                 # unloaded thread, and never turn its closure into completion.
                 self._invalidate(f"vendor_{method.replace('/', '_')}")
-                raise _CodexThreadUnavailable(
-                    "Codex selected thread became unavailable"
-                )
+                raise _CodexThreadUnavailable("Codex selected thread became unavailable")
             if method in {"thread/started", "thread/status/changed"}:
                 if method == "thread/status/changed":
                     thread = params.get("thread")
@@ -1223,9 +1211,7 @@ class CodexExistingThreadSubscription:
             turn_ids: list[str] = []
             try:
                 if "turnId" in params:
-                    turn_ids.append(
-                        _bounded_id(params["turnId"], "notification turn id")
-                    )
+                    turn_ids.append(_bounded_id(params["turnId"], "notification turn id"))
                 if "id" in turn:
                     turn_ids.append(_bounded_id(turn["id"], "notification turn id"))
             except CodexSubscriptionError:
@@ -1246,9 +1232,7 @@ class CodexExistingThreadSubscription:
                 item_ids: list[str] = []
                 try:
                     if "itemId" in params:
-                        item_ids.append(
-                            _bounded_id(params["itemId"], "notification item id")
-                        )
+                        item_ids.append(_bounded_id(params["itemId"], "notification item id"))
                     if "id" in item:
                         item_ids.append(_bounded_id(item["id"], "notification item id"))
                 except CodexSubscriptionError:
@@ -1262,9 +1246,7 @@ class CodexExistingThreadSubscription:
                 item_id = item_ids[0]
             entity = (turn_id, item_id)
             phase = 1 if method.endswith("/started") else 2
-            stable_id = _stable_record_id(
-                "live_notification", method, turn_id, item_id
-            )
+            stable_id = _stable_record_id("live_notification", method, turn_id, item_id)
             prior_phase = self._live_phase.get(entity, 0)
             if phase < prior_phase:
                 self._invalidate("reordered_live_notification")
@@ -1277,9 +1259,7 @@ class CodexExistingThreadSubscription:
                 )
             if prior_payload is not None:
                 continue
-            turn_observed = turn_id in history_turns or self._live_phase.get(
-                (turn_id, None), 0
-            ) > 0
+            turn_observed = turn_id in history_turns or self._live_phase.get((turn_id, None), 0) > 0
             if item_id is not None and not turn_observed:
                 self._invalidate("missing_live_parent")
                 raise CodexSubscriptionError("Codex item has no observed turn identity")
@@ -1287,13 +1267,10 @@ class CodexExistingThreadSubscription:
                 self._invalidate("missing_live_parent")
                 raise CodexSubscriptionError("Codex completion has no observed turn identity")
             if len(self._seen_live) >= MAX_LIVE_IDENTITIES or (
-                entity not in self._live_phase
-                and len(self._live_phase) >= MAX_LIVE_IDENTITIES
+                entity not in self._live_phase and len(self._live_phase) >= MAX_LIVE_IDENTITIES
             ):
                 self._invalidate("live_identity_bound")
-                raise CodexSubscriptionError(
-                    "Codex live identities exceeded the lifetime bound"
-                )
+                raise CodexSubscriptionError("Codex live identities exceeded the lifetime bound")
             self._live_watermark += 1
             self._seen_live[stable_id] = encoded
             self._live_phase[entity] = phase
@@ -1346,9 +1323,14 @@ class CodexExistingThreadSubscription:
             inputs: list[dict[str, Any]] = []
             for turn in thread["turns"]:
                 if (
-                    turn.get("itemsView") != "full" or _is_truncated(turn)
-                    or turn.get("status") not in {
-                        "inProgress", "completed", "interrupted", "failed",
+                    turn.get("itemsView") != "full"
+                    or _is_truncated(turn)
+                    or turn.get("status")
+                    not in {
+                        "inProgress",
+                        "completed",
+                        "interrupted",
+                        "failed",
                     }
                     or not isinstance(turn.get("items"), list)
                 ):
@@ -1368,18 +1350,25 @@ class CodexExistingThreadSubscription:
                     _, coverage = CodexAdapter._normalize_user_message_content(item)
                     if (
                         "clientId" not in item
-                        or (item["clientId"] is not None and (
-                            not isinstance(item["clientId"], str)
-                            or _bounded_id(item["clientId"], "Codex client message id")
-                            != item["clientId"]
-                        ))
+                        or (
+                            item["clientId"] is not None
+                            and (
+                                not isinstance(item["clientId"], str)
+                                or _bounded_id(item["clientId"], "Codex client message id")
+                                != item["clientId"]
+                            )
+                        )
                         or coverage["content_status"] != "complete"
-                        or coverage["content_redacted"] or coverage["content_truncated"]
-                        or not isinstance(content, list) or not content
+                        or coverage["content_redacted"]
+                        or coverage["content_truncated"]
+                        or not isinstance(content, list)
+                        or not content
                         or any(
-                            not isinstance(part, dict) or part.get("type") != "text"
+                            not isinstance(part, dict)
+                            or part.get("type") != "text"
                             or not isinstance(part.get("text"), str)
-                            or not part["text"].strip() or "\x00" in part["text"]
+                            or not part["text"].strip()
+                            or "\x00" in part["text"]
                             or _is_truncated(part)
                             for part in content
                         )
@@ -1387,18 +1376,22 @@ class CodexExistingThreadSubscription:
                         # Non-text/unknown content remains observable, but this
                         # text-control path cannot certify its human intent.
                         raise CodexSubscriptionError("Codex control input is not complete text")
-                    inputs.append({
-                        "turn_id": turn["id"], "item_id": item["id"],
-                        "client_id": item["clientId"], "content": content,
-                    })
-            if (
-                (snapshot.runtime_status == "idle" and active)
-                or (snapshot.runtime_status == "active" and len(active) != 1)
+                    inputs.append(
+                        {
+                            "turn_id": turn["id"],
+                            "item_id": item["id"],
+                            "client_id": item["clientId"],
+                            "content": content,
+                        }
+                    )
+            if (snapshot.runtime_status == "idle" and active) or (
+                snapshot.runtime_status == "active" and len(active) != 1
             ):
                 raise CodexSubscriptionError("Codex runtime and active turns conflict")
             encoded = strict_json_dumps(inputs, sort_keys=True, separators=(",", ":"))
             return CodexControlSnapshot(
-                receipt=state.receipt, read=read,
+                receipt=state.receipt,
+                read=read,
                 active_turn_id=active[0] if active else None,
                 user_inputs_json=encoded,
                 user_inputs_digest=hashlib.sha256(encoded.encode("utf-8")).hexdigest(),

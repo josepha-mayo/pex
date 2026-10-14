@@ -128,9 +128,7 @@ async def test_newer_unverified_stop_supersedes_old_completion_verdict(
 
 
 @pytest.mark.asyncio
-async def test_tampered_acceptance_test_cannot_back_a_green_claim(
-    client: AsyncClient, tmp_path
-):
+async def test_tampered_acceptance_test_cannot_back_a_green_claim(client: AsyncClient, tmp_path):
     """A worker that weakens the acceptance test then reports green is flagged.
 
     The baseline seals at the first goal-bound event; the modified digest is
@@ -143,9 +141,7 @@ async def test_tampered_acceptance_test_cannot_back_a_green_claim(
     tests_dir = worker / "tests"
     tests_dir.mkdir(parents=True)
     test_file = tests_dir / "test_core.py"
-    test_file.write_text(
-        "def test_core():\n    assert add(1, 1) == 2\n", encoding="utf-8"
-    )
+    test_file.write_text("def test_core():\n    assert add(1, 1) == 2\n", encoding="utf-8")
     adapter = state.adapters.synthetic
     session = adapter.seed_session(vendor_id="tamper-check", cwd=str(worker))
     await state.store.upsert_session(session)
@@ -197,9 +193,7 @@ async def test_tampered_acceptance_test_cannot_back_a_green_claim(
     assert verification["status"] == "uncertain"
     assert verification["acceptance_surface"]["modified"] == ["tests/test_core.py"]
     evidence = [
-        item
-        for verdict in verification["verdicts"]
-        for item in (verdict.get("evidence") or [])
+        item for verdict in verification["verdicts"] for item in (verdict.get("evidence") or [])
     ]
     assert "acceptance_surface_modified:tests/test_core.py" in evidence
     # The detection is corrective, not silent: the worker is told which file
@@ -210,9 +204,7 @@ async def test_tampered_acceptance_test_cannot_back_a_green_claim(
     assert completion["status"] != "verified_complete"
 
     # Restore the baseline content and re-run — the same green claim verifies.
-    test_file.write_text(
-        "def test_core():\n    assert add(1, 1) == 2\n", encoding="utf-8"
-    )
+    test_file.write_text("def test_core():\n    assert add(1, 1) == 2\n", encoding="utf-8")
     await client.post(
         "/v1/synthetic/events",
         json={
@@ -235,9 +227,7 @@ async def test_tampered_acceptance_test_cannot_back_a_green_claim(
     restored_verification = restored["metadata"]["verification"]
     assert restored_verification["status"] == "supported"
     assert restored_verification["acceptance_surface"]["modified"] == []
-    restored_completion = (
-        await client.get(f"/v1/goals/{goal['id']}/completion")
-    ).json()
+    restored_completion = (await client.get(f"/v1/goals/{goal['id']}/completion")).json()
     assert restored_completion["status"] == "verified_complete"
 
     # The integrity ledger quantifies the whole arc for reviewers.
@@ -249,14 +239,10 @@ async def test_tampered_acceptance_test_cannot_back_a_green_claim(
     assert surface_metrics["baselines_sealed"] >= 1
     assert surface_metrics["incidents"] >= 1
     assert surface_metrics["integrity_nudges"] >= 1
-    assert any(
-        path == "tests/test_core.py" for path, _count in surface_metrics["top_flagged"]
-    )
+    assert any(path == "tests/test_core.py" for path, _count in surface_metrics["top_flagged"])
 
     # The per-goal receipt packages the same arc for export.
-    report = (
-        await client.get(f"/v1/goals/{goal['id']}/verification-report")
-    ).json()
+    report = (await client.get(f"/v1/goals/{goal['id']}/verification-report")).json()
     assert report["schema"] == "pex.verification-report.v1"
     assert report["completion"]["status"] == "verified_complete"
     assert [claim["verification_status"] for claim in report["claims"]] == [
@@ -266,9 +252,7 @@ async def test_tampered_acceptance_test_cannot_back_a_green_claim(
     assert report["acceptance_baselines"][0]["files_complete"] is True
     assert report["summary"]["integrity_incidents"] == 1
     assert report["summary"]["corrective_nudges"] == 1
-    assert "acceptance_surface_modified:tests/test_core.py" in report["claims"][1][
-        "evidence"
-    ]
+    assert "acceptance_surface_modified:tests/test_core.py" in report["claims"][1]["evidence"]
 
 
 @pytest.mark.asyncio
@@ -371,9 +355,7 @@ async def test_genuine_pytest_completion_is_noop(client: AsyncClient, tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_completion_follows_newer_attached_unsatisfied_stop(
-    client: AsyncClient, tmp_path
-):
+async def test_completion_follows_newer_attached_unsatisfied_stop(client: AsyncClient, tmp_path):
     worker = tmp_path / "newer-unsatisfied-worker"
     worker.mkdir()
     adapter = state.adapters.synthetic
@@ -403,9 +385,7 @@ async def test_completion_follows_newer_attached_unsatisfied_stop(
             "message": "All tests passed. I am done.",
         },
     )
-    assert first.json()["intervention"]["metadata"]["verification"]["status"] == (
-        "supported"
-    )
+    assert first.json()["intervention"]["metadata"]["verification"]["status"] == ("supported")
     assert (await client.get(f"/v1/goals/{goal['id']}/completion")).json()[
         "status"
     ] == "verified_complete"
@@ -447,9 +427,7 @@ async def test_completion_follows_newer_attached_unsatisfied_stop(
             "message": "All tests passed. I am done.",
         },
     )
-    assert later.json()["intervention"]["metadata"]["verification"]["status"] == (
-        "contradicted"
-    )
+    assert later.json()["intervention"]["metadata"]["verification"]["status"] == ("contradicted")
     completion = await client.get(f"/v1/goals/{goal['id']}/completion")
     assert completion.json()["status"] == "incomplete"
     asked = await client.post("/v1/ask", json={"question": "Is the task complete?"})
@@ -457,9 +435,7 @@ async def test_completion_follows_newer_attached_unsatisfied_stop(
 
 
 @pytest.mark.asyncio
-async def test_completion_does_not_credit_session_moved_off_the_goal(
-    client: AsyncClient, tmp_path
-):
+async def test_completion_does_not_credit_session_moved_off_the_goal(client: AsyncClient, tmp_path):
     worker = tmp_path / "detached-complete-worker"
     worker.mkdir()
     adapter = state.adapters.synthetic
@@ -489,9 +465,7 @@ async def test_completion_does_not_credit_session_moved_off_the_goal(
             "message": "All tests passed. I am done.",
         },
     )
-    assert stopped.json()["intervention"]["metadata"]["verification"]["status"] == (
-        "supported"
-    )
+    assert stopped.json()["intervention"]["metadata"]["verification"]["status"] == ("supported")
     completion = await client.get(f"/v1/goals/{goal['id']}/completion")
     assert completion.json()["status"] == "verified_complete"
 
@@ -586,18 +560,14 @@ async def test_premature_stop_continues_then_verifies_completion(client: AsyncCl
         "/v1/interventions",
         params={"session_id": session.id},
     )
-    final_nudge = next(
-        item for item in stored.json() if item["action_taken"] == "SEND_NUDGE"
-    )
+    final_nudge = next(item for item in stored.json() if item["action_taken"] == "SEND_NUDGE")
     assert final_nudge["outcome"] == "goal_evidence_supported"
     assert final_nudge["helped"] is True
     assert adapter.inbox[session.id] == [text]
 
 
 @pytest.mark.asyncio
-async def test_new_verified_gap_bypasses_duplicate_action_cooldown(
-    client: AsyncClient, tmp_path
-):
+async def test_new_verified_gap_bypasses_duplicate_action_cooldown(client: AsyncClient, tmp_path):
     worker = tmp_path / "successive-gap-worker"
     worker.mkdir()
     (worker / "stage-one.txt").write_bytes(b"stage-one-ok\n")
@@ -890,9 +860,7 @@ async def test_abandoned_background_train_is_woken_on_stop(client: AsyncClient, 
 
 
 @pytest.mark.asyncio
-async def test_exited_background_job_is_not_treated_as_abandoned(
-    client: AsyncClient, tmp_path
-):
+async def test_exited_background_job_is_not_treated_as_abandoned(client: AsyncClient, tmp_path):
     worker = tmp_path / "finished-train-worker"
     worker.mkdir()
     adapter = state.adapters.synthetic
@@ -932,7 +900,8 @@ async def test_exited_background_job_is_not_treated_as_abandoned(
 
 @pytest.mark.asyncio
 async def test_broad_edit_signal_does_not_invent_drift_or_send_correction(
-    client: AsyncClient, tmp_path,
+    client: AsyncClient,
+    tmp_path,
 ):
     worker = tmp_path / "refactor-worker"
     worker.mkdir()
@@ -1013,33 +982,51 @@ async def test_opencode_compacted_event_delivers_ledger_to_the_same_worker(clien
     adapter = state.adapters.opencode
     adapter.attach_transport(transport)
     session = HarnessSession(
-        id="opencode:compact-worker", harness_type=HarnessType.OPENCODE,
-        vendor_session_id="compact-worker", cwd=str(worker), project_id=str(worker),
+        id="opencode:compact-worker",
+        harness_type=HarnessType.OPENCODE,
+        vendor_session_id="compact-worker",
+        cwd=str(worker),
+        project_id=str(worker),
     )
     adapter.sessions[session.id] = session
     await state.store.upsert_session(session)
-    created = await client.post("/v1/goals", json={
-        "idempotency_key": "opencode-compaction-goal-01", "project_id": str(worker),
-        "title": "Finish the parser", "objective": "Repair and verify the parser.",
-        "acceptance_criteria": ["parser tests pass"], "constraints": ["Preserve the public API"],
-        "forbidden_outcomes": ["Do not spend paid credits"],
-        "decisions": ["Keep the existing parser library"],
-        "rejected_approaches": ["Replace the parser with a new library"],
-        "unresolved_questions": ["Should legacy input be supported?"],
-    })
+    created = await client.post(
+        "/v1/goals",
+        json={
+            "idempotency_key": "opencode-compaction-goal-01",
+            "project_id": str(worker),
+            "title": "Finish the parser",
+            "objective": "Repair and verify the parser.",
+            "acceptance_criteria": ["parser tests pass"],
+            "constraints": ["Preserve the public API"],
+            "forbidden_outcomes": ["Do not spend paid credits"],
+            "decisions": ["Keep the existing parser library"],
+            "rejected_approaches": ["Replace the parser with a new library"],
+            "unresolved_questions": ["Should legacy input be supported?"],
+        },
+    )
     assert created.status_code == 200
     goal = created.json()
-    attached = await client.post(f"/v1/sessions/{session.id}/attach", json={
-        "idempotency_key": "opencode-compaction-attach-01", "goal_id": goal["id"],
-        "expected_goal_id": None, "expected_control_revision": 0,
-        "expected_goal_intent_revision": goal["intent_revision"],
-    })
+    attached = await client.post(
+        f"/v1/sessions/{session.id}/attach",
+        json={
+            "idempotency_key": "opencode-compaction-attach-01",
+            "goal_id": goal["id"],
+            "expected_goal_id": None,
+            "expected_control_revision": 0,
+            "expected_goal_intent_revision": goal["intent_revision"],
+        },
+    )
     assert attached.status_code == 200
     session = await state.store.get_session(session.id)
     adapter.sessions[session.id] = session
-    event = adapter.normalize_sse(session, {
-        "type": "session.compacted", "properties": {"sessionID": session.vendor_session_id},
-    })
+    event = adapter.normalize_sse(
+        session,
+        {
+            "type": "session.compacted",
+            "properties": {"sessionID": session.vendor_session_id},
+        },
+    )
     intervention = await state.pipeline.ingest_event(event, session)
     assert intervention is not None
     assert intervention.action_taken == "SEND_NUDGE"
@@ -1052,8 +1039,12 @@ async def test_opencode_compacted_event_delivers_ledger_to_the_same_worker(clien
     assert "Current decision: Keep the existing parser library" in text
     assert "Rejected approach: Replace the parser with a new library" in text
     assert "Unresolved question: Should legacy input be supported?" in text
-    for value in [goal["objective"], *goal["acceptance_criteria"], *goal["constraints"],
-                  *goal["forbidden_outcomes"]]:
+    for value in [
+        goal["objective"],
+        *goal["acceptance_criteria"],
+        *goal["constraints"],
+        *goal["forbidden_outcomes"],
+    ]:
         assert value in text
     stored = await state.store.get_session(session.id)
     assert stored.metadata["context_health_signals"]["compaction_count"] == 1
@@ -1065,7 +1056,9 @@ async def test_opencode_compacted_event_delivers_ledger_to_the_same_worker(clien
 @pytest.mark.asyncio
 @pytest.mark.parametrize("edit_after_reads", [False, True])
 async def test_repeated_forgotten_facts_after_compaction_apply_context_overlay(
-    client: AsyncClient, tmp_path, edit_after_reads: bool,
+    client: AsyncClient,
+    tmp_path,
+    edit_after_reads: bool,
 ):
     worker = tmp_path / "health-worker"
     worker.mkdir()
@@ -1156,7 +1149,8 @@ async def test_repeated_forgotten_facts_after_compaction_apply_context_overlay(
 
 @pytest.mark.asyncio
 async def test_sibling_file_overlap_does_not_send_an_unproven_correction(
-    client: AsyncClient, tmp_path,
+    client: AsyncClient,
+    tmp_path,
 ):
     worker = tmp_path / "dup-worker"
     worker.mkdir()

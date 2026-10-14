@@ -306,12 +306,8 @@ async def test_pipeline_gives_live_opencode_probe_its_bounded_cold_read_budget(
         EventBus(),
         Settings.for_test(require_auth=False, home=tmp_path),
     )
-    monkeypatch.setattr(
-        "pex_bridge.pipeline.DEFAULT_CAPABILITY_PROBE_TIMEOUT_SECONDS", 0.01
-    )
-    monkeypatch.setattr(
-        "pex_bridge.pipeline.OPENCODE_CAPABILITY_PROBE_TIMEOUT_SECONDS", 0.2
-    )
+    monkeypatch.setattr("pex_bridge.pipeline.DEFAULT_CAPABILITY_PROBE_TIMEOUT_SECONDS", 0.01)
+    monkeypatch.setattr("pex_bridge.pipeline.OPENCODE_CAPABILITY_PROBE_TIMEOUT_SECONDS", 0.2)
 
     async def delayed_live_probe():
         await asyncio.sleep(0.05)
@@ -331,9 +327,7 @@ async def test_pipeline_gives_live_opencode_probe_its_bounded_cold_read_budget(
 
 
 @pytest.mark.asyncio
-async def test_pipeline_still_fails_closed_when_opencode_probe_exceeds_bound(
-    tmp_path, monkeypatch
-):
+async def test_pipeline_still_fails_closed_when_opencode_probe_exceeds_bound(tmp_path, monkeypatch):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()
     registry = AdapterRegistry()
@@ -352,9 +346,7 @@ async def test_pipeline_still_fails_closed_when_opencode_probe_exceeds_bound(
         EventBus(),
         Settings.for_test(require_auth=False, home=tmp_path),
     )
-    monkeypatch.setattr(
-        "pex_bridge.pipeline.OPENCODE_CAPABILITY_PROBE_TIMEOUT_SECONDS", 0.01
-    )
+    monkeypatch.setattr("pex_bridge.pipeline.OPENCODE_CAPABILITY_PROBE_TIMEOUT_SECONDS", 0.01)
 
     async def stalled_probe():
         await asyncio.sleep(60)
@@ -781,9 +773,9 @@ async def test_devin_rotating_discovery_cannot_grow_or_partially_mutate_retained
     monkeypatch.setattr(devin_module, "_MAX_SESSIONS", 2)
     transport = RotatingDevinTransport()
     adapter = DevinAdapter(transport)  # type: ignore[arg-type]
-    assert [
-        session.vendor_session_id for session in await adapter.discover_sessions()
-    ] == ["devin-1"]
+    assert [session.vendor_session_id for session in await adapter.discover_sessions()] == [
+        "devin-1"
+    ]
 
     transport.vendor_ids = ["devin-2", "devin-3"]
     with pytest.raises(ValueError, match="retained session state reached"):

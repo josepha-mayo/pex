@@ -69,9 +69,7 @@ async def _seed(store: Store, project_id: str = "handoff-project"):
     return goal, source, target
 
 
-def _synthetic_delivery_result(
-    session: HarnessSession, *, turn_id: str = "syn-turn-0001"
-) -> dict:
+def _synthetic_delivery_result(session: HarnessSession, *, turn_id: str = "syn-turn-0001") -> dict:
     return {
         "status": "delivered",
         "worker_delivery_receipt": {
@@ -175,20 +173,29 @@ async def test_shared_human_constraint_survives_reserved_and_dispatched_handoff(
     try:
         goal, source, target = await _seed(store)
         item, _, event, intervention = _artifacts(goal, source, target)
-        constraint = item.model_copy(update={
-            "id": "shared-human-constraint", "goal_id": None,
-            "kind": ContextKind.CONSTRAINT, "provenance": SourceKind.HUMAN,
-            "content": "Do not publish without human approval.",
-        })
+        constraint = item.model_copy(
+            update={
+                "id": "shared-human-constraint",
+                "goal_id": None,
+                "kind": ContextKind.CONSTRAINT,
+                "provenance": SourceKind.HUMAN,
+                "content": "Do not publish without human approval.",
+            }
+        )
         await store.add_context(item)
         await store.add_context(constraint)
         bundle = build_bundle(goal, target, [item, constraint], [], [source.id], token_budget=2_000)
         intervention.proposed_action.payload = {"bundle": bundle.model_dump(mode="json")}
         intervention.metadata["human_requested"] = True
         reserved = await store.reserve_operator_handoff(
-            principal_id=PRINCIPAL, idempotency_key=KEY,
-            source_session_id=source.id, target_session_id=target.id,
-            token_budget=2_000, bundle=bundle, event=event, intervention=intervention,
+            principal_id=PRINCIPAL,
+            idempotency_key=KEY,
+            source_session_id=source.id,
+            target_session_id=target.id,
+            token_budget=2_000,
+            bundle=bundle,
+            event=event,
+            intervention=intervention,
             actor_assurance="bridge_bearer",
         )
         dispatch = await store.start_operator_handoff_dispatch(reserved["effect"]["effect_id"])
@@ -196,7 +203,8 @@ async def test_shared_human_constraint_survives_reserved_and_dispatched_handoff(
         assert constraint.id in {entry.id for entry in dispatch["bundle"].items}
         assert any(constraint.content in row for row in dispatch["bundle"].critical_decisions)
         final = await store.finalize_operator_handoff(
-            effect_id=reserved["effect"]["effect_id"], state="delivered",
+            effect_id=reserved["effect"]["effect_id"],
+            state="delivered",
             result=_synthetic_delivery_result(target),
         )
         assert final["effect"]["state"] == "delivered"
@@ -287,12 +295,11 @@ async def test_handoff_reservation_is_atomic_replayable_and_finalizes_one_receip
         )
         assert (await actor_cursor.fetchone())[0] == 1
         metrics = await store.attention_metrics()
-        assert metrics["human_interventions"]["source_counts"][
-            "operator_context_handoff"
-        ] == 1
-        assert metrics["human_interventions"]["unverified_operator_action_counts"][
-            "operator_handoff"
-        ] == 0
+        assert metrics["human_interventions"]["source_counts"]["operator_context_handoff"] == 1
+        assert (
+            metrics["human_interventions"]["unverified_operator_action_counts"]["operator_handoff"]
+            == 0
+        )
         refused = await store.start_operator_handoff_dispatch(first["effect"]["effect_id"])
         assert refused["granted"] is False
         assert refused["reason"] == "effect_already_delivered"
@@ -333,9 +340,7 @@ async def test_delivered_handoff_survives_post_delivery_outcome_observation(tmp_
             intervention=intervention,
             actor_assurance="bridge_bearer",
         )
-        dispatch = await store.start_operator_handoff_dispatch(
-            reserved["effect"]["effect_id"]
-        )
+        dispatch = await store.start_operator_handoff_dispatch(reserved["effect"]["effect_id"])
         assert dispatch["granted"] is True
         final = await store.finalize_operator_handoff(
             effect_id=reserved["effect"]["effect_id"],
@@ -353,9 +358,7 @@ async def test_delivered_handoff_survives_post_delivery_outcome_observation(tmp_
             }
         )
         await store.update_intervention(observed)
-        assimilation = await store.handoff_assimilation_status(
-            reserved["effect"]["effect_id"]
-        )
+        assimilation = await store.handoff_assimilation_status(reserved["effect"]["effect_id"])
         assert assimilation["status"] == "awaiting_target_evidence"
         replay = await store.find_operator_handoff(
             principal_id=PRINCIPAL,
@@ -692,9 +695,7 @@ async def test_handoff_restart_recovery_couples_effect_intervention_and_audit(tm
         event=event,
         intervention=intervention,
     )
-    dispatch = await first_store.start_operator_handoff_dispatch(
-        reserved["effect"]["effect_id"]
-    )
+    dispatch = await first_store.start_operator_handoff_dispatch(reserved["effect"]["effect_id"])
     assert dispatch["granted"] is True
     await first_store.close()
 
@@ -716,18 +717,14 @@ async def test_handoff_restart_recovery_couples_effect_intervention_and_audit(tm
             "reason": "process_restarted_after_dispatch_started",
         }
         assert found["intervention"].result == "handoff_delivery_uncertain"
-        assert (
-            found["intervention"].metadata["handoff_delivery_status"]
-            == "delivery_uncertain"
-        )
+        assert found["intervention"].metadata["handoff_delivery_status"] == "delivery_uncertain"
         replay = await recovered_store.start_operator_handoff_dispatch(
             reserved["effect"]["effect_id"]
         )
         assert replay["granted"] is False
         assert replay["reason"] == "effect_already_delivery_uncertain"
         cursor = await recovered_store.db.execute(
-            "SELECT record_type FROM intervention_audit WHERE intervention_id = ? "
-            "ORDER BY id",
+            "SELECT record_type FROM intervention_audit WHERE intervention_id = ? ORDER BY id",
             (intervention.id,),
         )
         assert [row["record_type"] for row in await cursor.fetchall()] == [
@@ -870,10 +867,7 @@ async def test_handoff_project_reresolution_cannot_cross_reserved_physical_ident
             ),
         )
         assert second_registration["outcome"] == "quarantined"
-        assert (
-            second_registration["identity"].id
-            != first_registration["identity"].id
-        )
+        assert second_registration["identity"].id != first_registration["identity"].id
         await store.resolve_project_identity_conflict(
             resolution_id="resolve-handoff-to-identity-b",
             legacy_project_id=project_id,
@@ -882,9 +876,7 @@ async def test_handoff_project_reresolution_cannot_cross_reserved_physical_ident
             rationale="Select the newly verified physical checkout.",
         )
         with pytest.raises(PermissionError, match="physical project binding changed"):
-            await store.start_operator_handoff_dispatch(
-                reserved["effect"]["effect_id"]
-            )
+            await store.start_operator_handoff_dispatch(reserved["effect"]["effect_id"])
     finally:
         await store.close()
 
@@ -897,9 +889,7 @@ async def test_handoff_rejects_same_vendor_thread_without_partial_receipts(tmp_p
         goal, source, target = await _seed(store)
         await store.db.execute("DELETE FROM sessions WHERE id = ?", (target.id,))
         await store.db.commit()
-        target = target.model_copy(
-            update={"vendor_session_id": source.vendor_session_id}
-        )
+        target = target.model_copy(update={"vendor_session_id": source.vendor_session_id})
         await store.upsert_session(target)
         item, bundle, event, intervention = _artifacts(goal, source, target)
         await store.add_context(item)
@@ -951,10 +941,7 @@ async def test_handoff_canonical_projection_accepts_typed_nonlexical_aliases(tmp
             legacy_project_id=target_project,
             locator=locator,
         )
-        assert (
-            source_registration["identity"].id
-            == target_registration["identity"].id
-        )
+        assert source_registration["identity"].id == target_registration["identity"].id
 
         now = datetime.now(UTC)
         goal = Goal(

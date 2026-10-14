@@ -51,18 +51,17 @@ def test_credential_audience_changes_for_every_routing_boundary():
         protocol="openai",
         base_url="https://one.example.invalid/v1",
     )
-    assert base.credential_audience() == base.model_copy(
-        update={"model_id": "model-b"}
-    ).credential_audience()
+    assert (
+        base.credential_audience()
+        == base.model_copy(update={"model_id": "model-b"}).credential_audience()
+    )
     for update in (
         {"provider": "openrouter"},
         {"auth_mode": "api_key"},
         {"protocol": "anthropic"},
         {"base_url": "https://two.example.invalid/v1"},
     ):
-        assert base.credential_audience() != base.model_copy(
-            update=update
-        ).credential_audience()
+        assert base.credential_audience() != base.model_copy(update=update).credential_audience()
 
 
 def test_load_migrates_original_two_field_choice_without_inventing_a_secret(tmp_path):

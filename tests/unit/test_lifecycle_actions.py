@@ -144,10 +144,7 @@ async def test_synthetic_start_stop_and_fork_are_real_and_durable(tmp_path):
         assert created.metadata["lifecycle_parent_session_id"] == source.id
         assert adapters.synthetic.inbox[started_id] == ["Run the bounded offline probe."]
 
-        assert (
-            await executor._stop_agent(created, adapters.synthetic)
-            == "agent_stopped"
-        )
+        assert await executor._stop_agent(created, adapters.synthetic) == "agent_stopped"
         stopped = await store.get_session(started_id)
         assert stopped is not None
         assert stopped.status == SessionStatus.STOPPED
@@ -166,9 +163,7 @@ async def test_synthetic_start_stop_and_fork_are_real_and_durable(tmp_path):
         assert child.metadata["probe"] is True
         assert "Investigate one isolated hypothesis" in adapters.synthetic.inbox[child_id][0]
 
-        mismatched_bundle = _bundle(source.id).model_copy(
-            update={"goal_id": "other-goal"}
-        )
+        mismatched_bundle = _bundle(source.id).model_copy(update={"goal_id": "other-goal"})
         mismatch = _action(
             InterventionType.FORK_PROBE,
             source.id,
@@ -234,8 +229,7 @@ async def test_lifecycle_reprobes_and_rejects_stale_capability(tmp_path, monkeyp
             {"project": str(tmp_path), "prompt": "Do not run.", "config": {}},
         )
         assert (
-            await _execute_granted_lifecycle(store, executor, action)
-            == "agent_start_unsupported"
+            await _execute_granted_lifecycle(store, executor, action) == "agent_start_unsupported"
         )
         assert len(adapters.synthetic.sessions) == 1
         stored = await store.get_session(source.id)
@@ -353,16 +347,19 @@ async def test_raw_cleanup_restore_is_rejected_before_registry_or_filesystem_io(
             raise AssertionError("raw restore must not inspect an unbound resource")
 
         monkeypatch.setattr(store, "get_lifecycle_resource", poisoned_resource_lookup)
-        assert await executor.restore_cleanup(
-            source.id,
-            [
-                {
-                    "resource_id": "resource_untrusted",
-                    "original_path": str(tmp_path / "original"),
-                    "quarantine_path": str(tmp_path / "quarantine"),
-                }
-            ],
-        ) == "cleanup_restore_reservation_required"
+        assert (
+            await executor.restore_cleanup(
+                source.id,
+                [
+                    {
+                        "resource_id": "resource_untrusted",
+                        "original_path": str(tmp_path / "original"),
+                        "quarantine_path": str(tmp_path / "quarantine"),
+                    }
+                ],
+            )
+            == "cleanup_restore_reservation_required"
+        )
         assert registry_calls == 0
         assert not (tmp_path / "original").exists()
         assert not (tmp_path / "quarantine").exists()
@@ -468,9 +465,7 @@ async def test_durable_lifecycle_grant_rejects_project_rebind_before_any_io(
                 "config": {"goal_id": "goal-1"},
             },
             InterventionType.STOP_AGENT: {},
-            InterventionType.FORK_PROBE: {
-                "bundle": _bundle(source.id).model_dump(mode="json")
-            },
+            InterventionType.FORK_PROBE: {"bundle": _bundle(source.id).model_dump(mode="json")},
             InterventionType.CLEANUP: {
                 "mode": "quarantine",
                 "resource_ids": ["resource_must_not_be_read"],
@@ -558,10 +553,7 @@ async def test_executor_rejects_missing_permission_decision_before_adapter_io(tm
             source.id,
             {"request_id": "permission-1"},
         )
-        assert (
-            await executor.execute(action, PolicyVerdict.ALLOW)
-            == "permission_invalid_decision"
-        )
+        assert await executor.execute(action, PolicyVerdict.ALLOW) == "permission_invalid_decision"
         assert adapters.synthetic.permissions.get(source.id, []) == []
     finally:
         await store.close()
@@ -593,10 +585,7 @@ async def test_executor_rejects_misdirected_handoff_bundle_before_worker_io(tmp_
             source.id,
             {"bundle": bundle.model_dump(mode="json")},
         )
-        assert (
-            await executor.execute(action, PolicyVerdict.ALLOW)
-            == "handoff_context_mismatch"
-        )
+        assert await executor.execute(action, PolicyVerdict.ALLOW) == "handoff_context_mismatch"
         assert adapters.synthetic.inbox[source.id] == []
     finally:
         await store.close()
@@ -766,7 +755,10 @@ async def test_worker_delivery_calls_are_bounded(
     ],
 )
 async def test_executor_rejects_empty_worker_text_before_adapter_io(
-    tmp_path, monkeypatch, kind, expected,
+    tmp_path,
+    monkeypatch,
+    kind,
+    expected,
 ):
     store, adapters, source, executor = await _runtime(tmp_path)
     worker_io = AsyncMock(side_effect=AssertionError("empty text reached worker adapter"))
@@ -784,17 +776,15 @@ async def test_executor_rejects_empty_worker_text_before_adapter_io(
 
 @pytest.mark.asyncio
 async def test_executor_rejects_non_string_worker_text_before_adapter_io(
-    tmp_path, monkeypatch,
+    tmp_path,
+    monkeypatch,
 ):
     store, adapters, source, executor = await _runtime(tmp_path)
     worker_io = AsyncMock(side_effect=AssertionError("invalid text reached worker adapter"))
     monkeypatch.setattr(adapters.synthetic, "send_message", worker_io)
     try:
         action = _action(InterventionType.SEND_NUDGE, source.id, {"text": 7})
-        assert (
-            await executor.execute(action, PolicyVerdict.ALLOW)
-            == "worker_action_text_invalid"
-        )
+        assert await executor.execute(action, PolicyVerdict.ALLOW) == "worker_action_text_invalid"
         worker_io.assert_not_awaited()
     finally:
         await store.close()
@@ -852,8 +842,7 @@ async def test_start_rejects_cross_goal_config_before_adapter_io(tmp_path, monke
             },
         )
         assert (
-            await _execute_granted_lifecycle(store, executor, action)
-            == "agent_start_goal_mismatch"
+            await _execute_granted_lifecycle(store, executor, action) == "agent_start_goal_mismatch"
         )
         assert len(adapters.synthetic.sessions) == 1
         assert probe_calls == 0
@@ -921,24 +910,30 @@ async def test_cleanup_only_quarantines_registered_pex_owned_child(tmp_path):
         source.status = SessionStatus.STOPPED
         await store.upsert_session(source)
         intervention_id = await _reserve_lifecycle_dispatch(store, action)
-        assert await executor.execute(
-            action,
-            PolicyVerdict.ALLOW,
-            human_authorized=True,
-            lifecycle_resolution_id=intervention_id,
-        ) == "cleanup_reservation_refused"
+        assert (
+            await executor.execute(
+                action,
+                PolicyVerdict.ALLOW,
+                human_authorized=True,
+                lifecycle_resolution_id=intervention_id,
+            )
+            == "cleanup_reservation_refused"
+        )
         await store.mark_lifecycle_resource_cleanup_ready(
             resource_id=resource["id"],
             session_id=source.id,
             evidence=["source_session_stopped", "scratch_probe_expired"],
         )
         original_action = action.model_dump(mode="json")
-        assert await executor.execute(
-            action,
-            PolicyVerdict.ALLOW,
-            human_authorized=True,
-            lifecycle_resolution_id=intervention_id,
-        ) == "cleanup_quarantined:1"
+        assert (
+            await executor.execute(
+                action,
+                PolicyVerdict.ALLOW,
+                human_authorized=True,
+                lifecycle_resolution_id=intervention_id,
+            )
+            == "cleanup_quarantined:1"
+        )
         assert action.model_dump(mode="json") == original_action
         assert not scratch.exists()
         stored = await store.get_lifecycle_resource(resource["id"])
@@ -982,11 +977,14 @@ async def test_cleanup_refuses_raw_or_unregistered_targets_without_moving_them(t
             source.id,
             {"mode": "quarantine", "paths": [str(untouched)]},
         )
-        assert await _execute_granted_lifecycle(
-            store,
-            executor,
-            raw_path,
-        ) == "cleanup_reservation_refused"
+        assert (
+            await _execute_granted_lifecycle(
+                store,
+                executor,
+                raw_path,
+            )
+            == "cleanup_reservation_refused"
+        )
         unknown = _action(
             InterventionType.CLEANUP,
             source.id,
@@ -1033,6 +1031,7 @@ async def test_cleanup_reports_uncertainty_when_finalization_persistence_fails(
             session_id=source.id,
             evidence=["source_session_stopped", "scratch_probe_expired"],
         )
+
         async def fail_finalization(*_args, **_kwargs):
             raise RuntimeError("simulated final operation persistence failure")
 

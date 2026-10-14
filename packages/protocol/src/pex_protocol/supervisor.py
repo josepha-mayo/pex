@@ -117,9 +117,7 @@ class SupervisorContextItem(BaseModel):
     def validate_validity(self) -> Self:
         _aware(self.valid_from, label="supervisor context valid_from")
         if self.verified and self.provenance not in {SourceKind.TEST, SourceKind.WORKSPACE}:
-            raise ValueError(
-                "verified supervisor context requires test or workspace provenance"
-            )
+            raise ValueError("verified supervisor context requires test or workspace provenance")
         if self.stale_after is not None:
             _aware(self.stale_after, label="supervisor context stale_after")
             if self.stale_after <= self.valid_from:
@@ -134,7 +132,8 @@ class SupervisorDecisionItem(BaseModel):
 
     id: _ContextId
     kind: Literal["decision", "rejected_approach", "unresolved_question"] = Field(
-        default="decision", exclude_if=lambda value: value == "decision",
+        default="decision",
+        exclude_if=lambda value: value == "decision",
     )
     goal_id: str = Field(min_length=1, max_length=512)
     statement: str = Field(min_length=1, max_length=2_000)
@@ -145,7 +144,9 @@ class SupervisorDecisionItem(BaseModel):
         Field(default_factory=tuple, max_length=12)
     )
     alternatives_rejected_truncated: bool = Field(
-        default=False, strict=True, exclude_if=lambda value: not value,
+        default=False,
+        strict=True,
+        exclude_if=lambda value: not value,
     )
     scope: str = Field(default="", max_length=500)
     scope_truncated: bool = Field(default=False, strict=True)
@@ -270,7 +271,9 @@ class SupervisorRequest(BaseModel):
     autonomy: Literal["observe", "assist", "nudge", "manage", "autopilot"] = "manage"
     # Omit the inactive extension so historical request/evidence digests survive.
     trajectory_review_enabled: bool = Field(
-        default=False, strict=True, exclude_if=lambda value: not value,
+        default=False,
+        strict=True,
+        exclude_if=lambda value: not value,
     )
     notes: str = Field(default="", max_length=65_536)
 
@@ -460,9 +463,7 @@ def validate_evidence_observation_bindings(
         if observation.observation_id in ids:
             raise ValueError("evidence observation identifiers must be unique")
         ids.add(observation.observation_id)
-        total_bytes += len(
-            observation.model_dump_json().encode("utf-8")
-        )
+        total_bytes += len(observation.model_dump_json().encode("utf-8"))
         if (
             observation.stage != stage
             or observation.request_digest != request_digest
@@ -569,9 +570,7 @@ class SupervisorResult(BaseModel):
     # for proof that a provider accepted a request.
     inference_request_id: str | None = None
     local_invocation_id: str | None = None
-    inference_status: Literal["not_attempted", "completed", "failed", "timeout"] = (
-        "not_attempted"
-    )
+    inference_status: Literal["not_attempted", "completed", "failed", "timeout"] = "not_attempted"
     model_call_count: int = Field(default=0, ge=0)
     runtime: str | None = None
     runtime_version: str | None = None

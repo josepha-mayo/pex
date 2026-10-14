@@ -26,9 +26,7 @@ def _capture(root: Path) -> dict:
     }
 
 
-def _pair(
-    tmp_path: Path, scenario: str = "false-test-claim"
-) -> tuple[Path, Path]:
+def _pair(tmp_path: Path, scenario: str = "false-test-claim") -> tuple[Path, Path]:
     baseline, treatment = tmp_path / "baseline", tmp_path / "treatment"
     for root in (baseline, treatment):
         (root / "workspace").mkdir(parents=True)
@@ -39,47 +37,69 @@ def _pair(
             path = root / name
             path.write_text(name, encoding="utf-8")
     base_receipt = {
-        "arm": "baseline", "pex_attached": False, "scenario": scenario,
-        "worker_model": "free-model", "worker_provider": "opencode",
+        "arm": "baseline",
+        "pex_attached": False,
+        "scenario": scenario,
+        "worker_model": "free-model",
+        "worker_provider": "opencode",
         "worker_credential_source": "separate_environment",
-        "worker_completed": True, "followup_count": 0, "event_count": 1,
+        "worker_completed": True,
+        "followup_count": 0,
+        "event_count": 1,
         "first_stop_observation": {
             "independent_initial_pytest": {"exit_code": 1},
-            "stage_exact": True, "final_absent": True,
+            "stage_exact": True,
+            "final_absent": True,
         },
         "independent_final_pytest": {"exit_code": 1},
-        "stage_one_exact": True, "final_exact": False,
+        "stage_one_exact": True,
+        "final_exact": False,
         "raw_sse_capture": _capture(baseline),
     }
     treatment_receipt = {
-        "schema": "pex.live-opencode-recovery.v2", "scenario": scenario,
-        "worker_model": "free-model", "event_count": 1,
+        "schema": "pex.live-opencode-recovery.v2",
+        "scenario": scenario,
+        "worker_model": "free-model",
+        "event_count": 1,
         "all_observed_events_settled": True,
         "all_semantic_reviews_completed": True,
         "latest_completed_generation": "generation-1",
         "first_stop_observation": {
             "false_test_claim_observed": True,
             "independent_initial_pytest": {"exit_code": 1},
-            "stage_exact": True, "final_absent": True,
+            "stage_exact": True,
+            "final_absent": True,
         },
         "independent_final_pytest": {"exit_code": 0},
-        "stage_one_exact": True, "final_exact": True,
+        "stage_one_exact": True,
+        "final_exact": True,
         "raw_sse_capture": _capture(treatment),
     }
-    _write_json(baseline / "summary.json", {
-        "source_commit": "same-commit", "source_unchanged": True,
-        "owned_server_exited": True, "error_type": None,
-        "measurement_valid": True, "receipt": base_receipt,
-        "worker_executable_sha256": "a" * 64,
-    })
-    _write_json(treatment / "summary.json", {
-        "source_commit": "same-commit", "source_unchanged": True,
-        "owned_server_exited": True, "error_type": None,
-        "worker_provider": "opencode",
-        "worker_credential_source": "separate_environment",
-        "worker_executable_sha256": "a" * 64,
-        "receipt": treatment_receipt,
-    })
+    _write_json(
+        baseline / "summary.json",
+        {
+            "source_commit": "same-commit",
+            "source_unchanged": True,
+            "owned_server_exited": True,
+            "error_type": None,
+            "measurement_valid": True,
+            "receipt": base_receipt,
+            "worker_executable_sha256": "a" * 64,
+        },
+    )
+    _write_json(
+        treatment / "summary.json",
+        {
+            "source_commit": "same-commit",
+            "source_unchanged": True,
+            "owned_server_exited": True,
+            "error_type": None,
+            "worker_provider": "opencode",
+            "worker_credential_source": "separate_environment",
+            "worker_executable_sha256": "a" * 64,
+            "receipt": treatment_receipt,
+        },
+    )
     _write_json(treatment / "events.json", [{}])
     _write_json(treatment / "journal.json", [{}])
     _write_json(treatment / "interventions.json", [])
@@ -144,13 +164,15 @@ def test_deterministic_pair_requires_zero_model_calls_and_reports_its_mode(tmp_p
     path = treatment / "summary.json"
     summary = json.loads(path.read_text(encoding="utf-8"))
     receipt = summary["receipt"]
-    receipt.update({
-        "pex_mode": "deterministic",
-        "all_semantic_reviews_completed": None,
-        "all_no_model_reviews_completed": True,
-        "supervisor_model": "disabled",
-        "model_call_count": 0,
-    })
+    receipt.update(
+        {
+            "pex_mode": "deterministic",
+            "all_semantic_reviews_completed": None,
+            "all_no_model_reviews_completed": True,
+            "supervisor_model": "disabled",
+            "model_call_count": 0,
+        }
+    )
     _write_json(path, summary)
 
     report = build_report(baseline, treatment)

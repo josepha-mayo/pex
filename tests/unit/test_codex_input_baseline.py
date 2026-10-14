@@ -19,13 +19,19 @@ def user(item_id="human-1", value="Original instruction", client=None):
 
 
 def turn(items=None, **fields):
-    return {"id": "turn-1", "status": "completed", "itemsView": "full",
-            "items": [user()] if items is None else items, **fields}
+    return {
+        "id": "turn-1",
+        "status": "completed",
+        "itemsView": "full",
+        "items": [user()] if items is None else items,
+        **fields,
+    }
 
 
 async def selected(tmp_path, turns=None, **thread_fields):
-    response = _thread_response(tmp_path, turns=[turn()] if turns is None else turns,
-                                thread_update=thread_fields)
+    response = _thread_response(
+        tmp_path, turns=[turn()] if turns is None else turns, thread_update=thread_fields
+    )
     transport = FakeSharedTransport([response], {})
     return await _inspect(CodexExistingThreadSubscription(transport), tmp_path)
 
@@ -37,13 +43,22 @@ def index(snapshot, *, correction=False):
         raw["correction"].update(session_id=snapshot.pex_session_id, thread_id=snapshot.thread_id)
         records = (canonical(raw),)
     return CodexInputProvenance.from_store_records(
-        records, session_id=snapshot.pex_session_id, thread_id=snapshot.thread_id,
+        records,
+        session_id=snapshot.pex_session_id,
+        thread_id=snapshot.thread_id,
     )
 
 
 def entries(raw, turn_id="turn-1"):
-    return [{"turn_id": turn_id, "item_id": value["id"],
-             "client_id": value["clientId"], "content": value["content"]} for value in raw]
+    return [
+        {
+            "turn_id": turn_id,
+            "item_id": value["id"],
+            "client_id": value["clientId"],
+            "content": value["content"],
+        }
+        for value in raw
+    ]
 
 
 @pytest.mark.asyncio
@@ -77,10 +92,17 @@ async def test_empty_history_and_active_observation_do_not_require_dispatch_capa
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("change", [
-    {"itemsView": "summary"}, {"status": "future"}, {"truncated": 1},
-    {"hasMore": "false"}, {"redacted": True}, {"content_status": "partial"},
-])
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"itemsView": "summary"},
+        {"status": "future"},
+        {"truncated": 1},
+        {"hasMore": "false"},
+        {"redacted": True},
+        {"content_status": "partial"},
+    ],
+)
 async def test_incomplete_seed_never_becomes_empty_complete_authority(tmp_path, change):
     seed = await selected(tmp_path, [turn(**change)])
     ledger = CodexInputBaseline.from_selected(seed, index(seed))
@@ -91,10 +113,14 @@ async def test_incomplete_seed_never_becomes_empty_complete_authority(tmp_path, 
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("item", [
-    {"type": "futureInput", "id": "unknown"}, {"type": "", "id": "unknown"},
-    {"type": "reasoning", "id": "unknown", "truncated": "false"},
-])
+@pytest.mark.parametrize(
+    "item",
+    [
+        {"type": "futureInput", "id": "unknown"},
+        {"type": "", "id": "unknown"},
+        {"type": "reasoning", "id": "unknown", "truncated": "false"},
+    ],
+)
 async def test_unknown_or_incomplete_nonuser_history_refuses_digest(tmp_path, item):
     seed = await selected(tmp_path, [turn([item])])
     assert not CodexInputBaseline.from_selected(seed, index(seed)).snapshot().complete
@@ -141,9 +167,17 @@ async def test_pending_completion_resolves_in_original_order_and_freezes_prefix(
     ledger.observe_item(turn_id="turn-1", item=user("second"), completed=True)
     final = ledger.observe_item(turn_id="turn-1", item=user("first", "complete"), completed=True)
     assert final.complete and final.pending_count == 0 and final.revision == 3
-    assert final.digest == provenance.external_snapshot(entries([
-        user("first", "complete"), user("second"),
-    ])).digest
+    assert (
+        final.digest
+        == provenance.external_snapshot(
+            entries(
+                [
+                    user("first", "complete"),
+                    user("second"),
+                ]
+            )
+        ).digest
+    )
     assert first.digest is None
     pending["content"][0]["text"] = "caller mutation"
     assert ledger.snapshot() == final
@@ -172,7 +206,9 @@ async def test_own_echo_pending_exact_conflict_and_multiplicity(tmp_path):
     assert not ledger.observe_item(turn_id="turn-1", item=duplicate, completed=True).complete
     mismatch = CodexInputBaseline.from_selected(seed, provenance)
     result = mismatch.observe_item(
-        turn_id="turn-1", item={**own, "content": text("forged")}, completed=True,
+        turn_id="turn-1",
+        item={**own, "content": text("forged")},
+        completed=True,
     )
     assert not result.complete and result.external_count == 0
 
@@ -186,15 +222,22 @@ async def test_later_reconciled_history_never_backfills_earlier_event_baseline(t
     later_history = provenance.external_snapshot(entries([user(), user("new-human", "new intent")]))
     assert event_prefix.complete and event_prefix.digest != later_history.digest
     live = ledger.observe_item(
-        turn_id="turn-1", item=user("new-human", "new intent"), completed=True,
+        turn_id="turn-1",
+        item=user("new-human", "new intent"),
+        completed=True,
     )
     assert live.digest == later_history.digest and event_prefix.revision == 0
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("bound,value", [
-    ("MAX_INPUTS", 1), ("MAX_INPUT_BYTES", 1), ("MAX_ITEM_BYTES", 1),
-])
+@pytest.mark.parametrize(
+    "bound,value",
+    [
+        ("MAX_INPUTS", 1),
+        ("MAX_INPUT_BYTES", 1),
+        ("MAX_ITEM_BYTES", 1),
+    ],
+)
 async def test_bounds_fail_closed_without_partial_digest(tmp_path, monkeypatch, bound, value):
     seed = await selected(tmp_path, [])
     ledger = CodexInputBaseline.from_selected(seed, index(seed))
@@ -210,11 +253,18 @@ async def test_known_noninput_ignored_but_unknown_live_type_is_sticky_gap(tmp_pa
     seed = await selected(tmp_path)
     ledger = CodexInputBaseline.from_selected(seed, index(seed))
     first = ledger.snapshot()
-    assert ledger.observe_item(
-        turn_id="turn-1", item={"id": "a", "type": "agentMessage"}, completed=True,
-    ) == first
+    assert (
+        ledger.observe_item(
+            turn_id="turn-1",
+            item={"id": "a", "type": "agentMessage"},
+            completed=True,
+        )
+        == first
+    )
     result = ledger.observe_item(
-        turn_id="turn-1", item={"id": "b", "type": "futureUser"}, completed=True,
+        turn_id="turn-1",
+        item={"id": "b", "type": "futureUser"},
+        completed=True,
     )
     assert not result.complete and result.reason == "live_input_identity_unknown"
 

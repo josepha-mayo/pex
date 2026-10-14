@@ -24,9 +24,7 @@ def test_human_decision_request_is_frozen_closed_and_bounded():
     with pytest.raises(ValidationError, match="frozen"):
         request.question = "changed"
     with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
-        HumanDecisionRequest.model_validate(
-            {**request.model_dump(mode="json"), "unexpected": True}
-        )
+        HumanDecisionRequest.model_validate({**request.model_dump(mode="json"), "unexpected": True})
 
 
 @pytest.mark.parametrize(

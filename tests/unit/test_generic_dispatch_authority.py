@@ -24,9 +24,7 @@ async def planned(tmp_path):
 
 
 async def _claim(store, event):
-    return await store.claim_main_event_effect(
-        event_id=event.event_id, owner="authority-review"
-    )
+    return await store.claim_main_event_effect(event_id=event.event_id, owner="authority-review")
 
 
 async def _assert_denied(store, event, reason):
@@ -71,7 +69,9 @@ async def test_ledger_only_edit_invalidates_older_action(planned, clear_again):
     assert changed.after_intent_revision == before["intent_revision"] + 1
     if clear_again:
         restored = await store.patch_goal_with_ledger_receipt(
-            original, original, [],
+            original,
+            original,
+            [],
             replace_ledger_kinds=frozenset({"decision"}),
             expected_intent_revision=changed.after_intent_revision,
         )
@@ -138,8 +138,7 @@ async def test_duplicate_acceptance_does_not_refresh_stale_authority(planned):
     replay = await store.accept_pipeline_event(event, session_snapshot=session)
     assert replay["created"] is False
     assert (
-        replay["processing"]["accepted_session_authority"]
-        == before["accepted_session_authority"]
+        replay["processing"]["accepted_session_authority"] == before["accepted_session_authority"]
     )
     await _assert_denied(store, event, "session_authority_changed_before_dispatch")
 

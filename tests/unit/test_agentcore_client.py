@@ -39,10 +39,7 @@ from pex_protocol.supervisor import (
 )
 from pydantic import ValidationError
 
-ARN = (
-    "arn:aws:bedrock-agentcore:eu-north-1:123456789012:"
-    "runtime/PexRuntime-ABCDEFGHIJ"
-)
+ARN = "arn:aws:bedrock-agentcore:eu-north-1:123456789012:runtime/PexRuntime-ABCDEFGHIJ"
 
 
 def _request(event_type: EventType = EventType.STOP) -> SupervisorRequest:
@@ -72,9 +69,7 @@ def _request(event_type: EventType = EventType.STOP) -> SupervisorRequest:
             r"C:\Users\JosephMayo\Projects\private-repo\src\report.txt "
             "Authorization: Bearer top-secret-token"
         ),
-        file_paths=[
-            r"C:\Users\JosephMayo\Projects\private-repo\src\report.txt"
-        ],
+        file_paths=[r"C:\Users\JosephMayo\Projects\private-repo\src\report.txt"],
         tool_input={"password": "should-never-leave"},
         process_state={"stdout": "raw process output"},
         metadata={"token": "should-never-leave"},
@@ -139,17 +134,26 @@ def _result(
 
 def _observation(request: SupervisorRequest, stage: str) -> SupervisorEvidenceObservation:
     observation_id = "pexobs_" + ("1" if stage == "main" else "2") * 32
-    output = json.dumps({
-        "pex_observation_id": observation_id,
-        "status": "supported",
-        "evidence": ["observed verification receipt"],
-    }, separators=(",", ":"))
+    output = json.dumps(
+        {
+            "pex_observation_id": observation_id,
+            "status": "supported",
+            "evidence": ["observed verification receipt"],
+        },
+        separators=(",", ":"),
+    )
     return SupervisorEvidenceObservation(
-        observation_id=observation_id, invocation_id=f"pexinv_{stage}_fixture",
-        stage=stage, request_digest=supervisor_request_digest(cloud_request(request)),
-        session_id=request.session.id, goal_id=request.goal.id,
-        event_id=request.event.event_id, observed_at=datetime.now(UTC),
-        tool_name="run_verification", arguments_json="{}", output=output,
+        observation_id=observation_id,
+        invocation_id=f"pexinv_{stage}_fixture",
+        stage=stage,
+        request_digest=supervisor_request_digest(cloud_request(request)),
+        session_id=request.session.id,
+        goal_id=request.goal.id,
+        event_id=request.event.event_id,
+        observed_at=datetime.now(UTC),
+        tool_name="run_verification",
+        arguments_json="{}",
+        output=output,
         output_sha256=hashlib.sha256(output.encode()).hexdigest(),
     )
 
@@ -239,7 +243,10 @@ def _settings(tmp_path: Path, mode: str = "agentcore") -> Settings:
 @pytest.mark.parametrize("paused", ["session", "goal"])
 @pytest.mark.parametrize("event_type", [EventType.STOP, EventType.PERMISSION_REQUEST])
 async def test_paused_router_never_infers_or_proposes_permission(
-    tmp_path, mode, paused, event_type,
+    tmp_path,
+    mode,
+    paused,
+    event_type,
 ):
     from pex_protocol.enums import EventPhase
 
@@ -360,9 +367,7 @@ async def test_agentcore_stale_runtime_action_without_verifier_receipt_is_noop(t
 
     assert result.action.type == InterventionType.NOOP
     assert result.action.payload == {}
-    assert result.action.evidence == [
-        "agentcore_verifier_contract:missing_receipt"
-    ]
+    assert result.action.evidence == ["agentcore_verifier_contract:missing_receipt"]
     assert result.inference_status == "completed"
     assert result.transport_status == "completed"
     assert result.independent_verifier is None
@@ -453,9 +458,7 @@ async def test_agentcore_verifier_receipt_requires_distinct_main_inference(
     result = await client.decide(request)
 
     assert result.action.type == InterventionType.NOOP
-    assert result.action.evidence == [
-        "agentcore_verifier_contract:missing_main_inference"
-    ]
+    assert result.action.evidence == ["agentcore_verifier_contract:missing_main_inference"]
     assert result.transport_status == "completed"
 
 
@@ -478,9 +481,7 @@ async def test_agentcore_runtime_cannot_approve_from_uncertain_verification_alon
     result = await client.decide(request)
 
     assert result.action.type == InterventionType.NOOP
-    assert result.action.evidence == [
-        "agentcore_verifier_contract:uncertain_evidence"
-    ]
+    assert result.action.evidence == ["agentcore_verifier_contract:uncertain_evidence"]
     assert result.independent_verifier is not None
     assert result.independent_verifier.approved is True
     assert result.transport_status == "completed"
@@ -594,9 +595,13 @@ async def test_remote_observation_must_match_exact_dispatched_request(tmp_path, 
     remote.independent_verifier = _approved_verifier_receipt(request)
     remote.model_call_count = 3
     receipt = remote if stage == "main" else remote.independent_verifier
-    receipt.evidence_observations = [receipt.evidence_observations[0].model_copy(update={
-        field: "f" * 64 if field == "request_digest" else "foreign-authority",
-    })]
+    receipt.evidence_observations = [
+        receipt.evidence_observations[0].model_copy(
+            update={
+                field: "f" * 64 if field == "request_digest" else "foreign-authority",
+            }
+        )
+    ]
     aws = FakeAwsClient(_aws_response(request, remote))
     client = AgentCoreSupervisorClient(_settings(tmp_path), client=aws)
     with pytest.raises(AgentCoreDeliveryUncertainError) as caught:
@@ -618,15 +623,25 @@ async def test_remote_exact_observations_are_rejected_not_rewritten(tmp_path, un
     elif unsafe == "bad_hash":
         remote.evidence_observations = [observation.model_copy(update={"output_sha256": "0" * 64})]
     else:
-        value = {"password": "not-for-a-model-123"} if unsafe == "secret" else {
-            "file": request.session.cwd + "\\report.txt",
-        }
+        value = (
+            {"password": "not-for-a-model-123"}
+            if unsafe == "secret"
+            else {
+                "file": request.session.cwd + "\\report.txt",
+            }
+        )
         output = json.dumps({"pex_observation_id": observation.observation_id, **value})
-        remote.evidence_observations = [observation.model_copy(update={
-            "output": output, "output_sha256": hashlib.sha256(output.encode()).hexdigest(),
-        })]
+        remote.evidence_observations = [
+            observation.model_copy(
+                update={
+                    "output": output,
+                    "output_sha256": hashlib.sha256(output.encode()).hexdigest(),
+                }
+            )
+        ]
     client = AgentCoreSupervisorClient(
-        _settings(tmp_path), client=FakeAwsClient(_aws_response(request, remote)),
+        _settings(tmp_path),
+        client=FakeAwsClient(_aws_response(request, remote)),
     )
     with pytest.raises(AgentCoreDeliveryUncertainError) as caught:
         await client.decide(request)
@@ -648,10 +663,13 @@ async def test_remote_observation_stages_have_distinct_safe_identity(tmp_path, i
     elif invalid == "shared_observation":
         shared_id = remote.evidence_observations[0].observation_id
         output = json.dumps({"pex_observation_id": shared_id, "status": "supported"})
-        observation = observation.model_copy(update={
-            "observation_id": shared_id, "output": output,
-            "output_sha256": hashlib.sha256(output.encode()).hexdigest(),
-        })
+        observation = observation.model_copy(
+            update={
+                "observation_id": shared_id,
+                "output": output,
+                "output_sha256": hashlib.sha256(output.encode()).hexdigest(),
+            }
+        )
         verifier.evidence_refs = [shared_id]
     else:
         observation = observation.model_copy(update={"tool_name": "password=private-value"})
@@ -668,14 +686,16 @@ async def test_remote_observation_stages_have_distinct_safe_identity(tmp_path, i
 async def test_remote_tool_names_cannot_disguise_uncertain_verification_only(tmp_path):
     request = _request()
     request.scores.features["verification"] = {
-        "status": "uncertain", "acceptance_status": "uncertain",
+        "status": "uncertain",
+        "acceptance_status": "uncertain",
     }
     remote = _remote_nudge(request)
     remote.independent_verifier = _approved_verifier_receipt(request)
     remote.independent_verifier.evidence_tools = ["run_verification", "get_recent_events"]
     remote.model_call_count = 3
     client = AgentCoreSupervisorClient(
-        _settings(tmp_path), client=FakeAwsClient(_aws_response(request, remote)),
+        _settings(tmp_path),
+        client=FakeAwsClient(_aws_response(request, remote)),
     )
     result = await client.decide(request)
     assert result.action.type == InterventionType.NOOP
@@ -695,7 +715,12 @@ async def test_remote_tool_names_cannot_disguise_uncertain_verification_only(tmp
     ],
 )
 async def test_every_remote_intervention_requires_completed_main_inference(
-    tmp_path, event_type, inference_status, used_llm, model_call_count, reason,
+    tmp_path,
+    event_type,
+    inference_status,
+    used_llm,
+    model_call_count,
+    reason,
 ):
     request = _request()
     request.event.event_type = event_type
@@ -705,7 +730,8 @@ async def test_every_remote_intervention_requires_completed_main_inference(
     remote.used_llm = used_llm
     remote.model_call_count = model_call_count
     client = AgentCoreSupervisorClient(
-        _settings(tmp_path), client=FakeAwsClient(_aws_response(request, remote)),
+        _settings(tmp_path),
+        client=FakeAwsClient(_aws_response(request, remote)),
     )
     result = await client.decide(request)
     assert result.action.type == InterventionType.NOOP
@@ -722,7 +748,8 @@ async def test_remote_intervention_requires_main_observation_refs_too(tmp_path):
     remote.independent_verifier = _approved_verifier_receipt(request)
     remote.model_call_count = 3
     client = AgentCoreSupervisorClient(
-        _settings(tmp_path), client=FakeAwsClient(_aws_response(request, remote)),
+        _settings(tmp_path),
+        client=FakeAwsClient(_aws_response(request, remote)),
     )
     result = await client.decide(request)
     assert result.action.type == InterventionType.NOOP
@@ -776,9 +803,7 @@ def test_agentcore_boundary_recompacts_raw_workspace_evidence_before_cloud():
 
     encoded = request_envelope(request, max_bytes=262_144)
     rendered = encoded.decode("utf-8")
-    workspace = json.loads(rendered)["request"]["scores"]["features"][
-        "prefetched_evidence"
-    ]
+    workspace = json.loads(rendered)["request"]["scores"]["features"]["prefetched_evidence"]
 
     assert "RAW_ARTIFACT_CONTENT_MUST_NOT_LEAVE" not in rendered
     assert "RAW_GIT_DIFF_MUST_NOT_LEAVE" not in rendered
@@ -793,31 +818,38 @@ def test_agentcore_boundary_recompacts_raw_workspace_evidence_before_cloud():
     }
 
 
-@pytest.mark.parametrize("count,complete,expected", [
-    (27, True, 27),
-    (0, True, 0),
-    (27, False, None),
-    (27, "true", None),
-    (True, True, None),
-    (-1, True, None),
-    ("27", True, None),
-    (1 << 80, True, None),
-    (None, True, None),
-])
+@pytest.mark.parametrize(
+    "count,complete,expected",
+    [
+        (27, True, 27),
+        (0, True, 0),
+        (27, False, None),
+        (27, "true", None),
+        (True, True, None),
+        (-1, True, None),
+        ("27", True, None),
+        (1 << 80, True, None),
+        (None, True, None),
+    ],
+)
 def test_cloud_request_preserves_only_complete_exact_artifact_counts(count, complete, expected):
     request = _request()
     request.scores.features["prefetched_evidence"] = {
-        "artifacts": [{
-            "path": "results.jsonl", "bytes": 100,
-            "row_count": count, "row_count_complete": complete,
-            "tail": "PRIVATE_ARTIFACT_CONTENT",
-        }],
+        "artifacts": [
+            {
+                "path": "results.jsonl",
+                "bytes": 100,
+                "row_count": count,
+                "row_count_complete": complete,
+                "tail": "PRIVATE_ARTIFACT_CONTENT",
+            }
+        ],
     }
 
     encoded = request_envelope(request, max_bytes=262_144)
-    artifact = json.loads(encoded)["request"]["scores"]["features"][
-        "prefetched_evidence"
-    ]["artifacts"][0]
+    artifact = json.loads(encoded)["request"]["scores"]["features"]["prefetched_evidence"][
+        "artifacts"
+    ][0]
 
     assert artifact["row_count"] == expected
     assert artifact["row_count_complete"] is (expected is not None)
@@ -835,27 +867,34 @@ def test_local_artifact_reader_count_survives_cloud_request(tmp_path, valid):
     count, complete = artifact_row_count(artifact)
     request = _request()
     request.scores.features["prefetched_evidence"] = {
-        "artifacts": [{
-            "path": "results.jsonl", "bytes": artifact.stat().st_size,
-            "row_count": count, "row_count_complete": complete,
-        }],
+        "artifacts": [
+            {
+                "path": "results.jsonl",
+                "bytes": artifact.stat().st_size,
+                "row_count": count,
+                "row_count_complete": complete,
+            }
+        ],
     }
 
     encoded = request_envelope(request, max_bytes=262_144)
-    remote = json.loads(encoded)["request"]["scores"]["features"][
-        "prefetched_evidence"
-    ]["artifacts"][0]
+    remote = json.loads(encoded)["request"]["scores"]["features"]["prefetched_evidence"][
+        "artifacts"
+    ][0]
 
     assert remote["row_count"] == (27 if valid else None)
     assert remote["row_count_complete"] is valid
 
     remote_request = SupervisorRequest.model_validate(json.loads(encoded)["request"])
     collector = EvidenceObservationCollector(
-        remote_request, stage="main", invocation_id="artifact-count-fixture",
+        remote_request,
+        stage="main",
+        invocation_id="artifact-count-fixture",
     )
     used = []
     inspect = next(
-        tool for tool in build_evidence_tools(remote_request, used, collector=collector)
+        tool
+        for tool in build_evidence_tools(remote_request, used, collector=collector)
         if tool.tool_name == "inspect_workspace"
     )
     output = inspect()
@@ -867,17 +906,20 @@ def test_local_artifact_reader_count_survives_cloud_request(tmp_path, valid):
     assert collector.observations[0].request_digest == supervisor_request_digest(remote_request)
 
 
-@pytest.mark.parametrize("raw,expected", [
-    (None, False),
-    ({}, False),
-    ({"observed": False}, False),
-    ({"observed": True}, True),
-    ({"observed": "true"}, False),
-    ({"observed": 1}, False),
-    ({"error": "unavailable"}, False),
-    ({"observed": True, "error": "unavailable"}, False),
-    ({"files": [], "git": {"available": False}}, True),
-])
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        (None, False),
+        ({}, False),
+        ({"observed": False}, False),
+        ({"observed": True}, True),
+        ({"observed": "true"}, False),
+        ({"observed": 1}, False),
+        ({"error": "unavailable"}, False),
+        ({"observed": True, "error": "unavailable"}, False),
+        ({"files": [], "git": {"available": False}}, True),
+    ],
+)
 def test_workspace_compaction_does_not_invent_successful_observation(raw, expected):
     from pex_supervisor.evidence_observations import EvidenceObservationCollector
     from pex_supervisor.evidence_tools import build_evidence_tools
@@ -892,11 +934,14 @@ def test_workspace_compaction_does_not_invent_successful_observation(raw, expect
     remote = SupervisorRequest.model_validate(json.loads(envelope)["request"])
     assert remote.session.cwd is None
     collector = EvidenceObservationCollector(
-        remote, stage="main", invocation_id="workspace-observation-fixture",
+        remote,
+        stage="main",
+        invocation_id="workspace-observation-fixture",
     )
     used = []
     inspect = next(
-        tool for tool in build_evidence_tools(remote, used, collector=collector)
+        tool
+        for tool in build_evidence_tools(remote, used, collector=collector)
         if tool.tool_name == "inspect_workspace"
     )
     output = inspect()
@@ -914,9 +959,7 @@ def test_workspace_compaction_bounds_cycles_invalid_collections_and_large_number
         {
             "files": "not-a-file-list",
             "file_meta": 42,
-            "artifacts": [
-                {"path": "results.jsonl", "bytes": 10**5_000, "extra": cyclic}
-            ],
+            "artifacts": [{"path": "results.jsonl", "bytes": 10**5_000, "extra": cyclic}],
             "observed_file_count": -10,
             "git": {"changed_file_count": 10**5_000},
             "pytest": {"exit_code": 10**5_000},
@@ -930,11 +973,17 @@ def test_workspace_compaction_bounds_cycles_invalid_collections_and_large_number
     assert compacted["pytest"]["exit_code"] == (1 << 31) - 1
 
 
-@pytest.mark.parametrize("expected,observed", [
-    ("project_A", "project_a"), ("/work/Project", "/work/project"),
-    ("project", " project "), ("project", "project/"),
-    ("C:/work/straße", "c:/work/strasse"), ("c:/", "c:"),
-])
+@pytest.mark.parametrize(
+    "expected,observed",
+    [
+        ("project_A", "project_a"),
+        ("/work/Project", "/work/project"),
+        ("project", " project "),
+        ("project", "project/"),
+        ("C:/work/straße", "c:/work/strasse"),
+        ("c:/", "c:"),
+    ],
+)
 def test_cloud_request_keeps_opaque_and_posix_project_identities_distinct(expected, observed):
     request = _request()
     request.session.project_id = expected
@@ -963,9 +1012,7 @@ def test_agentcore_request_binding_normalizes_windows_project_spelling():
         ("session_exact", "wrong-goal"),
     ],
 )
-async def test_agentcore_client_rejects_cross_binding(
-    tmp_path, session_id, goal_id
-):
+async def test_agentcore_client_rejects_cross_binding(tmp_path, session_id, goal_id):
     request = _request()
     aws = FakeAwsClient(
         _aws_response(
@@ -989,9 +1036,7 @@ async def test_agentcore_client_rejects_cross_binding(
         {"runtimeSessionId": None},
     ],
 )
-async def test_agentcore_client_rejects_runtime_session_mismatch(
-    tmp_path, overrides
-):
+async def test_agentcore_client_rejects_runtime_session_mismatch(tmp_path, overrides):
     request = _request()
     aws = FakeAwsClient(_aws_response(request, _result(request), **overrides))
     client = AgentCoreSupervisorClient(_settings(tmp_path), client=aws)
@@ -1020,7 +1065,9 @@ async def test_agentcore_response_schema_version_is_an_exact_integer(tmp_path, v
 @pytest.mark.asyncio
 @pytest.mark.parametrize("opening,closing", [(b"[", b"]"), (b'{"x":', b"}")])
 async def test_agentcore_excessive_json_nesting_is_a_protocol_uncertain_result(
-    tmp_path, opening, closing,
+    tmp_path,
+    opening,
+    closing,
 ):
     request = _request()
     response = _aws_response(request, _result(request))
@@ -1091,9 +1138,7 @@ async def test_agentcore_client_rejects_non_json_and_oversized_response(tmp_path
     with pytest.raises(AgentCoreDeliveryUncertainError):
         await AgentCoreSupervisorClient(_settings(tmp_path), client=non_json).decide(request)
 
-    jsonp = FakeAwsClient(
-        _aws_response(request, _result(request), contentType="application/jsonp")
-    )
+    jsonp = FakeAwsClient(_aws_response(request, _result(request), contentType="application/jsonp"))
     with pytest.raises(AgentCoreDeliveryUncertainError):
         await AgentCoreSupervisorClient(_settings(tmp_path), client=jsonp).decide(request)
 
@@ -1117,9 +1162,9 @@ async def test_agentcore_client_rejects_non_json_and_oversized_response(tmp_path
         )
     )
     with pytest.raises(AgentCoreDeliveryUncertainError):
-        await AgentCoreSupervisorClient(
-            _settings(tmp_path), client=too_many_empty_chunks
-        ).decide(request)
+        await AgentCoreSupervisorClient(_settings(tmp_path), client=too_many_empty_chunks).decide(
+            request
+        )
 
     nonfinite = FakeAwsClient(
         _aws_response(
@@ -1139,9 +1184,7 @@ async def test_agentcore_client_rejects_non_json_and_oversized_response(tmp_path
 
     overflow_response = _aws_response(request, _result(request))
     overflow_body = overflow_response["response"].read()
-    overflow_response["response"] = io.BytesIO(
-        overflow_body[:-1] + b',"ignored":1e9999}'
-    )
+    overflow_response["response"] = io.BytesIO(overflow_body[:-1] + b',"ignored":1e9999}')
     with pytest.raises(AgentCoreDeliveryUncertainError) as caught:
         await AgentCoreSupervisorClient(
             _settings(tmp_path), client=FakeAwsClient(overflow_response)
@@ -1155,17 +1198,15 @@ async def test_agentcore_client_rejects_non_json_and_oversized_response(tmp_path
             response=io.BytesIO(
                 (
                     '{"schema_version":1,"invocation_id":"wrong",'
-                    '"invocation_id":"'
-                    + transport_invocation_id(request)
-                    + '","result":{}}'
+                    '"invocation_id":"' + transport_invocation_id(request) + '","result":{}}'
                 ).encode()
             ),
         )
     )
     with pytest.raises(AgentCoreDeliveryUncertainError):
-        await AgentCoreSupervisorClient(
-            _settings(tmp_path), client=duplicate_binding
-        ).decide(request)
+        await AgentCoreSupervisorClient(_settings(tmp_path), client=duplicate_binding).decide(
+            request
+        )
 
 
 @pytest.mark.asyncio
@@ -1280,9 +1321,7 @@ async def test_agentcore_predispatch_failure_defaults_to_noop(tmp_path, monkeypa
     assert local_calls == 0
     assert result.action.type == InterventionType.NOOP
     assert result.action.payload == {}
-    assert result.action.evidence == [
-        "agentcore_unavailable:AgentCorePreDispatchError"
-    ]
+    assert result.action.evidence == ["agentcore_unavailable:AgentCorePreDispatchError"]
     assert result.used_llm is False
     assert result.inference_status == "failed"
     assert result.execution_mode == "agentcore"
@@ -1332,9 +1371,7 @@ async def test_agentcore_invalid_configuration_defaults_to_bound_noop(tmp_path, 
     assert result.action.session_id == request.session.id
     assert result.action.goal_id == request.goal.id
     assert result.action.payload == {}
-    assert result.action.evidence == [
-        "agentcore_unavailable:AgentCoreConfigurationError"
-    ]
+    assert result.action.evidence == ["agentcore_unavailable:AgentCoreConfigurationError"]
     assert result.used_llm is False
     assert result.inference_status == "failed"
     assert result.execution_mode == "agentcore"
@@ -1360,9 +1397,7 @@ async def test_hybrid_configuration_fallback_is_explicit_and_valid_remote_noop_n
 
     monkeypatch.setattr("pex_bridge.agentcore.decide_async", local)
     failed_remote = FakeRemote(error=AgentCoreConfigurationError("runtime missing"))
-    hybrid = SupervisorRouter(
-        _settings(tmp_path, "hybrid"), agentcore_client=failed_remote
-    )
+    hybrid = SupervisorRouter(_settings(tmp_path, "hybrid"), agentcore_client=failed_remote)
     fallback = await hybrid.decide(request, local_model=object())
     assert fallback.execution_mode == "hybrid_local_fallback"
     assert fallback.transport_status == "failed"

@@ -726,9 +726,9 @@ async def test_acceptance_baseline_keys_cannot_collide_on_colons(tmp_path: Path)
         )
         assert first["sealed"] is True and second["sealed"] is True
         assert second["baseline"]["files"] == {}
-        assert (
-            await store.recall_acceptance_baseline("a:b", "c")
-        )["files"] == {"test_a.py": digest}
+        assert (await store.recall_acceptance_baseline("a:b", "c"))["files"] == {
+            "test_a.py": digest
+        }
         assert (await store.recall_acceptance_baseline("a", "b:c"))["files"] == {}
     finally:
         await store.close()

@@ -21,51 +21,89 @@ def attempt(tmp_path, monkeypatch):
     root = tmp_path / "experiment"
     profile = {"runtime_sha256": "a" * 64, "settings_sha256": "b" * 64}
     plan = paired_preparation.prepare_experiment(
-        root, run_id="grade-fixture", seed="fixed-fixture",
+        root,
+        run_id="grade-fixture",
+        seed="fixed-fixture",
         models={"codex": "pinned", "opencode": "pinned"},
         worker_fingerprints={"codex": profile, "opencode": profile},
     )
-    index = next(index for index, row in enumerate(plan["schedule"])
-                 if row["harness"] == "opencode" and row["condition"] == "baseline")
+    index = next(
+        index
+        for index, row in enumerate(plan["schedule"])
+        if row["harness"] == "opencode" and row["condition"] == "baseline"
+    )
     plan_path = root / "controller/plan.json"
     reservation = paired_preparation.reserve_attempt(
-        root, index=index, expected_plan_sha256=digest(plan_path),
+        root,
+        index=index,
+        expected_plan_sha256=digest(plan_path),
         worker_profile={"model": "pinned", **profile},
     )
     row = reservation["entry"]
     run = root / "controller" / ("run-" + row["workspace"])
     run.mkdir()
-    raw = b"\n".join(json.dumps({"type": kind, "sessionID": "vendor", "part": {
-        "sessionID": "vendor", "messageID": "message", **extra,
-    }}).encode() for kind, extra in (("step_start", {}), ("step_finish", {"reason": "stop"})))
-    stdout = json.dumps({
-        "schema": "pex.opencode-worker-output.v1", "turns": [{
-            "session_id": "vendor", "stdout_sha256": hashlib.sha256(raw).hexdigest(),
-            "stdout_bytes": len(raw), "jsonl_base64": base64.b64encode(raw).decode(),
-        }], "actions": [], "followups": [], "followup_limit_reached": False,
-    }).encode()
+    raw = b"\n".join(
+        json.dumps(
+            {
+                "type": kind,
+                "sessionID": "vendor",
+                "part": {
+                    "sessionID": "vendor",
+                    "messageID": "message",
+                    **extra,
+                },
+            }
+        ).encode()
+        for kind, extra in (("step_start", {}), ("step_finish", {"reason": "stop"}))
+    )
+    stdout = json.dumps(
+        {
+            "schema": "pex.opencode-worker-output.v1",
+            "turns": [
+                {
+                    "session_id": "vendor",
+                    "stdout_sha256": hashlib.sha256(raw).hexdigest(),
+                    "stdout_bytes": len(raw),
+                    "jsonl_base64": base64.b64encode(raw).decode(),
+                }
+            ],
+            "actions": [],
+            "followups": [],
+            "followup_limit_reached": False,
+        }
+    ).encode()
     (run / "stdout.json").write_bytes(stdout)
     (run / "stderr.txt").write_bytes(b"")
     workspace = root / "workers" / row["workspace"]
     outcome = {
-        "schema": "pex.opencode-attempt.v1", "status": "worker_completed_unscored",
-        "reservation": reservation, "presentation_eligible": False, "quality_measured": False,
-        "stdout_sha256": digest(run / "stdout.json"), "stderr_sha256": digest(run / "stderr.txt"),
+        "schema": "pex.opencode-attempt.v1",
+        "status": "worker_completed_unscored",
+        "reservation": reservation,
+        "presentation_eligible": False,
+        "quality_measured": False,
+        "stdout_sha256": digest(run / "stdout.json"),
+        "stderr_sha256": digest(run / "stderr.txt"),
         "workspace_snapshot_sha256": boundary.workspace_manifest_sha256(workspace, complete=True),
         "worker_observation": worker_observation(stdout, supervised=False, max_followups=0),
-        "model_attempts": [{"status": "completed"}], "review_attempts": [],
+        "model_attempts": [{"status": "completed"}],
+        "review_attempts": [],
     }
     write(run / "outcome.json", outcome)
     monkeypatch.setattr(paired_grading.sys, "platform", "linux")
     monkeypatch.setattr(paired_grading.evaluator.linux_sandbox, "_prefix", lambda _: [])
-    options = {"index": index, "expected_plan_sha256": digest(plan_path),
-               "expected_outcome_sha256": digest(run / "outcome.json")}
+    options = {
+        "index": index,
+        "expected_plan_sha256": digest(plan_path),
+        "expected_outcome_sha256": digest(run / "outcome.json"),
+    }
     return root, run, workspace, options
 
 
 @pytest.mark.parametrize("success", [True, False])
 def test_grade_records_real_check_result_without_promoting_eligibility(
-    attempt, monkeypatch, success,
+    attempt,
+    monkeypatch,
+    success,
 ):
     root, run, workspace, options = attempt
     calls = []
@@ -97,9 +135,13 @@ def test_grade_records_real_check_result_without_promoting_eligibility(
 @pytest.mark.parametrize("changed", ["plan", "outcome", "stdout", "stderr", "workspace"])
 def test_changed_completion_evidence_is_never_graded(attempt, monkeypatch, changed):
     root, run, workspace, options = attempt
-    paths = {"plan": root / "controller/plan.json", "outcome": run / "outcome.json",
-             "stdout": run / "stdout.json", "stderr": run / "stderr.txt",
-             "workspace": workspace / "TASK.md"}
+    paths = {
+        "plan": root / "controller/plan.json",
+        "outcome": run / "outcome.json",
+        "stdout": run / "stdout.json",
+        "stderr": run / "stderr.txt",
+        "workspace": workspace / "TASK.md",
+    }
     with paths[changed].open("ab") as handle:
         handle.write(b"changed")
 

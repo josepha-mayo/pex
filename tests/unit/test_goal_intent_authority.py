@@ -156,12 +156,15 @@ async def test_goal_mutation_receipts_are_transaction_frozen_and_compatibility_h
                 "updated_at": original.updated_at + timedelta(seconds=3),
             }
         )
-        assert await store.patch_goal_with_ledger(
-            first_update,
-            second_update,
-            [],
-            expected_intent_revision=2,
-        ) is None
+        assert (
+            await store.patch_goal_with_ledger(
+                first_update,
+                second_update,
+                [],
+                expected_intent_revision=2,
+            )
+            is None
+        )
         assert first.changed is True
         assert first.before_intent_revision == 1
         assert first.after_intent_revision == 2
@@ -325,9 +328,10 @@ async def test_retired_managed_goal_ledger_rows_are_append_only_and_immutable(tm
         await store.db.rollback()
 
         assert await store.get_context(retired_context.id) == retired_context
-        assert next(
-            item for item in await store.list_decisions(goal.id) if item.id == retired.id
-        ) == retired
+        assert (
+            next(item for item in await store.list_decisions(goal.id) if item.id == retired.id)
+            == retired
+        )
     finally:
         await store.close()
 
@@ -387,9 +391,7 @@ async def test_managed_goal_ledger_rejects_direct_rewrite_and_superseded_parent_
         await store.db.rollback()
 
         stored = next(
-            item
-            for item in await store.list_decisions(parent.id)
-            if item.id == decision.id
+            item for item in await store.list_decisions(parent.id) if item.id == decision.id
         )
         assert stored == decision
     finally:
@@ -478,14 +480,11 @@ async def test_legacy_successor_chain_preserves_unknown_revision_zero_lineage(tm
     await first.connect()
     await first.close()
     parent = _goal("goal-legacy-parent")
-    successor = _goal("goal-legacy-successor").model_copy(
-        update={"supersedes": parent.id}
-    )
+    successor = _goal("goal-legacy-successor").model_copy(update={"supersedes": parent.id})
     connection = sqlite3.connect(path)
     try:
         triggers = connection.execute(
-            "SELECT name FROM sqlite_master WHERE type = 'trigger' AND "
-            "name LIKE 'trg_goal%'"
+            "SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'trg_goal%'"
         ).fetchall()
         for (trigger,) in triggers:
             connection.execute(f"DROP TRIGGER IF EXISTS {trigger}")
@@ -571,9 +570,7 @@ async def test_prospective_goal_insert_trigger_enforces_revision_class(tmp_path)
             )
         await store.db.rollback()
 
-        successor = _goal("goal-trigger-successor").model_copy(
-            update={"supersedes": parent.id}
-        )
+        successor = _goal("goal-trigger-successor").model_copy(update={"supersedes": parent.id})
         with pytest.raises(sqlite3.IntegrityError, match="authority is required"):
             await store.db.execute(
                 "INSERT INTO goals(id, project_id, project_binding, intent_revision, "
@@ -637,9 +634,7 @@ async def test_partial_legacy_intent_pair_fails_reconnect_closed(tmp_path) -> No
 
     connection = sqlite3.connect(path)
     try:
-        connection.execute(
-            "DROP TRIGGER IF EXISTS trg_goals_intent_update"
-        )
+        connection.execute("DROP TRIGGER IF EXISTS trg_goals_intent_update")
         connection.execute(
             "UPDATE goals SET intent_hash = NULL WHERE id = ?",
             (goal.id,),
@@ -752,8 +747,7 @@ async def test_authority_loader_recomputes_hash_after_scalar_forgery(tmp_path) -
         goal = _goal("goal-forged-hash")
         await store.upsert_goal(goal)
         await store.db.execute(
-            "UPDATE goals SET intent_revision = intent_revision + 1, intent_hash = ? "
-            "WHERE id = ?",
+            "UPDATE goals SET intent_revision = intent_revision + 1, intent_hash = ? WHERE id = ?",
             ("0" * 64, goal.id),
         )
         await store.db.commit()

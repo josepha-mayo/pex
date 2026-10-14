@@ -244,18 +244,14 @@ def assess_context_health(
     instant = now or datetime.now(UTC)
     ordered = _ordered_events(events)
     forgotten = _forgotten_facts(ordered, items, _as_utc(instant))
-    compaction_count = sum(
-        1 for event in ordered if event.event_type == EventType.COMPACTION
-    )
+    compaction_count = sum(1 for event in ordered if event.event_type == EventType.COMPACTION)
     repeated_read_count = _repeated_reads(ordered)
     contradiction_count = _contradiction_count(items)
     stale_decision_count = _stale_decision_count(items, instant)
     token_utilization = _token_utilization(ordered)
     progress_events = sum(1 for event in ordered if event.event_type in _PROGRESS_EVENTS)
     context_n = len(items)
-    context_to_progress = (
-        round(progress_events / context_n, 4) if context_n else None
-    )
+    context_to_progress = round(progress_events / context_n, 4) if context_n else None
 
     score = 1.0
     score -= min(0.36, 0.12 * compaction_count)
@@ -268,11 +264,7 @@ def assess_context_health(
             score -= 0.15
         elif token_utilization >= 0.70:
             score -= 0.08
-    if (
-        context_to_progress is not None
-        and context_n >= 8
-        and context_to_progress < 0.25
-    ):
+    if context_to_progress is not None and context_n >= 8 and context_to_progress < 0.25:
         score -= 0.10
     score = round(max(0.0, min(1.0, score)), 4)
     degraded = score < 0.6 or bool(forgotten)

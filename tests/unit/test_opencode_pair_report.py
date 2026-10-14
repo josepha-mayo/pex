@@ -117,11 +117,17 @@ def test_pair_retains_completed_failures_and_separates_restraint_from_task_succe
     assert report["pairs"][0]["pex_diagnostic_passed"] is False
 
 
-@pytest.mark.parametrize("field,value", [
-    ("observation_incomplete", True), ("worker_completion_fence_passed", False),
-    ("infrastructure_abort_reason", "stream_gap"), ("all_pex_reviews_completed", False),
-    ("terminal_review_failed", True), ("wall_seconds", float("nan")),
-])
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("observation_incomplete", True),
+        ("worker_completion_fence_passed", False),
+        ("infrastructure_abort_reason", "stream_gap"),
+        ("all_pex_reviews_completed", False),
+        ("terminal_review_failed", True),
+        ("wall_seconds", float("nan")),
+    ],
+)
 def test_pair_rejects_incomplete_or_invalid_failure_evidence(tmp_path, field, value):
     baseline, treatment = write_pair(tmp_path)
     path = treatment / "summary.json"

@@ -23,7 +23,9 @@ _SECRET_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ),
     (
         "url_credentials",
-        re.compile(r"(?i)\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis)://[^\s/@:]+:[^\s/@]+@"),
+        re.compile(
+            r"(?i)\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis)://[^\s/@:]+:[^\s/@]+@"
+        ),
     ),
     (
         "private_key",
@@ -58,23 +60,26 @@ def _sensitive_key(key: str) -> bool:
     """Recognize snake, kebab, and camel-case secrets without hiding token metrics."""
 
     normalized = re.sub(r"[^a-z0-9]", "", key.casefold())
-    return normalized.endswith(
-        (
-            "apikey",
-            "authorization",
-            "credential",
-            "credentials",
-            "password",
-            "privatekey",
-            "clientsecret",
-            "secretkey",
-            "secretaccesskey",
-            "accesstoken",
-            "refreshtoken",
-            "sessiontoken",
-            "token",
+    return (
+        normalized.endswith(
+            (
+                "apikey",
+                "authorization",
+                "credential",
+                "credentials",
+                "password",
+                "privatekey",
+                "clientsecret",
+                "secretkey",
+                "secretaccesskey",
+                "accesstoken",
+                "refreshtoken",
+                "sessiontoken",
+                "token",
+            )
         )
-    ) or normalized == "secret"
+        or normalized == "secret"
+    )
 
 
 def redact_text(text: str | None) -> tuple[str | None, list[str]]:

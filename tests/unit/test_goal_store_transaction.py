@@ -247,16 +247,14 @@ async def test_concurrent_goal_supersedes_commit_exactly_one_successor(tmp_path)
             return_exceptions=True,
         )
         assert sum(not isinstance(result, BaseException) for result in results) == 1
-        assert sum(
-            isinstance(result, ValueError)
-            and "already been superseded" in str(result)
-            for result in results
-        ) == 1
-        successors = [
-            goal
-            for goal in await first.list_goals()
-            if goal.supersedes == original.id
-        ]
+        assert (
+            sum(
+                isinstance(result, ValueError) and "already been superseded" in str(result)
+                for result in results
+            )
+            == 1
+        )
+        successors = [goal for goal in await first.list_goals() if goal.supersedes == original.id]
         assert len(successors) == 1
     finally:
         await second.close()
@@ -471,9 +469,7 @@ async def test_supersede_ledger_collision_rolls_back_session_and_principal_chang
         assert await store.get_goal(replacement.id) is None
         assert await store.has_goal_successor(current.id) is False
         assert (await store.get_session(session.id)).goal_id == current.id
-        principal = await store.get_mcp_principal(
-            "principal-supersede-ledger-rollback"
-        )
+        principal = await store.get_mcp_principal("principal-supersede-ledger-rollback")
         assert principal is not None
         assert principal["revoked_at"] is None
         assert await store.list_decisions(replacement.id) == []

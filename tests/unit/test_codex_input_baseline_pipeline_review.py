@@ -31,12 +31,22 @@ SETTLE_TIMEOUT_SECONDS = 30
 @pytest.fixture(autouse=True)
 def actual_baseline_bootstrap(monkeypatch):
     """Give the existing bound fixture full selected history and its real Store loader."""
+
     async def subscribed(workspace):
-        response = _thread_response(workspace, turns=[{
-            "id": "turn-1", "status": "completed", "itemsView": "full", "items": [],
-        }])
+        response = _thread_response(
+            workspace,
+            turns=[
+                {
+                    "id": "turn-1",
+                    "status": "completed",
+                    "itemsView": "full",
+                    "items": [],
+                }
+            ],
+        )
         transport = FakeSharedTransport(
-            [response, response, response], _thread_response(workspace, include_turns=False),
+            [response, response, response],
+            _thread_response(workspace, include_turns=False),
         )
         coordinator = CodexExistingThreadSubscription(transport)
         selected = await _inspect(coordinator, workspace)
@@ -54,34 +64,58 @@ def actual_baseline_bootstrap(monkeypatch):
 
 
 def stop():
-    return _notification("turn/completed", {
-        "threadId": "thread-1", "turn": {"id": "turn-1", "status": "completed"},
-    })
+    return _notification(
+        "turn/completed",
+        {
+            "threadId": "thread-1",
+            "turn": {"id": "turn-1", "status": "completed"},
+        },
+    )
 
 
 def human():
-    return _notification("item/completed", {
-        "threadId": "thread-1", "turnId": "turn-1",
-        "item": {"id": "new-human", "type": "userMessage", "clientId": None,
-                 "content": [{"type": "text", "text": "New external instruction",
-                              "text_elements": []}]},
-    })
+    return _notification(
+        "item/completed",
+        {
+            "threadId": "thread-1",
+            "turnId": "turn-1",
+            "item": {
+                "id": "new-human",
+                "type": "userMessage",
+                "clientId": None,
+                "content": [
+                    {"type": "text", "text": "New external instruction", "text_elements": []}
+                ],
+            },
+        },
+    )
 
 
 async def events_settled(bound, count):
     async def wait():
         while True:
-            events = [event for event in await bound.store.recent_events(bound.adapter.session.id)
-                      if "pex_observer_snapshot" in event.metadata]
+            events = [
+                event
+                for event in await bound.store.recent_events(bound.adapter.session.id)
+                if "pex_observer_snapshot" in event.metadata
+            ]
             if len(events) >= count:
                 states = [
                     await bound.store.get_event_processing(event.event_id) for event in events
                 ]
-                if all(state and state["state"] in {
-                    "complete", "failed", "record_only_complete",
-                } for state in states):
+                if all(
+                    state
+                    and state["state"]
+                    in {
+                        "complete",
+                        "failed",
+                        "record_only_complete",
+                    }
+                    for state in states
+                ):
                     return sorted(events, key=lambda event: event.metadata["ingress_sequence"])
             await asyncio.sleep(0.01)
+
     return await asyncio.wait_for(wait(), SETTLE_TIMEOUT_SECONDS)
 
 
@@ -123,7 +157,8 @@ async def test_missing_frozen_sidecar_is_rejected_before_store_or_model(bound_pi
 
 
 async def test_later_input_during_model_await_cannot_mutate_accepted_stop(
-    bound_pipeline, monkeypatch,
+    bound_pipeline,
+    monkeypatch,
 ):
     bound = bound_pipeline
     await eventually(lambda: bound.adapter._input_baseline is not None)
@@ -208,7 +243,8 @@ def failed_ledger_bootstrap(monkeypatch):
 
 
 async def test_failed_ledger_after_store_load_never_normalizes_interrupted_prefix(
-    failed_ledger_bootstrap, bound_pipeline,
+    failed_ledger_bootstrap,
+    bound_pipeline,
 ):
     bound = bound_pipeline
     joining, release = failed_ledger_bootstrap
@@ -217,9 +253,12 @@ async def test_failed_ledger_after_store_load_never_normalizes_interrupted_prefi
         assert bound.adapter._input_provenance is not None
         assert bound.adapter._input_baseline is None
         assert not bound.adapter._input_bootstrap_complete
-        bound.transport.notifications.extend([
-            human(), _notification("thread/closed", {"threadId": "thread-1"}),
-        ])
+        bound.transport.notifications.extend(
+            [
+                human(),
+                _notification("thread/closed", {"threadId": "thread-1"}),
+            ]
+        )
         with pytest.raises(CodexObservationInterrupted):
             await bound.adapter.subscription.drain_live()
         assert len(bound.adapter.subscription.interrupted_batch.records) == 1

@@ -152,12 +152,9 @@ async def test_failed_jsonl_projection_remains_durable_and_is_repaired(tmp_path,
     await store.close()
 
     records = [
-        json.loads(line)
-        for line in store.audit_path.read_text(encoding="utf-8").splitlines()
+        json.loads(line) for line in store.audit_path.read_text(encoding="utf-8").splitlines()
     ]
-    assert [(row["audit_id"], row["record_type"]) for row in records] == [
-        (1, "created")
-    ]
+    assert [(row["audit_id"], row["record_type"]) for row in records] == [(1, "created")]
 
 
 @pytest.mark.asyncio
@@ -181,8 +178,7 @@ async def test_audit_projection_replay_is_idempotent_across_restart(tmp_path):
     await reopened.close()
 
     records = [
-        json.loads(line)
-        for line in reopened.audit_path.read_text(encoding="utf-8").splitlines()
+        json.loads(line) for line in reopened.audit_path.read_text(encoding="utf-8").splitlines()
     ]
     assert [(row["audit_id"], row["record_type"]) for row in records] == [
         (1, "created"),
@@ -228,9 +224,7 @@ async def test_intervention_ids_cannot_overwrite_or_create_through_update(tmp_pa
 
         saved = await store.get_intervention(original.id)
         assert saved == original
-        cursor = await store.db.execute(
-            "SELECT record_type FROM intervention_audit ORDER BY id"
-        )
+        cursor = await store.db.execute("SELECT record_type FROM intervention_audit ORDER BY id")
         assert [row["record_type"] for row in await cursor.fetchall()] == ["created"]
     finally:
         await store.close()
@@ -249,8 +243,7 @@ async def test_forged_jsonl_audit_id_cannot_suppress_durable_revision(tmp_path):
         await store.add_intervention(_intervention("int_real"))
 
         records = [
-            json.loads(line)
-            for line in store.audit_path.read_text(encoding="utf-8").splitlines()
+            json.loads(line) for line in store.audit_path.read_text(encoding="utf-8").splitlines()
         ]
         assert records[0] == {"audit_id": 1, "record_type": "forged"}
         assert records[-1]["audit_id"] == 1

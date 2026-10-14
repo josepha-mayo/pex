@@ -91,9 +91,7 @@ async def test_cursor_stop_followup_requires_exact_preparation_receipt():
 async def test_cursor_stop_discards_unverified_or_denied_pending_text(mutation, value):
     text = "Verify report.txt"
     adapter, session, preparation_receipt = await _queued_stop(text)
-    invalid = _receipt(session.id, text, preparation_receipt).model_copy(
-        update={mutation: value}
-    )
+    invalid = _receipt(session.id, text, preparation_receipt).model_copy(update={mutation: value})
     assert adapter.consume_verified_stop_followup(session, invalid) is None
     # A rejected receipt consumes the pending text; it cannot leak to a later stop.
     assert (

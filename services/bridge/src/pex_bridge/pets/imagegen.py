@@ -670,9 +670,7 @@ def generate_png(
             payload = _bounded_json_response(response)
         return _decode_image_payload(payload)
     except httpx.RequestError as exc:
-        raise HatchImageError(
-            f"image generate request failed ({type(exc).__name__})"
-        ) from None
+        raise HatchImageError(f"image generate request failed ({type(exc).__name__})") from None
     finally:
         if own:
             http.close()

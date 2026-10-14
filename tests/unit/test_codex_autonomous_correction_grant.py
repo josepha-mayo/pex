@@ -69,9 +69,7 @@ def _grant_arguments(status, *, enabled=True, key="autonomous-grant-0001"):
         "expected_goal_intent_hash": scope["goal_intent_hash"],
         "expected_project_binding": scope["project_binding"],
         "expected_workspace_sha256": scope["workspace_sha256"],
-        "expected_subscription_authorization_id": scope[
-            "subscription_authorization_id"
-        ],
+        "expected_subscription_authorization_id": scope["subscription_authorization_id"],
         "expected_connection_generation": scope["connection_generation"],
         "principal_id": "local_bridge_operator",
         "actor_assurance": "bridge_bearer",
@@ -202,9 +200,9 @@ async def test_explicit_grant_is_exact_idempotent_and_keeps_observer_receipt(
     )
     assert disabled["autonomous_correction_grant"]["enabled"] is False
     assert disabled["autonomous_correction_grant"]["changed"] is True
-    assert (
-        await store.get_autonomous_correction_grant_status(selection["session_id"])
-    )["enabled"] is False
+    assert (await store.get_autonomous_correction_grant_status(selection["session_id"]))[
+        "enabled"
+    ] is False
 
 
 @pytest.mark.asyncio
@@ -224,9 +222,9 @@ async def test_pause_revokes_and_resume_does_not_silently_regrant(
         expected_control_revision=control["control_revision"],
     )
     assert paused["granted"] is True
-    assert (
-        await store.get_autonomous_correction_grant_status(selection["session_id"])
-    )["enabled"] is False
+    assert (await store.get_autonomous_correction_grant_status(selection["session_id"]))[
+        "enabled"
+    ] is False
     control = await store.get_session_control_state(selection["session_id"])
     resumed = await store.set_session_supervision_paused(
         selection["session_id"],
@@ -263,17 +261,18 @@ async def test_goal_intent_change_invalidates_without_rewriting_old_grant(
     )
     current = await store.get_autonomous_correction_grant_status(selection["session_id"])
     assert current["enabled"] is False
-    assert current["scope"]["goal_intent_hash"] != granted[
-        "autonomous_correction_grant"
-    ]["scope"]["goal_intent_hash"]
+    assert (
+        current["scope"]["goal_intent_hash"]
+        != granted["autonomous_correction_grant"]["scope"]["goal_intent_hash"]
+    )
     regranted = await store.set_session_autonomous_corrections(
         selection["session_id"],
         **_grant_arguments(current, key="autonomous-grant-after-goal-change-0002"),
     )
     assert regranted["autonomous_correction_grant"]["enabled"] is True
-    assert (
-        await store.get_autonomous_correction_grant_status(selection["session_id"])
-    )["enabled"] is True
+    assert (await store.get_autonomous_correction_grant_status(selection["session_id"]))[
+        "enabled"
+    ] is True
 
 
 @pytest.mark.asyncio
@@ -290,9 +289,7 @@ async def test_goal_intent_change_invalidates_without_rewriting_old_grant(
         ("expected_connection_generation", 999),
     ],
 )
-async def test_every_scope_cas_mismatch_refuses_without_mutation(
-    shared_client, field, replacement
-):
+async def test_every_scope_cas_mismatch_refuses_without_mutation(shared_client, field, replacement):
     _, _, selection, _, _ = await _attached(shared_client)
     store = state.store
     status = await store.get_autonomous_correction_grant_status(selection["session_id"])
@@ -300,12 +297,12 @@ async def test_every_scope_cas_mismatch_refuses_without_mutation(
     arguments[field] = replacement
     with pytest.raises(ValueError, match="scope changed"):
         await store.set_session_autonomous_corrections(selection["session_id"], **arguments)
-    assert (
-        await store.get_session_control_state(selection["session_id"])
-    )["control_revision"] == status["scope"]["control_revision"]
-    assert (
-        await store.get_autonomous_correction_grant_status(selection["session_id"])
-    )["enabled"] is False
+    assert (await store.get_session_control_state(selection["session_id"]))[
+        "control_revision"
+    ] == status["scope"]["control_revision"]
+    assert (await store.get_autonomous_correction_grant_status(selection["session_id"]))[
+        "enabled"
+    ] is False
 
 
 @pytest.mark.asyncio
@@ -330,9 +327,9 @@ async def test_malformed_grant_inputs_fail_closed(shared_client, field, replacem
     arguments[field] = replacement
     with pytest.raises(ValueError):
         await store.set_session_autonomous_corrections(selection["session_id"], **arguments)
-    assert (
-        await store.get_autonomous_correction_grant_status(selection["session_id"])
-    )["enabled"] is False
+    assert (await store.get_autonomous_correction_grant_status(selection["session_id"]))[
+        "enabled"
+    ] is False
 
 
 @pytest.mark.asyncio
@@ -346,9 +343,9 @@ async def test_grant_survives_store_restart_but_not_connection_replacement(share
     reopened = type(store)(store.path)
     await reopened.connect()
     try:
-        assert (
-            await reopened.get_autonomous_correction_grant_status(selection["session_id"])
-        )["enabled"] is True
+        assert (await reopened.get_autonomous_correction_grant_status(selection["session_id"]))[
+            "enabled"
+        ] is True
     finally:
         await reopened.close()
 
@@ -366,9 +363,10 @@ async def test_grant_survives_store_restart_but_not_connection_replacement(share
     replaced = await store.get_autonomous_correction_grant_status(selection["session_id"])
     assert replaced["enabled"] is False
     assert replaced["reason"] == "explicit_grant_required"
-    assert replaced["scope"]["subscription_authorization_id"] != status["scope"][
-        "subscription_authorization_id"
-    ]
+    assert (
+        replaced["scope"]["subscription_authorization_id"]
+        != status["scope"]["subscription_authorization_id"]
+    )
 
 
 @pytest.mark.asyncio
@@ -388,9 +386,7 @@ async def test_external_origin_replacement_invalidates_grant(shared_client):
         expected_revision=choice.revision,
         expected_choice_id=choice.choice_id,
     )
-    invalidated = await store.get_autonomous_correction_grant_status(
-        selection["session_id"]
-    )
+    invalidated = await store.get_autonomous_correction_grant_status(selection["session_id"])
     assert invalidated == {
         "enabled": False,
         "reason": "autonomous_correction_scope_unavailable",
@@ -412,9 +408,7 @@ async def test_workspace_resample_failure_invalidates_grant(shared_client, monke
         raise WorkspaceAuthorityError("injected physical workspace replacement")
 
     monkeypatch.setattr(store_module, "require_current_workspace", replaced_workspace)
-    invalidated = await store.get_autonomous_correction_grant_status(
-        selection["session_id"]
-    )
+    invalidated = await store.get_autonomous_correction_grant_status(selection["session_id"])
     assert invalidated["enabled"] is False
     assert invalidated["reason"] == "autonomous_correction_scope_unavailable"
     assert invalidated["scope"] is None
@@ -452,9 +446,7 @@ async def test_active_grant_claims_with_false_capability_and_revoke_blocks_final
     active = await store.get_autonomous_correction_grant_status(selection["session_id"])
     await store.set_session_autonomous_corrections(
         selection["session_id"],
-        **_grant_arguments(
-            active, enabled=False, key="revoke-after-claim-before-final-0002"
-        ),
+        **_grant_arguments(active, enabled=False, key="revoke-after-claim-before-final-0002"),
     )
     final = await store.validate_main_event_effect_dispatch(
         event_id=event.event_id,

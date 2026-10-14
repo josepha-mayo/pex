@@ -118,14 +118,8 @@ def opencode_message_lineage(
         or message_id != bounded_message_id
         or role != bounded_role
         or source_event_type != bounded_source
-        or (
-            parent_message_id not in {None, ""}
-            and parent_message_id != bounded_parent
-        )
-        or (
-            assistant_finish not in {None, ""}
-            and assistant_finish != bounded_finish
-        )
+        or (parent_message_id not in {None, ""} and parent_message_id != bounded_parent)
+        or (assistant_finish not in {None, ""} and assistant_finish != bounded_finish)
         or bounded_role not in {"user", "assistant"}
     ):
         return None
@@ -163,8 +157,7 @@ def _validated_event_lineage(event: HarnessEvent) -> dict[str, Any] | None:
         candidate.get("schema") != OPENCODE_MESSAGE_LINEAGE_SCHEMA
         or candidate.get("parent_removed_observed") is not False
         or candidate.get("role") != "assistant"
-        or candidate.get("source_event_type")
-        not in {"message.updated", "message.part.updated"}
+        or candidate.get("source_event_type") not in {"message.updated", "message.part.updated"}
     ):
         return None
     try:

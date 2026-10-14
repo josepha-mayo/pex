@@ -82,7 +82,10 @@ async def test_operator_handoff_revocation_after_marker_has_terminal_receipt(
     adapters = AdapterRegistry()
     adapters.bind("codex", fake)
     pipeline = Pipeline(
-        store, adapters, EventBus(), Settings.for_test(home=tmp_path, require_auth=False),
+        store,
+        adapters,
+        EventBus(),
+        Settings.for_test(home=tmp_path, require_auth=False),
     )
     original = store.start_operator_handoff_dispatch
     grants = []

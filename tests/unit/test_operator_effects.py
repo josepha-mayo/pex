@@ -33,9 +33,7 @@ def _goal_and_session(project_id: str = "operator-project") -> tuple[Goal, Harne
     return goal, session
 
 
-def _synthetic_delivery_result(
-    session: HarnessSession, *, turn_id: str = "syn-turn-0001"
-) -> dict:
+def _synthetic_delivery_result(session: HarnessSession, *, turn_id: str = "syn-turn-0001") -> dict:
     return {
         "status": "delivered",
         "worker_delivery_receipt": {
@@ -147,12 +145,8 @@ async def test_actor_assured_operator_message_receipt_is_atomic_and_counted_once
             actor_assurance="bridge_bearer",
         )
         effect_id = reserved["effect"]["effect_id"]
-        assert reserved["effect"]["payload"]["schema"] == (
-            "pex.operator-effect.session-message.v2"
-        )
-        assert reserved["effect"]["payload"]["project_binding"].startswith(
-            ("legacy:", "identity:")
-        )
+        assert reserved["effect"]["payload"]["schema"] == ("pex.operator-effect.session-message.v2")
+        assert reserved["effect"]["payload"]["project_binding"].startswith(("legacy:", "identity:"))
         await store.start_operator_message_dispatch(effect_id)
         delivered = await store.finalize_operator_effect(
             effect_id=effect_id,
@@ -178,26 +172,23 @@ async def test_actor_assured_operator_message_receipt_is_atomic_and_counted_once
         assert "text" not in receipt
         assert replay["effect"] == delivered
         reservation_cursor = await store.db.execute(
-            "SELECT COUNT(*) FROM human_operator_action_reservations "
-            "WHERE effect_id = ?",
+            "SELECT COUNT(*) FROM human_operator_action_reservations WHERE effect_id = ?",
             (effect_id,),
         )
         assert (await reservation_cursor.fetchone())[0] == 1
 
         metrics = await store.attention_metrics()
-        assert metrics["human_interventions"]["source_counts"][
-            "direct_operator_message"
-        ] == 1
+        assert metrics["human_interventions"]["source_counts"]["direct_operator_message"] == 1
         assert metrics["human_interventions"]["observed_count"] == 1
-        assert metrics["human_interventions"]["unverified_operator_action_counts"][
-            "operator_message"
-        ] == 0
+        assert (
+            metrics["human_interventions"]["unverified_operator_action_counts"]["operator_message"]
+            == 0
+        )
         assert metrics["human_interventions"]["value"] is None
 
         with pytest.raises(aiosqlite.IntegrityError, match="immutable"):
             await store.db.execute(
-                "UPDATE human_operator_terminal_actions SET result_hash = ? "
-                "WHERE effect_id = ?",
+                "UPDATE human_operator_terminal_actions SET result_hash = ? WHERE effect_id = ?",
                 ("0" * 64, effect_id),
             )
         await store.db.rollback()
@@ -285,12 +276,11 @@ async def test_unassured_operator_message_remains_legacy_unverified(tmp_path):
             result=_synthetic_delivery_result(session),
         )
         metrics = await store.attention_metrics()
-        assert metrics["human_interventions"]["source_counts"][
-            "direct_operator_message"
-        ] == 0
-        assert metrics["human_interventions"]["unverified_operator_action_counts"][
-            "operator_message"
-        ] == 1
+        assert metrics["human_interventions"]["source_counts"]["direct_operator_message"] == 0
+        assert (
+            metrics["human_interventions"]["unverified_operator_action_counts"]["operator_message"]
+            == 1
+        )
     finally:
         await store.close()
 
@@ -311,9 +301,7 @@ async def test_assured_operator_message_fails_closed_when_actor_ledgers_are_corr
             actor_assurance="bridge_bearer",
         )
         missing_id = missing["effect"]["effect_id"]
-        await store.db.execute(
-            "DROP TRIGGER trg_human_operator_action_reservation_no_delete"
-        )
+        await store.db.execute("DROP TRIGGER trg_human_operator_action_reservation_no_delete")
         await store.db.execute(
             "DELETE FROM human_operator_action_reservations WHERE effect_id = ?",
             (missing_id,),
@@ -341,12 +329,9 @@ async def test_assured_operator_message_fails_closed_when_actor_ledgers_are_corr
             state="delivered",
             result=_synthetic_delivery_result(session),
         )
+        await store.db.execute("DROP TRIGGER trg_human_operator_terminal_action_immutable")
         await store.db.execute(
-            "DROP TRIGGER trg_human_operator_terminal_action_immutable"
-        )
-        await store.db.execute(
-            "UPDATE human_operator_terminal_actions SET result_hash = ? "
-            "WHERE effect_id = ?",
+            "UPDATE human_operator_terminal_actions SET result_hash = ? WHERE effect_id = ?",
             ("0" * 64, delivered_id),
         )
         await store.db.commit()
@@ -522,12 +507,13 @@ async def test_prior_boot_dispatch_becomes_terminal_uncertain_and_never_restarts
         )
         assert (await receipt_cursor.fetchone())[0] == 0
         metrics = await recovery.attention_metrics()
-        assert metrics["human_interventions"]["source_counts"][
-            "direct_operator_message"
-        ] == 0
-        assert metrics["human_interventions"][
-            "actor_assured_operator_message_outcomes"
-        ]["delivery_uncertain"] == 1
+        assert metrics["human_interventions"]["source_counts"]["direct_operator_message"] == 0
+        assert (
+            metrics["human_interventions"]["actor_assured_operator_message_outcomes"][
+                "delivery_uncertain"
+            ]
+            == 1
+        )
     finally:
         await recovery.close()
 
@@ -707,8 +693,7 @@ async def test_codex_operator_terminal_receipt_is_read_validated_and_not_downgra
         )
         with pytest.raises(aiosqlite.IntegrityError, match="contract is immutable"):
             await store.db.execute(
-                "UPDATE operator_effects SET delivery_contract_version = 1 "
-                "WHERE effect_id = ?",
+                "UPDATE operator_effects SET delivery_contract_version = 1 WHERE effect_id = ?",
                 (effect_id,),
             )
         await store.db.rollback()

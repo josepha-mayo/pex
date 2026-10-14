@@ -174,19 +174,20 @@ class DevinAdapter(HarnessAdapter):
                 if len(self.sessions) + len(new_session_ids) >= _MAX_SESSIONS:
                     raise ValueError("Devin retained session state reached the safety bound")
                 new_session_ids.add(session_id)
-            status = bounded_observed_text(
-                item.get("status"), field="Devin status", max_chars=512
-            ) or ""
-            status_detail = bounded_observed_text(
-                item.get("status_detail"),
-                field="Devin status detail",
-                max_chars=4_096,
-            ) or ""
+            status = (
+                bounded_observed_text(item.get("status"), field="Devin status", max_chars=512) or ""
+            )
+            status_detail = (
+                bounded_observed_text(
+                    item.get("status_detail"),
+                    field="Devin status detail",
+                    max_chars=4_096,
+                )
+                or ""
+            )
             project_id = item.get("project_id") or item.get("projectId")
             project_id = (
-                bounded_adapter_id(project_id, field="Devin project id")
-                if project_id
-                else None
+                bounded_adapter_id(project_id, field="Devin project id") if project_id else None
             )
             goal_id, paused = preserve_bridge_state(
                 existing,
@@ -285,9 +286,7 @@ class DevinAdapter(HarnessAdapter):
         return True
 
     def ingest_hook(self, payload: dict) -> HarnessSession:
-        vendor_id = bounded_adapter_id(
-            payload.get("session_id") or "", field="Devin session_id"
-        )
+        vendor_id = bounded_adapter_id(payload.get("session_id") or "", field="Devin session_id")
         session_id = f"devin:{vendor_id}"
         existing = self.sessions.get(session_id)
         cwd = _optional_bounded_path(payload.get("cwd"))
@@ -313,9 +312,7 @@ class DevinAdapter(HarnessAdapter):
         self.sessions[session_id] = session
         if len(self.hooks) >= _MAX_HOOK_RECEIPTS:
             del self.hooks[: len(self.hooks) - _MAX_HOOK_RECEIPTS + 1]
-        self.hooks.append(
-            {"session_id": session_id, "received_at": datetime.now(UTC).isoformat()}
-        )
+        self.hooks.append({"session_id": session_id, "received_at": datetime.now(UTC).isoformat()})
         return session
 
     def emit_status(self, session: HarnessSession, message: str) -> HarnessEvent:
@@ -366,14 +363,20 @@ class DevinAdapter(HarnessAdapter):
                         continue
                     if not isinstance(detail, dict):
                         continue
-                    status = bounded_observed_text(
-                        detail.get("status"), field="Devin status", max_chars=512
-                    ) or ""
-                    status_detail = bounded_observed_text(
-                        detail.get("status_detail"),
-                        field="Devin status detail",
-                        max_chars=4_096,
-                    ) or ""
+                    status = (
+                        bounded_observed_text(
+                            detail.get("status"), field="Devin status", max_chars=512
+                        )
+                        or ""
+                    )
+                    status_detail = (
+                        bounded_observed_text(
+                            detail.get("status_detail"),
+                            field="Devin status detail",
+                            max_chars=4_096,
+                        )
+                        or ""
+                    )
                     raw_updated_at = detail.get("updated_at")
                     updated_at = (
                         raw_updated_at

@@ -27,7 +27,9 @@ InputKind = Literal["exact_pex", "external", "uncertain", "incomplete"]
 
 def _id(value: Any) -> bool:
     return (
-        type(value) is str and 0 < len(value) <= 512 and value == value.strip()
+        type(value) is str
+        and 0 < len(value) <= 512
+        and value == value.strip()
         and not any(ord(character) < 32 for character in value)
     )
 
@@ -52,9 +54,13 @@ def _complete_content(content: Any) -> bool:
         text = part["text"]
         elements = part["text_elements"]
         if (
-            part["type"] != "text" or type(text) is not str or not text.strip()
-            or "\x00" in text or "[REDACTED:" in text
-            or type(elements) is not list or len(elements) > MAX_CONTENT_PARTS
+            part["type"] != "text"
+            or type(text) is not str
+            or not text.strip()
+            or "\x00" in text
+            or "[REDACTED:" in text
+            or type(elements) is not list
+            or len(elements) > MAX_CONTENT_PARTS
         ):
             return False
         size = len(text.encode("utf-8"))
@@ -73,14 +79,21 @@ def _complete_content(content: Any) -> bool:
             span = element["byteRange"]
             placeholder = element["placeholder"]
             if (
-                type(span) is not dict or set(span) != {"start", "end"}
-                or type(span["start"]) is not int or type(span["end"]) is not int
-                or span["start"] not in boundaries or span["end"] not in boundaries
+                type(span) is not dict
+                or set(span) != {"start", "end"}
+                or type(span["start"]) is not int
+                or type(span["end"]) is not int
+                or span["start"] not in boundaries
+                or span["end"] not in boundaries
                 or span["start"] > span["end"]
-                or (placeholder is not None and (
-                    type(placeholder) is not str or len(placeholder) > MAX_TEXT_BYTES
-                    or "\x00" in placeholder
-                ))
+                or (
+                    placeholder is not None
+                    and (
+                        type(placeholder) is not str
+                        or len(placeholder) > MAX_TEXT_BYTES
+                        or "\x00" in placeholder
+                    )
+                )
             ):
                 return False
     return True
@@ -119,7 +132,11 @@ class CodexInputProvenance:
 
     @classmethod
     def from_store_records(
-        cls, records: tuple[str, ...], *, session_id: str, thread_id: str,
+        cls,
+        records: tuple[str, ...],
+        *,
+        session_id: str,
+        thread_id: str,
     ) -> CodexInputProvenance:
         """Validate shape and freeze Store results; callers supply the trust boundary."""
         if type(records) is not tuple or not _id(session_id) or not _id(thread_id):
@@ -142,10 +159,15 @@ class CodexInputProvenance:
                 or set(record) != {"correction", "effect_state", "effect_version"}
                 or canonical(record) != encoded
                 or type(record["effect_state"]) is not str
-                or record["effect_state"] not in {
-                    "dispatching", "delivered", "delivery_uncertain", "failed",
+                or record["effect_state"]
+                not in {
+                    "dispatching",
+                    "delivered",
+                    "delivery_uncertain",
+                    "failed",
                 }
-                or type(record["effect_version"]) is not int or record["effect_version"] < 1
+                or type(record["effect_version"]) is not int
+                or record["effect_version"] < 1
             ):
                 raise ValueError("Codex attribution attempt record is invalid")
             correction = record["correction"]
@@ -165,21 +187,33 @@ class CodexInputProvenance:
                 raise ValueError("duplicate or conflicting Codex attribution registration")
             clients.add(client)
             effects.add(effect)
-            entries.append(_Attribution(
-                client, effect, canonical(correction["content"]), canonical(correction),
-            ))
+            entries.append(
+                _Attribution(
+                    client,
+                    effect,
+                    canonical(correction["content"]),
+                    canonical(correction),
+                )
+            )
         return cls(session_id, thread_id, records, tuple(entries))
 
     def with_store_records(self, records: tuple[str, ...]) -> CodexInputProvenance:
         if type(records) is not tuple:
             raise ValueError("Codex attribution additions must be immutable")
         return self.from_store_records(
-            self._records + records, session_id=self.session_id, thread_id=self.thread_id,
+            self._records + records,
+            session_id=self.session_id,
+            thread_id=self.thread_id,
         )
 
     def classify_item(
-        self, *, session_id: str, thread_id: str, turn_id: str,
-        item: dict[str, Any], completed: bool = True,
+        self,
+        *,
+        session_id: str,
+        thread_id: str,
+        turn_id: str,
+        item: dict[str, Any],
+        completed: bool = True,
     ) -> CodexInputClassification:
         if session_id != self.session_id or thread_id != self.thread_id:
             return CodexInputClassification("incomplete", reason="input_scope_mismatch")
@@ -187,25 +221,35 @@ class CodexInputProvenance:
         known = next((entry for entry in self._attributions if entry.client_id == client), None)
         refusal: InputKind = "uncertain" if known is not None else "incomplete"
         if (
-            type(item) is not dict or item.get("type") != "userMessage"
-            or not _id(turn_id) or not _id(item.get("id"))
-            or "clientId" not in item or (client is not None and not _id(client))
-            or type(completed) is not bool or not completed or _incomplete(item)
+            type(item) is not dict
+            or item.get("type") != "userMessage"
+            or not _id(turn_id)
+            or not _id(item.get("id"))
+            or "clientId" not in item
+            or (client is not None and not _id(client))
+            or type(completed) is not bool
+            or not completed
+            or _incomplete(item)
         ):
             return CodexInputClassification(refusal, reason="input_incomplete")
         try:
             if not _complete_content(item.get("content")):
                 return CodexInputClassification(refusal, reason="input_content_incomplete")
-            encoded = canonical({
-                "turn_id": turn_id, "item_id": item["id"],
-                "client_id": client, "content": item["content"],
-            })
+            encoded = canonical(
+                {
+                    "turn_id": turn_id,
+                    "item_id": item["id"],
+                    "client_id": client,
+                    "content": item["content"],
+                }
+            )
             if len(encoded.encode("utf-8")) > MAX_ITEM_BYTES:
                 return CodexInputClassification(refusal, reason="input_byte_bound")
             if known is not None:
                 if canonical(item["content"]) != known.content_json:
                     return CodexInputClassification(
-                        "uncertain", reason="correction_content_mismatch",
+                        "uncertain",
+                        reason="correction_content_mismatch",
                     )
                 return CodexInputClassification("exact_pex", encoded, known.correction_json)
             return CodexInputClassification("external", encoded)
@@ -214,18 +258,26 @@ class CodexInputProvenance:
 
     def classify_entry(self, entry: dict[str, Any]) -> CodexInputClassification:
         if type(entry) is not dict or set(entry) != {
-            "turn_id", "item_id", "client_id", "content",
+            "turn_id",
+            "item_id",
+            "client_id",
+            "content",
         }:
             client = entry.get("client_id") if type(entry) is dict else None
             known = any(attribution.client_id == client for attribution in self._attributions)
             return CodexInputClassification(
-                "uncertain" if known else "incomplete", reason="history_entry_incomplete",
+                "uncertain" if known else "incomplete",
+                reason="history_entry_incomplete",
             )
         return self.classify_item(
-            session_id=self.session_id, thread_id=self.thread_id, turn_id=entry["turn_id"],
+            session_id=self.session_id,
+            thread_id=self.thread_id,
+            turn_id=entry["turn_id"],
             item={
-                "type": "userMessage", "id": entry["item_id"],
-                "clientId": entry["client_id"], "content": entry["content"],
+                "type": "userMessage",
+                "id": entry["item_id"],
+                "clientId": entry["client_id"],
+                "content": entry["content"],
             },
         )
 
@@ -252,7 +304,8 @@ class CodexInputProvenance:
                 if result.kind == "exact_pex":
                     if frozen["client_id"] in seen_corrections:
                         result = CodexInputClassification(
-                            "uncertain", reason="correction_correlation_has_multiple_items",
+                            "uncertain",
+                            reason="correction_correlation_has_multiple_items",
                         )
                     seen_corrections.add(frozen["client_id"])
                 elif result.kind == "external":
@@ -262,5 +315,8 @@ class CodexInputProvenance:
             return CodexExternalInputs(False, None, None, tuple(results))
         encoded = canonical(external)
         return CodexExternalInputs(
-            True, encoded, hashlib.sha256(encoded.encode("utf-8")).hexdigest(), tuple(results),
+            True,
+            encoded,
+            hashlib.sha256(encoded.encode("utf-8")).hexdigest(),
+            tuple(results),
         )

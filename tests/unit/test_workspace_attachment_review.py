@@ -16,14 +16,17 @@ def _refresh_origin(body):
     path = Path(body["cwd"]) / "local-origin.json"
     choice = load_local_origin_choice(path)
     return save_local_origin_choice(
-        path, choice.origin,
-        expected_revision=choice.revision, expected_choice_id=choice.choice_id,
+        path,
+        choice.origin,
+        expected_revision=choice.revision,
+        expected_choice_id=choice.choice_id,
     )
 
 
 @pytest.mark.asyncio
 async def test_origin_change_during_authority_await_cannot_resume_selected_worker(
-    shared_client, monkeypatch,
+    shared_client,
+    monkeypatch,
 ):
     client, body, transports, _, _, _ = shared_client
     selected = await _inspect(client, body)
@@ -64,7 +67,9 @@ async def test_status_does_not_advertise_stale_origin_selection_as_confirmable(s
 @pytest.mark.parametrize("changed_field", ["provider", "object_id"])
 @pytest.mark.parametrize("preexisting_unproved", [False, True])
 async def test_same_origin_with_foreign_physical_proof_cannot_attach(
-    shared_client, changed_field, preexisting_unproved,
+    shared_client,
+    changed_field,
+    preexisting_unproved,
 ):
     client, body, transports, _, _, _ = shared_client
     choice = load_local_origin_choice(Path(body["cwd"]) / "local-origin.json")
@@ -78,7 +83,10 @@ async def test_same_origin_with_foreign_physical_proof_cannot_attach(
     await state.store.register_project_locator(
         legacy_project_id=key,
         locator=ProjectLocator.path(
-            str(workspace), platform=directory.platform, origin=choice.origin, physical=physical,
+            str(workspace),
+            platform=directory.platform,
+            origin=choice.origin,
+            physical=physical,
         ),
     )
     response = await client.post(
@@ -91,7 +99,8 @@ async def test_same_origin_with_foreign_physical_proof_cannot_attach(
 
 @pytest.mark.asyncio
 async def test_replaced_workspace_directory_rejects_pending_confirmation(
-    shared_client, monkeypatch,
+    shared_client,
+    monkeypatch,
 ):
     import pex_bridge.codex_shared_attach as module
 
@@ -104,7 +113,9 @@ async def test_replaced_workspace_directory_rejects_pending_confirmation(
     await state.store.register_project_locator(
         legacy_project_id=key,
         locator=ProjectLocator.path(
-            str(workspace), platform=measured.platform, origin=choice.origin,
+            str(workspace),
+            platform=measured.platform,
+            origin=choice.origin,
         ),
     )
 

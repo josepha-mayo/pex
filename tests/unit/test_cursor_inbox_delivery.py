@@ -105,7 +105,8 @@ async def test_malformed_records_require_receipts_before_later_delivery(tmp_path
     assert await inbox.process_inbox(tmp_path, consume, reject=retain_rejection) == 1
     assert seen == ["valid"]
     assert [receipt.reason for receipt in rejected] == [
-        "malformed_json", "non_object_json",
+        "malformed_json",
+        "non_object_json",
     ]
     assert rejected[0].end == rejected[1].start
     assert inbox._read_offset(inbox.offset_path(tmp_path)) == path.stat().st_size
@@ -247,7 +248,8 @@ def test_v1_identity_checkpoint_resumes_without_discard_mode(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "change", [
+    "change",
+    [
         "bool_offset",
         "bad_anchor",
         "negative_device",

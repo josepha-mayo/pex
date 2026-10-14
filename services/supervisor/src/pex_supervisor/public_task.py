@@ -80,9 +80,7 @@ def parse_public_task(task_md: str) -> dict[str, str | list[str]]:
             ):
                 fence_marker = None
             continue
-        if fence and not (
-            fence.group("marker").startswith("`") and "`" in fence.group("info")
-        ):
+        if fence and not (fence.group("marker").startswith("`") and "`" in fence.group("info")):
             # Examples remain in the objective, never promoted into authoritative
             # goal/ledger lists. A fresh explicit section must follow the fence.
             fence_marker = fence.group("marker")
@@ -92,7 +90,9 @@ def parse_public_task(task_md: str) -> dict[str, str | list[str]]:
         markdown_heading = _ATX_HEADING.match(line)
         if markdown_heading:
             section_label = re.sub(
-                r"[ \t]+#+[ \t]*$", "", markdown_heading.group("body"),
+                r"[ \t]+#+[ \t]*$",
+                "",
+                markdown_heading.group("body"),
             ).strip()
             if not section_label.endswith(":"):
                 section_label += ":"

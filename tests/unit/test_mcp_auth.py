@@ -107,9 +107,7 @@ def test_store_principal_lifetime_and_revocation_fail_closed():
 def test_request_principal_accepts_only_middleware_model_in_request_scope():
     principal = MCPPrincipal.operator()
     scope = {MCP_PRINCIPAL_SCOPE_KEY: principal}
-    context = SimpleNamespace(
-        request_context=SimpleNamespace(request=SimpleNamespace(scope=scope))
-    )
+    context = SimpleNamespace(request_context=SimpleNamespace(request=SimpleNamespace(scope=scope)))
 
     assert principal_from_scope(scope) is principal
     assert request_principal(context) is principal

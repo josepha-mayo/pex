@@ -30,19 +30,31 @@ async def bound(publication):
     session.metadata["connection_kind"] = "codex_shared"
     session.metadata["subscription_receipt"] = {
         "schema": "pex.codex-existing-thread-subscription.v1",
-        "authorization_id": "subscription-1", "selection_id": "selection-1",
-        "endpoint_identity": "fixture-endpoint", "connection_generation": 1,
-        "pex_session_id": session.id, "thread_id": session.vendor_session_id,
-        "root_session_id": "workspace-root", "project_id": session.project_id,
-        "vendor_project_id": None, "cwd": session.cwd,
-        "history_mode": "includeTurns", "history_identity_digest": "a" * 64,
-        "history_record_count": 0, "reconciliation_live_watermark": 0,
-        "observation_only": True, "delivery_proven": False,
+        "authorization_id": "subscription-1",
+        "selection_id": "selection-1",
+        "endpoint_identity": "fixture-endpoint",
+        "connection_generation": 1,
+        "pex_session_id": session.id,
+        "thread_id": session.vendor_session_id,
+        "root_session_id": "workspace-root",
+        "project_id": session.project_id,
+        "vendor_project_id": None,
+        "cwd": session.cwd,
+        "history_mode": "includeTurns",
+        "history_identity_digest": "a" * 64,
+        "history_record_count": 0,
+        "reconciliation_live_watermark": 0,
+        "observation_only": True,
+        "delivery_proven": False,
     }
     await publish(publication)
     goal = Goal(
-        id="correction-goal", project_id=session.project_id, title="Finish",
-        objective="Finish the exact task", created_at=utcnow(), updated_at=utcnow(),
+        id="correction-goal",
+        project_id=session.project_id,
+        title="Finish",
+        objective="Finish the exact task",
+        created_at=utcnow(),
+        updated_at=utcnow(),
     )
     await store.upsert_goal(goal)
     await store.attach_session_goal(session.id, goal.id, expected_goal_id=None)
@@ -61,23 +73,30 @@ async def enable_corrections(store, session, *, key="correction-fixture-grant"):
     status = await store.get_autonomous_correction_grant_status(session.id)
     assert status["scope"] is not None, status
     return await store.set_session_autonomous_corrections(
-        session.id, **_grant_arguments(status, key=key),
+        session.id,
+        **_grant_arguments(status, key=key),
     )
 
 
 async def prepare(bound, *, event_id="correction-trigger", text="  Verify the actual result.\n"):
     store, session, _ = bound
     event = HarnessEvent(
-        event_id=event_id, session_id=session.id, harness_type=session.harness_type,
-        project_id=session.project_id, goal_id=session.goal_id, ts=utcnow(),
-        event_type=EventType.STOP, message_delta="Done.",
+        event_id=event_id,
+        session_id=session.id,
+        harness_type=session.harness_type,
+        project_id=session.project_id,
+        goal_id=session.goal_id,
+        ts=utcnow(),
+        event_type=EventType.STOP,
+        message_delta="Done.",
     )
     await store.accept_pipeline_event(event, session_snapshot=session)
     await store.claim_event_processing(event.event_id, owner=OWNER)
     intervention = _planned_intervention(event)
     intervention.proposed_action.payload = {"text": text}
     payload = await store.prepare_main_effect_payload(
-        event_id=event.event_id, intervention_id=intervention.id,
+        event_id=event.event_id,
+        intervention_id=intervention.id,
         action=intervention.proposed_action.model_dump(mode="json"),
         required_capability="send_message",
     )
@@ -89,13 +108,20 @@ async def commit(bound, prepared, *, payload=None):
     event, intervention, original = prepared
     chosen = original if payload is None else payload
     return await store.commit_event_plan(
-        event_id=event.event_id, owner=OWNER, session=session, intervention=intervention,
+        event_id=event.event_id,
+        owner=OWNER,
+        session=session,
+        intervention=intervention,
         plan=_plan_envelope(
-            event, intervention=intervention, effect_kind="worker_action",
+            event,
+            intervention=intervention,
+            effect_kind="worker_action",
             required_capability=chosen["required_capability"],
         ),
         main_effect={
-            "effect_key": "main", "kind": "worker_action", "target_session_id": session.id,
+            "effect_key": "main",
+            "kind": "worker_action",
+            "target_session_id": session.id,
             "payload": chosen,
             "request_hash": hashlib.sha256(
                 codex_correction.canonical(chosen).encode("utf-8")
@@ -116,13 +142,18 @@ async def test_preparation_exact_text_deterministic_and_no_reservation(bound):
     event, intervention, payload = await prepare(bound)
     correction = payload["codex_correction"]
     assert correction["effect_id"] == stable_event_effect_id(event.event_id, "main")
-    assert correction["content"] == [{
-        "type": "text", "text": "  Verify the actual result.\n", "text_elements": [],
-    }]
+    assert correction["content"] == [
+        {
+            "type": "text",
+            "text": "  Verify the actual result.\n",
+            "text_elements": [],
+        }
+    ]
     assert correction["subscription_receipt"] == session.metadata["subscription_receipt"]
     assert correction["workspace_binding"] == session.metadata["workspace_binding"]
     again = await store.prepare_main_effect_payload(
-        event_id=event.event_id, intervention_id=intervention.id,
+        event_id=event.event_id,
+        intervention_id=intervention.id,
         action=intervention.proposed_action.model_dump(mode="json"),
         required_capability="send_message",
     )
@@ -139,15 +170,30 @@ async def test_commit_replay_and_reserved_has_no_attribution(bound):
     effect = await store.get_event_effect(event.event_id, "main")
     assert effect["payload"] == prepared[2]
     assert await store.list_codex_correction_attributions(session) == ()
-    assert await store.commit_event_plan(
-        event_id=event.event_id, owner=OWNER, plan=processing["plan"], session=session,
-    ) == processing
+    assert (
+        await store.commit_event_plan(
+            event_id=event.event_id,
+            owner=OWNER,
+            plan=processing["plan"],
+            session=session,
+        )
+        == processing
+    )
     assert await store.get_event_effect(event.event_id, "main") == effect
 
 
-@pytest.mark.parametrize("change", [
-    "missing", "correlation", "content", "thread", "epoch", "workspace", "extra",
-])
+@pytest.mark.parametrize(
+    "change",
+    [
+        "missing",
+        "correlation",
+        "content",
+        "thread",
+        "epoch",
+        "workspace",
+        "extra",
+    ],
+)
 async def test_forged_or_missing_contract_rolls_back_all_projections(bound, change):
     store, _, _ = bound
     prepared = await prepare(bound)
@@ -175,7 +221,8 @@ async def test_forged_or_missing_contract_rolls_back_all_projections(bound, chan
 
 
 @pytest.mark.parametrize(
-    "text", ["", " ", "a\x00b", "é" * 32769, False],
+    "text",
+    ["", " ", "a\x00b", "é" * 32769, False],
     ids=["empty", "whitespace", "nul", "utf8_overflow", "boolean"],
 )
 async def test_invalid_text_is_not_coerced(bound, text):
@@ -189,7 +236,8 @@ async def test_model_supplied_correlation_rejected(bound, key):
     intervention.proposed_action.payload[key] = "untrusted"
     with pytest.raises(ValueError, match="action binding"):
         await bound[0].prepare_main_effect_payload(
-            event_id=event.event_id, intervention_id=intervention.id,
+            event_id=event.event_id,
+            intervention_id=intervention.id,
             action=intervention.proposed_action.model_dump(mode="json"),
             required_capability="send_message",
         )
@@ -209,7 +257,8 @@ async def test_correction_authority_immutable_but_lifecycle_writable(bound, fiel
     await store.db.rollback()
     await store.db.execute(
         "UPDATE event_effects SET state='delivery_uncertain', version=version+1, "
-        "result_json=? WHERE effect_id=?", ('{"outcome":"timeout"}', effect["effect_id"]),
+        "result_json=? WHERE effect_id=?",
+        ('{"outcome":"timeout"}', effect["effect_id"]),
     )
     await store.db.commit()
     records = await store.list_codex_correction_attributions(session)
@@ -228,8 +277,15 @@ async def test_database_uniqueness_prevents_two_effects_owning_correlation(bound
             "INSERT INTO event_effects(effect_id,event_id,effect_key,kind,target_session_id,"
             "request_hash,state,reserved_at,updated_at,payload_json) "
             "VALUES(?,?,'other','worker_action',?,?,'reserved',?,?,?)",
-            ("other-effect", prepared[0].event_id, bound[1].id, effect["request_hash"],
-             utcnow().isoformat(), utcnow().isoformat(), effect["payload_json"]),
+            (
+                "other-effect",
+                prepared[0].event_id,
+                bound[1].id,
+                effect["request_hash"],
+                utcnow().isoformat(),
+                utcnow().isoformat(),
+                effect["payload_json"],
+            ),
         )
     await store.db.rollback()
 
@@ -240,13 +296,15 @@ async def test_attempt_states_are_historical_records_not_dispatch_grants(bound, 
     prepared = await prepare(bound)
     effect = await attempt(bound, prepared)
     await store.db.execute(
-        "UPDATE event_effects SET state=? WHERE effect_id=?", (state, effect["effect_id"]),
+        "UPDATE event_effects SET state=? WHERE effect_id=?",
+        (state, effect["effect_id"]),
     )
     await store.db.commit()
     result = await store.list_codex_correction_attributions(session)
     assert isinstance(result, tuple) and isinstance(result[0], str)
     assert json.loads(result[0]) == {
-        "correction": prepared[2]["codex_correction"], "effect_state": state,
+        "correction": prepared[2]["codex_correction"],
+        "effect_state": state,
         "effect_version": effect["version"],
     }
 
@@ -256,7 +314,8 @@ async def test_skipped_plan_is_not_an_attempt(bound):
     prepared = await prepare(bound)
     await commit(bound, prepared)
     await store.db.execute(
-        "UPDATE event_effects SET state='skipped' WHERE event_id=?", (prepared[0].event_id,),
+        "UPDATE event_effects SET state='skipped' WHERE event_id=?",
+        (prepared[0].event_id,),
     )
     await store.db.commit()
     assert await store.list_codex_correction_attributions(session) == ()
@@ -279,8 +338,10 @@ async def test_loader_survives_restart_and_new_epoch_without_reviving_authority(
         old_receipt = json.loads(records[0])["correction"]["subscription_receipt"]
         assert old_receipt["connection_generation"] == 1
         grant = await reopened.validate_main_event_effect_dispatch(
-            event_id=prepared[0].event_id, owner=OWNER,
-            effect_id=prepared[2]["codex_correction"]["effect_id"], effect_version=1,
+            event_id=prepared[0].event_id,
+            owner=OWNER,
+            effect_id=prepared[2]["codex_correction"]["effect_id"],
+            effect_version=1,
             expected_action=prepared[2]["action"],
         )
         assert not grant["granted"]
@@ -319,7 +380,8 @@ async def test_legacy_effect_payload_remains_unchanged(tmp_path):
         await store.accept_pipeline_event(event, session_snapshot=session)
         intervention = _planned_intervention(event)
         payload = await store.prepare_main_effect_payload(
-            event_id=event.event_id, intervention_id=intervention.id,
+            event_id=event.event_id,
+            intervention_id=intervention.id,
             action=intervention.proposed_action.model_dump(mode="json"),
             required_capability="send_message",
         )
@@ -329,10 +391,15 @@ async def test_legacy_effect_payload_remains_unchanged(tmp_path):
         await store.close()
 
 
-@pytest.mark.parametrize("action_type", [
-    InterventionType.SEND_NUDGE, InterventionType.INJECT_CONTEXT,
-    InterventionType.REQUEST_VERIFICATION, InterventionType.CONTINUE_SESSION,
-])
+@pytest.mark.parametrize(
+    "action_type",
+    [
+        InterventionType.SEND_NUDGE,
+        InterventionType.INJECT_CONTEXT,
+        InterventionType.REQUEST_VERIFICATION,
+        InterventionType.CONTINUE_SESSION,
+    ],
+)
 async def test_all_supported_actions_bind_exact_supplied_text(bound, action_type):
     store, session, publication_fixture = bound
     event, intervention, _ = await prepare(bound)
@@ -342,7 +409,8 @@ async def test_all_supported_actions_bind_exact_supplied_text(bound, action_type
     intervention.action_taken = action_type.value
     intervention.proposed_action.payload["text"] = " Verify café.\n"
     payload = await store.prepare_main_effect_payload(
-        event_id=event.event_id, intervention_id=intervention.id,
+        event_id=event.event_id,
+        intervention_id=intervention.id,
         action=intervention.proposed_action.model_dump(mode="json"),
         required_capability=capability,
     )
@@ -359,7 +427,8 @@ async def test_continue_without_supplied_text_never_invents_prompt(bound):
     intervention.proposed_action.payload = {}
     with pytest.raises(ValueError, match="bounded exact text"):
         await bound[0].prepare_main_effect_payload(
-            event_id=event.event_id, intervention_id=intervention.id,
+            event_id=event.event_id,
+            intervention_id=intervention.id,
             action=intervention.proposed_action.model_dump(mode="json"),
             required_capability="resume",
         )
@@ -436,7 +505,8 @@ async def test_loader_rejects_corrupt_attempt_without_partial_results(bound, cor
         )
     else:
         await store.db.execute(
-            "UPDATE event_processing SET plan_json='{}' WHERE event_id=?", (prepared[0].event_id,),
+            "UPDATE event_processing SET plan_json='{}' WHERE event_id=?",
+            (prepared[0].event_id,),
         )
     await store.db.commit()
     with pytest.raises(ValueError, match="attribution binding is corrupt"):
@@ -448,8 +518,12 @@ async def test_planner_cannot_poison_correction_provenance(bound):
     event, _, payload = await prepare(bound)
     with pytest.raises(ValueError, match="reserved for main worker effects"):
         await store.reserve_event_effect(
-            event_id=event.event_id, effect_key="planner", kind="supervisor_decision",
-            target_session_id=session.id, payload=payload, owner=OWNER,
+            event_id=event.event_id,
+            effect_key="planner",
+            kind="supervisor_decision",
+            target_session_id=session.id,
+            payload=payload,
+            owner=OWNER,
             request_hash=hashlib.sha256(
                 codex_correction.canonical(payload).encode("utf-8"),
             ).hexdigest(),

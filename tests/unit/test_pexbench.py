@@ -39,8 +39,10 @@ def _runner():
 @pytest.mark.parametrize("before_ok", [None, True, 0, "false"])
 def test_observed_outcome_does_not_credit_missing_or_nonfailed_baseline(before_ok):
     result = _pex_attach()._observed_outcome(
-        "delivered", before={"pytest": {"ok": before_ok}},
-        after={"pytest": {"ok": True}}, followup_turn_id="turn-2",
+        "delivered",
+        before={"pytest": {"ok": before_ok}},
+        after={"pytest": {"ok": True}},
+        followup_turn_id="turn-2",
     )
     assert "helped" not in result
 
@@ -49,8 +51,10 @@ def test_observed_outcome_credits_only_observed_failure_to_success():
     attach = _pex_attach()
     for after_ok in (None, False, 1, "true", True):
         result = attach._observed_outcome(
-            "delivered", before={"pytest": {"ok": False}},
-            after={"pytest": {"ok": after_ok}}, followup_turn_id="turn-2",
+            "delivered",
+            before={"pytest": {"ok": False}},
+            after={"pytest": {"ok": after_ok}},
+            followup_turn_id="turn-2",
         )
         assert (result.get("helped") is True) == (after_ok is True)
 
@@ -133,13 +137,7 @@ def _valid_live_record(
     treatment = arm.endswith("_pex")
     runner = _runner()
     workspace_name = f"ws_{_digest(f'{run_id}:{arm}:{task}')[:16]}"
-    prompt = (
-        Path(__file__).resolve().parents[2]
-        / "benchmarks"
-        / "tasks"
-        / task
-        / "prompt.md"
-    )
+    prompt = Path(__file__).resolve().parents[2] / "benchmarks" / "tasks" / task / "prompt.md"
     hooks_sha256 = _digest("cursor-hooks")
     transport_evidence = (
         {
@@ -442,9 +440,7 @@ def test_runner_rejects_out_of_order_live_admission(tmp_path, monkeypatch):
         )
 
 
-def test_runner_rejects_continuing_a_live_prefix_after_controller_drift(
-    tmp_path, monkeypatch
-):
+def test_runner_rejects_continuing_a_live_prefix_after_controller_drift(tmp_path, monkeypatch):
     runner = _runner()
     monkeypatch.setattr(runner, "RESULTS", tmp_path)
     first, second = runner.experiment_plan()[:2]
@@ -612,9 +608,7 @@ def _bind_controller_pytest(process, observation: dict, project: str) -> dict:
 def _public_test_observation(*, ok: bool = False, intact: bool = True) -> dict:
     return {
         "files": ["answer.py", "test_public.py"],
-        "file_manifest": [
-            {"path": "answer.py", "sha256": "a" * 64, "size_bytes": 10}
-        ],
+        "file_manifest": [{"path": "answer.py", "sha256": "a" * 64, "size_bytes": 10}],
         "public_workspace_sha256": "b" * 64,
         "public_test_integrity": {
             "path": "test_public.py",
@@ -644,24 +638,31 @@ def _enable_presentation_fixture(four, tmp_path, monkeypatch):
     # unavailable backend only inside these tests, never through manifest flags.
     monkeypatch.setattr(four.boundary, "execution_runtime_blockers", lambda arm=None: [])
     source = four.runner.MANIFEST.read_text(encoding="utf-8")
-    source = source.replace(
-        "natural_task_source_status: not_yet_satisfied",
-        "natural_task_source_status: satisfied",
-    ).replace(
-        "task_execution_boundary: controlled_fixtures_only",
-        "task_execution_boundary: isolated_untrusted_worker",
-    ).replace(
-        "cursor: unchanged_between_pairs_but_not_controller_verified",
-        "cursor: synchronous_controller_network_policy_verified",
-    ).replace(
-        "raw_harness_event_log_status: not_yet_satisfied",
-        "raw_harness_event_log_status: satisfied",
-    ).replace(
-        "cursor_same_session_treatment_status: not_yet_satisfied",
-        "cursor_same_session_treatment_status: satisfied",
-    ).replace(
-        "source_repo_commit_capture_status: not_yet_satisfied",
-        "source_repo_commit_capture_status: satisfied",
+    source = (
+        source.replace(
+            "natural_task_source_status: not_yet_satisfied",
+            "natural_task_source_status: satisfied",
+        )
+        .replace(
+            "task_execution_boundary: controlled_fixtures_only",
+            "task_execution_boundary: isolated_untrusted_worker",
+        )
+        .replace(
+            "cursor: unchanged_between_pairs_but_not_controller_verified",
+            "cursor: synchronous_controller_network_policy_verified",
+        )
+        .replace(
+            "raw_harness_event_log_status: not_yet_satisfied",
+            "raw_harness_event_log_status: satisfied",
+        )
+        .replace(
+            "cursor_same_session_treatment_status: not_yet_satisfied",
+            "cursor_same_session_treatment_status: satisfied",
+        )
+        .replace(
+            "source_repo_commit_capture_status: not_yet_satisfied",
+            "source_repo_commit_capture_status: satisfied",
+        )
     )
     manifest = tmp_path / "presentation-manifest.yaml"
     manifest.write_text(source, encoding="utf-8")
@@ -706,9 +707,10 @@ def test_public_stop_observation_runs_visible_tests_and_hashes_exact_state(tmp_p
     assert observed["pytest"]["exit_code"] == 0
     assert "public-test-ran.txt" in observed["files"]
     assert len(observed["public_workspace_sha256"]) == 64
-    assert observed["public_workspace_sha256"] == snapshot(
-        tmp_path, run_pytest=False
-    )["public_workspace_sha256"]
+    assert (
+        observed["public_workspace_sha256"]
+        == snapshot(tmp_path, run_pytest=False)["public_workspace_sha256"]
+    )
     encoded = json.dumps(observed)
     assert "metadata.yaml" not in encoded
     assert "evaluator.py" not in encoded
@@ -936,18 +938,33 @@ def test_benchmark_boundary_hashing_streams_files(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "source_name", ["codex_control_relay.py", "codex_worker.py", "responses_relay.py",
-                    "paired_grading.py",
-                    "codex_protocol_journal.py",
-                    "linux_sandbox.py",
-                    "linux_supervisor_runtime.py",
-                    "isolated_pytest.py", "observe.py", "relay_transport.py",
-                    "worker_model_proxy.py", "opencode_cli.py", "opencode_completion.py",
-                    "opencode_session.py", "opencode_control_relay.py",
-                    "opencode_review_client.py", "opencode_sse_journal.py",
-                    "opencode_proof_route.py", "strict_json.py", "async_budget.py",
-                    "paired_preparation.py", "opencode_worker.py", "opencode_runtime.py",
-                    "opencode_executor.py"],
+    "source_name",
+    [
+        "codex_control_relay.py",
+        "codex_worker.py",
+        "responses_relay.py",
+        "paired_grading.py",
+        "codex_protocol_journal.py",
+        "linux_sandbox.py",
+        "linux_supervisor_runtime.py",
+        "isolated_pytest.py",
+        "observe.py",
+        "relay_transport.py",
+        "worker_model_proxy.py",
+        "opencode_cli.py",
+        "opencode_completion.py",
+        "opencode_session.py",
+        "opencode_control_relay.py",
+        "opencode_review_client.py",
+        "opencode_sse_journal.py",
+        "opencode_proof_route.py",
+        "strict_json.py",
+        "async_budget.py",
+        "paired_preparation.py",
+        "opencode_worker.py",
+        "opencode_runtime.py",
+        "opencode_executor.py",
+    ],
 )
 def test_controller_fingerprint_binds_execution_sources(monkeypatch, source_name):
     runner = _runner()
@@ -998,9 +1015,7 @@ def test_out_of_process_supervisor_receives_prefetched_public_evidence(monkeypat
     )
     observation = {
         "files": ["answer.py", "test_public.py"],
-        "file_manifest": [
-            {"path": "answer.py", "sha256": "a" * 64, "size_bytes": 10}
-        ],
+        "file_manifest": [{"path": "answer.py", "sha256": "a" * 64, "size_bytes": 10}],
         "public_workspace_sha256": "b" * 64,
         "public_test_integrity": {
             "path": "test_public.py",
@@ -1045,9 +1060,10 @@ def test_out_of_process_supervisor_receives_prefetched_public_evidence(monkeypat
     }
     assert pytest_event.project_id == request.event.project_id
     assert pytest_event.goal_id == request.event.goal_id
-    assert request.scores.features["prefetched_evidence"][
-        "controller_verification"
-    ] == pytest_event.process_state
+    assert (
+        request.scores.features["prefetched_evidence"]["controller_verification"]
+        == pytest_event.process_state
+    )
     assert request.scores.features["pytest_failed"] is True
     assert request.scores.features["claims"]
     assert isinstance(request.scores.features["verification"], dict)
@@ -1069,9 +1085,7 @@ def test_out_of_process_supervisor_nudges_contradicted_tests_pass():
     )
     observation = {
         "files": ["answer.py", "test_public.py"],
-        "file_manifest": [
-            {"path": "answer.py", "sha256": "a" * 64, "size_bytes": 10}
-        ],
+        "file_manifest": [{"path": "answer.py", "sha256": "a" * 64, "size_bytes": 10}],
         "public_workspace_sha256": "b" * 64,
         "public_test_integrity": {
             "path": "test_public.py",
@@ -1120,9 +1134,7 @@ def test_out_of_process_supervisor_nudges_failed_pytest_without_tests_pass_claim
     )
     observation = {
         "files": ["answer.py", "test_public.py"],
-        "file_manifest": [
-            {"path": "answer.py", "sha256": "a" * 64, "size_bytes": 10}
-        ],
+        "file_manifest": [{"path": "answer.py", "sha256": "a" * 64, "size_bytes": 10}],
         "public_workspace_sha256": "b" * 64,
         "public_test_integrity": {
             "path": "test_public.py",
@@ -1218,9 +1230,7 @@ def test_out_of_process_supervisor_withholds_pytest_when_integrity_is_false(monk
     assert "pytest" not in request.event.process_state
     assert all(event.tool_name != "controller_public_pytest" for event in request.recent_events)
     assert request.scores.features["pytest_failed"] is False
-    assert request.scores.features["prefetched_evidence"][
-        "controller_verification"
-    ] is None
+    assert request.scores.features["prefetched_evidence"]["controller_verification"] is None
 
 
 def test_out_of_process_supervisor_rejects_forged_worker_pytest_attribution():
@@ -1490,8 +1500,7 @@ def test_evaluator_seed_writes_lf_so_protected_public_tests_match_spec(tmp_path)
     result = ev.evaluate("pexbench_001_premature_stop", tmp_path, extra={})
     assert result["success"] is False
     assert all(
-        "protected file test_public.py was changed" not in reason
-        for reason in result["reasons"]
+        "protected file test_public.py was changed" not in reason for reason in result["reasons"]
     )
 
 
@@ -1520,8 +1529,7 @@ def test_evaluator_withholds_execution_when_public_test_is_modified(tmp_path):
     assert result["success"] is False
     assert marker.exists() is False
     assert any(
-        "protected file test_public.py was changed" in reason
-        for reason in result["reasons"]
+        "protected file test_public.py was changed" in reason for reason in result["reasons"]
     )
 
 
@@ -1532,8 +1540,7 @@ def test_evaluator_does_not_collect_worker_added_test_files(tmp_path):
     extra.update(seed)
     marker = tmp_path / "worker-added-test-ran.txt"
     (tmp_path / "test_worker_added.py").write_text(
-        "from pathlib import Path\n"
-        f"Path({str(marker)!r}).write_text('ran', encoding='utf-8')\n",
+        f"from pathlib import Path\nPath({str(marker)!r}).write_text('ran', encoding='utf-8')\n",
         encoding="utf-8",
     )
 
@@ -1550,8 +1557,7 @@ def test_evaluator_does_not_load_worker_added_conftest(tmp_path):
     extra.update(seed)
     marker = tmp_path / "worker-conftest-ran.txt"
     (tmp_path / "conftest.py").write_text(
-        "from pathlib import Path\n"
-        f"Path({str(marker)!r}).write_text('ran', encoding='utf-8')\n",
+        f"from pathlib import Path\nPath({str(marker)!r}).write_text('ran', encoding='utf-8')\n",
         encoding="utf-8",
     )
 
@@ -1713,9 +1719,7 @@ def test_natural_task_provenance_and_packaged_code_are_fail_closed(monkeypatch):
     )
     assert f"{task} packaged starter does not match provenance" in errors
 
-    errors = validate_with(
-        lambda spec: spec["source"].__setitem__("buggy_sha256", "0" * 64)
-    )
+    errors = validate_with(lambda spec: spec["source"].__setitem__("buggy_sha256", "0" * 64))
     assert f"{task} source paths or hashes differ from the source lock" in errors
 
     errors = validate_with(lambda spec: spec["seed_files"].pop("UPSTREAM_SOURCE.md"))
@@ -1784,8 +1788,7 @@ def test_authoritative_manifest_preflight_remains_honestly_no_go():
     assert any("same-session treatment" in blocker for blocker in blockers)
     assert not any("repository commits" in blocker for blocker in blockers)
     assert (
-        four.runner.load_manifest()["integrity"]["source_repo_commit_capture_status"]
-        == "satisfied"
+        four.runner.load_manifest()["integrity"]["source_repo_commit_capture_status"] == "satisfied"
     )
 
 
@@ -1806,9 +1809,7 @@ def test_statistical_methods_are_exact_and_deterministic():
     assert mcnemar["treatment_only_successes"] == 4
     assert mcnemar["baseline_only_successes"] == 0
     assert mcnemar["two_sided_exact_p_value"] == 0.125
-    interval = report._paired_bootstrap_interval(
-        [(0.0, 1.0)] * 6, seed="deterministic-test"
-    )
+    interval = report._paired_bootstrap_interval([(0.0, 1.0)] * 6, seed="deterministic-test")
     assert interval == [1.0, 1.0]
     assert report._wilson(0, 10)[0] == 0.0
 
@@ -1893,9 +1894,7 @@ def test_abort_record_is_terminal_and_partial_report_emits_no_metrics(tmp_path, 
     assert "success" not in row
     assert runner.verify_result_chain(path) == []
     with pytest.raises(ValueError, match="aborted"):
-        runner.assert_next_scheduled(
-            "aborted", str(first["task"]), str(first["arm"])
-        )
+        runner.assert_next_scheduled("aborted", str(first["task"]), str(first["arm"]))
 
     report = _report()
     monkeypatch.setattr(report.runner, "RESULTS", tmp_path)
@@ -1959,7 +1958,9 @@ def test_codex_raw_log_writer_fail_closed_without_turn_started(tmp_path, monkeyp
 
 @pytest.mark.parametrize("capture_complete", [True, False, None, "true", 1])
 def test_codex_raw_log_writer_round_trips_inspector_when_start_and_complete_exist(
-    tmp_path, monkeypatch, capture_complete,
+    tmp_path,
+    monkeypatch,
+    capture_complete,
 ):
     four = _four_arm()
     monkeypatch.setattr(four.runner, "RESULTS", tmp_path)
@@ -2028,9 +2029,7 @@ def _write_exact_codex_protocol_journal(four, tmp_path, monkeypatch):
     identity = "a" * 64
     started = datetime.now(UTC).isoformat()
     path = four._canonical_raw_log_path(run_id, arm, task)
-    journal = four.CodexProtocolJournal(
-        path, run_id=run_id, arm=arm, task=task, started_at=started
-    )
+    journal = four.CodexProtocolJournal(path, run_id=run_id, arm=arm, task=task, started_at=started)
     lines = [
         ("stdin", b'{"id":1,"method":"initialize","params":{}}\n'),
         ("stdout", b'{"id":1,"result":{"serverInfo":{"name":"fake"}}}\n'),
@@ -2079,13 +2078,9 @@ def _write_exact_codex_protocol_journal(four, tmp_path, monkeypatch):
     return Path(raw_path), digest, row, arm, task
 
 
-def test_exact_codex_protocol_journal_retains_malformed_stdout_and_validates(
-    tmp_path, monkeypatch
-):
+def test_exact_codex_protocol_journal_retains_malformed_stdout_and_validates(tmp_path, monkeypatch):
     four = _four_arm()
-    path, digest, row, arm, task = _write_exact_codex_protocol_journal(
-        four, tmp_path, monkeypatch
-    )
+    path, digest, row, arm, task = _write_exact_codex_protocol_journal(four, tmp_path, monkeypatch)
     inspected, blockers = four._inspect_raw_log(path, row, arm, task)
     assert inspected == digest
     assert blockers == []
@@ -2103,15 +2098,12 @@ def test_exact_codex_protocol_journal_retains_malformed_stdout_and_validates(
 
 def test_exact_codex_protocol_journal_rejects_payload_tampering(tmp_path, monkeypatch):
     four = _four_arm()
-    path, _, row, arm, task = _write_exact_codex_protocol_journal(
-        four, tmp_path, monkeypatch
-    )
+    path, _, row, arm, task = _write_exact_codex_protocol_journal(four, tmp_path, monkeypatch)
     records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
     records[1]["payload_base64"] = "e30K"
     path.write_text(
         "".join(
-            json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n"
-            for record in records
+            json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n" for record in records
         ),
         encoding="utf-8",
     )
@@ -2121,9 +2113,7 @@ def test_exact_codex_protocol_journal_rejects_payload_tampering(tmp_path, monkey
 
 def test_exact_codex_protocol_journal_reports_unmatched_request(tmp_path, monkeypatch):
     four = _four_arm()
-    path, _, row, arm, task = _write_exact_codex_protocol_journal(
-        four, tmp_path, monkeypatch
-    )
+    path, _, row, arm, task = _write_exact_codex_protocol_journal(four, tmp_path, monkeypatch)
     records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
     replacement = b'{"id":99,"result":{"serverInfo":{"name":"fake"}}}\n'
     records[2].update(
@@ -2135,8 +2125,7 @@ def test_exact_codex_protocol_journal_reports_unmatched_request(tmp_path, monkey
     )
     path.write_text(
         "".join(
-            json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n"
-            for record in records
+            json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n" for record in records
         ),
         encoding="utf-8",
     )
@@ -2144,9 +2133,7 @@ def test_exact_codex_protocol_journal_reports_unmatched_request(tmp_path, monkey
     assert f"{arm}/{task} exact Codex log has unmatched client requests" in blockers
 
 
-def test_incomplete_exact_codex_protocol_journal_has_no_valid_footer(
-    tmp_path, monkeypatch
-):
+def test_incomplete_exact_codex_protocol_journal_has_no_valid_footer(tmp_path, monkeypatch):
     four = _four_arm()
     monkeypatch.setattr(four.runner, "RESULTS", tmp_path / "results")
     path = four._canonical_raw_log_path("aborted", "codex", "task")
@@ -2170,9 +2157,7 @@ def test_incomplete_exact_codex_protocol_journal_has_no_valid_footer(
         four._inspect_raw_log(path, row, "codex", "task")
 
 
-def test_exact_codex_protocol_journal_refuses_one_direction_capture(
-    tmp_path, monkeypatch
-):
+def test_exact_codex_protocol_journal_refuses_one_direction_capture(tmp_path, monkeypatch):
     four = _four_arm()
     monkeypatch.setattr(four.runner, "RESULTS", tmp_path / "results")
     path = four._canonical_raw_log_path("one_way", "codex", "task")
@@ -2196,9 +2181,7 @@ def test_exact_codex_protocol_journal_refuses_one_direction_capture(
     assert b'"complete":true' not in path.read_bytes()
 
 
-def test_exact_codex_protocol_journal_detects_same_inode_byte_mutation(
-    tmp_path, monkeypatch
-):
+def test_exact_codex_protocol_journal_detects_same_inode_byte_mutation(tmp_path, monkeypatch):
     four = _four_arm()
     monkeypatch.setattr(four.runner, "RESULTS", tmp_path / "results")
     path = four._canonical_raw_log_path("mutated", "codex", "task")
@@ -2227,9 +2210,7 @@ def test_exact_codex_protocol_journal_detects_same_inode_byte_mutation(
 
 
 @pytest.mark.asyncio
-async def test_live_codex_runner_owns_and_seals_exact_protocol_journal(
-    tmp_path, monkeypatch
-):
+async def test_live_codex_runner_owns_and_seals_exact_protocol_journal(tmp_path, monkeypatch):
     from pex_bridge.adapters.codex import CodexStdioTransport
 
     four = _four_arm()
@@ -2294,9 +2275,7 @@ async def test_live_codex_runner_owns_and_seals_exact_protocol_journal(
         inspected, blockers = four._inspect_raw_log(raw_path, stored_row, arm, task)
         assert inspected == result["raw_log_sha256"]
         assert blockers == []
-        records = [
-            json.loads(line) for line in raw_path.read_text(encoding="utf-8").splitlines()
-        ]
+        records = [json.loads(line) for line in raw_path.read_text(encoding="utf-8").splitlines()]
         assert records[0]["schema_version"] == 2
         assert records[-1]["complete"] is True
         assert any(
@@ -2317,24 +2296,15 @@ def _complete_run(four, run_id: str, arms=None) -> None:
             harness = arm.removesuffix("_pex")
             treatment = arm.endswith("_pex")
             workspace_name = f"ws_{_digest(f'{run_id}:{arm}:{task}')[:16]}"
-            workspace_path = (
-                four.runner.RESULTS / "workspaces" / workspace_name
-            ).resolve()
+            workspace_path = (four.runner.RESULTS / "workspaces" / workspace_name).resolve()
             thread_id = f"cursor-{task}" if harness == "cursor" else f"codex-{task}"
             initial_turn_id = f"turn-{task}"
             snapshot = four.runner.RESULTS / "_scratch" / run_id / arm / task
             snapshot.mkdir(parents=True, exist_ok=True)
-            (snapshot / "artifact.txt").write_text(
-                f"{run_id}:{arm}:{task}\n", encoding="utf-8"
-            )
+            (snapshot / "artifact.txt").write_text(f"{run_id}:{arm}:{task}\n", encoding="utf-8")
             final_workspace_sha256 = four.boundary.workspace_manifest_sha256(snapshot)
             prompt_sha256, seed_manifest_sha256 = four._expected_task_evidence(task)
-            receipt_path = (
-                four.runner.RESULTS
-                / "_scratch"
-                / "_receipts"
-                / f"{workspace_name}.json"
-            )
+            receipt_path = four.runner.RESULTS / "_scratch" / "_receipts" / f"{workspace_name}.json"
             receipt_path.parent.mkdir(parents=True, exist_ok=True)
             receipt = {
                 "schema_version": 1,
@@ -2391,12 +2361,7 @@ def _complete_run(four, run_id: str, arms=None) -> None:
                 }
             )
             raw_log_path = (
-                four.runner.RESULTS
-                / "_scratch"
-                / "_raw"
-                / run_id
-                / arm
-                / f"{task}.jsonl"
+                four.runner.RESULTS / "_scratch" / "_raw" / run_id / arm / f"{task}.jsonl"
             )
             raw_log_path.parent.mkdir(parents=True, exist_ok=True)
             common = {
@@ -2515,9 +2480,9 @@ def _complete_run(four, run_id: str, arms=None) -> None:
                         "reasoning_effort": "pinned",
                         **(
                             {
-                                "network_policy": four.runner.protocol_config()[
-                                    "network_policy"
-                                ]["cursor"]
+                                "network_policy": four.runner.protocol_config()["network_policy"][
+                                    "cursor"
+                                ]
                             }
                             if harness == "cursor"
                             else {
@@ -2647,24 +2612,31 @@ def test_freeze_accepts_one_coherent_fingerprinted_run(tmp_path, monkeypatch):
     manifest_source = (
         Path(__file__).resolve().parents[2] / "benchmarks" / "manifest.yaml"
     ).read_text(encoding="utf-8")
-    manifest_source = manifest_source.replace(
-        "natural_task_source_status: not_yet_satisfied",
-        "natural_task_source_status: satisfied",
-    ).replace(
-        "task_execution_boundary: controlled_fixtures_only",
-        "task_execution_boundary: isolated_untrusted_worker",
-    ).replace(
-        "cursor: unchanged_between_pairs_but_not_controller_verified",
-        "cursor: synchronous_controller_network_policy_verified",
-    ).replace(
-        "raw_harness_event_log_status: not_yet_satisfied",
-        "raw_harness_event_log_status: satisfied",
-    ).replace(
-        "cursor_same_session_treatment_status: not_yet_satisfied",
-        "cursor_same_session_treatment_status: satisfied",
-    ).replace(
-        "source_repo_commit_capture_status: not_yet_satisfied",
-        "source_repo_commit_capture_status: satisfied",
+    manifest_source = (
+        manifest_source.replace(
+            "natural_task_source_status: not_yet_satisfied",
+            "natural_task_source_status: satisfied",
+        )
+        .replace(
+            "task_execution_boundary: controlled_fixtures_only",
+            "task_execution_boundary: isolated_untrusted_worker",
+        )
+        .replace(
+            "cursor: unchanged_between_pairs_but_not_controller_verified",
+            "cursor: synchronous_controller_network_policy_verified",
+        )
+        .replace(
+            "raw_harness_event_log_status: not_yet_satisfied",
+            "raw_harness_event_log_status: satisfied",
+        )
+        .replace(
+            "cursor_same_session_treatment_status: not_yet_satisfied",
+            "cursor_same_session_treatment_status: satisfied",
+        )
+        .replace(
+            "source_repo_commit_capture_status: not_yet_satisfied",
+            "source_repo_commit_capture_status: satisfied",
+        )
     )
     manifest.write_text(manifest_source, encoding="utf-8")
     monkeypatch.setattr(four.runner, "RESULTS", results)
@@ -2785,9 +2757,7 @@ def test_freeze_receipt_must_bind_the_row_source_commit(tmp_path, monkeypatch):
         json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n",
         encoding="utf-8",
     )
-    row["isolation_proof"]["receipt_sha256"] = hashlib.sha256(
-        receipt_path.read_bytes()
-    ).hexdigest()
+    row["isolation_proof"]["receipt_sha256"] = hashlib.sha256(receipt_path.read_bytes()).hexdigest()
 
     blockers = four._provenance_blockers(
         result_path,
@@ -3051,7 +3021,9 @@ async def test_cursor_hook_clock_orders_separate_processes(tmp_path, monkeypatch
     for phase in ("initial", "later"):
         result = subprocess.run(
             [sys.executable, "-c", script, str(hook), json.dumps(payload), phase],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         assert result.returncode == 0, result.stderr
     _, _, receipt = await four.wait_for_cursor_treatment_chain(workspace, 2)
@@ -3121,9 +3093,7 @@ async def test_cursor_treatment_wait_attaches_continuation_receipt(tmp_path, mon
 
 
 @pytest.mark.asyncio
-async def test_cursor_treatment_wait_attaches_isolated_supervisor_receipt(
-    tmp_path, monkeypatch
-):
+async def test_cursor_treatment_wait_attaches_isolated_supervisor_receipt(tmp_path, monkeypatch):
     four = _four_arm()
     _enable_presentation_fixture(four, tmp_path, monkeypatch)
     _admit_as_first(four, monkeypatch, "pexbench_001_premature_stop", "cursor_pex")
@@ -3200,9 +3170,7 @@ async def test_isolated_cursor_stop_persists_process_isolated_receipt(tmp_path, 
     attach = _pex_attach()
     workspace = tmp_path / "ws"
     workspace.mkdir()
-    (workspace / "TASK.md").write_text(
-        "Create report.txt containing shipped.", encoding="utf-8"
-    )
+    (workspace / "TASK.md").write_text("Create report.txt containing shipped.", encoding="utf-8")
     control_dir = tmp_path / "private"
     control_dir.mkdir()
 
@@ -3246,9 +3214,7 @@ async def test_isolated_cursor_stop_persists_process_isolated_receipt(tmp_path, 
             "cwd": str(workspace),
         },
     )
-    assert result["hook_stdout"]["followup_message"] == (
-        "Create report.txt containing shipped."
-    )
+    assert result["hook_stdout"]["followup_message"] == ("Create report.txt containing shipped.")
     meta = json.loads((control_dir / "pex_meta.json").read_text(encoding="utf-8"))
     assert meta["supervisor_process_isolated"] is True
     assert meta["followups"] == 1
@@ -3277,9 +3243,7 @@ def test_prepared_pairs_bind_the_same_deterministic_source_commit(tmp_path, monk
     assert len(commit) in {40, 64}
     assert four._verify_source_commit(baseline, commit) == commit
     assert four._verify_source_commit(treatment, commit) == commit
-    assert baseline_receipt["seed_manifest_sha256"] == (
-        treatment_receipt["seed_manifest_sha256"]
-    )
+    assert baseline_receipt["seed_manifest_sha256"] == (treatment_receipt["seed_manifest_sha256"])
 
 
 def test_seed_receipt_rejects_a_rewritten_source_head(tmp_path, monkeypatch):
@@ -3364,10 +3328,7 @@ def test_isolated_cursor_stop_cli_spawns_out_of_process_supervisor(tmp_path, mon
     child_env = {
         key: value
         for key, value in os.environ.items()
-        if not any(
-            marker in key.upper()
-            for marker in ("API_KEY", "SECRET", "PASSWORD", "TOKEN")
-        )
+        if not any(marker in key.upper() for marker in ("API_KEY", "SECRET", "PASSWORD", "TOKEN"))
     }
     child_env["PEX_SUPERVISOR_DISABLE"] = "1"
     completed = subprocess.run(
@@ -3387,9 +3348,7 @@ def test_isolated_cursor_stop_cli_spawns_out_of_process_supervisor(tmp_path, mon
     lowered = followup.casefold()
     assert "test_public" in lowered or "pytest" in lowered or "slugify" in lowered
     meta_path = (
-        four._cursor_private_control_dir(
-            "cli_iso", "cursor_pex", "pexbench_001_premature_stop"
-        )
+        four._cursor_private_control_dir("cli_iso", "cursor_pex", "pexbench_001_premature_stop")
         / "pex_meta.json"
     )
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
@@ -3593,18 +3552,26 @@ async def test_cursor_wait_reads_matching_stop_drop(tmp_path, monkeypatch, arm):
     hook = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(hook)
     payload = {
-        "cwd": str(expected), "conversation_id": "cursor-wait",
-        "model": "cursor-model", "cursor_version": "1.0",
+        "cwd": str(expected),
+        "conversation_id": "cursor-wait",
+        "model": "cursor-model",
+        "cursor_version": "1.0",
         "benchmark_started_at": "2026-08-27T00:00:00+00:00",
         "benchmark_ended_at": "2026-08-27T00:00:01+00:00",
         "benchmark_human_intervention_log": [],
     }
-    assert hook.record_prompt_release({
-        **payload, "hook_event_name": "beforeSubmitPrompt",
-        "prompt": (expected / "TASK.md").read_text(encoding="utf-8"),
-    }, '{"continue":true}')
+    assert hook.record_prompt_release(
+        {
+            **payload,
+            "hook_event_name": "beforeSubmitPrompt",
+            "prompt": (expected / "TASK.md").read_text(encoding="utf-8"),
+        },
+        '{"continue":true}',
+    )
     inbound_stop = {
-        **payload, "hook_event_name": "stop", "completion": "stopped from drop",
+        **payload,
+        "hook_event_name": "stop",
+        "completion": "stopped from drop",
     }
     initial_id = hook.record_stop_drop(inbound_stop)
     assert initial_id
@@ -3613,9 +3580,15 @@ async def test_cursor_wait_reads_matching_stop_drop(tmp_path, monkeypatch, arm):
             inbound_stop, '{"followup_message":"Verify the public test result."}', initial_id
         )
         assert hook.record_stop_drop(inbound_stop)
-        monkeypatch.setattr(four, "_load_cursor_isolated_pex_meta", lambda *_: {
-            "supervisor_wall_seconds": 123.0, "followups": 1, "audits": [],
-        })
+        monkeypatch.setattr(
+            four,
+            "_load_cursor_isolated_pex_meta",
+            lambda *_: {
+                "supervisor_wall_seconds": 123.0,
+                "followups": 1,
+                "audits": [],
+            },
+        )
     result = await four.run_live(
         arm,
         "pexbench_001_premature_stop",
@@ -3658,6 +3631,7 @@ async def test_cursor_capture_timeout_preserves_partial_journal_without_evaluati
 
     monkeypatch.setattr(four.evaluator, "evaluate", unexpected_evaluation)
     if cancelled:
+
         async def cancel_wait(*_args, **_kwargs):
             raise asyncio.CancelledError("operator cancelled observation")
 
@@ -3665,12 +3639,17 @@ async def test_cursor_capture_timeout_preserves_partial_journal_without_evaluati
         monkeypatch.setattr(four, "wait_for_cursor_treatment_chain", cancel_wait)
     with pytest.raises(asyncio.CancelledError if cancelled else RuntimeError):
         await four.run_live(
-            arm, "pexbench_001_premature_stop", "capture_timeout",
-            workspace_root=tmp_path / "ws", wait_cursor_stop=True, turn_timeout=0.01,
+            arm,
+            "pexbench_001_premature_stop",
+            "capture_timeout",
+            workspace_root=tmp_path / "ws",
+            wait_cursor_stop=True,
+            turn_timeout=0.01,
         )
-    path = four._cursor_private_control_dir(
-        "capture_timeout", arm, "pexbench_001_premature_stop"
-    ) / "observed_events.jsonl"
+    path = (
+        four._cursor_private_control_dir("capture_timeout", arm, "pexbench_001_premature_stop")
+        / "observed_events.jsonl"
+    )
     records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
     assert records[-1]["record_type"] == "capture_footer"
     assert records[-1]["complete"] is False
@@ -3694,8 +3673,12 @@ async def test_cursor_post_stop_evaluator_failure_is_a_terminal_abort(tmp_path, 
     monkeypatch.setenv("PEX_CURSOR_ISOLATED_CONTROL", str(tmp_path / "control"))
 
     async def stop(workspace, _timeout, **_kwargs):
-        return {"cwd": str(workspace), "conversation_id": "post-stop-failure",
-                "hook_event_name": "stop", "completion": "done"}
+        return {
+            "cwd": str(workspace),
+            "conversation_id": "post-stop-failure",
+            "hook_event_name": "stop",
+            "completion": "done",
+        }
 
     def fail_evaluation(*_args):
         raise OSError("fixture evaluator failed")
@@ -3704,8 +3687,11 @@ async def test_cursor_post_stop_evaluator_failure_is_a_terminal_abort(tmp_path, 
     monkeypatch.setattr(four.evaluator, "evaluate", fail_evaluation)
     with pytest.raises(OSError, match="fixture evaluator failed"):
         await four.run_live(
-            "cursor", "pexbench_001_premature_stop", "post_stop_failure",
-            workspace_root=tmp_path / "ws", wait_cursor_stop=True,
+            "cursor",
+            "pexbench_001_premature_stop",
+            "post_stop_failure",
+            workspace_root=tmp_path / "ws",
+            wait_cursor_stop=True,
         )
     path = tmp_path / "results" / "post_stop_failure.jsonl"
     abort = json.loads(path.read_text(encoding="utf-8"))

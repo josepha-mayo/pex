@@ -78,6 +78,7 @@ class KeyringSupervisorSecretStore:
                 "keyring.backends.kwallet",
             )
         )
+
         def approved(candidate: Any) -> bool:
             name = type(candidate).__module__
             return any(name == prefix or name.startswith(prefix + ".") for prefix in allowed)
@@ -207,9 +208,7 @@ class SupervisorChoice(BaseModel):
     revision: int = Field(default=1, ge=1, le=2_147_483_647)
     provider: str | None = Field(default=None, max_length=256)
     model_id: str | None = Field(default=None, max_length=512)
-    auth_mode: Literal[
-        "api_key", "login", "local", "custom", "bedrock", "agentcore"
-    ] | None = None
+    auth_mode: Literal["api_key", "login", "local", "custom", "bedrock", "agentcore"] | None = None
     protocol: Literal["openai", "anthropic"] | None = None
     base_url: str | None = Field(default=None, max_length=2048)
     # None inherits the bridge's startup cap; zero pauses automatic semantic reviews.

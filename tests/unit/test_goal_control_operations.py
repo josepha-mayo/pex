@@ -478,8 +478,7 @@ async def test_corrupt_migration_marker_rejects_reconnect(tmp_path) -> None:
     try:
         await store.db.execute("DROP TRIGGER trg_goal_control_operation_migration_immutable")
         await store.db.execute(
-            "UPDATE goal_control_operation_migration_state SET json = '{}' "
-            "WHERE singleton = 1"
+            "UPDATE goal_control_operation_migration_state SET json = '{}' WHERE singleton = 1"
         )
         await store.db.commit()
     finally:

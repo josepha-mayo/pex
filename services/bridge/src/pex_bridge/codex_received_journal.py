@@ -120,8 +120,7 @@ class CodexReceivedJournal:
                         connection.execute(f"PRAGMA application_id={_APPLICATION_ID}")
                         connection.execute("PRAGMA user_version=1")
                     elif (
-                        connection.execute("PRAGMA application_id").fetchone()[0]
-                        != _APPLICATION_ID
+                        connection.execute("PRAGMA application_id").fetchone()[0] != _APPLICATION_ID
                         or connection.execute("PRAGMA user_version").fetchone()[0] != 1
                     ):
                         raise CodexReceivedJournalError(

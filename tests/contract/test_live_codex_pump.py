@@ -256,9 +256,7 @@ async def test_live_codex_stop_inspects_with_strands(tmp_path: Path):
     # target so the worker updates it and verification can inspect the result.
     (tmp_path / "ping.txt").write_text("", encoding="utf-8")
     worker_turn_params = _live_codex_turn_params()
-    transport = CodexStdioTransport(
-        _live_codex_command(binary, worker_turn_params["model"])
-    )
+    transport = CodexStdioTransport(_live_codex_command(binary, worker_turn_params["model"]))
     adapter = CodexAdapter(transport)
     registry = AdapterRegistry()
     registry.bind("codex", adapter)
@@ -405,9 +403,7 @@ async def test_live_codex_incomplete_stop_sends_specific_continue(tmp_path: Path
     # process cannot inspect on Windows.
     (tmp_path / "report.txt").write_text("", encoding="utf-8")
     worker_turn_params = _live_codex_turn_params()
-    transport = CodexStdioTransport(
-        _live_codex_command(binary, worker_turn_params["model"])
-    )
+    transport = CodexStdioTransport(_live_codex_command(binary, worker_turn_params["model"]))
     adapter = CodexAdapter(transport)
     registry = AdapterRegistry()
     registry.bind("codex", adapter)
@@ -468,9 +464,7 @@ async def test_live_codex_incomplete_stop_sends_specific_continue(tmp_path: Path
         assert initial is not None, "no initial STOP intervention"
         if final is None:
             verifier = (initial.metadata or {}).get("independent_verifier") or {}
-            verifier_status = (
-                verifier.get("status") if isinstance(verifier, dict) else "malformed"
-            )
+            verifier_status = verifier.get("status") if isinstance(verifier, dict) else "malformed"
             raise AssertionError(
                 "no final STOP intervention; "
                 f"first_action={initial.action_taken}; "
@@ -540,9 +534,7 @@ async def test_live_codex_incomplete_stop_sends_specific_continue(tmp_path: Path
             assert trigger.event_id.startswith(f"{session.id}:turn:")
             assert trigger.raw_event_ref
         final_trigger = events_by_id[final_trigger_id]
-        assert (final_trigger.metadata or {}).get("vendor_turn_id") == delivery[
-            "vendor_turn_id"
-        ]
+        assert (final_trigger.metadata or {}).get("vendor_turn_id") == delivery["vendor_turn_id"]
         assert final_trigger_id == f"{session.id}:turn:{delivery['vendor_turn_id']}"
 
         audit_receipts = await correlated_audit_receipts(store, [initial, final])

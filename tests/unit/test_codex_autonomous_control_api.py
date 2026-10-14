@@ -8,7 +8,8 @@ from test_codex_shared_attach import shared_client as shared_client
 
 def request_body(status, **overrides):
     return {
-        key: value for key, value in {**_grant_arguments(status), **overrides}.items()
+        key: value
+        for key, value in {**_grant_arguments(status), **overrides}.items()
         if key not in {"principal_id", "actor_assurance"}
     }
 
@@ -33,9 +34,14 @@ async def test_operator_can_enable_disable_and_replay_without_worker_write(share
     adapter = state.adapters.for_session(active["scope"]["session_id"])
     assert (await adapter.probe()).send_message is False
     assert adapter.session.metadata["subscription_receipt"]["observation_only"] is True
-    disabled = await client.patch(path, json=request_body(
-        active, enabled=False, idempotency_key="disable-fixture-operation",
-    ))
+    disabled = await client.patch(
+        path,
+        json=request_body(
+            active,
+            enabled=False,
+            idempotency_key="disable-fixture-operation",
+        ),
+    )
     assert disabled.status_code == 200, disabled.text
     assert (await client.get(path)).json()["effective_enabled"] is False
 
@@ -45,18 +51,27 @@ async def test_operator_authentication_is_required(shared_client, method):
     client, path = await endpoint(shared_client)
     before = (await client.get(path)).json()
     response = await client.request(
-        method, path, json=request_body(before) if method == "PATCH" else None,
+        method,
+        path,
+        json=request_body(before) if method == "PATCH" else None,
         headers={"Authorization": "Bearer wrong-fixture-token"},
     )
     assert response.status_code in {401, 403}
     assert (await client.get(path)).json()["enabled"] is False
 
 
-@pytest.mark.parametrize("change", [
-    {"enabled": "true"}, {"enabled": 1}, {"expected_control_revision": True},
-    {"expected_connection_generation": 0}, {"expected_goal_intent_hash": "not-a-hash"},
-    {"principal_id": "local_bridge_operator"}, {"expected_workspace_sha256": None},
-])
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"enabled": "true"},
+        {"enabled": 1},
+        {"expected_control_revision": True},
+        {"expected_connection_generation": 0},
+        {"expected_goal_intent_hash": "not-a-hash"},
+        {"principal_id": "local_bridge_operator"},
+        {"expected_workspace_sha256": None},
+    ],
+)
 async def test_strict_request_cannot_coerce_or_supply_actor(shared_client, change):
     client, path = await endpoint(shared_client)
     initial = (await client.get(path)).json()
@@ -83,7 +98,11 @@ async def test_disconnected_adapter_is_not_effectively_enabled(shared_client):
     adapter._invalid = True
     status = (await client.get(path)).json()
     assert status["connected"] is False and status["effective_enabled"] is False
-    response = await client.patch(path, json=request_body(
-        status, idempotency_key="reconnect-required-fixture",
-    ))
+    response = await client.patch(
+        path,
+        json=request_body(
+            status,
+            idempotency_key="reconnect-required-fixture",
+        ),
+    )
     assert response.status_code == 409

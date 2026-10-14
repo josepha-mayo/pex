@@ -16,26 +16,41 @@ from test_workspace_continuity_pipeline import bound_pipeline as bound_pipeline
 
 def raw_user():
     return {
-        "id": "echo-item", "type": "userMessage", "clientId": "known-correlation",
+        "id": "echo-item",
+        "type": "userMessage",
+        "clientId": "known-correlation",
         "content": [{"type": "text", "text": "Continue exact task", "text_elements": []}],
     }
 
 
 def records(adapter):
-    return (canonical({
-        "correction": {
-            "schema": CORRECTION_SCHEMA, "session_id": adapter.session.id,
-            "thread_id": adapter.session.vendor_session_id, "effect_id": "attempted-effect",
-            "client_message_id": "known-correlation", "content": raw_user()["content"],
-        },
-        "effect_state": "delivery_uncertain", "effect_version": 2,
-    }),)
+    return (
+        canonical(
+            {
+                "correction": {
+                    "schema": CORRECTION_SCHEMA,
+                    "session_id": adapter.session.id,
+                    "thread_id": adapter.session.vendor_session_id,
+                    "effect_id": "attempted-effect",
+                    "client_message_id": "known-correlation",
+                    "content": raw_user()["content"],
+                },
+                "effect_state": "delivery_uncertain",
+                "effect_version": 2,
+            }
+        ),
+    )
 
 
 def notification():
-    return _notification("item/completed", {
-        "threadId": "thread-1", "turnId": "turn-1", "item": raw_user(),
-    })
+    return _notification(
+        "item/completed",
+        {
+            "threadId": "thread-1",
+            "turnId": "turn-1",
+            "item": raw_user(),
+        },
+    )
 
 
 async def ignore(*args):
@@ -118,20 +133,31 @@ async def test_failed_bootstrap_never_normalizes_interrupted_batch_as_human(tmp_
         retained.extend(event for event, _ in observations)
 
     if direct:
-        task = asyncio.create_task(adapter.pump_into_pipeline(
-            ignore, provenance_loader=load, lifecycle_ingest=ignore, retention_ingest=retain,
-        ))
+        task = asyncio.create_task(
+            adapter.pump_into_pipeline(
+                ignore,
+                provenance_loader=load,
+                lifecycle_ingest=ignore,
+                retention_ingest=retain,
+            )
+        )
     else:
         task = adapter.start_pipeline_pump(
-            ignore, provenance_loader=load, lifecycle_ingest=ignore, retention_ingest=retain,
+            ignore,
+            provenance_loader=load,
+            lifecycle_ingest=ignore,
+            retention_ingest=retain,
         )
     try:
         await asyncio.wait_for(entered.wait(), timeout=2)
         # Exercise the real coordinator's interrupted-prefix receipt while the
         # owned receiver is waiting for its attribution dependency.
-        transport.notifications.extend([
-            notification(), _notification("thread/closed", {"threadId": "thread-1"}),
-        ])
+        transport.notifications.extend(
+            [
+                notification(),
+                _notification("thread/closed", {"threadId": "thread-1"}),
+            ]
+        )
         with pytest.raises(CodexObservationInterrupted):
             await coordinator.drain_live()
         assert len(coordinator.interrupted_batch.records) == 1
@@ -167,7 +193,10 @@ async def test_exact_echo_sidecar_survives_transient_ingestion_until_retained(tm
             retained.append(event)
 
     task = adapter.start_pipeline_pump(
-        ingest, provenance_loader=load, lifecycle_ingest=ignore, retention_ingest=retain,
+        ingest,
+        provenance_loader=load,
+        lifecycle_ingest=ignore,
+        retention_ingest=retain,
     )
     transport.notifications.append(notification())
     await asyncio.wait_for(entered.wait(), timeout=2)
@@ -179,7 +208,8 @@ async def test_exact_echo_sidecar_survives_transient_ingestion_until_retained(tm
 
 
 async def test_durable_duplicate_after_fresh_registry_cannot_retry_or_retain_as_exact(
-    bound_pipeline, monkeypatch,
+    bound_pipeline,
+    monkeypatch,
 ):
     """Actual Store+consumer; reset only the transient map as a fresh adapter would."""
     bound = bound_pipeline
@@ -191,7 +221,9 @@ async def test_durable_duplicate_after_fresh_registry_cannot_retry_or_retain_as_
     await attempt((store, session, None), prepared)
     loaded = await store.list_codex_correction_attributions(session)
     adapter._input_provenance = CodexInputProvenance.from_store_records(
-        loaded, session_id=session.id, thread_id=session.vendor_session_id,
+        loaded,
+        session_id=session.id,
+        thread_id=session.vendor_session_id,
     )
     correction = prepared[2]["codex_correction"]
     first_committed = asyncio.Event()
@@ -211,13 +243,19 @@ async def test_durable_duplicate_after_fresh_registry_cannot_retry_or_retain_as_
     monkeypatch.setattr(store, "record_codex_correction_observation", record_spy)
 
     def echo(item_id):
-        return _notification("item/completed", {
-            "threadId": session.vendor_session_id, "turnId": "turn-1",
-            "item": {
-                "type": "userMessage", "id": item_id,
-                "clientId": correction["client_message_id"], "content": correction["content"],
+        return _notification(
+            "item/completed",
+            {
+                "threadId": session.vendor_session_id,
+                "turnId": "turn-1",
+                "item": {
+                    "type": "userMessage",
+                    "id": item_id,
+                    "clientId": correction["client_message_id"],
+                    "content": correction["content"],
+                },
             },
-        })
+        )
 
     bound.transport.notifications.append(echo("first-vendor-item"))
     await asyncio.wait_for(first_committed.wait(), timeout=2)
@@ -228,7 +266,8 @@ async def test_durable_duplicate_after_fresh_registry_cannot_retry_or_retain_as_
     adapter._correction_vendor_items.clear()
     adapter._input_provenance = CodexInputProvenance.from_store_records(
         await store.list_codex_correction_attributions(session),
-        session_id=session.id, thread_id=session.vendor_session_id,
+        session_id=session.id,
+        thread_id=session.vendor_session_id,
     )
     bound.transport.notifications.append(echo("second-vendor-item"))
     await eventually(lambda: bound.task.done() or len(errors) >= 2)

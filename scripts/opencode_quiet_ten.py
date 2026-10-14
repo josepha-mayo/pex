@@ -110,6 +110,7 @@ def _load_runtime_dependencies() -> None:
     from pex_supervisor.providers import load_supervisor_model
     from pydantic_core import to_jsonable_python
 
+
 ROOT: Path  # Assigned only after explicit CLI run-name validation.
 START_CASE = 1
 ORIGIN = "http://127.0.0.1:4098"
@@ -269,8 +270,8 @@ async def run_case(number, case, model, server):
     name = case[0]
     case_root = ROOT / f"case-{number:02d}-{name}"
     workspace = case_root / "workspace"
-    name, seed_name, seed, output_name, expected, objective, criterion, task = (
-        public_case_contract(case)
+    name, seed_name, seed, output_name, expected, objective, criterion, task = public_case_contract(
+        case
     )
     workspace.mkdir(parents=True, exist_ok=False)
     subprocess.run(
@@ -590,8 +591,8 @@ async def run_baseline_case(number, case, server):
     name = case[0]
     case_root = ROOT / f"case-{number:02d}-{name}"
     workspace = case_root / "workspace"
-    name, seed_name, seed, output_name, expected, objective, criterion, task = (
-        public_case_contract(case)
+    name, seed_name, seed, output_name, expected, objective, criterion, task = public_case_contract(
+        case
     )
     workspace.mkdir(parents=True, exist_ok=False)
     subprocess.run(
@@ -875,9 +876,7 @@ async def main():
     if args.free_supervisor_model:
         if "PEX_PROOF_FREE_SUPERVISOR_KEY" not in os.environ:
             raise RuntimeError("explicit free supervisor credential is unavailable")
-        supervisor_secret = validate_supervisor_secret(
-            os.environ["PEX_PROOF_FREE_SUPERVISOR_KEY"]
-        )
+        supervisor_secret = validate_supervisor_secret(os.environ["PEX_PROOF_FREE_SUPERVISOR_KEY"])
     else:
         assert choice is not None and choice.secret_ref is not None
         supervisor_secret = KeyringSupervisorSecretStore().get(
@@ -933,17 +932,10 @@ async def main():
             },
         },
     )
-    before_env = {
-        key: os.environ.get(key) for key in (*pin, "PEX_SUPERVISOR_DISABLE")
-    }
-    if (
-        args.arm == "pex"
-        and PEX_MODE == "semantic"
-        and before_env["PEX_SUPERVISOR_DISABLE"] == "1"
-    ):
+    before_env = {key: os.environ.get(key) for key in (*pin, "PEX_SUPERVISOR_DISABLE")}
+    if args.arm == "pex" and PEX_MODE == "semantic" and before_env["PEX_SUPERVISOR_DISABLE"] == "1":
         raise RuntimeError(
-            "ambient supervisor disable conflicts with semantic mode; "
-            "use --pex-mode deterministic"
+            "ambient supervisor disable conflicts with semantic mode; use --pex-mode deterministic"
         )
     if args.arm == "pex":
         os.environ.update(pin)
@@ -997,11 +989,14 @@ async def main():
                 if (
                     receipt.get("observation_incomplete") is not False
                     or receipt.get("infrastructure_abort_reason") is not None
-                    or (args.arm == "pex" and (
-                        receipt.get("terminal_review_failed") is not False
-                        or receipt.get("all_observed_events_settled") is not True
-                        or receipt.get("all_pex_reviews_completed") is not True
-                    ))
+                    or (
+                        args.arm == "pex"
+                        and (
+                            receipt.get("terminal_review_failed") is not False
+                            or receipt.get("all_observed_events_settled") is not True
+                            or receipt.get("all_pex_reviews_completed") is not True
+                        )
+                    )
                 ):
                     break
     except Exception as exc:

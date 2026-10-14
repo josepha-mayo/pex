@@ -63,7 +63,10 @@ def _resolved_directory(path: Path) -> Path:
 
 
 def _directory_proof(
-    path: Path, platform: PathPlatform, *, follow_symlinks: bool,
+    path: Path,
+    platform: PathPlatform,
+    *,
+    follow_symlinks: bool,
 ) -> PhysicalIdentityProof:
     observed = _os_stat(path, follow_symlinks=follow_symlinks)
     mode = getattr(observed, "st_mode", None)
@@ -71,8 +74,10 @@ def _directory_proof(
         raise ValueError("local workspace is not a real directory")
     if not follow_symlinks and platform == PathPlatform.WINDOWS:
         attributes = getattr(observed, "st_file_attributes", 0)
-        if type(attributes) is not int or attributes < 0 or (
-            attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT
+        if (
+            type(attributes) is not int
+            or attributes < 0
+            or (attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT)
         ):
             raise ValueError("resolved local directory has an unsupported reparse point")
     device, inode = getattr(observed, "st_dev", None), getattr(observed, "st_ino", None)
@@ -109,7 +114,9 @@ def measure_local_directory(path: str) -> LocalDirectoryIdentity:
         ):
             raise ValueError("local directory changed during identity measurement")
         return LocalDirectoryIdentity(
-            cwd=str(resolved_again), platform=platform, physical=canonical_again,
+            cwd=str(resolved_again),
+            platform=platform,
+            physical=canonical_again,
         )
     except (OSError, RuntimeError, NotImplementedError) as exc:
         raise ValueError("local directory identity could not be measured") from exc

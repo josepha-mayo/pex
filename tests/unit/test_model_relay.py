@@ -24,21 +24,36 @@ from benchmarks.model_relay import (
 @pytest.mark.parametrize("status", [200, 302, 429, 500])
 async def test_pinned_backend_sends_one_authenticated_request_and_never_follows_or_retries(status):
     requests = []
+
     async def handler(req):
         requests.append(req)
         assert str(req.url) == "https://provider.example/v1/chat/completions"
         assert req.headers["authorization"] == "Bearer test-credential-canary"
         assert req.headers["accept-encoding"] == "identity"
         assert json.loads(req.content)["model"] == "pinned"
-        payload = {"model": "pinned", "choices": [{
-            "message": {"role": "assistant", "content": "local response"},
-        }]}
-        return httpx.Response(status, headers={"Location": "https://untrusted.example/"},
-                              stream=httpx.ByteStream(json.dumps(payload).encode()))
-    backend = PinnedChatBackend(endpoint="https://provider.example/v1/chat/completions",
-        model="pinned", api_key="test-credential-canary", transport=httpx.MockTransport(handler))
-    relay = PinnedModelRelay(model="pinned", max_calls=1,
-                            deadline=time.perf_counter()+5, backend=backend)
+        payload = {
+            "model": "pinned",
+            "choices": [
+                {
+                    "message": {"role": "assistant", "content": "local response"},
+                }
+            ],
+        }
+        return httpx.Response(
+            status,
+            headers={"Location": "https://untrusted.example/"},
+            stream=httpx.ByteStream(json.dumps(payload).encode()),
+        )
+
+    backend = PinnedChatBackend(
+        endpoint="https://provider.example/v1/chat/completions",
+        model="pinned",
+        api_key="test-credential-canary",
+        transport=httpx.MockTransport(handler),
+    )
+    relay = PinnedModelRelay(
+        model="pinned", max_calls=1, deadline=time.perf_counter() + 5, backend=backend
+    )
     result = await relay.dispatch(request())
     assert result["ok"] is (status == 200)
     assert len(requests) == 1
@@ -47,39 +62,63 @@ async def test_pinned_backend_sends_one_authenticated_request_and_never_follows_
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("response", [
-    b'{"model":"other"}', b'{"model":"pinned","model":"pinned"}',
-    b'{"model":"pinned","value":NaN}', b"x" * (MAX_RESPONSE_BYTES+1),
-], ids=["wrong_model", "duplicate_keys", "nan", "oversize"])
+@pytest.mark.parametrize(
+    "response",
+    [
+        b'{"model":"other"}',
+        b'{"model":"pinned","model":"pinned"}',
+        b'{"model":"pinned","value":NaN}',
+        b"x" * (MAX_RESPONSE_BYTES + 1),
+    ],
+    ids=["wrong_model", "duplicate_keys", "nan", "oversize"],
+)
 async def test_pinned_backend_rejects_unbound_or_invalid_response(response):
-    backend = PinnedChatBackend(endpoint="https://provider.example/v1/chat/completions",
-        model="pinned", api_key="test-credential-canary",
-        transport=httpx.MockTransport(lambda _req: httpx.Response(
-            200, stream=httpx.ByteStream(response),
-        )))
-    relay = PinnedModelRelay(model="pinned", max_calls=1,
-                            deadline=time.perf_counter()+5, backend=backend)
+    backend = PinnedChatBackend(
+        endpoint="https://provider.example/v1/chat/completions",
+        model="pinned",
+        api_key="test-credential-canary",
+        transport=httpx.MockTransport(
+            lambda _req: httpx.Response(
+                200,
+                stream=httpx.ByteStream(response),
+            )
+        ),
+    )
+    relay = PinnedModelRelay(
+        model="pinned", max_calls=1, deadline=time.perf_counter() + 5, backend=backend
+    )
     assert (await relay.dispatch(request()))["error"] == "backend_failed_uncertain"
     assert len(relay.audit) == 1
 
 
-@pytest.mark.parametrize("endpoint", [
-    "http://provider.example/v1/chat/completions",
-    "https://user:password@provider.example/v1/chat/completions",
-    "https://provider.example/v1/chat/completions?key=secret",
-    "https://provider.example/v1/chat/completions#fragment",
-    "https://provider.example/private",
-])
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "http://provider.example/v1/chat/completions",
+        "https://user:password@provider.example/v1/chat/completions",
+        "https://provider.example/v1/chat/completions?key=secret",
+        "https://provider.example/v1/chat/completions#fragment",
+        "https://provider.example/private",
+    ],
+)
 def test_backend_endpoint_contract_rejects_redirectable_or_credential_urls(endpoint):
     with pytest.raises(ValueError, match="fixed HTTPS"):
         PinnedChatBackend(endpoint=endpoint, model="pinned", api_key="test-credential-canary")
 
 
 def request(request_id="call_1", **body):
-    return json.dumps({"schema": SCHEMA, "request_id": request_id, "body": {
-        "model": "pinned", "messages": [{"role": "user", "content": "public task"}],
-        "max_tokens": 128, **body,
-    }}).encode()
+    return json.dumps(
+        {
+            "schema": SCHEMA,
+            "request_id": request_id,
+            "body": {
+                "model": "pinned",
+                "messages": [{"role": "user", "content": "public task"}],
+                "max_tokens": 128,
+                **body,
+            },
+        }
+    ).encode()
 
 
 async def test_expired_model_timeout_cannot_complete_after_suppressed_cancel(monkeypatch):
@@ -132,8 +171,9 @@ async def test_model_caller_cancellation_cannot_be_suppressed_into_success():
         except asyncio.CancelledError:
             return {}
 
-    relay = PinnedModelRelay(model="pinned", max_calls=1,
-                            deadline=time.perf_counter() + 5, backend=backend)
+    relay = PinnedModelRelay(
+        model="pinned", max_calls=1, deadline=time.perf_counter() + 5, backend=backend
+    )
     task = asyncio.create_task(relay.dispatch(request()))
     await asyncio.wait_for(entered.wait(), 1)
     task.cancel()
@@ -160,26 +200,47 @@ async def test_backend_result_after_shared_clock_deadline_is_not_completed(monke
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("usage", [None, {
-    "prompt_tokens": 30, "completion_tokens": 8, "total_tokens": 38,
-    "private_untrusted_extension": "not retained",
-}])
+@pytest.mark.parametrize(
+    "usage",
+    [
+        None,
+        {
+            "prompt_tokens": 30,
+            "completion_tokens": 8,
+            "total_tokens": 38,
+            "private_untrusted_extension": "not retained",
+        },
+    ],
+)
 async def test_backend_receipt_binds_wire_outcome_and_available_usage(usage):
-    payload = {"model": "pinned", "choices": [{"message": {
-        "role": "assistant", "content": "private completion not retained",
-    }}]}
+    payload = {
+        "model": "pinned",
+        "choices": [
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": "private completion not retained",
+                }
+            }
+        ],
+    }
     if usage is not None:
         payload["usage"] = usage
     raw = json.dumps(payload).encode()
     backend = PinnedChatBackend(
         endpoint="https://provider.example/v1/chat/completions",
-        model="pinned", api_key="receipt-secret-canary",
-        transport=httpx.MockTransport(lambda _: httpx.Response(
-            200, stream=httpx.ByteStream(raw),
-        )),
+        model="pinned",
+        api_key="receipt-secret-canary",
+        transport=httpx.MockTransport(
+            lambda _: httpx.Response(
+                200,
+                stream=httpx.ByteStream(raw),
+            )
+        ),
     )
-    relay = PinnedModelRelay(model="pinned", max_calls=1,
-                            deadline=time.perf_counter()+5, backend=backend)
+    relay = PinnedModelRelay(
+        model="pinned", max_calls=1, deadline=time.perf_counter() + 5, backend=backend
+    )
     assert (await relay.dispatch(request()))["ok"] is True
     receipt = backend.audit[0]
     assert receipt["status"] == "completed" and receipt["http_status"] == 200
@@ -190,9 +251,15 @@ async def test_backend_receipt_binds_wire_outcome_and_available_usage(usage):
     assert relay_receipt["provider_receipt"]["relay_request_id"] == "call_1"
     assert relay_receipt["provider_receipt"]["relay_correlation_id"]
     assert receipt["usage_available"] is (usage is not None)
-    assert receipt["usage"] == (None if usage is None else {
-        "prompt_tokens": 30, "completion_tokens": 8, "total_tokens": 38,
-    })
+    assert receipt["usage"] == (
+        None
+        if usage is None
+        else {
+            "prompt_tokens": 30,
+            "completion_tokens": 8,
+            "total_tokens": 38,
+        }
+    )
     assert receipt["latency_ms"] >= 0
     assert "receipt-secret-canary" not in json.dumps(receipt)
     assert "private completion" not in json.dumps(receipt)
@@ -200,26 +267,44 @@ async def test_backend_receipt_binds_wire_outcome_and_available_usage(usage):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("usage", [
-    {"prompt_tokens": True, "completion_tokens": 1, "total_tokens": 2},
-    {"prompt_tokens": 1, "completion_tokens": -1, "total_tokens": 0},
-    {"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 8},
-    {"prompt_tokens": 1, "completion_tokens": 129, "total_tokens": 130},
-    {"prompt_tokens": 1, "completion_tokens": 2.0, "total_tokens": 3},
-    {"prompt_tokens": 1, "completion_tokens": 2},
-])
+@pytest.mark.parametrize(
+    "usage",
+    [
+        {"prompt_tokens": True, "completion_tokens": 1, "total_tokens": 2},
+        {"prompt_tokens": 1, "completion_tokens": -1, "total_tokens": 0},
+        {"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 8},
+        {"prompt_tokens": 1, "completion_tokens": 129, "total_tokens": 130},
+        {"prompt_tokens": 1, "completion_tokens": 2.0, "total_tokens": 3},
+        {"prompt_tokens": 1, "completion_tokens": 2},
+    ],
+)
 async def test_invalid_usage_keeps_attempt_uncertain_and_consumes_budget(usage):
-    payload = {"model": "pinned", "choices": [{"message": {
-        "role": "assistant", "content": "reply",
-    }}], "usage": usage}
+    payload = {
+        "model": "pinned",
+        "choices": [
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": "reply",
+                }
+            }
+        ],
+        "usage": usage,
+    }
     backend = PinnedChatBackend(
-        endpoint="https://provider.example/v1/chat/completions", model="pinned",
-        api_key="test-canary", transport=httpx.MockTransport(lambda _: httpx.Response(
-            200, stream=httpx.ByteStream(json.dumps(payload).encode()),
-        )),
+        endpoint="https://provider.example/v1/chat/completions",
+        model="pinned",
+        api_key="test-canary",
+        transport=httpx.MockTransport(
+            lambda _: httpx.Response(
+                200,
+                stream=httpx.ByteStream(json.dumps(payload).encode()),
+            )
+        ),
     )
-    relay = PinnedModelRelay(model="pinned", max_calls=1,
-                            deadline=time.perf_counter()+5, backend=backend)
+    relay = PinnedModelRelay(
+        model="pinned", max_calls=1, deadline=time.perf_counter() + 5, backend=backend
+    )
     assert (await relay.dispatch(request()))["error"] == "backend_failed_uncertain"
     assert backend.audit[0]["status"] == "failed_uncertain"
     assert backend.audit[0]["http_status"] == 200
@@ -231,16 +316,32 @@ async def test_invalid_usage_keeps_attempt_uncertain_and_consumes_budget(usage):
 async def test_backend_usage_bound_is_the_sent_limit_despite_caller_mutation():
     body = json.loads(request())["body"]
     wire = []
+
     async def handler(req):
         wire.append(req.content)
         body["max_tokens"] = 1000
-        return httpx.Response(200, stream=httpx.ByteStream(json.dumps({
-            "model": "pinned", "choices": [{"message": {"role": "assistant"}}],
-            "usage": {"prompt_tokens": 1, "completion_tokens": 129, "total_tokens": 130},
-        }).encode()))
+        return httpx.Response(
+            200,
+            stream=httpx.ByteStream(
+                json.dumps(
+                    {
+                        "model": "pinned",
+                        "choices": [{"message": {"role": "assistant"}}],
+                        "usage": {
+                            "prompt_tokens": 1,
+                            "completion_tokens": 129,
+                            "total_tokens": 130,
+                        },
+                    }
+                ).encode()
+            ),
+        )
+
     backend = PinnedChatBackend(
-        endpoint="https://provider.example/v1/chat/completions", model="pinned",
-        api_key="test-canary", transport=httpx.MockTransport(handler),
+        endpoint="https://provider.example/v1/chat/completions",
+        model="pinned",
+        api_key="test-canary",
+        transport=httpx.MockTransport(handler),
     )
     with pytest.raises(ValueError, match="request bound"):
         await backend(body)
@@ -252,14 +353,25 @@ async def test_backend_usage_bound_is_the_sent_limit_despite_caller_mutation():
 
 @pytest.mark.asyncio
 async def test_failed_completion_preserves_valid_provider_reported_usage():
-    payload = {"model": "pinned", "choices": [], "usage": {
-        "prompt_tokens": 30, "completion_tokens": 8, "total_tokens": 38,
-    }}
+    payload = {
+        "model": "pinned",
+        "choices": [],
+        "usage": {
+            "prompt_tokens": 30,
+            "completion_tokens": 8,
+            "total_tokens": 38,
+        },
+    }
     backend = PinnedChatBackend(
-        endpoint="https://provider.example/v1/chat/completions", model="pinned",
-        api_key="test-canary", transport=httpx.MockTransport(lambda _: httpx.Response(
-            200, stream=httpx.ByteStream(json.dumps(payload).encode()),
-        )),
+        endpoint="https://provider.example/v1/chat/completions",
+        model="pinned",
+        api_key="test-canary",
+        transport=httpx.MockTransport(
+            lambda _: httpx.Response(
+                200,
+                stream=httpx.ByteStream(json.dumps(payload).encode()),
+            )
+        ),
     )
     with pytest.raises(ValueError, match="assistant completion"):
         await backend(json.loads(request())["body"])
@@ -278,17 +390,24 @@ async def test_backend_failed_wire_outcome_keeps_unknown_usage(outcome):
         if outcome == "timeout":
             raise httpx.ReadTimeout("private error", request=req)
         return httpx.Response(429)
+
     backend = PinnedChatBackend(
-        endpoint="https://provider.example/v1/chat/completions", model="pinned",
-        api_key="test-canary", transport=httpx.MockTransport(handler),
+        endpoint="https://provider.example/v1/chat/completions",
+        model="pinned",
+        api_key="test-canary",
+        transport=httpx.MockTransport(handler),
     )
-    error = {"cancel": asyncio.CancelledError, "timeout": httpx.ReadTimeout,
-             "http_error": RuntimeError}[outcome]
+    error = {
+        "cancel": asyncio.CancelledError,
+        "timeout": httpx.ReadTimeout,
+        "http_error": RuntimeError,
+    }[outcome]
     with pytest.raises(error):
         await backend(json.loads(request())["body"])
     receipt = backend.audit[0]
-    assert receipt["status"] == ("cancelled_uncertain" if outcome == "cancel"
-                                 else "failed_uncertain")
+    assert receipt["status"] == (
+        "cancelled_uncertain" if outcome == "cancel" else "failed_uncertain"
+    )
     assert receipt["usage_available"] is False and receipt["usage"] is None
     assert receipt.get("http_status") == (429 if outcome == "http_error" else None)
     assert receipt["latency_ms"] >= 0
@@ -299,18 +418,27 @@ async def test_backend_failed_wire_outcome_keeps_unknown_usage(outcome):
 async def test_concurrent_relay_receipts_bind_each_pinned_backend_attempt():
     async def handler(req):
         sent = json.loads(req.content)
-        await asyncio.sleep(.02 if sent["max_tokens"] == 128 else 0)
-        payload = {"model": "pinned", "choices": [{
-            "message": {"role": "assistant", "content": "bounded"},
-        }], "usage": {"prompt_tokens": 10, "completion_tokens": 3,
-                       "total_tokens": 13}}
+        await asyncio.sleep(0.02 if sent["max_tokens"] == 128 else 0)
+        payload = {
+            "model": "pinned",
+            "choices": [
+                {
+                    "message": {"role": "assistant", "content": "bounded"},
+                }
+            ],
+            "usage": {"prompt_tokens": 10, "completion_tokens": 3, "total_tokens": 13},
+        }
         return httpx.Response(200, stream=httpx.ByteStream(json.dumps(payload).encode()))
+
     backend = PinnedChatBackend(
-        endpoint="https://provider.example/v1/chat/completions", model="pinned",
-        api_key="test-canary", transport=httpx.MockTransport(handler),
+        endpoint="https://provider.example/v1/chat/completions",
+        model="pinned",
+        api_key="test-canary",
+        transport=httpx.MockTransport(handler),
     )
-    relay = PinnedModelRelay(model="pinned", max_calls=2,
-                            deadline=time.perf_counter()+5, backend=backend)
+    relay = PinnedModelRelay(
+        model="pinned", max_calls=2, deadline=time.perf_counter() + 5, backend=backend
+    )
     results = await asyncio.gather(
         relay.dispatch(request("slow", max_tokens=128)),
         relay.dispatch(request("fast", max_tokens=127)),
@@ -330,18 +458,32 @@ async def test_concurrent_relay_receipts_bind_each_pinned_backend_attempt():
 @pytest.mark.asyncio
 async def test_relays_sharing_backend_use_unique_provider_receipt_correlation():
     async def handler(_req):
-        await asyncio.sleep(.01)
-        payload = {"model": "pinned", "choices": [{
-            "message": {"role": "assistant", "content": "bounded"},
-        }]}
+        await asyncio.sleep(0.01)
+        payload = {
+            "model": "pinned",
+            "choices": [
+                {
+                    "message": {"role": "assistant", "content": "bounded"},
+                }
+            ],
+        }
         return httpx.Response(200, stream=httpx.ByteStream(json.dumps(payload).encode()))
+
     backend = PinnedChatBackend(
-        endpoint="https://provider.example/v1/chat/completions", model="pinned",
-        api_key="test-canary", transport=httpx.MockTransport(handler),
+        endpoint="https://provider.example/v1/chat/completions",
+        model="pinned",
+        api_key="test-canary",
+        transport=httpx.MockTransport(handler),
     )
-    relays = [PinnedModelRelay(
-        model="pinned", max_calls=1, deadline=time.perf_counter()+5, backend=backend,
-    ) for _ in range(2)]
+    relays = [
+        PinnedModelRelay(
+            model="pinned",
+            max_calls=1,
+            deadline=time.perf_counter() + 5,
+            backend=backend,
+        )
+        for _ in range(2)
+    ]
     results = await asyncio.gather(*(relay.dispatch(request()) for relay in relays))
     assert all(result["ok"] for result in results)
     receipts = [relay.audit[0]["provider_receipt"] for relay in relays]
@@ -352,19 +494,25 @@ async def test_relays_sharing_backend_use_unique_provider_receipt_correlation():
 @pytest.mark.asyncio
 async def test_close_active_cancels_inflight_backend_without_releasing_call_budget():
     started = asyncio.Event()
+
     async def backend(_body):
         started.set()
         await asyncio.sleep(30)
-    relay = PinnedModelRelay(model="pinned", max_calls=1,
-                            deadline=time.perf_counter()+5, backend=backend)
+
+    relay = PinnedModelRelay(
+        model="pinned", max_calls=1, deadline=time.perf_counter() + 5, backend=backend
+    )
     reader = asyncio.StreamReader()
     raw = request()
-    reader.feed_data(struct.pack("!I", len(raw))+raw)
+    reader.feed_data(struct.pack("!I", len(raw)) + raw)
+
     class Writer:
         def close(self):
             pass
+
         async def wait_closed(self):
             pass
+
     task = asyncio.create_task(relay.handle(reader, Writer()))
     await asyncio.wait_for(started.wait(), timeout=1)
     await relay.close_active()
@@ -377,12 +525,15 @@ async def test_close_active_cancels_inflight_backend_without_releasing_call_budg
 @pytest.mark.asyncio
 async def test_relay_reserves_shared_budget_before_concurrent_backend_calls():
     calls = []
+
     async def backend(body):
         calls.append(body)
-        await asyncio.sleep(.01)
+        await asyncio.sleep(0.01)
         return {"choices": []}
-    relay = PinnedModelRelay(model="pinned", max_calls=1,
-                            deadline=time.perf_counter()+5, backend=backend)
+
+    relay = PinnedModelRelay(
+        model="pinned", max_calls=1, deadline=time.perf_counter() + 5, backend=backend
+    )
     results = await asyncio.gather(relay.dispatch(request()), relay.dispatch(request("call_2")))
     assert results[0]["ok"] is True
     assert results[1]["error"] == "call_budget_exhausted"
@@ -393,17 +544,27 @@ async def test_relay_reserves_shared_budget_before_concurrent_backend_calls():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("raw", [
-    request(model="other"), request(stream=True), request(max_tokens=True),
-    request(base_url="https://untrusted.example"),
-    request(messages=[]), b'{"schema":1,"schema":2}', b'{"value":NaN}',
-    b"x" * (MAX_REQUEST_BYTES + 1),
-], ids=["model", "stream", "tokens", "endpoint", "messages", "duplicate_keys", "nan", "oversize"])
+@pytest.mark.parametrize(
+    "raw",
+    [
+        request(model="other"),
+        request(stream=True),
+        request(max_tokens=True),
+        request(base_url="https://untrusted.example"),
+        request(messages=[]),
+        b'{"schema":1,"schema":2}',
+        b'{"value":NaN}',
+        b"x" * (MAX_REQUEST_BYTES + 1),
+    ],
+    ids=["model", "stream", "tokens", "endpoint", "messages", "duplicate_keys", "nan", "oversize"],
+)
 async def test_relay_invalid_request_never_dispatches(raw):
     async def backend(_body):
         pytest.fail("invalid request dispatched")
-    relay = PinnedModelRelay(model="pinned", max_calls=1,
-                            deadline=time.perf_counter()+5, backend=backend)
+
+    relay = PinnedModelRelay(
+        model="pinned", max_calls=1, deadline=time.perf_counter() + 5, backend=backend
+    )
     assert (await relay.dispatch(raw))["error"] == "invalid_request"
     assert relay.audit == []
 
@@ -411,21 +572,27 @@ async def test_relay_invalid_request_never_dispatches(raw):
 @pytest.mark.asyncio
 async def test_relay_failure_and_timeout_consume_attempt_without_retry_or_diagnostics():
     calls = []
+
     async def backend(_body):
         calls.append(1)
         raise RuntimeError("private-provider-key")
-    relay = PinnedModelRelay(model="pinned", max_calls=1,
-                            deadline=time.perf_counter()+5, backend=backend)
+
+    relay = PinnedModelRelay(
+        model="pinned", max_calls=1, deadline=time.perf_counter() + 5, backend=backend
+    )
     result = await relay.dispatch(request())
     assert result["error"] == "backend_failed_uncertain"
     assert "private-provider-key" not in json.dumps(result)
     assert (await relay.dispatch(request()))["error"] == "duplicate_request"
     assert len(calls) == 1
     assert relay.audit[0]["status"] == "failed_uncertain"
+
     async def slow(_body):
         await asyncio.sleep(10)
-    timed = PinnedModelRelay(model="pinned", max_calls=1,
-                            deadline=time.perf_counter()+.01, backend=slow)
+
+    timed = PinnedModelRelay(
+        model="pinned", max_calls=1, deadline=time.perf_counter() + 0.01, backend=slow
+    )
     assert (await timed.dispatch(request()))["error"] == "backend_failed_uncertain"
     assert len(timed.audit) == 1
     assert (await timed.dispatch(request("later")))["error"] == "call_budget_exhausted"
@@ -435,8 +602,10 @@ async def test_relay_failure_and_timeout_consume_attempt_without_retry_or_diagno
 async def test_expired_relay_refuses_before_backend_dispatch():
     async def backend(_body):
         pytest.fail("expired request dispatched")
-    relay = PinnedModelRelay(model="pinned", max_calls=1,
-                            deadline=time.perf_counter()-1, backend=backend)
+
+    relay = PinnedModelRelay(
+        model="pinned", max_calls=1, deadline=time.perf_counter() - 1, backend=backend
+    )
     assert (await relay.dispatch(request()))["error"] == "deadline_expired"
     assert relay.audit == []
 
@@ -448,13 +617,24 @@ async def test_expired_relay_refuses_before_backend_dispatch():
 def test_actual_unix_relay_preserves_framing_and_deduplicates():
     async def check():
         calls = []
+
         async def backend(_body):
             calls.append(1)
-            return {"model": "pinned", "choices": [{"message": {
-                "role": "assistant", "content": "local echo",
-            }}]}
-        relay = PinnedModelRelay(model="pinned", max_calls=3,
-                                deadline=time.perf_counter()+5, backend=backend)
+            return {
+                "model": "pinned",
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": "local echo",
+                        }
+                    }
+                ],
+            }
+
+        relay = PinnedModelRelay(
+            model="pinned", max_calls=3, deadline=time.perf_counter() + 5, backend=backend
+        )
         with TemporaryDirectory(prefix="pex-model-") as root:
             path = Path(root) / "relay.sock"
             server = await relay.listen(path)
@@ -473,6 +653,7 @@ def test_actual_unix_relay_preserves_framing_and_deduplicates():
                     writer.close()
                     await writer.wait_closed()
                 from benchmarks.linux_sandbox import worker_relay_command
+
                 workspace = Path(root) / "worker"
                 workspace.mkdir()
                 raw = request("sandbox_call")
@@ -485,18 +666,25 @@ def test_actual_unix_relay_preserves_framing_and_deduplicates():
                 )
                 proc = await asyncio.create_subprocess_exec(
                     *worker_relay_command(
-                        workspace, ["/usr/bin/python3", "-I", "-c", script], path,
+                        workspace,
+                        ["/usr/bin/python3", "-I", "-c", script],
+                        path,
                     ),
-                    stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
                 )
                 stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=5)
                 assert proc.returncode == 0, stderr.decode()
                 content = json.loads(stdout)["body"]["choices"][0]["message"]["content"]
                 assert content == "local echo"
                 from pex_supervisor.relay_transport import UnixChatRelayTransport
-                async with httpx.AsyncClient(transport=UnixChatRelayTransport(
-                    socket_path=str(path), model="pinned",
-                )) as client:
+
+                async with httpx.AsyncClient(
+                    transport=UnixChatRelayTransport(
+                        socket_path=str(path),
+                        model="pinned",
+                    )
+                ) as client:
                     response = await client.post(
                         "http://pex-relay.invalid/v1/chat/completions",
                         json=json.loads(request("transport_call"))["body"],
@@ -506,6 +694,7 @@ def test_actual_unix_relay_preserves_framing_and_deduplicates():
                 server.close()
                 await server.wait_closed()
             assert calls == [1, 1, 1]
+
     asyncio.run(check())
 
 
@@ -518,19 +707,29 @@ def test_controller_owns_relay_child_and_records_completed_call():
 
     async def check():
         async def backend(_body):
-            return {"model": "pinned", "choices": [{"message": {
-                "role": "assistant", "content": "controlled response",
-            }}]}
-        relay = PinnedModelRelay(model="pinned", max_calls=1,
-                                deadline=time.perf_counter()+10, backend=backend)
+            return {
+                "model": "pinned",
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": "controlled response",
+                        }
+                    }
+                ],
+            }
+
+        relay = PinnedModelRelay(
+            model="pinned", max_calls=1, deadline=time.perf_counter() + 10, backend=backend
+        )
         with TemporaryDirectory(prefix="pex-controller-") as root:
             workspace, runtime, control = [
-                Path(root)/name for name in ("worker", "runtime", "control")
+                Path(root) / name for name in ("worker", "runtime", "control")
             ]
             for directory in (workspace, runtime, control):
                 directory.mkdir()
-            (control/"request.json").write_text("{}")
-            (runtime/"pex_supervisor_process.py").write_text(
+            (control / "request.json").write_text("{}")
+            (runtime / "pex_supervisor_process.py").write_text(
                 "import socket,struct,json\n"
                 "s=socket.socket(socket.AF_UNIX); s.connect('/model-relay.sock')\n"
                 f"raw={request()!r}\n"
@@ -539,8 +738,12 @@ def test_controller_owns_relay_child_and_records_completed_call():
                 "assert reply['ok']; assert reply['body']['model']=='pinned'; s.close()\n"
             )
             code, receipts = await _run_supervisor_command(
-                command=[], workspace=workspace, runtime=runtime, control=control,
-                timeout=5, model_relay=relay,
+                command=[],
+                workspace=workspace,
+                runtime=runtime,
+                control=control,
+                timeout=5,
+                model_relay=relay,
             )
             assert code == 0
             assert len(receipts) == 1
@@ -548,4 +751,5 @@ def test_controller_owns_relay_child_and_records_completed_call():
             assert len(receipts[0]["response_sha256"]) == 64
             assert relay._handlers == set()
             assert "controlled response" not in json.dumps(receipts)
+
     asyncio.run(check())

@@ -192,10 +192,7 @@ def test_build_supervisor_context_exposes_useful_provenance_and_rejected_approac
 def test_current_goal_context_survives_project_wide_context_limit():
     now = datetime(2026, 9, 5, 12, tzinfo=UTC)
     session, _, _ = _bound(now)
-    project_wide = [
-        _context(now, f"shared-{index:02d}", goal_id=None)
-        for index in range(32)
-    ]
+    project_wide = [_context(now, f"shared-{index:02d}", goal_id=None) for index in range(32)]
     current_constraint = _context(
         now,
         "current-constraint",
@@ -205,9 +202,7 @@ def test_current_goal_context_survives_project_wide_context_limit():
     current_constraint.provenance = SourceKind.HUMAN
     current_constraint.metadata["verified"] = False
 
-    envelope = build_supervisor_context(
-        session, [*project_wide, current_constraint], [], now=now
-    )
+    envelope = build_supervisor_context(session, [*project_wide, current_constraint], [], now=now)
 
     assert envelope.offered_context_ids[0] == "current-constraint"
     assert len(envelope.context_items) == 32
@@ -361,7 +356,9 @@ def test_decision_text_budget_includes_scope():
         decision.scope = "s" * 500
     envelope = build_supervisor_context(session, [], decisions, now=now)
     actual_text = sum(
-        len(item.statement) + len(item.rationale) + len(item.scope)
+        len(item.statement)
+        + len(item.rationale)
+        + len(item.scope)
         + sum(len(value) for value in item.alternatives_rejected)
         for item in envelope.decisions
     )
@@ -386,14 +383,19 @@ def test_human_constraint_survives_a_full_verified_result_context_budget(goal_id
     constraint.kind = ContextKind.CONSTRAINT
     constraint.provenance = SourceKind.HUMAN
     constraint.confidence = 1.0
-    worker_claim = constraint.model_copy(update={
-        "id": "worker-claimed-boundary",
-        "provenance": SourceKind.HARNESS,
-        "valid_from": now,
-    })
+    worker_claim = constraint.model_copy(
+        update={
+            "id": "worker-claimed-boundary",
+            "provenance": SourceKind.HARNESS,
+            "valid_from": now,
+        }
+    )
 
     envelope = build_supervisor_context(
-        session, [*results, worker_claim, constraint], [], now=now,
+        session,
+        [*results, worker_claim, constraint],
+        [],
+        now=now,
     )
 
     assert len(envelope.context_items) == 32
@@ -421,7 +423,8 @@ def test_harness_metadata_cannot_upgrade_self_report_to_verified_context():
 
 @pytest.mark.parametrize("kind", [ContextKind.CONSTRAINT, ContextKind.DECISION])
 @pytest.mark.parametrize(
-    "replacement_source", [SourceKind.HARNESS, SourceKind.TEST, SourceKind.HUMAN],
+    "replacement_source",
+    [SourceKind.HARNESS, SourceKind.TEST, SourceKind.HUMAN],
 )
 def test_only_human_context_can_retire_human_commitment(kind, replacement_source):
     now = datetime(2026, 9, 5, 12, tzinfo=UTC)
@@ -518,7 +521,10 @@ def test_exact_decision_lookup_preserves_tail_authority_and_reports_source_trunc
         decision.scope += "x" * 500
     envelope = build_supervisor_context(session, [], [decision], now=now)
     request = SupervisorRequest(
-        session=session, goal=goal, event=event, recent_events=[event],
+        session=session,
+        goal=goal,
+        event=event,
+        recent_events=[event],
         supervisor_context=envelope,
     )
     tools = {tool.tool_name: tool for tool in build_evidence_tools(request, [])}
@@ -544,7 +550,10 @@ def test_exact_context_lookup_preserves_tail_constraint_and_reports_source_trunc
     context.provenance = SourceKind.HUMAN
     envelope = build_supervisor_context(session, [context], [], now=now)
     request = SupervisorRequest(
-        session=session, goal=goal, event=event, recent_events=[event],
+        session=session,
+        goal=goal,
+        event=event,
+        recent_events=[event],
         supervisor_context=envelope,
     )
     tools = {tool.tool_name: tool for tool in build_evidence_tools(request, [])}

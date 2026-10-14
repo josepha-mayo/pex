@@ -96,6 +96,7 @@ def test_watchdog_failure_prevents_app_import(monkeypatch) -> None:
     monkeypatch.setattr(bridge_main.os, "name", "nt")
     monkeypatch.setenv("PEX_DESKTOP_PARENT_PID", "101")
     monkeypatch.setattr(sys, "argv", ["pex-bridge"])
+
     def fail_watchdog(_pid):
         raise OSError("no handle")
 
@@ -122,6 +123,7 @@ def test_valid_watchdog_registration_precedes_heavy_app_import(monkeypatch) -> N
     monkeypatch.setattr(bridge_main.os, "name", "nt")
     monkeypatch.setenv("PEX_DESKTOP_PARENT_PID", "101")
     monkeypatch.setattr(sys, "argv", ["pex-bridge"])
+
     def record_watchdog(_pid):
         order.append("watch")
 

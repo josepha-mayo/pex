@@ -61,9 +61,7 @@ class RequestBodyLimitMiddleware:
             return
 
         lengths = [
-            value
-            for name, value in scope.get("headers", [])
-            if name.lower() == b"content-length"
+            value for name, value in scope.get("headers", []) if name.lower() == b"content-length"
         ]
         expected_length: int | None = None
         if lengths:

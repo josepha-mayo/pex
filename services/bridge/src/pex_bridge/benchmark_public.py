@@ -111,10 +111,7 @@ def load_public_summary(path: str | Path | None = None) -> dict[str, Any]:
         return {
             "runs": [],
             "status": "invalid",
-            "message": (
-                "Benchmark summary failed integrity validation "
-                f"({type(exc).__name__})."
-            ),
+            "message": (f"Benchmark summary failed integrity validation ({type(exc).__name__})."),
         }
 
 
@@ -180,14 +177,19 @@ def _validate_summary(raw: Any) -> dict[str, Any]:
                     raise ValueError("run metric is outside the numeric bound") from exc
                 if not finite or value < 0:
                     raise ValueError("run metric is negative or non-finite")
-            if key in {
-                "useful_interventions",
-                "harmful_interventions",
-                "context_handoffs",
-                "pex_input_tokens",
-                "pex_output_tokens",
-                "tasks",
-            } and value is not None and not isinstance(value, int):
+            if (
+                key
+                in {
+                    "useful_interventions",
+                    "harmful_interventions",
+                    "context_handoffs",
+                    "pex_input_tokens",
+                    "pex_output_tokens",
+                    "tasks",
+                }
+                and value is not None
+                and not isinstance(value, int)
+            ):
                 raise ValueError("run count metric is not an integer")
         success_rate = metrics["task_success_rate"]
         if success_rate is None or success_rate > 1:

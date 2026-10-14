@@ -36,7 +36,9 @@ async def test_stop_response_discards_preparation_after_authority_loss(monkeypat
     monkeypatch.setattr(bridge_app.state, "store", store)
     monkeypatch.setattr(bridge_app.state, "pipeline", pipeline)
     monkeypatch.setattr(
-        bridge_app, "_cursor_submit_authority", AsyncMock(side_effect=snapshots),
+        bridge_app,
+        "_cursor_submit_authority",
+        AsyncMock(side_effect=snapshots),
     )
     monkeypatch.setattr(bridge_app, "_observe_cursor_continuation", AsyncMock())
 
@@ -45,7 +47,8 @@ async def test_stop_response_discards_preparation_after_authority_loss(monkeypat
     adapter.consume_verified_stop_followup.assert_not_called()
     store.prepare_cursor_hook_delivery.assert_not_awaited()
     adapter.consume_followup.assert_called_once_with(
-        session.id, trigger_event_id=event.event_id,
+        session.id,
+        trigger_event_id=event.event_id,
     )
 
 
@@ -68,5 +71,6 @@ async def test_stop_cancellation_discards_only_the_trigger_event(monkeypatch):
         await bridge_app._process_cursor_stop(event, session)
 
     adapter.consume_followup.assert_called_once_with(
-        session.id, trigger_event_id=event.event_id,
+        session.id,
+        trigger_event_id=event.event_id,
     )

@@ -36,7 +36,7 @@ def _run_setup_with_fake_commands(tmp_path: Path, *, fail_stage: str = "") -> di
     }
     wrapper = f"""
 $global:PexSetupCommands = New-Object 'System.Collections.Generic.List[string]'
-$global:PexSetupFail = '{escaped['fail']}'
+$global:PexSetupFail = '{escaped["fail"]}'
 function global:Invoke-PexSetupFake {{
     param([string]$Name, [object[]]$PassedArguments)
     $stage = $Name
@@ -59,11 +59,11 @@ function global:node {{ Invoke-PexSetupFake 'node' @($args) }}
 function global:npm {{ Invoke-PexSetupFake 'npm' @($args) }}
 function global:cargo {{ Invoke-PexSetupFake 'cargo' @($args) }}
 function global:rustc {{ Invoke-PexSetupFake 'rustc' @($args) }}
-Set-Location -LiteralPath '{escaped['caller']}'
+Set-Location -LiteralPath '{escaped["caller"]}'
 $before = (Get-Location).Path
 $failure = $null
 try {{
-    & '{escaped['install']}'
+    & '{escaped["install"]}'
 }} catch {{
     $failure = $_.Exception.Message
 }}
@@ -71,7 +71,7 @@ $after = (Get-Location).Path
 @{{ before = $before; after = $after; failure = $failure;
     command_lines = @($global:PexSetupCommands.ToArray()) }} |
     ConvertTo-Json -Compress |
-    Set-Content -LiteralPath '{escaped['result']}' -Encoding UTF8
+    Set-Content -LiteralPath '{escaped["result"]}' -Encoding UTF8
 """
 
     result = subprocess.run(
@@ -83,22 +83,17 @@ $after = (Get-Location).Path
     )
     assert result.returncode == 0, result.stderr
     receipt = json.loads(result_path.read_text(encoding="utf-8-sig"))
-    receipt["commands"] = [
-        line.split("\t")
-        for line in receipt.pop("command_lines")
-        if line
-    ]
+    receipt["commands"] = [line.split("\t") for line in receipt.pop("command_lines") if line]
     return receipt
 
 
 def test_windows_source_setup_is_fail_fast_and_does_not_install_hooks() -> None:
     script = _text("scripts/install.ps1")
 
-    assert "Invoke-NativeCommand \"uv\" @(\"sync\", \"--dev\")" in script
+    assert 'Invoke-NativeCommand "uv" @("sync", "--dev")' in script
     assert 'Invoke-NativeCommand "npm" @("--prefix", $desktop, "ci")' in script
     assert (
-        'Invoke-NativeCommand "npm" '
-        '@("--prefix", $desktop, "run", "prepare:sidecar")'
+        'Invoke-NativeCommand "npm" @("--prefix", $desktop, "run", "prepare:sidecar")'
     ) in script
     assert "$LASTEXITCODE -ne 0" in script
     assert '"git", "uv", "node", "npm", "cargo", "rustc"' in script

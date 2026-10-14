@@ -36,9 +36,9 @@ def test_adapter_binding_and_rediscovery_keep_exact_workspace_identity(
     bound = _worker(cwd, project_id)
     supplied = bound.model_copy(update={"cwd": observed_cwd, "project_id": observed_project})
     assert session_binding_matches(bound, supplied, harness_type=HarnessType.OPENCODE) is matches
-    assert preserve_bridge_state(
-        bound, cwd=observed_cwd, project_id=observed_project
-    ) == (("goal-original", True) if matches else (None, False))
+    assert preserve_bridge_state(bound, cwd=observed_cwd, project_id=observed_project) == (
+        ("goal-original", True) if matches else (None, False)
+    )
 
 
 @pytest.mark.asyncio

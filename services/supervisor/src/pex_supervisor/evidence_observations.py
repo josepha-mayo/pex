@@ -126,9 +126,7 @@ class EvidenceObservationCollector:
                 output=output,
                 output_sha256=hashlib.sha256(output.encode("utf-8")).hexdigest(),
             )
-            candidate_bytes = len(
-                observation.model_dump_json().encode("utf-8")
-            )
+            candidate_bytes = len(observation.model_dump_json().encode("utf-8"))
             if self._used_bytes + candidate_bytes > MAX_EVIDENCE_OBSERVATION_BYTES:
                 return _LIMIT_REFUSAL
             self.observations.append(observation)

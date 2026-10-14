@@ -50,11 +50,7 @@ def test_attention_notice_uses_harness_label_not_vendor_ids():
         session,
         _action(
             InterventionType.ASK_HUMAN,
-            {
-                "question": (
-                    "Should cursor:sess-abc / sess-abc keep the schema change?"
-                )
-            },
+            {"question": ("Should cursor:sess-abc / sess-abc keep the schema change?")},
         ),
     )
     assert notice.startswith("PEX: Cursor needs you.")
@@ -156,9 +152,6 @@ async def test_notify_action_writes_the_local_inbox(tmp_path):
         empty.session_id = source.id
         assert await executor.execute(empty, PolicyVerdict.ALLOW) == "notify_skipped_empty"
         missing = ActionExecutor(adapters, store, channels=None)
-        assert (
-            await missing.execute(action, PolicyVerdict.ALLOW)
-            == "notification_not_configured"
-        )
+        assert await missing.execute(action, PolicyVerdict.ALLOW) == "notification_not_configured"
     finally:
         await store.close()

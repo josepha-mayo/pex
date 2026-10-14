@@ -55,9 +55,9 @@ async def test_authority_session_batch_is_bounded_deduplicated_and_fail_closed(t
 
         with pytest.raises(ProjectIdentityBlockedError):
             await store.get_sessions_for_authority([stale.id])
-        assert await store.get_sessions_for_authority(
-            [stale.id, first.id], omit_blocked=True
-        ) == {first.id: first}
+        assert await store.get_sessions_for_authority([stale.id, first.id], omit_blocked=True) == {
+            first.id: first
+        }
 
         with pytest.raises(ValueError, match="too many sessions"):
             await store.get_sessions_for_authority(

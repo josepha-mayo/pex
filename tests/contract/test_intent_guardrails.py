@@ -95,7 +95,7 @@ async def _submit(client: AsyncClient, suffix: str, prompt: str):
         (
             "negated-target-quoted-example",
             (
-                'Change of plan: do not alter dataset preprocessing; document the example '
+                "Change of plan: do not alter dataset preprocessing; document the example "
                 '"alter dataset preprocessing".'
             ),
         ),

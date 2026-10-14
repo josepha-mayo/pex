@@ -164,9 +164,7 @@ def test_legacy_boolean_only_create_if_idle_is_fail_closed(tmp_path: Path, monke
 
     monkeypatch.setattr("pex_bridge.pets.hatch.generate_png", forbidden)
     with pytest.raises(HatchAuthorizationError, match="bound hatch authorization"):
-        registry.create_if_idle(
-            _job().model_copy(update={"paid_generation_acknowledged": True})
-        )
+        registry.create_if_idle(_job().model_copy(update={"paid_generation_acknowledged": True}))
     assert registry.list_jobs() == []
 
 
@@ -236,9 +234,7 @@ def test_global_billable_dispatch_is_serialized(tmp_path: Path):
     assert second_effect.attempt_count == 0
 
 
-def test_uncertain_retry_requires_exact_prior_effect_acknowledgement(
-    tmp_path: Path, monkeypatch
-):
+def test_uncertain_retry_requires_exact_prior_effect_acknowledgement(tmp_path: Path, monkeypatch):
     registry = HatchRegistry(tmp_path, clock=lambda: BASE_TIME)
     original = _job("hatch_uncertain")
     registry.create_or_replay(original, _authorization(original, key="original"))
@@ -334,9 +330,7 @@ def test_authorization_expiry_blocks_before_provider_io(tmp_path: Path, monkeypa
         registry.create_or_replay(expired_job, expired)
 
 
-def test_provider_mismatch_blocks_and_secret_is_never_persisted(
-    tmp_path: Path, monkeypatch
-):
+def test_provider_mismatch_blocks_and_secret_is_never_persisted(tmp_path: Path, monkeypatch):
     secret = "CANARY-HATCH-SECRET-MUST-NOT-PERSIST"
     authorized_config = _config(secret=secret)
     registry = HatchRegistry(tmp_path, clock=lambda: BASE_TIME)
@@ -373,9 +367,7 @@ def test_dispatch_deadline_is_conservative_and_late_finalizer_loses_cas(tmp_path
     assert claim.claimed is True
     assert claim.effect is not None
     assert claim.effect.dispatch_token is not None
-    deadline = datetime.fromisoformat(
-        claim.effect.dispatch_deadline_at.replace("Z", "+00:00")
-    )
+    deadline = datetime.fromisoformat(claim.effect.dispatch_deadline_at.replace("Z", "+00:00"))
     assert deadline > BASE_TIME + timedelta(seconds=120)
 
     clock[0] = deadline - timedelta(seconds=1)
@@ -441,9 +433,7 @@ def test_cancellation_before_and_after_dispatch_is_conservative(tmp_path: Path):
     assert late.status == "delivery_uncertain"
 
 
-def test_base_generation_is_one_call_and_never_claims_playable_pet(
-    tmp_path: Path, monkeypatch
-):
+def test_base_generation_is_one_call_and_never_claims_playable_pet(tmp_path: Path, monkeypatch):
     registry = HatchRegistry(tmp_path, clock=lambda: BASE_TIME)
     job = _job("hatch_once")
     registry.create_or_replay(job, _authorization(job))
@@ -462,16 +452,12 @@ def test_base_generation_is_one_call_and_never_claims_playable_pet(
     assert first.status == second.status == "awaiting_assembly_qa"
     assert first.jobs_complete == first.jobs_total == 1
     assert first.spritesheet is None
-    receipt = json.loads(
-        (tmp_path / job.id / "candidate-receipt.json").read_text(encoding="utf-8")
-    )
+    receipt = json.loads((tmp_path / job.id / "candidate-receipt.json").read_text(encoding="utf-8"))
     assert receipt["playable_pet"] is False
     assert receipt["qa_status"] == "awaiting_grounded_assembly_and_independent_qa"
 
 
-def test_post_dispatch_baseexception_is_uncertain_and_not_replayed(
-    tmp_path: Path, monkeypatch
-):
+def test_post_dispatch_baseexception_is_uncertain_and_not_replayed(tmp_path: Path, monkeypatch):
     registry = HatchRegistry(tmp_path, clock=lambda: BASE_TIME)
     job = _job("hatch_cancelled_thread")
     registry.create_or_replay(job, _authorization(job))
@@ -622,9 +608,7 @@ def test_asset_without_receipt_never_reconciles_and_expires_uncertain(tmp_path: 
     assert restarted.get_effect(job.id).state == "dispatching"  # type: ignore[union-attr]
     assert restarted.get(job.id).status == "running"  # type: ignore[union-attr]
 
-    deadline = datetime.fromisoformat(
-        claim.effect.dispatch_deadline_at.replace("Z", "+00:00")
-    )
+    deadline = datetime.fromisoformat(claim.effect.dispatch_deadline_at.replace("Z", "+00:00"))
     clock[0] = deadline + timedelta(seconds=1)
     expired = HatchRegistry(tmp_path, clock=lambda: clock[0])
     assert expired.get_effect(job.id).state == "delivery_uncertain"  # type: ignore[union-attr]
@@ -644,9 +628,7 @@ def test_receipt_mismatch_blocks_finalize_and_reconciliation(tmp_path: Path):
     receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
 
     with pytest.raises(HatchConflictError, match="exact provenance"):
-        registry.finalize_delivered(
-            job.id, dispatch_token=claim.effect.dispatch_token
-        )
+        registry.finalize_delivered(job.id, dispatch_token=claim.effect.dispatch_token)
     restarted = HatchRegistry(tmp_path, clock=lambda: BASE_TIME + timedelta(seconds=1))
     assert restarted.get_effect(job.id).state == "dispatching"  # type: ignore[union-attr]
 
@@ -664,9 +646,7 @@ def test_overflowed_candidate_receipt_blocks_finalize_and_reconciliation(tmp_pat
     receipt_path.write_text(raw[:-1] + ',"ignored":1e9999}', encoding="utf-8")
 
     with pytest.raises(HatchConflictError, match="exact provenance"):
-        registry.finalize_delivered(
-            job.id, dispatch_token=claim.effect.dispatch_token
-        )
+        registry.finalize_delivered(job.id, dispatch_token=claim.effect.dispatch_token)
     restarted = HatchRegistry(tmp_path, clock=lambda: BASE_TIME + timedelta(seconds=1))
     assert restarted.get_effect(job.id).state == "dispatching"  # type: ignore[union-attr]
 
@@ -741,8 +721,6 @@ def test_wrong_dispatch_token_is_an_explicit_conflict(tmp_path: Path):
     with pytest.raises(HatchConflictError, match="token does not match"):
         registry.finalize_delivered(job.id, dispatch_token="wrong-token")
     with pytest.raises(HatchConflictError, match="token does not match"):
-        registry.finalize_uncertain(
-            job.id, dispatch_token="wrong-token", error_code="test"
-        )
+        registry.finalize_uncertain(job.id, dispatch_token="wrong-token", error_code="test")
     effect = registry.get_effect(job.id)
     assert effect is not None and effect.state == "dispatching"

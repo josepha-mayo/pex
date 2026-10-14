@@ -17,16 +17,23 @@ from test_verify import _goal
 )
 @pytest.mark.parametrize(
     "content,expected",
-    [(b"ready\n", "supported"), (b"readx\n", "unsatisfied"),
-     (b"ready\r\n", "unsatisfied"), (b"ready", "unsatisfied"),
-     (b"ready\n\n", "unsatisfied")],
+    [
+        (b"ready\n", "supported"),
+        (b"readx\n", "unsatisfied"),
+        (b"ready\r\n", "unsatisfied"),
+        (b"ready", "unsatisfied"),
+        (b"ready\n\n", "unsatisfied"),
+    ],
 )
 def test_explicit_lf_acceptance_checks_the_whole_file(tmp_path, suffix, content, expected):
     (tmp_path / "status.txt").write_bytes(content)
     result = verify_claims(
-        [], [],
-        _goal(acceptance_criteria=[f"status.txt contains exactly ready followed by {suffix}"],
-              evidence_requirements=[]),
+        [],
+        [],
+        _goal(
+            acceptance_criteria=[f"status.txt contains exactly ready followed by {suffix}"],
+            evidence_requirements=[],
+        ),
         snapshot(tmp_path, run_pytest=False),
     )
     assert result["acceptance_status"] == expected
@@ -34,9 +41,13 @@ def test_explicit_lf_acceptance_checks_the_whole_file(tmp_path, suffix, content,
 
 @pytest.mark.parametrize(
     "suffix",
-    ["one CRLF newline", "one LF newline (U+000D)",
-     "one LF newline or a CRLF newline", "one LF newline, CR allowed",
-     "one LF newline (U+000A), no CR and any extra text"],
+    [
+        "one CRLF newline",
+        "one LF newline (U+000D)",
+        "one LF newline or a CRLF newline",
+        "one LF newline, CR allowed",
+        "one LF newline (U+000A), no CR and any extra text",
+    ],
 )
 def test_unsupported_newline_prose_is_not_silently_weakened(suffix):
     assert _expected_content(f"status.txt contains exactly ready followed by {suffix}") is None
@@ -44,7 +55,8 @@ def test_unsupported_newline_prose_is_not_silently_weakened(suffix):
 
 def test_missing_exact_artifact_routes_its_content_into_the_worker_correction(tmp_path):
     result = verify_claims(
-        [], [],
+        [],
+        [],
         _goal(
             acceptance_criteria=[
                 "final.txt contains exactly pex-supervised-ok followed by one newline"
@@ -60,15 +72,21 @@ def test_missing_exact_artifact_routes_its_content_into_the_worker_correction(tm
 
 @pytest.mark.parametrize(
     "content,observed",
-    [(b"ready", "observed none"), (b"ready\r\n", "observed 0D 0A"),
-     (b"ready\n\n", "observed 0A 0A")],
+    [
+        (b"ready", "observed none"),
+        (b"ready\r\n", "observed 0D 0A"),
+        (b"ready\n\n", "observed 0A 0A"),
+    ],
 )
 def test_exact_lf_correction_requires_byte_level_verification(tmp_path, content, observed):
     (tmp_path / "status.txt").write_bytes(content)
     result = verify_claims(
-        [], [],
-        _goal(acceptance_criteria=["status.txt contains exactly ready followed by one LF newline"],
-              evidence_requirements=[]),
+        [],
+        [],
+        _goal(
+            acceptance_criteria=["status.txt contains exactly ready followed by one LF newline"],
+            evidence_requirements=[],
+        ),
         snapshot(tmp_path, run_pytest=False),
     )
     assert result["acceptance_status"] == "unsatisfied"
@@ -80,9 +98,12 @@ def test_exact_lf_correction_requires_byte_level_verification(tmp_path, content,
 def test_exact_lf_correction_bounds_long_trailing_byte_dumps(tmp_path):
     (tmp_path / "status.txt").write_bytes(b"ready" + b"\n" * 64)
     result = verify_claims(
-        [], [],
-        _goal(acceptance_criteria=["status.txt contains exactly ready followed by one LF newline"],
-              evidence_requirements=[]),
+        [],
+        [],
+        _goal(
+            acceptance_criteria=["status.txt contains exactly ready followed by one LF newline"],
+            evidence_requirements=[],
+        ),
         snapshot(tmp_path, run_pytest=False),
     )
     assert result["acceptance_status"] == "unsatisfied"
@@ -95,9 +116,12 @@ def test_exact_lf_correction_bounds_long_trailing_byte_dumps(tmp_path):
 def test_exact_lf_correction_falls_back_for_mid_content_diffs(tmp_path):
     (tmp_path / "status.txt").write_bytes(b"readx\n")
     result = verify_claims(
-        [], [],
-        _goal(acceptance_criteria=["status.txt contains exactly ready followed by one LF newline"],
-              evidence_requirements=[]),
+        [],
+        [],
+        _goal(
+            acceptance_criteria=["status.txt contains exactly ready followed by one LF newline"],
+            evidence_requirements=[],
+        ),
         snapshot(tmp_path, run_pytest=False),
     )
     assert result["acceptance_status"] == "unsatisfied"
@@ -108,9 +132,9 @@ def test_exact_lf_correction_falls_back_for_mid_content_diffs(tmp_path):
 def test_exact_correction_names_expected_absence_when_file_has_extra_lf(tmp_path):
     (tmp_path / "status.txt").write_bytes(b"ready\n")
     result = verify_claims(
-        [], [],
-        _goal(acceptance_criteria=["status.txt contains exactly ready"],
-              evidence_requirements=[]),
+        [],
+        [],
+        _goal(acceptance_criteria=["status.txt contains exactly ready"], evidence_requirements=[]),
         snapshot(tmp_path, run_pytest=False),
     )
     assert result["acceptance_status"] == "unsatisfied"
@@ -128,7 +152,10 @@ def test_one_correction_covers_missing_and_byte_mismatched_files(tmp_path):
         evidence_requirements=["stage-one.txt", "final.txt"],
     )
     result = verify_claims(
-        [], [], goal, snapshot(tmp_path, run_pytest=False),
+        [],
+        [],
+        goal,
+        snapshot(tmp_path, run_pytest=False),
     )
     correction = result["correction"]
     assert result["acceptance_status"] == "unsatisfied"
@@ -144,7 +171,8 @@ def test_multiple_mismatched_files_are_listed_in_one_correction(tmp_path):
     (tmp_path / "a.txt").write_bytes(b"wrong\n")
     (tmp_path / "b.txt").write_bytes(b"also-wrong\n")
     result = verify_claims(
-        [], [],
+        [],
+        [],
         _goal(
             acceptance_criteria=[
                 "a.txt contains alpha",
@@ -168,8 +196,9 @@ def test_supported_eval_claim_does_not_hide_missing_file_gap(tmp_path):
     result = verify_claims(
         [{"kind": "evaluation_complete", "statement": "done", "source_event_id": "stop"}],
         [],
-        _goal(acceptance_criteria=["results.jsonl has 30 rows"],
-              evidence_requirements=["report.txt"]),
+        _goal(
+            acceptance_criteria=["results.jsonl has 30 rows"], evidence_requirements=["report.txt"]
+        ),
         snapshot(tmp_path, run_pytest=False),
     )
     assert result["status"] == "acceptance_gap"
@@ -180,9 +209,11 @@ def test_supported_eval_claim_does_not_hide_missing_file_gap(tmp_path):
 def test_row_shortfall_and_missing_file_share_one_correction(tmp_path):
     (tmp_path / "results.jsonl").write_bytes(b'{"id": 1}\n{"id": 2}\n')
     result = verify_claims(
-        [], [],
-        _goal(acceptance_criteria=["results.jsonl has 30 rows"],
-              evidence_requirements=["report.txt"]),
+        [],
+        [],
+        _goal(
+            acceptance_criteria=["results.jsonl has 30 rows"], evidence_requirements=["report.txt"]
+        ),
         snapshot(tmp_path, run_pytest=False),
     )
     correction = result["correction"]
@@ -193,7 +224,8 @@ def test_row_shortfall_and_missing_file_share_one_correction(tmp_path):
 
 def test_many_missing_files_keep_the_correction_bounded(tmp_path):
     result = verify_claims(
-        [], [],
+        [],
+        [],
         _goal(
             acceptance_criteria=[],
             evidence_requirements=[f"part-{i}.txt" for i in range(8)],
@@ -209,7 +241,8 @@ def test_many_missing_files_keep_the_correction_bounded(tmp_path):
 def test_repeated_criterion_produces_one_fragment(tmp_path):
     (tmp_path / "a.txt").write_bytes(b"wrong\n")
     result = verify_claims(
-        [], [],
+        [],
+        [],
         _goal(
             acceptance_criteria=["a.txt contains alpha", "a.txt contains alpha"],
             evidence_requirements=["a.txt"],

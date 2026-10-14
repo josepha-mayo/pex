@@ -45,18 +45,29 @@ def _target(**metadata: object) -> HarnessSession:
 def test_handoff_keeps_human_constraint_until_human_replacement(source):
     now = datetime.now(UTC)
     commitment = ContextItem(
-        id="human-boundary", project_id="demo", goal_id=None,
-        kind=ContextKind.CONSTRAINT, content="Never delete the existing parser fixtures.",
-        provenance=SourceKind.HUMAN, source_refs=["human:instruction"],
+        id="human-boundary",
+        project_id="demo",
+        goal_id=None,
+        kind=ContextKind.CONSTRAINT,
+        content="Never delete the existing parser fixtures.",
+        provenance=SourceKind.HUMAN,
+        source_refs=["human:instruction"],
         valid_from=now - timedelta(minutes=2),
     )
-    replacement = commitment.model_copy(update={
-        "id": "replacement", "kind": ContextKind.FACT, "provenance": source,
-        "content": "The parser fixtures can be deleted.", "supersedes": commitment.id,
-        "source_refs": ["event:replacement"], "valid_from": now - timedelta(minutes=1),
-    })
-    bundle = build_bundle(_goal(now), _target(), [commitment, replacement], [], [],
-                          token_budget=2000)
+    replacement = commitment.model_copy(
+        update={
+            "id": "replacement",
+            "kind": ContextKind.FACT,
+            "provenance": source,
+            "content": "The parser fixtures can be deleted.",
+            "supersedes": commitment.id,
+            "source_refs": ["event:replacement"],
+            "valid_from": now - timedelta(minutes=1),
+        }
+    )
+    bundle = build_bundle(
+        _goal(now), _target(), [commitment, replacement], [], [], token_budget=2000
+    )
     assert any(commitment.content in text for text in bundle.critical_decisions) is (
         source != SourceKind.HUMAN
     )
@@ -87,11 +98,18 @@ def test_shared_human_constraint_survives_handoff_even_when_previously_delivered
     now = datetime.now(UTC)
     content = "Project operating rule. " * 180 + "Do not publish without human approval."
     item = _item(
-        "shared-boundary", content, now,
-        kind=ContextKind.CONSTRAINT, provenance=SourceKind.HUMAN,
+        "shared-boundary",
+        content,
+        now,
+        kind=ContextKind.CONSTRAINT,
+        provenance=SourceKind.HUMAN,
     ).model_copy(update={"goal_id": None})
     bundle = build_bundle(
-        _goal(now), _target(), [item], [], ["synthetic:source"],
+        _goal(now),
+        _target(),
+        [item],
+        [],
+        ["synthetic:source"],
         exclude_item_ids={item.id},
     )
     assert f"Project constraint [{item.id}]: {content}" in bundle.critical_decisions
@@ -141,13 +159,17 @@ def test_goal_mandatory_human_commitment_still_requires_current_authority(kind, 
 
 
 @pytest.mark.parametrize(
-    "invalid", ["foreign_project", "foreign_goal", "expired", "private", "worker"],
+    "invalid",
+    ["foreign_project", "foreign_goal", "expired", "private", "worker"],
 )
 def test_handoff_shared_constraint_requires_current_human_project_authority(invalid):
     now = datetime.now(UTC)
     item = _item(
-        "shared-boundary", "SHARED_CONSTRAINT_SENTINEL", now,
-        kind=ContextKind.CONSTRAINT, provenance=SourceKind.HUMAN,
+        "shared-boundary",
+        "SHARED_CONSTRAINT_SENTINEL",
+        now,
+        kind=ContextKind.CONSTRAINT,
+        provenance=SourceKind.HUMAN,
     ).model_copy(update={"goal_id": None})
     updates = {
         "foreign_project": {"project_id": "foreign"},
@@ -198,10 +220,16 @@ def test_shortened_supported_claim_cannot_complete_long_requirement():
     criterion = "Public test detail. " * 60 + "The Linux result must also pass."
     goal.acceptance_criteria = [criterion, "release artifact exists"]
     partial = _item(
-        "shortened-result", "Only the prefix was verified", now,
-        kind=ContextKind.RESULT, provenance=SourceKind.TEST,
-        metadata={"verified": True, "status": "supported",
-                  "claim": {"statement": criterion[:997].rstrip() + "..."}},
+        "shortened-result",
+        "Only the prefix was verified",
+        now,
+        kind=ContextKind.RESULT,
+        provenance=SourceKind.TEST,
+        metadata={
+            "verified": True,
+            "status": "supported",
+            "claim": {"statement": criterion[:997].rstrip() + "..."},
+        },
     )
     bundle = build_bundle(goal, _target(), [partial], [], [])
     assert bundle.next_objective == criterion
@@ -361,7 +389,8 @@ def test_declared_target_keeps_goal_wide_constraints_and_unresolved_dependencies
 
     assert {item.id for item in bundle.items} == {"constraint", "blocker"}
     assert bundle.critical_decisions == [
-        "Constraint: Do not expose secrets", "Evidence requirement: pytest result",
+        "Constraint: Do not expose secrets",
+        "Evidence requirement: pytest result",
         f"Constraint: {constraint.content}",
     ]
 
@@ -459,9 +488,10 @@ def test_expired_successor_never_revives_superseded_handoff_context() -> None:
     successor = _item(
         "expired-successor", "Use the new parser release path", now, stale_after=now
     ).model_copy(update={"supersedes": retired.id})
-    assert build_bundle(
-        _goal(now), _target(task="parser release"), [retired, successor], [], []
-    ).items == []
+    assert (
+        build_bundle(_goal(now), _target(task="parser release"), [retired, successor], [], []).items
+        == []
+    )
 
 
 def test_private_successor_retires_old_public_context_without_crossing_scope() -> None:
@@ -474,14 +504,14 @@ def test_private_successor_retires_old_public_context_without_crossing_scope() -
         now,
         sensitivity=Sensitivity.LOCAL_ONLY,
     ).model_copy(update={"supersedes": retired.id})
-    assert build_bundle(
-        goal, _target(task="parser release"), [retired, private], [], []
-    ).items == []
+    assert (
+        build_bundle(goal, _target(task="parser release"), [retired, private], [], []).items == []
+    )
 
     future = private.model_copy(update={"valid_from": now + timedelta(days=1)})
-    assert build_bundle(
-        goal, _target(task="parser release"), [retired, future], [], []
-    ).items == [retired]
+    assert build_bundle(goal, _target(task="parser release"), [retired, future], [], []).items == [
+        retired
+    ]
     public_future = future.model_copy(update={"sensitivity": Sensitivity.INTERNAL})
     assert score_item(public_future, goal, _target(), now=now) == -1.0
 
@@ -660,12 +690,17 @@ def test_handoff_does_not_mark_a_partial_acceptance_phrase_complete() -> None:
 @pytest.mark.parametrize("source_state", ["present", "missing", "other_session"])
 def test_supported_test_context_retains_exact_multiple_run_sources(source_state):
     now = datetime.now(UTC)
+
     def event(event_id, command="", session_id="synthetic:source"):
         return HarnessEvent(
-            event_id=event_id, ts=now, harness_type=HarnessType.SYNTHETIC,
-            session_id=session_id, event_type=EventType.SHELL if command else EventType.STOP,
+            event_id=event_id,
+            ts=now,
+            harness_type=HarnessType.SYNTHETIC,
+            session_id=session_id,
+            event_type=EventType.SHELL if command else EventType.STOP,
             command=command,
         )
+
     pytest_event = event("pytest-proof", "pytest")
     unittest_event = event("unittest-proof", "python -m unittest")
     unrelated = event("later-unrelated-test", "pytest tests/other.py")
@@ -675,12 +710,20 @@ def test_supported_test_context_retains_exact_multiple_run_sources(source_state)
         unittest_event.session_id = "synthetic:other-worker"
     if source_state != "missing":
         recent.insert(1, unittest_event)
-    verification = {"verdicts": [{
-        "status": "supported",
-        "claim": {"statement": "Both required suites pass", "source_event_id": "stop"},
-        "evidence": ["pytest_event_id=pytest-proof", "unittest_event_id=unittest-proof",
-                     "pytest_ok=true", "unittest_ok=true"],
-    }]}
+    verification = {
+        "verdicts": [
+            {
+                "status": "supported",
+                "claim": {"statement": "Both required suites pass", "source_event_id": "stop"},
+                "evidence": [
+                    "pytest_event_id=pytest-proof",
+                    "unittest_event_id=unittest-proof",
+                    "pytest_ok=true",
+                    "unittest_ok=true",
+                ],
+            }
+        ]
+    }
     items = items_from_verification("demo", "goal_context", stop, verification, recent)
     if source_state != "present":
         assert items == []
@@ -742,23 +785,32 @@ def test_later_handoff_keeps_previously_delivered_supported_criterion_complete()
 
 
 @pytest.mark.parametrize("delivered", [False, True])
-@pytest.mark.parametrize("criteria", [
-    ["REPORT.json exists", "report.json exists"],
-    ["report.txt contains exactly 'OK'", "report.txt contains exactly 'ok'"],
-])
+@pytest.mark.parametrize(
+    "criteria",
+    [
+        ["REPORT.json exists", "report.json exists"],
+        ["report.txt contains exactly 'OK'", "report.txt contains exactly 'ok'"],
+    ],
+)
 def test_handoff_does_not_merge_case_distinct_acceptance_contracts(criteria, delivered):
     now = datetime.now(UTC)
     goal = _goal(now)
     goal.objective = "Produce the required report artifacts"
     goal.acceptance_criteria = criteria
     verified = _item(
-        "verified-contract", criteria[0], now,
-        kind=ContextKind.RESULT, provenance=SourceKind.TEST,
-        metadata={"verified": True, "status": "supported",
-                  "claim": {"statement": criteria[0]}},
+        "verified-contract",
+        criteria[0],
+        now,
+        kind=ContextKind.RESULT,
+        provenance=SourceKind.TEST,
+        metadata={"verified": True, "status": "supported", "claim": {"statement": criteria[0]}},
     )
     bundle = build_bundle(
-        goal, _target(task=criteria[0]), [verified], [], [],
+        goal,
+        _target(task=criteria[0]),
+        [verified],
+        [],
+        [],
         exclude_item_ids={verified.id} if delivered else set(),
     )
     assert bundle.next_objective == criteria[1]
@@ -871,22 +923,33 @@ def test_rejected_approach_and_unresolved_question_shape_the_handoff_bundle() ->
     assert '"kind":"rejected_approach"' in serialized or "rejected_approach" in serialized
 
 
-@pytest.mark.parametrize("kind,status,label", [
-    ("rejected_approach", "active", "Rejected approach"),
-    ("unresolved_question", "uncertain", "Unresolved question"),
-    ("decision", "uncertain", "Uncertain decision"),
-])
+@pytest.mark.parametrize(
+    "kind,status,label",
+    [
+        ("rejected_approach", "active", "Rejected approach"),
+        ("unresolved_question", "uncertain", "Unresolved question"),
+        ("decision", "uncertain", "Uncertain decision"),
+    ],
+)
 def test_previously_delivered_human_ledger_retains_its_state_label(kind, status, label):
     from pex_bridge.adapters.base import _bundle_as_prompt
 
     now = datetime.now(UTC)
     item = _item(
-        "ledger-row", "Rewrite the parser as a new service", now,
-        kind=ContextKind.DECISION, provenance=SourceKind.HUMAN,
+        "ledger-row",
+        "Rewrite the parser as a new service",
+        now,
+        kind=ContextKind.DECISION,
+        provenance=SourceKind.HUMAN,
         metadata={"kind": kind, "status": status},
     )
     bundle = build_bundle(
-        _goal(now), _target(), [item], [], [], exclude_item_ids={item.id},
+        _goal(now),
+        _target(),
+        [item],
+        [],
+        [],
+        exclude_item_ids={item.id},
     )
     assert bundle.items == []
     assert f"{label} [{item.id}]: {item.content}" in bundle.critical_decisions

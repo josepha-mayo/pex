@@ -277,7 +277,9 @@ async def _attach_goal(store, session):
 
 @pytest.mark.parametrize("change_at", ["before-finalization", "after-processing-update"])
 async def test_known_delivery_finalizes_after_workspace_loss_without_session_projection(
-    publication, monkeypatch, change_at,
+    publication,
+    monkeypatch,
+    change_at,
 ):
     store, session, _, _ = publication
     session.capabilities = {"send_message": True}

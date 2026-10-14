@@ -28,8 +28,14 @@ async def test_rejection_receipt_is_idempotent_restart_durable_and_content_free(
         )
         assert replay == first
         assert set(first) == {
-            "schema", "receipt_id", "file_identity", "start", "end",
-            "record_sha256", "reason", "rejected_at",
+            "schema",
+            "receipt_id",
+            "file_identity",
+            "start",
+            "end",
+            "record_sha256",
+            "reason",
+            "rejected_at",
         }
         assert first["schema"] == "pex.cursor-inbox-rejection.v1"
         assert first["file_identity"] == {"device": "17", "inode": "29"}

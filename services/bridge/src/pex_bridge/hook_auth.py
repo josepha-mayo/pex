@@ -25,9 +25,7 @@ HOOK_ROUTES_BY_HARNESS: Final[dict[HarnessType, frozenset[str]]] = {
     HarnessType.CLAUDE_CODE: frozenset({CLAUDE_HOOK_ROUTE}),
     HarnessType.QWEN: frozenset({QWEN_HOOK_ROUTE}),
     HarnessType.HERMES: frozenset({HERMES_HOOK_ROUTE}),
-    HarnessType.OPENCODE: frozenset(
-        {OPENCODE_HEARTBEAT_ROUTE, OPENCODE_OVERLAY_ROUTE}
-    ),
+    HarnessType.OPENCODE: frozenset({OPENCODE_HEARTBEAT_ROUTE, OPENCODE_OVERLAY_ROUTE}),
 }
 
 _TOKEN_PATTERN = re.compile(r"^pex_hook_[A-Za-z0-9_-]{64}$")
@@ -42,10 +40,7 @@ def mint_hook_token() -> str:
 
 def digest_hook_token(raw_token: object) -> str:
     token = str(raw_token or "")
-    if (
-        len(token) > MAX_HOOK_TOKEN_CHARS
-        or _TOKEN_PATTERN.fullmatch(token) is None
-    ):
+    if len(token) > MAX_HOOK_TOKEN_CHARS or _TOKEN_PATTERN.fullmatch(token) is None:
         raise ValueError("invalid hook credential")
     return hashlib.sha256(token.encode("ascii")).hexdigest()
 
@@ -136,9 +131,7 @@ class HookPrincipal:
             ("vendor_session_id", vendor_session_id),
         ):
             if value is not None and (
-                not isinstance(value, str)
-                or not value.strip()
-                or len(value) > 4096
+                not isinstance(value, str) or not value.strip() or len(value) > 4096
             ):
                 raise ValueError(f"hook credential {field} is invalid")
         return cls(

@@ -17,7 +17,10 @@ MAX_DEMO_MUTATIONS = 32
 _FIXTURE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
 _WORKSPACE_RELPATH = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$")
 _WINDOWS_DEVICE_NAMES = {
-    "con", "nul", "aux", "prn",
+    "con",
+    "nul",
+    "aux",
+    "prn",
     *(f"com{i}" for i in range(1, 10)),
     *(f"lpt{i}" for i in range(1, 10)),
 }
@@ -92,16 +95,10 @@ def _validated_workspace(value: Any, *, event_count: int) -> dict[str, Any]:
         raise ValueError("demo workspace mutations must be a bounded list")
     mutations = []
     for item in mutations_value:
-        if not isinstance(item, dict) or not set(item).issubset(
-            {"after", "files", "delete"}
-        ):
+        if not isinstance(item, dict) or not set(item).issubset({"after", "files", "delete"}):
             raise ValueError("demo workspace mutation must be {after, files, delete}")
         after = item.get("after")
-        if (
-            not isinstance(after, int)
-            or isinstance(after, bool)
-            or not 0 <= after < event_count
-        ):
+        if not isinstance(after, int) or isinstance(after, bool) or not 0 <= after < event_count:
             raise ValueError("demo workspace mutation index must be an event index")
         deletes = item.get("delete") or []
         if not isinstance(deletes, list) or len(deletes) > MAX_DEMO_WORKSPACE_FILES:
@@ -344,9 +341,7 @@ def _parse_fixture_bytes(raw: bytes) -> dict:
     if data.get("goal") is not None and not isinstance(data["goal"], dict):
         raise ValueError("demo fixture goal must be an object")
     if data.get("workspace") is not None:
-        data["workspace"] = _validated_workspace(
-            data["workspace"], event_count=len(events)
-        )
+        data["workspace"] = _validated_workspace(data["workspace"], event_count=len(events))
     data["replay"] = True
     data["not_live_control"] = True
     return data

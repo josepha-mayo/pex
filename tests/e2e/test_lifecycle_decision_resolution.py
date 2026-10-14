@@ -132,9 +132,7 @@ async def test_intervention_undo_requires_operator_auth_even_in_no_auth_mode(tmp
             response = await client.post("/v1/interventions/unknown/undo")
 
         assert response.status_code == 403
-        assert response.json()["detail"] == (
-            "operator mutations require bridge authentication"
-        )
+        assert response.json()["detail"] == ("operator mutations require bridge authentication")
     finally:
         state.settings = previous_settings
         state.token = previous_token
@@ -148,12 +146,8 @@ async def test_intervention_undo_requires_one_strict_bounded_idempotency_key(
     path = "/v1/interventions/missing-intervention/undo"
 
     assert (await client.post(path)).status_code == 422
-    assert (
-        await client.post(path, json={"idempotency_key": "short"})
-    ).status_code == 422
-    assert (
-        await client.post(path, json={"idempotency_key": "x" * 129})
-    ).status_code == 422
+    assert (await client.post(path, json={"idempotency_key": "short"})).status_code == 422
+    assert (await client.post(path, json={"idempotency_key": "x" * 129})).status_code == 422
     assert (
         await client.post(
             path,
@@ -229,10 +223,7 @@ async def test_intervention_undo_requires_one_strict_bounded_idempotency_key(
         (
             {
                 "ok": False,
-                "code": (
-                    "cleanup_restore_delivery_uncertain:"
-                    "restored=0,not_restored=1,conflict=0"
-                ),
+                "code": ("cleanup_restore_delivery_uncertain:restored=0,not_restored=1,conflict=0"),
                 "status": "delivery_uncertain",
                 "replayed": False,
             },
@@ -574,10 +565,7 @@ async def test_overlay_undo_contains_exact_owner_through_pause_rebind_and_replay
     assert frozen.result == "overlay_reverted"
     assert frozen.outcome == "overlay_reverted_by_human"
     assert frozen.metadata["undo_result"] == "overlay_reverted"
-    assert (
-        frozen.metadata["overlay_revert_operation_id"]
-        == first.json()["receipt"]["operation_id"]
-    )
+    assert frozen.metadata["overlay_revert_operation_id"] == first.json()["receipt"]["operation_id"]
 
 
 @pytest.mark.asyncio
@@ -600,9 +588,10 @@ async def test_pending_start_cannot_cross_its_source_project(lifecycle_client, t
 
     assert response.status_code == 409
     assert response.json()["detail"]["code"] == "lifecycle_failed"
-    assert response.json()["detail"]["resolution"]["resolution"][
-        "delivery_result"
-    ] == "agent_start_project_mismatch"
+    assert (
+        response.json()["detail"]["resolution"]["resolution"]["delivery_result"]
+        == "agent_start_project_mismatch"
+    )
     assert len(state.adapters.synthetic.sessions) == 1
 
 

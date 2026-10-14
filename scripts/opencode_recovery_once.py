@@ -677,9 +677,7 @@ async def main() -> int:
     else:
         SUPERVISOR_MODEL = "disabled"
     has_separate_worker_credential = "PEX_PROOF_WORKER_KEY" in os.environ
-    native_free = (
-        not has_separate_worker_credential and args.worker_model in FREE_OPENCODE_MODELS
-    )
+    native_free = not has_separate_worker_credential and args.worker_model in FREE_OPENCODE_MODELS
     try:
         worker_provider, provider_name = proof_worker_route(
             choice.provider if choice is not None else "zen",
@@ -716,15 +714,20 @@ async def main() -> int:
         if not supervisor_secret:
             raise RuntimeError("saved supervisor vault credential is unavailable")
     worker_secret = (
-        None if native_free else
-        validate_supervisor_secret(os.environ["PEX_PROOF_WORKER_KEY"])
-        if has_separate_worker_credential else supervisor_secret
+        None
+        if native_free
+        else validate_supervisor_secret(os.environ["PEX_PROOF_WORKER_KEY"])
+        if has_separate_worker_credential
+        else supervisor_secret
     )
     if not native_free and worker_secret is None:
         raise RuntimeError("worker credential is unavailable")
     worker_credential_source = (
-        "native_free" if native_free else
-        "separate_environment" if has_separate_worker_credential else "saved_supervisor"
+        "native_free"
+        if native_free
+        else "separate_environment"
+        if has_separate_worker_credential
+        else "saved_supervisor"
     )
     shim = shutil.which("opencode.cmd") or shutil.which("opencode")
     if shim is None:
@@ -754,7 +757,10 @@ async def main() -> int:
     write_json(
         root / "opencode.json",
         proof_worker_config(
-            worker_provider, args.worker_model, provider_name, native_free=native_free,
+            worker_provider,
+            args.worker_model,
+            provider_name,
+            native_free=native_free,
         ),
     )
     before_env = {key: os.environ.get(key) for key in pins}

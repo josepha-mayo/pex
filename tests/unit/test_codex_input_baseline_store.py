@@ -9,9 +9,12 @@ from test_observer_retention_store import retention as retention
 
 def baseline(*, complete=True):
     return {
-        "schema": "pex.codex-input-baseline.v1", "complete": complete,
-        "digest": "a" * 64 if complete else None, "revision": 3,
-        "external_count": 2, "pending_count": 0 if complete else 1,
+        "schema": "pex.codex-input-baseline.v1",
+        "complete": complete,
+        "digest": "a" * 64 if complete else None,
+        "revision": 3,
+        "external_count": 2,
+        "pending_count": 0 if complete else 1,
         "reason": None if complete else "pending_input",
     }
 
@@ -21,15 +24,26 @@ async def save(retention, path, event):
     if path == "accept":
         await store.accept_pipeline_event(event, session_snapshot=session)
         return await store.get_event(event.event_id)
-    return (await store.retain_observer_events(
-        (event,), session, expected_project_binding=binding,
-    ))[0]
+    return (
+        await store.retain_observer_events(
+            (event,),
+            session,
+            expected_project_binding=binding,
+        )
+    )[0]
 
 
 @pytest.mark.parametrize("path", ["accept", "retain"])
-@pytest.mark.parametrize("kind", [
-    "complete", "incomplete", "bounds", "incomplete_bounds", "legacy",
-])
+@pytest.mark.parametrize(
+    "kind",
+    [
+        "complete",
+        "incomplete",
+        "bounds",
+        "incomplete_bounds",
+        "legacy",
+    ],
+)
 async def test_valid_baseline_is_preserved_without_session_projection(retention, path, kind):
     store, session, events, _ = retention
     event = events[0].model_copy(deep=True)
@@ -40,7 +54,10 @@ async def test_valid_baseline_is_preserved_without_session_projection(retention,
             snapshot["input_baseline"].update(revision=2**63 - 1, external_count=4096)
         elif kind == "incomplete_bounds":
             snapshot["input_baseline"].update(
-                revision=0, external_count=0, pending_count=4096, reason="x" * 160,
+                revision=0,
+                external_count=0,
+                pending_count=4096,
+                reason="x" * 160,
             )
     before = await store.get_session_control_state(session.id)
     saved = await save(retention, path, event)
@@ -53,14 +70,29 @@ async def test_valid_baseline_is_preserved_without_session_projection(retention,
 
 
 INVALID = [
-    ("schema", "other.v1"), ("complete", 1), ("complete", "true"),
-    ("digest", "A" * 64), ("digest", "a" * 63), ("digest", "g" * 64),
-    ("digest", None), ("digest", 4), ("revision", -1), ("revision", True),
-    ("revision", 1.5), ("revision", 2**63), ("external_count", -1),
-    ("external_count", 4097), ("external_count", True), ("external_count", 1.5),
-    ("pending_count", -1), ("pending_count", 4097), ("pending_count", True),
-    ("pending_count", 1), ("reason", "unexpected_reason"),
-    ("reason", "x" * 161), ("content", [{"text": "raw input must never be stored here"}]),
+    ("schema", "other.v1"),
+    ("complete", 1),
+    ("complete", "true"),
+    ("digest", "A" * 64),
+    ("digest", "a" * 63),
+    ("digest", "g" * 64),
+    ("digest", None),
+    ("digest", 4),
+    ("revision", -1),
+    ("revision", True),
+    ("revision", 1.5),
+    ("revision", 2**63),
+    ("external_count", -1),
+    ("external_count", 4097),
+    ("external_count", True),
+    ("external_count", 1.5),
+    ("pending_count", -1),
+    ("pending_count", 4097),
+    ("pending_count", True),
+    ("pending_count", 1),
+    ("reason", "unexpected_reason"),
+    ("reason", "x" * 161),
+    ("content", [{"text": "raw input must never be stored here"}]),
 ]
 
 
@@ -81,9 +113,17 @@ async def test_invalid_baseline_is_rejected_before_any_event_write(retention, pa
 
 
 @pytest.mark.parametrize("path", ["accept", "retain"])
-@pytest.mark.parametrize("change", [
-    "null", "missing", "no_reason", "digest_present", "long_reason", "reason_not_string",
-])
+@pytest.mark.parametrize(
+    "change",
+    [
+        "null",
+        "missing",
+        "no_reason",
+        "digest_present",
+        "long_reason",
+        "reason_not_string",
+    ],
+)
 async def test_incomplete_baseline_must_explicitly_preserve_uncertainty(retention, path, change):
     store, _, events, _ = retention
     event = events[0].model_copy(deep=True)
@@ -129,13 +169,16 @@ async def test_baseline_replay_preserves_first_snapshot_and_rejects_later_baseli
 
 @pytest.mark.parametrize("baseline_index", [0, 1])
 async def test_mixed_legacy_and_baseline_retention_does_not_reuse_previous_keys(
-    retention, baseline_index,
+    retention,
+    baseline_index,
 ):
     store, session, events, binding = retention
     first, second = [event.model_copy(deep=True) for event in events]
     (first, second)[baseline_index].metadata["pex_observer_snapshot"]["input_baseline"] = baseline()
     saved = await store.retain_observer_events(
-        (first, second), session, expected_project_binding=binding,
+        (first, second),
+        session,
+        expected_project_binding=binding,
     )
     assert saved[baseline_index].metadata["pex_observer_snapshot"]["input_baseline"] == baseline()
     assert "input_baseline" not in saved[1 - baseline_index].metadata["pex_observer_snapshot"]
@@ -149,7 +192,9 @@ async def test_invalid_later_baseline_cannot_leave_earlier_retention_event(reten
     second.metadata["pex_observer_snapshot"]["input_baseline"]["raw_items"] = ["private"]
     with pytest.raises(ValueError):
         await store.retain_observer_events(
-            (first, second), session, expected_project_binding=binding,
+            (first, second),
+            session,
+            expected_project_binding=binding,
         )
     assert await store.get_event(first.event_id) is None
     assert await store.get_event(second.event_id) is None

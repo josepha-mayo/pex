@@ -9,10 +9,16 @@ from benchmarks.opencode_control_relay import REVIEW_SCHEMA, OpenCodeControlRela
 
 
 def request(identity="review-1", vendor="vendor", messages=None):
-    return strict_json_dumps({
-        "schema": REVIEW_SCHEMA, "request_id": identity, "vendor_session_id": vendor,
-        "agent_messages": ["The public artifact is incomplete."] if messages is None else messages,
-    }).encode()
+    return strict_json_dumps(
+        {
+            "schema": REVIEW_SCHEMA,
+            "request_id": identity,
+            "vendor_session_id": vendor,
+            "agent_messages": ["The public artifact is incomplete."]
+            if messages is None
+            else messages,
+        }
+    ).encode()
 
 
 def relay(review=None, **options):
@@ -20,8 +26,12 @@ def relay(review=None, **options):
         return {"model": "pinned", "choices": []}
 
     return OpenCodeControlRelay(
-        review=review, model="pinned", max_calls=5,
-        deadline=time.perf_counter() + 10, backend=backend, **options,
+        review=review,
+        model="pinned",
+        max_calls=5,
+        deadline=time.perf_counter() + 10,
+        backend=backend,
+        **options,
     )
 
 
@@ -42,9 +52,14 @@ async def test_cumulative_review_time_is_consumed_across_successes(monkeypatch):
     import benchmarks.opencode_control_relay as control
 
     clock = [100.0]
-    monkeypatch.setattr(control, "time", SimpleNamespace(
-        perf_counter=time.perf_counter, monotonic=lambda: clock[0],
-    ))
+    monkeypatch.setattr(
+        control,
+        "time",
+        SimpleNamespace(
+            perf_counter=time.perf_counter,
+            monotonic=lambda: clock[0],
+        ),
+    )
 
     async def review(*args):
         clock[0] += 2
@@ -66,9 +81,15 @@ async def test_review_time_timeout_cannot_be_suppressed_or_retried(monkeypatch):
     import benchmarks.opencode_control_relay as control
 
     # The event-loop timeout can fire before the accounting clock advances.
-    monkeypatch.setattr(control, "time", SimpleNamespace(
-        perf_counter=time.perf_counter, monotonic=lambda: 100.0,
-    ))
+    monkeypatch.setattr(
+        control,
+        "time",
+        SimpleNamespace(
+            perf_counter=time.perf_counter,
+            monotonic=lambda: 100.0,
+        ),
+    )
+
     async def review(*args):
         try:
             await asyncio.Event().wait()
@@ -91,14 +112,21 @@ async def test_review_returns_only_bounded_public_action_and_exact_hashes():
 
     async def review(vendor, messages):
         calls.append((vendor, messages))
-        return {"type": "SEND_NUDGE", "payload": {"text": "Verify and fix the public test",
-                                                  "private": "must not leave controller"},
-                "private": "must not leave controller"}
+        return {
+            "type": "SEND_NUDGE",
+            "payload": {
+                "text": "Verify and fix the public test",
+                "private": "must not leave controller",
+            },
+            "private": "must not leave controller",
+        }
 
     controller = relay(review)
     result = await controller.dispatch(request())
-    assert result["action"] == {"type": "SEND_NUDGE",
-                                "payload": {"text": "Verify and fix the public test"}}
+    assert result["action"] == {
+        "type": "SEND_NUDGE",
+        "payload": {"text": "Verify and fix the public test"},
+    }
     assert calls == [("vendor", ("The public artifact is incomplete.",))]
     assert controller.review_audit[0]["status"] == "completed"
     assert len(controller.review_audit[0]["response_sha256"]) == 64
@@ -169,9 +197,14 @@ async def test_expired_review_cannot_complete_receipt_after_suppressed_cancel(mo
 
     controller = relay(review, max_reviews=1)
     controller.deadline = 100.01
-    monkeypatch.setattr(control, "time", SimpleNamespace(
-        perf_counter=lambda: 100.0, monotonic=time.monotonic,
-    ))
+    monkeypatch.setattr(
+        control,
+        "time",
+        SimpleNamespace(
+            perf_counter=lambda: 100.0,
+            monotonic=time.monotonic,
+        ),
+    )
     result = await asyncio.wait_for(controller.dispatch(request()), 1)
     assert result["error"] == "review_failed_uncertain"
     assert controller.review_audit[0]["status"] == "failed_uncertain"
@@ -190,9 +223,14 @@ async def test_deadline_expiring_at_admission_never_starts_review(monkeypatch):
     controller = relay(review)
     controller.deadline = 101.0
     ticks = iter([100.0, 102.0])
-    monkeypatch.setattr(control, "time", SimpleNamespace(
-        perf_counter=lambda: next(ticks), monotonic=time.monotonic,
-    ))
+    monkeypatch.setattr(
+        control,
+        "time",
+        SimpleNamespace(
+            perf_counter=lambda: next(ticks),
+            monotonic=time.monotonic,
+        ),
+    )
     result = await controller.dispatch(request())
     assert calls == []
     assert result["error"] == "review_failed_uncertain"
@@ -219,9 +257,16 @@ async def test_suppressed_caller_cancel_stays_uncertain_and_consumed():
     assert (await controller.dispatch(request("review-2")))["error"] == "review_budget_exhausted"
 
 
-@pytest.mark.parametrize("action", [{"type": "MOVE_SESSION"}, {}, None,
-                                  {"type": "SEND_NUDGE", "payload": {"text": " "}},
-                                  {"type": "SEND_NUDGE", "payload": {"text": "a" * 20_001}}])
+@pytest.mark.parametrize(
+    "action",
+    [
+        {"type": "MOVE_SESSION"},
+        {},
+        None,
+        {"type": "SEND_NUDGE", "payload": {"text": " "}},
+        {"type": "SEND_NUDGE", "payload": {"text": "a" * 20_001}},
+    ],
+)
 async def test_failed_review_never_returns_instruction_and_is_not_retried(action):
     async def review(*args):
         return action
@@ -246,8 +291,10 @@ async def test_review_after_deadline_never_returns_action(monkeypatch):
     assert (await controller.dispatch(request()))["error"] == "review_failed_uncertain"
 
 
-@pytest.mark.parametrize("vendor,messages", [("", []), ("x\x00", []), ("x", [None]),
-                                            ("x", ["a" * 20_001]), ("x", ["a"] * 101)])
+@pytest.mark.parametrize(
+    "vendor,messages",
+    [("", []), ("x\x00", []), ("x", [None]), ("x", ["a" * 20_001]), ("x", ["a"] * 101)],
+)
 async def test_unbounded_or_malformed_observations_are_refused(vendor, messages):
     async def forbidden(*args):
         pytest.fail("invalid review must not dispatch")
@@ -261,9 +308,17 @@ async def test_unbounded_or_malformed_observations_are_refused(vendor, messages)
 
 async def test_normal_model_requests_still_use_pinned_model_relay():
     controller = relay()
-    raw = strict_json_dumps({"schema": "pex.model-relay.v1", "request_id": "model-1",
-                             "body": {"model": "pinned", "messages": [
-                                 {"role": "user", "content": "Public task"}], "max_tokens": 10}})
+    raw = strict_json_dumps(
+        {
+            "schema": "pex.model-relay.v1",
+            "request_id": "model-1",
+            "body": {
+                "model": "pinned",
+                "messages": [{"role": "user", "content": "Public task"}],
+                "max_tokens": 10,
+            },
+        }
+    )
     assert (await controller.dispatch(raw.encode()))["ok"]
     assert len(controller.audit) == 1
     assert controller.review_audit == []

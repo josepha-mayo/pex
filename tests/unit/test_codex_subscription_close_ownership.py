@@ -16,7 +16,9 @@ class HeldCloseTransport(FakeSharedTransport):
         super().__init__(
             [response, response],
             _thread_response(
-                cwd, include_turns=False, thread_update={"sessionId": "foreign-root"},
+                cwd,
+                include_turns=False,
+                thread_update={"sessionId": "foreign-root"},
             ),
         )
         self.close_started = asyncio.Event()
@@ -57,7 +59,8 @@ async def _settle_fixture(transport, caller):
     await asyncio.wait_for(asyncio.gather(caller, return_exceptions=True), timeout=2)
     if transport.close_task is not None:
         await asyncio.wait_for(
-            asyncio.gather(transport.close_task, return_exceptions=True), timeout=2,
+            asyncio.gather(transport.close_task, return_exceptions=True),
+            timeout=2,
         )
 
 

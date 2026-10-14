@@ -132,10 +132,9 @@ def is_acceptance_config(relpath: str) -> bool:
     """
 
     name = str(relpath).replace("\\", "/").rsplit("/", 1)[-1].casefold()
-    return (
-        name in _ACCEPTANCE_CONFIG_NAMES
-        or _ACCEPTANCE_CONFIG_RE.fullmatch(name) is not None
-    )
+    return name in _ACCEPTANCE_CONFIG_NAMES or _ACCEPTANCE_CONFIG_RE.fullmatch(name) is not None
+
+
 _SHA256_RE = re.compile(r"[0-9a-f]{64}")
 
 
@@ -210,17 +209,13 @@ def acceptance_fingerprints(
             continue
         digest = entry.get("sha256")
         out[path] = (
-            digest
-            if isinstance(digest, str) and _SHA256_RE.fullmatch(digest) is not None
-            else None
+            digest if isinstance(digest, str) and _SHA256_RE.fullmatch(digest) is not None else None
         )
     return out
 
 
 def _sealed_content_candidate(root: Path, relpath: str) -> Path | None:
-    parts = [
-        part for part in str(relpath).replace("\\", "/").split("/") if part
-    ]
+    parts = [part for part in str(relpath).replace("\\", "/").split("/") if part]
     if not parts or any(part == ".." for part in parts):
         return None
     try:
@@ -331,6 +326,8 @@ def sealed_acceptance_contents(
             continue
         total += len(data)
     return contents
+
+
 MAX_ARTIFACT_TAIL_BYTES = 64_000
 MAX_ARTIFACT_COUNT_BYTES = 4_000_000
 MAX_GIT_OUTPUT_BYTES = 8000
@@ -539,8 +536,8 @@ def snapshot(workspace: str | Path, *, run_pytest: bool = False) -> dict[str, An
     root = Path(workspace).resolve()
     if not root.is_dir():
         return {"workspace": str(root), "files": [], "pytest": None, "error": "cwd missing"}
-    files, file_meta, files_truncated, inventory_reason, surface_complete = (
-        _workspace_inventory(root)
+    files, file_meta, files_truncated, inventory_reason, surface_complete = _workspace_inventory(
+        root
     )
     result: dict[str, Any] = {
         "workspace": str(root),
@@ -640,9 +637,7 @@ def git_snapshot(root: Path) -> dict[str, Any]:
             def _read_output() -> bytes:
                 output = bytearray()
                 while len(output) <= MAX_GIT_OUTPUT_BYTES:
-                    chunk = process.stdout.read(
-                        min(4096, MAX_GIT_OUTPUT_BYTES + 1 - len(output))
-                    )
+                    chunk = process.stdout.read(min(4096, MAX_GIT_OUTPUT_BYTES + 1 - len(output)))
                     if not chunk:
                         break
                     output.extend(chunk)
@@ -801,8 +796,10 @@ def artifact_tails(root: Path, limit: int = 4000) -> list[dict[str, Any]]:
             relative = path.relative_to(resolved_root)
             if not path.is_file() or _hidden(path, resolved_root):
                 continue
-            if any(part.startswith(".") or part.casefold() in PRUNED_DIRECTORIES
-                   for part in relative.parts):
+            if any(
+                part.startswith(".") or part.casefold() in PRUNED_DIRECTORIES
+                for part in relative.parts
+            ):
                 continue
             with _open_observed_file(path) as (handle, opened):
                 size = opened.st_size
@@ -811,7 +808,9 @@ def artifact_tails(root: Path, limit: int = 4000) -> list[dict[str, Any]]:
                 # Count from the same checked descriptor as the preview: never
                 # reopen a worker-controlled path after returning its bytes.
                 row_count, count_complete = _artifact_row_count_from_handle(
-                    handle, path.suffix.casefold(), MAX_ARTIFACT_COUNT_BYTES,
+                    handle,
+                    path.suffix.casefold(),
+                    MAX_ARTIFACT_COUNT_BYTES,
                 )
         except (OSError, ValueError, OverflowError):
             continue
@@ -846,7 +845,9 @@ def artifact_row_count(
 
 
 def _artifact_row_count_from_handle(
-    handle: BinaryIO, suffix: str, bounded_limit: int,
+    handle: BinaryIO,
+    suffix: str,
+    bounded_limit: int,
 ) -> tuple[int | None, bool]:
     try:
         if suffix not in {".json", ".jsonl"} or os.fstat(handle.fileno()).st_size > bounded_limit:

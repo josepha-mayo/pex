@@ -49,9 +49,9 @@ class _Input:
 class CodexInputBaseline:
     """Internally installed Store provenance is required; JSON is not authority.
 
-All mutable/raw state stays private. Snapshot exports contain no input content,
-and historical PEX classification never grants current goal/worker authority.
-"""
+    All mutable/raw state stays private. Snapshot exports contain no input content,
+    and historical PEX classification never grants current goal/worker authority.
+    """
 
     def __init__(self, provenance: CodexInputProvenance) -> None:
         self._provenance = provenance
@@ -64,7 +64,9 @@ and historical PEX classification never grants current goal/worker authority.
 
     @classmethod
     def from_selected(
-        cls, selected: CodexSelectedThread, provenance: CodexInputProvenance,
+        cls,
+        selected: CodexSelectedThread,
+        provenance: CodexInputProvenance,
     ) -> CodexInputBaseline:
         # Import here so a coordinator can use this helper without a cycle.
         from pex_bridge.adapters.codex_subscription import (
@@ -81,7 +83,8 @@ and historical PEX classification never grants current goal/worker authority.
         ):
             raise ValueError("input baseline requires selected history and immutable provenance")
         if (selected.pex_session_id, selected.thread_id) != (
-            provenance.session_id, provenance.thread_id,
+            provenance.session_id,
+            provenance.thread_id,
         ):
             raise ValueError("input baseline selected scope differs from provenance")
         result = cls(provenance)
@@ -92,11 +95,15 @@ and historical PEX classification never grants current goal/worker authority.
             raise ValueError("input baseline selected record bound/type is invalid")
         # Regenerate full records as well as IDs: nested turn items must agree
         # exactly with the separate frozen item records, not merely their IDs.
-        turns = [record.payload() for record in selected.history_records
-                 if record.method == "history/turn"]
+        turns = [
+            record.payload()
+            for record in selected.history_records
+            if record.method == "history/turn"
+        ]
         ids, shape, records = _history({"turns": turns})
         if (
-            records != selected.history_records or ids != selected.history_ids
+            records != selected.history_records
+            or ids != selected.history_ids
             or shape != selected.history_shape
             or _history_digest(ids) != selected.history_identity_digest
             or _history_content_digest(records) != selected.history_content_digest
@@ -105,7 +112,8 @@ and historical PEX classification never grants current goal/worker authority.
         result._gap = None
         for turn in turns:
             if (
-                _incomplete(turn) or turn.get("itemsView") != "full"
+                _incomplete(turn)
+                or turn.get("itemsView") != "full"
                 or type(turn.get("status")) is not str
                 or turn.get("status") not in {"inProgress", "completed", "interrupted", "failed"}
                 or type(turn.get("items")) is not list
@@ -114,7 +122,8 @@ and historical PEX classification never grants current goal/worker authority.
             for item in turn.get("items", []):
                 if (
                     type(item.get("type")) is not str
-                    or item["type"] not in CONTROL_HISTORY_ITEM_TYPES or _incomplete(item)
+                    or item["type"] not in CONTROL_HISTORY_ITEM_TYPES
+                    or _incomplete(item)
                 ):
                     result._mark_gap("selected_history_item_incomplete")
                 if item.get("type") == "userMessage":
@@ -141,7 +150,8 @@ and historical PEX classification never grants current goal/worker authority.
             self._revision += 1
 
     def replace_provenance(
-        self, provenance: CodexInputProvenance,
+        self,
+        provenance: CodexInputProvenance,
     ) -> CodexInputBaselineSnapshot:
         """Install a refreshed internal Store index, never caller/model authority.
 
@@ -150,11 +160,14 @@ and historical PEX classification never grants current goal/worker authority.
         local revision, while already returned snapshots remain frozen.
         """
         if type(provenance) is not CodexInputProvenance or (
-            provenance.session_id, provenance.thread_id,
+            provenance.session_id,
+            provenance.thread_id,
         ) != (self._provenance.session_id, self._provenance.thread_id):
             raise ValueError("replacement input provenance scope is invalid")
         validated = CodexInputProvenance.from_store_records(
-            provenance._records, session_id=provenance.session_id, thread_id=provenance.thread_id,
+            provenance._records,
+            session_id=provenance.session_id,
+            thread_id=provenance.thread_id,
         )
         if validated != provenance:
             raise ValueError("replacement input provenance is inconsistent")
@@ -168,7 +181,11 @@ and historical PEX classification never grants current goal/worker authority.
         return self.snapshot()
 
     def observe_item(
-        self, *, turn_id: str, item: dict[str, Any], completed: bool,
+        self,
+        *,
+        turn_id: str,
+        item: dict[str, Any],
+        completed: bool,
     ) -> CodexInputBaselineSnapshot:
         """Observe one raw item in receive order before freezing its event.
 
@@ -183,8 +200,11 @@ and historical PEX classification never grants current goal/worker authority.
         from pex_bridge.adapters.codex_subscription import CONTROL_HISTORY_ITEM_TYPES
 
         if (
-            not _id(turn_id) or type(item) is not dict or not _id(item.get("id"))
-            or type(completed) is not bool or type(item.get("type")) is not str
+            not _id(turn_id)
+            or type(item) is not dict
+            or not _id(item.get("id"))
+            or type(completed) is not bool
+            or type(item.get("type")) is not str
             or item["type"] not in CONTROL_HISTORY_ITEM_TYPES
         ):
             self._mark_gap("live_input_identity_unknown")
@@ -221,8 +241,10 @@ and historical PEX classification never grants current goal/worker authority.
                 self._mark_gap("input_tuple_conflict")
                 return
         next_bytes = self._bytes + size - (len(old.raw_json.encode("utf-8")) if old else 0)
-        if size > MAX_ITEM_BYTES or next_bytes > MAX_INPUT_BYTES or (
-            old is None and len(self._inputs) >= MAX_INPUTS
+        if (
+            size > MAX_ITEM_BYTES
+            or next_bytes > MAX_INPUT_BYTES
+            or (old is None and len(self._inputs) >= MAX_INPUTS)
         ):
             self._mark_gap("input_ledger_bound_exceeded")
             return
@@ -232,8 +254,11 @@ and historical PEX classification never grants current goal/worker authority.
 
     def _classify(self, turn_id: str, item: dict, completed: bool):
         return self._provenance.classify_item(
-            session_id=self._provenance.session_id, thread_id=self._provenance.thread_id,
-            turn_id=turn_id, item=item, completed=completed,
+            session_id=self._provenance.session_id,
+            thread_id=self._provenance.thread_id,
+            turn_id=turn_id,
+            item=item,
+            completed=completed,
         )
 
     def _private_external_inputs(self) -> CodexExternalInputs:
@@ -247,7 +272,9 @@ and historical PEX classification never grants current goal/worker authority.
         classifications = []
         for (turn_id, _), slot in self._inputs.items():
             classification = self._classify(
-                turn_id, strict_json_loads(slot.raw_json), slot.completed,
+                turn_id,
+                strict_json_loads(slot.raw_json),
+                slot.completed,
             )
             classifications.append(classification)
             if classification.entry_json is not None:
@@ -274,7 +301,12 @@ and historical PEX classification never grants current goal/worker authority.
         if not external.complete and reason is None:
             reason = "input_pending" if pending else "input_provenance_unresolved"
         self._cached_snapshot = CodexInputBaselineSnapshot(
-            BASELINE_SCHEMA, external.complete, external.digest, self._revision,
-            sum(entry.kind == "external" for entry in external.classifications), pending, reason,
+            BASELINE_SCHEMA,
+            external.complete,
+            external.digest,
+            self._revision,
+            sum(entry.kind == "external" for entry in external.classifications),
+            pending,
+            reason,
         )
         return self._cached_snapshot

@@ -20,7 +20,8 @@ def test_actual_directory_uses_server_stat_identity(tmp_path):
     assert measured.cwd == str(tmp_path.resolve(strict=True))
     assert measured.physical == PhysicalIdentityProof(
         provider=f"pex-os-stat-{measured.platform.value}-v1",
-        volume_id=str(observed.st_dev), object_id=str(observed.st_ino),
+        volume_id=str(observed.st_dev),
+        object_id=str(observed.st_ino),
     )
     assert require_same_local_directory(str(tmp_path), measured) is None
     with pytest.raises(FrozenInstanceError):
@@ -51,11 +52,13 @@ def test_directory_entry_changes_do_not_change_object_identity(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "path", [None, 4, Path("relative"), "", "relative", "\x00", "a\n", "x" * 4097],
+    "path",
+    [None, 4, Path("relative"), "", "relative", "\x00", "a\n", "x" * 4097],
 )
 def test_invalid_or_relative_input_is_rejected_without_stat(path, monkeypatch):
     def forbidden(*args, **kwargs):
         pytest.fail("invalid paths must not access the filesystem")
+
     monkeypatch.setattr(local_workspace, "_os_stat", forbidden)
     with pytest.raises(ValueError):
         measure_local_directory(path)
@@ -70,9 +73,19 @@ def test_missing_directory_and_regular_file_are_rejected(tmp_path):
 
 @pytest.mark.parametrize(
     ("field", "value"),
-    [("st_ino", 0), ("st_dev", 0), ("st_ino", -1), ("st_dev", -1),
-     ("st_ino", True), ("st_dev", "123"), ("st_ino", None), ("st_dev", None),
-     ("st_ino", 2**128), ("st_mode", True), ("st_mode", None)],
+    [
+        ("st_ino", 0),
+        ("st_dev", 0),
+        ("st_ino", -1),
+        ("st_dev", -1),
+        ("st_ino", True),
+        ("st_dev", "123"),
+        ("st_ino", None),
+        ("st_dev", None),
+        ("st_ino", 2**128),
+        ("st_mode", True),
+        ("st_mode", None),
+    ],
 )
 def test_unknown_or_malformed_stat_identity_is_unsupported(tmp_path, monkeypatch, field, value):
     values = {"st_mode": 0o40755, "st_dev": 12, "st_ino": 34, field: value}
@@ -100,6 +113,7 @@ def test_unsupported_host_platform_fails_closed(tmp_path, monkeypatch):
 def test_stat_failure_does_not_echo_input_path(tmp_path, monkeypatch, failure):
     def unavailable(*args, **kwargs):
         raise failure("sensitive fixture path")
+
     monkeypatch.setattr(local_workspace, "_os_stat", unavailable)
     with pytest.raises(ValueError, match="could not be measured") as caught:
         measure_local_directory(str(tmp_path))
@@ -109,10 +123,12 @@ def test_stat_failure_does_not_echo_input_path(tmp_path, monkeypatch, failure):
 @pytest.mark.parametrize("sample", [2, 3, 4])
 def test_replacement_during_each_stat_sample_fails_closed(tmp_path, monkeypatch, sample):
     samples = 0
+
     def changed(*args, **kwargs):
         nonlocal samples
         samples += 1
         return SimpleNamespace(st_mode=0o40755, st_dev=12, st_ino=99 if samples >= sample else 34)
+
     monkeypatch.setattr(local_workspace, "_os_stat", changed)
     with pytest.raises(ValueError, match="changed during identity measurement"):
         measure_local_directory(str(tmp_path))
@@ -123,18 +139,31 @@ def test_resolved_target_change_is_not_hidden_by_equal_mocked_stat_ids(tmp_path,
     other.mkdir()
     targets = iter((tmp_path, other))
     monkeypatch.setattr(local_workspace, "_resolved_directory", lambda path: next(targets))
-    monkeypatch.setattr(local_workspace, "_os_stat", lambda *a, **kw: SimpleNamespace(
-        st_mode=0o40755, st_dev=12, st_ino=34,
-    ))
+    monkeypatch.setattr(
+        local_workspace,
+        "_os_stat",
+        lambda *a, **kw: SimpleNamespace(
+            st_mode=0o40755,
+            st_dev=12,
+            st_ino=34,
+        ),
+    )
     with pytest.raises(ValueError, match="changed during identity measurement"):
         measure_local_directory(str(tmp_path))
 
 
 def test_unresolved_windows_reparse_directory_is_rejected(tmp_path, monkeypatch):
     monkeypatch.setattr(local_workspace, "_host_platform", lambda: PathPlatform.WINDOWS)
-    monkeypatch.setattr(local_workspace, "_os_stat", lambda *a, **kw: SimpleNamespace(
-        st_mode=0o40755, st_dev=12, st_ino=34, st_file_attributes=0x400,
-    ))
+    monkeypatch.setattr(
+        local_workspace,
+        "_os_stat",
+        lambda *a, **kw: SimpleNamespace(
+            st_mode=0o40755,
+            st_dev=12,
+            st_ino=34,
+            st_file_attributes=0x400,
+        ),
+    )
     with pytest.raises(ValueError, match="unsupported reparse point"):
         measure_local_directory(str(tmp_path))
 

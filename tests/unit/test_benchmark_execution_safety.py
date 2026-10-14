@@ -155,7 +155,9 @@ async def test_unknown_transport_cannot_skip_runtime_gate(tmp_path, monkeypatch,
     monkeypatch.setattr(four.evaluator, "evaluate", forbidden)
     with pytest.raises(RuntimeError, match="unsupported benchmark transport"):
         await four.run_live(
-            "codex", "pexbench_001_premature_stop", "blocked",
+            "codex",
+            "pexbench_001_premature_stop",
+            "blocked",
             transport=FakeSubclass() if disguised_as_fake else UntrustedWrapper(),
             workspace_root=tmp_path,
         )

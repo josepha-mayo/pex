@@ -18,10 +18,14 @@ class TrajectoryReviewCandidate:
 
 
 def observed_command_exit_code(event: HarnessEvent) -> int | None:
-    values = [value for value in (
-        (event.process_state or {}).get("exit_code"),
-        event.metadata.get("command_exit_code"),
-    ) if value is not None]
+    values = [
+        value
+        for value in (
+            (event.process_state or {}).get("exit_code"),
+            event.metadata.get("command_exit_code"),
+        )
+        if value is not None
+    ]
     if not values or any(type(value) is not int for value in values):
         return None
     return values[0] if all(value == values[0] for value in values) else None
@@ -109,8 +113,13 @@ def _opencode_tool_failure_candidate(
 def trajectory_review_candidate(request: SupervisorRequest) -> TrajectoryReviewCandidate | None:
     goal = request.goal
     current = request.event
-    if (not request.trajectory_review_enabled or goal is None or goal.paused
-            or request.session.supervision_paused or current.goal_id != goal.id):
+    if (
+        not request.trajectory_review_enabled
+        or goal is None
+        or goal.paused
+        or request.session.supervision_paused
+        or current.goal_id != goal.id
+    ):
         return None
     events = list(request.recent_events)
     ids = [event.event_id for event in events]
@@ -132,12 +141,18 @@ def trajectory_review_candidate(request: SupervisorRequest) -> TrajectoryReviewC
         return tool_candidate
     command_types = {EventType.SHELL, EventType.TOOL_RESULT, EventType.TOOL_FAILURE}
     material_times = Counter(
-        event.ts for event in events
-        if event.goal_id == goal.id and event.ts >= goal.updated_at
-        and (event.event_type == EventType.FILE_EDIT or (
-            event.command and event.phase in {EventPhase.AFTER, EventPhase.TERMINAL}
-            and event.event_type in command_types
-        ))
+        event.ts
+        for event in events
+        if event.goal_id == goal.id
+        and event.ts >= goal.updated_at
+        and (
+            event.event_type == EventType.FILE_EDIT
+            or (
+                event.command
+                and event.phase in {EventPhase.AFTER, EventPhase.TERMINAL}
+                and event.event_type in command_types
+            )
+        )
     )
     failures = []
     signature = None
@@ -159,8 +174,11 @@ def trajectory_review_candidate(request: SupervisorRequest) -> TrajectoryReviewC
             signature = None
             progress_anchor = event.event_id
             continue
-        if (not event.command or event.phase not in {EventPhase.AFTER, EventPhase.TERMINAL}
-                or event.event_type not in command_types):
+        if (
+            not event.command
+            or event.phase not in {EventPhase.AFTER, EventPhase.TERMINAL}
+            or event.event_type not in command_types
+        ):
             continue
         exit_code = observed_command_exit_code(event)
         failed = exit_code is not None and exit_code != 0
@@ -174,8 +192,11 @@ def trajectory_review_candidate(request: SupervisorRequest) -> TrajectoryReviewC
             failures = []
             signature = observed
         failures.append(event)
-    if (len(failures) < 3 or failures[-1].event_id != current.event_id
-            or (current.ts - failures[-3].ts).total_seconds() > 600):
+    if (
+        len(failures) < 3
+        or failures[-1].event_id != current.event_id
+        or (current.ts - failures[-3].ts).total_seconds() > 600
+    ):
         return None
     scope = {
         "kind": "repeated_observed_command_failure",

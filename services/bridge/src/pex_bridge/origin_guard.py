@@ -62,11 +62,7 @@ class TrustedLoopbackHostMiddleware:
         if scope.get("type") not in {"http", "websocket"}:
             await self.app(scope, receive, send)
             return
-        hosts = [
-            value
-            for name, value in scope.get("headers", [])
-            if name.lower() == b"host"
-        ]
+        hosts = [value for name, value in scope.get("headers", []) if name.lower() == b"host"]
         if len(hosts) == 1 and _trusted_host(hosts[0], allow_test_hosts=self.allow_test_hosts):
             await self.app(scope, receive, send)
             return
@@ -98,11 +94,7 @@ class TrustedMutationOriginMiddleware:
         if scope.get("type") != "http" or scope.get("method") not in _MUTATING_METHODS:
             await self.app(scope, receive, send)
             return
-        origins = [
-            value
-            for name, value in scope.get("headers", [])
-            if name.lower() == b"origin"
-        ]
+        origins = [value for name, value in scope.get("headers", []) if name.lower() == b"origin"]
         trusted = True
         if origins:
             trusted = len(origins) == 1

@@ -97,9 +97,7 @@ def test_documented_content_wins_over_conflicting_top_level_text(
     )
 
     assert event.message_delta == "documented content"
-    assert event.metadata["message_provenance"] == (
-        "codex_app_server.userMessage.content"
-    )
+    assert event.metadata["message_provenance"] == ("codex_app_server.userMessage.content")
 
 
 @pytest.mark.parametrize(
@@ -172,12 +170,7 @@ def test_content_part_retention_bound_is_explicit(
 ) -> None:
     event = normalize(
         bound_codex,
-        {
-            "content": [
-                {"type": "text", "text": str(index % 10)}
-                for index in range(129)
-            ]
-        },
+        {"content": [{"type": "text", "text": str(index % 10)} for index in range(129)]},
     )
 
     assert event.message_delta == "".join(str(index % 10) for index in range(128))
@@ -214,9 +207,7 @@ def test_legacy_top_level_user_text_is_labeled_not_silently_conflated(
 
     assert event.message_delta == "legacy text"
     assert event.metadata["content_status"] == "legacy_top_level"
-    assert event.metadata["message_provenance"] == (
-        f"codex_app_server.userMessage.{field}"
-    )
+    assert event.metadata["message_provenance"] == (f"codex_app_server.userMessage.{field}")
 
 
 def test_legacy_empty_text_still_falls_back_to_message(
@@ -225,9 +216,7 @@ def test_legacy_empty_text_still_falls_back_to_message(
     event = normalize(bound_codex, {"text": "", "message": "legacy message"})
 
     assert event.message_delta == "legacy message"
-    assert event.metadata["message_provenance"] == (
-        "codex_app_server.userMessage.message"
-    )
+    assert event.metadata["message_provenance"] == ("codex_app_server.userMessage.message")
 
 
 def test_agent_message_behavior_remains_unchanged(

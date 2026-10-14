@@ -255,10 +255,7 @@ def _redact_payload_value(
             for key, item in list(value.items())[:100]
         }
     if isinstance(value, (list, tuple)):
-        return [
-            _redact_payload_value(request, item, depth=depth + 1)
-            for item in list(value)[:100]
-        ]
+        return [_redact_payload_value(request, item, depth=depth + 1) for item in list(value)[:100]]
     if value is None or isinstance(value, (bool, float)):
         return value
     return _clip(_redact_request_text(request, value), 4_000)
@@ -272,7 +269,8 @@ def _format_user(request: SupervisorRequest) -> str:
         f"Material review candidate: {candidate.kind}; source event IDs: {candidate.event_ids}. "
         "This is NOT a drift verdict. Use get_recent_events and inspect current evidence "
         "against the goal; ordinary debugging may justify NOOP.\n"
-        if candidate is not None else ""
+        if candidate is not None
+        else ""
     )
     goal = request.goal
     event_text = _clip(request.event.command or request.event.message_delta or "", 2_000)
@@ -284,8 +282,7 @@ def _format_user(request: SupervisorRequest) -> str:
         "Required next action: call inspect_acceptance exactly once before the "
         "structured decision, then cite its returned pex_observation_id for any "
         "non-NOOP action.\n"
-        if request.event.event_type.value == "stop"
-        and "inspect_acceptance" in evidence_tools
+        if request.event.event_type.value == "stop" and "inspect_acceptance" in evidence_tools
         else ""
     )
     rendered = (
@@ -372,11 +369,7 @@ def _action_from_proposal(request: SupervisorRequest, proposal: dict) -> Propose
     raw_evidence = proposal.get("evidence") or []
     if not isinstance(raw_evidence, (list, tuple)):
         raw_evidence = []
-    evidence = [
-        _redact_request_text(request, item)
-        for item in raw_evidence
-        if str(item).strip()
-    ]
+    evidence = [_redact_request_text(request, item) for item in raw_evidence if str(item).strip()]
     lifecycle = {
         InterventionType.CLEANUP,
         InterventionType.FORK_PROBE,
@@ -668,9 +661,7 @@ def _model_call_count(metrics: object | None) -> int:
             )
             if count:
                 return min(1_000_000, count)
-        return _bounded_nonnegative_int(
-            getattr(metrics, "cycle_count", 0), maximum=1_000_000
-        )
+        return _bounded_nonnegative_int(getattr(metrics, "cycle_count", 0), maximum=1_000_000)
     except Exception:
         return 0
 
@@ -866,9 +857,7 @@ async def run_strands_async(
             diagnosis="strands_timeout",
             traces=[
                 "strands_timeout",
-                "invocation_cleanup_finished"
-                if cleanup_finished
-                else "invocation_cleanup_pending",
+                "invocation_cleanup_finished" if cleanup_finished else "invocation_cleanup_pending",
             ],
             latency_ms=int((time.perf_counter() - started) * 1000),
             **meta,
@@ -949,7 +938,8 @@ async def run_strands_async(
     proposal = _decision_proposal(structured)
     evidence_bound_from_refs = False
     if (
-        structured.action_type in {
+        structured.action_type
+        in {
             InterventionType.SEND_NUDGE,
             InterventionType.CONTINUE_SESSION,
             InterventionType.REQUEST_VERIFICATION,
@@ -966,7 +956,9 @@ async def run_strands_async(
         evidence_bound_from_refs = True
     action = _action_from_proposal(request, proposal)
     boundaries_observed = _goal_boundaries_observed(
-        request, list(collector.observations), evidence_refs,
+        request,
+        list(collector.observations),
+        evidence_refs,
     )
     if action.type != InterventionType.NOOP and not boundaries_observed:
         action = _action_from_proposal(
@@ -1115,9 +1107,7 @@ async def run_independent_verifier_async(
         # matches a receipt from this verifier invocation; the normal binding
         # validator below still checks request, session, event, stage and tool.
         observed_ids = {item.observation_id for item in collector.observations}
-        raw_refs = list(dict.fromkeys(
-            item for item in structured.evidence if item in observed_ids
-        ))
+        raw_refs = list(dict.fromkeys(item for item in structured.evidence if item in observed_ids))
     evidence_refs, refs_valid = _resolve_evidence_refs(
         request,
         observations=list(collector.observations),
@@ -1125,12 +1115,8 @@ async def run_independent_verifier_async(
         stage="verifier",
         invocation_id=verifier_invocation_id,
     )
-    referenced = {
-        item.observation_id: item for item in collector.observations
-    }
-    unique_tools = {
-        referenced[item].tool_name for item in evidence_refs if item in referenced
-    }
+    referenced = {item.observation_id: item for item in collector.observations}
+    unique_tools = {referenced[item].tool_name for item in evidence_refs if item in referenced}
     evidence_tool_used = bool(
         unique_tools
         & {
@@ -1149,7 +1135,9 @@ async def run_independent_verifier_async(
     )
     uncertain_verification_only = _uncertain_verification_only(request, unique_tools)
     boundaries_observed = _goal_boundaries_observed(
-        request, list(collector.observations), evidence_refs,
+        request,
+        list(collector.observations),
+        evidence_refs,
     )
     approved = bool(
         structured.approved
@@ -1213,6 +1201,7 @@ def _usage(result: object) -> tuple[int, int]:
         or getattr(metrics, "accumulated_usage", None)
         or getattr(result, "usage", None)
     )
+
     def bounded_count(value: object) -> int:
         try:
             parsed = int(value or 0)
@@ -1221,16 +1210,14 @@ def _usage(result: object) -> tuple[int, int]:
         return min(1_000_000_000_000, max(0, parsed))
 
     if isinstance(usage, dict):
-        return bounded_count(
-            usage.get("inputTokens") or usage.get("input_tokens")
-        ), bounded_count(usage.get("outputTokens") or usage.get("output_tokens"))
+        return bounded_count(usage.get("inputTokens") or usage.get("input_tokens")), bounded_count(
+            usage.get("outputTokens") or usage.get("output_tokens")
+        )
     if usage is None:
         return 0, 0
     return bounded_count(
         getattr(usage, "inputTokens", 0) or getattr(usage, "input_tokens", 0)
-    ), bounded_count(
-        getattr(usage, "outputTokens", 0) or getattr(usage, "output_tokens", 0)
-    )
+    ), bounded_count(getattr(usage, "outputTokens", 0) or getattr(usage, "output_tokens", 0))
 
 
 def _supervision_paused(request: SupervisorRequest) -> bool:
@@ -1308,10 +1295,7 @@ def _preserve_deterministic_truth(
             semantic.traces.append("verified_noop_preserved")
         return semantic
 
-    if (
-        deterministic.type == InterventionType.NOOP
-        and completion_supported
-    ):
+    if deterministic.type == InterventionType.NOOP and completion_supported:
         semantic.action = deterministic
         semantic.diagnosis = f"{semantic.diagnosis}:verified_noop_preserved"
         semantic.traces.append("verified_noop_preserved")
@@ -1329,8 +1313,10 @@ def _needs_independent_verifier(
     from pex_supervisor.trajectory import trajectory_review_candidate
 
     return (
-        (request.event.event_type == EventType.STOP
-         or trajectory_review_candidate(request) is not None)
+        (
+            request.event.event_type == EventType.STOP
+            or trajectory_review_candidate(request) is not None
+        )
         and semantic.inference_status == "completed"
         and semantic.action.type != InterventionType.NOOP
     )
@@ -1343,14 +1329,11 @@ def _apply_verifier_receipt(
     receipt: dict[str, Any],
 ) -> SupervisorResult:
     status = _clip(_redact_request_text(request, receipt.get("status") or "failed"), 120)
-    rationale = _clip(
-        _redact_request_text(request, receipt.get("rationale") or ""), 2_000
-    )
+    rationale = _clip(_redact_request_text(request, receipt.get("rationale") or ""), 2_000)
     raw_evidence = receipt.get("evidence")
     receipt_evidence = raw_evidence if isinstance(raw_evidence, (list, tuple)) else []
     verifier_evidence = [
-        _clip(_redact_request_text(request, item), 1_000)
-        for item in receipt_evidence[:20]
+        _clip(_redact_request_text(request, item), 1_000) for item in receipt_evidence[:20]
     ]
     raw_invocation_id = receipt.get("invocation_id")
     invocation_id = None
@@ -1363,10 +1346,7 @@ def _apply_verifier_receipt(
         invocation_id = raw_invocation_id
     observations: list[SupervisorEvidenceObservation] = []
     raw_observations = receipt.get("evidence_observations")
-    observations_valid = (
-        isinstance(raw_observations, (list, tuple))
-        and len(raw_observations) <= 24
-    )
+    observations_valid = isinstance(raw_observations, (list, tuple)) and len(raw_observations) <= 24
     if observations_valid:
         try:
             observations = [
@@ -1413,13 +1393,13 @@ def _apply_verifier_receipt(
         verifier_refs = []
     referenced_ids = set(verifier_refs)
     referenced_tools = {
-        item.tool_name
-        for item in observations
-        if item.observation_id in referenced_ids
+        item.tool_name for item in observations if item.observation_id in referenced_ids
     }
     verifier_tools = list(dict.fromkeys(item.tool_name for item in observations))[:20]
     if receipt.get("approved") is True and not _goal_boundaries_observed(
-        request, observations, verifier_refs,
+        request,
+        observations,
+        verifier_refs,
     ):
         status = "goal_boundaries_unread"
     if receipt.get("approved") is True and (
@@ -1435,9 +1415,7 @@ def _apply_verifier_receipt(
     )
     verifier_input_tokens = _strict_verifier_int(receipt.get("input_tokens"))
     verifier_output_tokens = _strict_verifier_int(receipt.get("output_tokens"))
-    verifier_latency_ms = _strict_verifier_int(
-        receipt.get("latency_ms"), maximum=86_400_000
-    )
+    verifier_latency_ms = _strict_verifier_int(receipt.get("latency_ms"), maximum=86_400_000)
     semantic.independent_verifier = IndependentVerifierReceipt(
         approved=receipt.get("approved") is True,
         status=status,
@@ -1456,9 +1434,7 @@ def _apply_verifier_receipt(
         semantic.model_call_count + verifier_model_call_count,
         maximum=1_000_000,
     )
-    semantic.input_tokens = _bounded_nonnegative_int(
-        semantic.input_tokens + verifier_input_tokens
-    )
+    semantic.input_tokens = _bounded_nonnegative_int(semantic.input_tokens + verifier_input_tokens)
     semantic.output_tokens = _bounded_nonnegative_int(
         semantic.output_tokens + verifier_output_tokens
     )
@@ -1514,11 +1490,14 @@ async def decide_async(
     # self-contained even when callers bypass the bridge's earlier pause gate.
     if _supervision_paused(request):
         return SupervisorResult(
-            action=_action_from_proposal(request, {
-                "type": "NOOP",
-                "rationale": "Supervision is paused for this session or goal.",
-                "evidence": ["supervision_paused"],
-            }),
+            action=_action_from_proposal(
+                request,
+                {
+                    "type": "NOOP",
+                    "rationale": "Supervision is paused for this session or goal.",
+                    "evidence": ["supervision_paused"],
+                },
+            ),
             used_llm=False,
             diagnosis="supervision_paused",
             inference_status="not_attempted",
@@ -1688,10 +1667,12 @@ def decide(
     try:
         asyncio.get_running_loop()
     except RuntimeError:
-        return asyncio.run(decide_async(
-            request,
-            model=model,
-            force_llm=force_llm,
-            allow_deterministic_fast_path=allow_deterministic_fast_path,
-        ))
+        return asyncio.run(
+            decide_async(
+                request,
+                model=model,
+                force_llm=force_llm,
+                allow_deterministic_fast_path=allow_deterministic_fast_path,
+            )
+        )
     raise RuntimeError("decide() cannot run inside an event loop; await decide_async()")

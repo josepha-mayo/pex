@@ -19,7 +19,8 @@ def test_long_goal_boundaries_offer_read_even_with_supported_acceptance(field, v
     request = _request(0.1)
     setattr(request.goal, field, values)
     request.scores.features["verification"] = {
-        "status": "supported", "acceptance_status": "supported",
+        "status": "supported",
+        "acceptance_status": "supported",
     }
     assert select_evidence_tool_names(request) == ("get_goal",)
 
@@ -28,8 +29,7 @@ def test_long_goal_boundaries_offer_read_even_with_supported_acceptance(field, v
 def test_goal_read_discloses_whether_boundary_text_is_complete(length, complete):
     request = _request(0.1)
     request.goal.constraints = ["X" * length]
-    tool = next(item for item in build_evidence_tools(request, [])
-                if item.tool_name == "get_goal")
+    tool = next(item for item in build_evidence_tools(request, []) if item.tool_name == "get_goal")
     result = json.loads(tool())
     assert result["constraints"] == ["X" * min(length, 1000)]
     assert result["boundaries_complete"] is complete
@@ -42,8 +42,7 @@ def test_goal_boundary_pages_preserve_long_rules_and_every_field():
     request.goal.constraints = ["Start " + "界" * 1001 + " final prohibition"]
     request.goal.forbidden_outcomes = [f"Forbidden {i}" for i in range(45)]
     request.goal.non_goals = ["Not a release"]
-    tool = next(item for item in build_evidence_tools(request, [])
-                if item.tool_name == "get_goal")
+    tool = next(item for item in build_evidence_tools(request, []) if item.tool_name == "get_goal")
     rebuilt = {}
     for page in range(goal_boundary_page_count(request)):
         result = json.loads(tool(boundary_page=page))
@@ -63,8 +62,7 @@ def test_goal_boundary_page_masks_private_path_before_splitting():
     request = _request(0.1)
     request.session.cwd = "C:/SECRET_PAGE_WORKSPACE"
     request.goal.constraints = ["A" * 155 + request.session.cwd + "/data"]
-    tool = next(item for item in build_evidence_tools(request, [])
-                if item.tool_name == "get_goal")
+    tool = next(item for item in build_evidence_tools(request, []) if item.tool_name == "get_goal")
     result = json.loads(tool(boundary_page=0))
     text = "".join(chunk["text"] for chunk in result["chunks"])
     assert text == "A" * 155 + "<workspace>/data"
@@ -74,8 +72,7 @@ def test_goal_boundary_page_masks_private_path_before_splitting():
 def test_goal_boundary_page_redacts_credentials_before_splitting():
     request = _request(0.1)
     request.goal.constraints = ["A" * 155 + " Bearer SECRET_BOUNDARY_TOKEN retain files"]
-    tool = next(item for item in build_evidence_tools(request, [])
-                if item.tool_name == "get_goal")
+    tool = next(item for item in build_evidence_tools(request, []) if item.tool_name == "get_goal")
     result = json.loads(tool(boundary_page=0))
     text = "".join(chunk["text"] for chunk in result["chunks"])
     assert "SECRET_BOUNDARY_TOKEN" not in text
@@ -87,8 +84,7 @@ def test_goal_boundary_page_redacts_credentials_before_splitting():
 def test_goal_boundary_page_rejects_invalid_offsets(page):
     request = _request(0.1)
     request.goal.constraints = ["Do not delete data"]
-    tool = next(item for item in build_evidence_tools(request, [])
-                if item.tool_name == "get_goal")
+    tool = next(item for item in build_evidence_tools(request, []) if item.tool_name == "get_goal")
     assert json.loads(tool(boundary_page=page))["error"] == "invalid_boundary_page"
 
 
@@ -100,8 +96,11 @@ def test_named_output_artifact_is_read_and_audited_without_fixed_filename(tmp_pa
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(b"actual output\n")
     collector = EvidenceObservationCollector(request, stage="main", invocation_id="artifact-read")
-    tool = next(item for item in build_evidence_tools(request, [], collector=collector)
-                if item.tool_name == "inspect_artifact")
+    tool = next(
+        item
+        for item in build_evidence_tools(request, [], collector=collector)
+        if item.tool_name == "inspect_artifact"
+    )
     rendered = tool(path=name)
     observed = json.loads(rendered)
     assert observed["path"] == name
@@ -117,8 +116,9 @@ def test_named_artifact_preview_is_bounded_and_not_claimed_complete(tmp_path):
     request = _request(0.1)
     request.session.cwd = str(tmp_path)
     (tmp_path / "large-report.txt").write_bytes(b"A" * 800 + b"UNREAD_SENTINEL")
-    tool = next(item for item in build_evidence_tools(request, [])
-                if item.tool_name == "inspect_artifact")
+    tool = next(
+        item for item in build_evidence_tools(request, []) if item.tool_name == "inspect_artifact"
+    )
     rendered = tool(path="large-report.txt")
     observed = json.loads(rendered)
     assert observed["text"] == "A" * 800
@@ -126,20 +126,35 @@ def test_named_artifact_preview_is_bounded_and_not_claimed_complete(tmp_path):
     assert "UNREAD_SENTINEL" not in rendered
 
 
-@pytest.mark.parametrize("path", [
-    "../outside.json", "/outside.json", "C:/outside.json", ".env", "config/.secret",
-    "report.json:alternate", "node_modules/package.json", "x" * 241,
-    False, 0, None, [],
-])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "../outside.json",
+        "/outside.json",
+        "C:/outside.json",
+        ".env",
+        "config/.secret",
+        "report.json:alternate",
+        "node_modules/package.json",
+        "x" * 241,
+        False,
+        0,
+        None,
+        [],
+    ],
+)
 def test_rejected_artifact_path_never_falls_back_to_listing(tmp_path, monkeypatch, path):
     request = _request(0.1)
     request.session.cwd = str(tmp_path)
+
     def unexpected(*_args, **_kwargs):
         pytest.fail("rejected artifact path reached filesystem observation")
+
     monkeypatch.setattr("pex_supervisor.workspace.artifact_tails", unexpected)
     monkeypatch.setattr("pex_supervisor.workspace.read_visible", unexpected)
-    tool = next(item for item in build_evidence_tools(request, [])
-                if item.tool_name == "inspect_artifact")
+    tool = next(
+        item for item in build_evidence_tools(request, []) if item.tool_name == "inspect_artifact"
+    )
     assert json.loads(tool(path=path))["error"] == "path rejected"
 
 
@@ -147,8 +162,9 @@ def test_named_artifact_still_refuses_hidden_evaluator_and_missing_file(tmp_path
     request = _request(0.1)
     request.session.cwd = str(tmp_path)
     (tmp_path / "evaluator.py").write_text("HIDDEN_SENTINEL")
-    tool = next(item for item in build_evidence_tools(request, [])
-                if item.tool_name == "inspect_artifact")
+    tool = next(
+        item for item in build_evidence_tools(request, []) if item.tool_name == "inspect_artifact"
+    )
     assert json.loads(tool(path="evaluator.py"))["error"] == "hidden"
     assert json.loads(tool(path="missing.json"))["error"] == "missing"
 
@@ -173,8 +189,11 @@ def test_named_artifact_cannot_read_private_link_alias(tmp_path, kind, name):
     request = _request(0.1)
     request.session.cwd = str(root)
     collector = EvidenceObservationCollector(request, stage="main", invocation_id="private-alias")
-    tool = next(item for item in build_evidence_tools(request, [], collector=collector)
-                if item.tool_name == "inspect_artifact")
+    tool = next(
+        item
+        for item in build_evidence_tools(request, [], collector=collector)
+        if item.tool_name == "inspect_artifact"
+    )
     rendered = tool(path=name)
     assert "error" in json.loads(rendered)
     assert "PRIVATE_ALIAS_SENTINEL" not in rendered
@@ -208,8 +227,11 @@ def test_artifact_rejects_private_hardlink_swapped_at_open(tmp_path, monkeypatch
     request = _request(0.1)
     request.session.cwd = str(root)
     collector = EvidenceObservationCollector(request, stage="main", invocation_id="link-swap")
-    tool = next(item for item in build_evidence_tools(request, [], collector=collector)
-                if item.tool_name == "inspect_artifact")
+    tool = next(
+        item
+        for item in build_evidence_tools(request, [], collector=collector)
+        if item.tool_name == "inspect_artifact"
+    )
     rendered = tool(path=name)
     assert swapped
     assert "PRIVATE_SWAP_SENTINEL" not in rendered
@@ -219,19 +241,29 @@ def test_artifact_rejects_private_hardlink_swapped_at_open(tmp_path, monkeypatch
 
 def test_worker_test_facts_reach_the_audited_tool_without_becoming_goal_acceptance():
     request = _request(0.1)
-    event = request.event.model_copy(update={
-        "event_type": EventType.SHELL, "command": "pytest -q",
-        "process_state": {"pytest": {
-            "ok": True, "exit_code": 0, "passed": 4,
-            "output": "PRIVATE_RAW_OUTPUT_MUST_NOT_LEAK",
-        }},
-    })
+    event = request.event.model_copy(
+        update={
+            "event_type": EventType.SHELL,
+            "command": "pytest -q",
+            "process_state": {
+                "pytest": {
+                    "ok": True,
+                    "exit_code": 0,
+                    "passed": 4,
+                    "output": "PRIVATE_RAW_OUTPUT_MUST_NOT_LEAK",
+                }
+            },
+        }
+    )
     request.scores.features["verification"] = verify_claims([], [event], request.goal, {})
     collector = EvidenceObservationCollector(
-        request, stage="main", invocation_id="observed-pytest-facts",
+        request,
+        stage="main",
+        invocation_id="observed-pytest-facts",
     )
     tool = next(
-        item for item in build_evidence_tools(request, [], collector=collector)
+        item
+        for item in build_evidence_tools(request, [], collector=collector)
         if item.tool_name == "run_verification"
     )
     rendered = tool()
@@ -276,8 +308,7 @@ def test_evidence_tools_are_request_scoped_read_only_and_audited():
 
     assert used == [item.tool_name for item in tools]
     assert not any(
-        name in {"send_harness_message", "apply_overlay", "respond_permission"}
-        for name in used
+        name in {"send_harness_message", "apply_overlay", "respond_permission"} for name in used
     )
 
 
@@ -343,10 +374,13 @@ def test_acceptance_tool_batches_verification_events_and_required_files(tmp_path
     }
     (tmp_path / "report.txt").write_bytes(b"ready\n")
     collector = EvidenceObservationCollector(
-        request, stage="main", invocation_id="batched-acceptance",
+        request,
+        stage="main",
+        invocation_id="batched-acceptance",
     )
     tool = next(
-        item for item in build_evidence_tools(request, [], collector=collector)
+        item
+        for item in build_evidence_tools(request, [], collector=collector)
         if item.tool_name == "inspect_acceptance"
     )
 
@@ -358,15 +392,21 @@ def test_acceptance_tool_batches_verification_events_and_required_files(tmp_path
     assert "verdicts" not in observed["verification"]
     assert "MUST_NOT_REACH_BATCHED_OBSERVATION" not in rendered
     assert observed["recent_events"][-1]["event_id"] == request.event.event_id
-    assert observed["required_files"] == [{
-        "path": "report.txt", "bytes": 6, "text": "ready\n", "observed": True,
-    }]
+    assert observed["required_files"] == [
+        {
+            "path": "report.txt",
+            "bytes": 6,
+            "text": "ready\n",
+            "observed": True,
+        }
+    ]
     assert collector.observations[0].tool_name == "inspect_acceptance"
     assert collector.observations[0].output == rendered
 
 
 def test_acceptance_tool_never_reads_bound_workspace_without_invocation_authority(
-    tmp_path, monkeypatch,
+    tmp_path,
+    monkeypatch,
 ):
     request = _request(0.1)
     request.session.cwd = str(tmp_path)
@@ -378,17 +418,18 @@ def test_acceptance_tool_never_reads_bound_workspace_without_invocation_authorit
 
     monkeypatch.setattr("pex_supervisor.workspace.read_visible", unexpected)
     tool = next(
-        item for item in build_evidence_tools(request, [])
-        if item.tool_name == "inspect_acceptance"
+        item for item in build_evidence_tools(request, []) if item.tool_name == "inspect_acceptance"
     )
 
     observed = json.loads(tool())
 
-    assert observed["required_files"] == [{
-        "path": "report.txt",
-        "observed": False,
-        "error": "workspace_authority_unavailable",
-    }]
+    assert observed["required_files"] == [
+        {
+            "path": "report.txt",
+            "observed": False,
+            "error": "workspace_authority_unavailable",
+        }
+    ]
 
 
 def test_evidence_tools_omit_raw_local_and_adapter_payloads_and_bound_output():
@@ -514,8 +555,7 @@ def test_parameterized_tool_receipt_captures_sanitized_exact_arguments():
         invocation_id="main-invocation",
     )
     tools = {
-        item.tool_name: item
-        for item in build_evidence_tools(request, [], collector=collector)
+        item.tool_name: item for item in build_evidence_tools(request, [], collector=collector)
     }
 
     output = tools["inspect_file"](path="../rejected.txt")

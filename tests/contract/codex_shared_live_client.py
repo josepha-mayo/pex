@@ -203,9 +203,7 @@ async def create_goal_and_attach(
     if not isinstance(sessions, list):
         raise LiveContractError("canonical session snapshot lacks sessions")
     matches = [
-        item
-        for item in sessions
-        if isinstance(item, dict) and item.get("id") == target.session_id
+        item for item in sessions if isinstance(item, dict) and item.get("id") == target.session_id
     ]
     if len(matches) != 1:
         raise LiveContractError("canonical session snapshot does not identify exactly one worker")

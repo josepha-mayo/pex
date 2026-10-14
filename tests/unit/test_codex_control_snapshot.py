@@ -18,16 +18,25 @@ from test_codex_subscription import FakeSharedTransport, _authorization, _inspec
 
 def turn(status="completed"):
     return {
-        "id": "turn-1", "status": status, "itemsView": "full",
-        "items": [{"id": "human-1", "type": "userMessage", "clientId": None,
-                   "content": [{"type": "text", "text": "Finish the actual report."}]}],
+        "id": "turn-1",
+        "status": status,
+        "itemsView": "full",
+        "items": [
+            {
+                "id": "human-1",
+                "type": "userMessage",
+                "clientId": None,
+                "content": [{"type": "text", "text": "Finish the actual report."}],
+            }
+        ],
     }
 
 
 async def setup(tmp_path):
     response = _thread_response(tmp_path, turns=[turn()])
     transport = FakeSharedTransport(
-        [response, response, response], _thread_response(tmp_path, include_turns=False),
+        [response, response, response],
+        _thread_response(tmp_path, include_turns=False),
     )
     coordinator = CodexExistingThreadSubscription(transport)
     selected = await _inspect(coordinator, tmp_path)
@@ -37,7 +46,11 @@ async def setup(tmp_path):
 
 def witnessed(transport, response):
     return SharedCodexReadSnapshot(
-        strict_json_dumps(response), transport.connection_token(), 10, 12, time.monotonic(),
+        strict_json_dumps(response),
+        transport.connection_token(),
+        10,
+        12,
+        time.monotonic(),
     )
 
 
@@ -74,22 +87,53 @@ async def test_explicit_idle_and_active_freeze_identity_inputs_without_drain(tmp
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("case", [
-    "cwd", "model", "project", "thread", "root", "direct", "direct_missing",
-    "not_loaded", "unknown_status", "missing_flags", "approval", "unknown_flag",
-    "idle_with_active", "active_without_turn", "two_active", "summary", "no_items",
-    "turn_truncated", "unknown_turn", "missing_client", "client_boolean",
-    "content_missing", "image", "partial", "redacted", "empty", "item_truncated",
-    "wrong_epoch", "epoch_during_read", "inactive", "unknown_item", "empty_item_type",
-])
+@pytest.mark.parametrize(
+    "case",
+    [
+        "cwd",
+        "model",
+        "project",
+        "thread",
+        "root",
+        "direct",
+        "direct_missing",
+        "not_loaded",
+        "unknown_status",
+        "missing_flags",
+        "approval",
+        "unknown_flag",
+        "idle_with_active",
+        "active_without_turn",
+        "two_active",
+        "summary",
+        "no_items",
+        "turn_truncated",
+        "unknown_turn",
+        "missing_client",
+        "client_boolean",
+        "content_missing",
+        "image",
+        "partial",
+        "redacted",
+        "empty",
+        "item_truncated",
+        "wrong_epoch",
+        "epoch_during_read",
+        "inactive",
+        "unknown_item",
+        "empty_item_type",
+    ],
+)
 async def test_uncertain_identity_runtime_or_input_refuses_control(tmp_path, case):
     coordinator, transport, response = await setup(tmp_path)
     thread = response["thread"]
     current_turn = thread["turns"][0]
     item = current_turn["items"][0]
     identity_fields = {
-        "cwd": ("cwd", str(tmp_path / "other")), "model": ("model", "other-model"),
-        "project": ("projectId", "other-project"), "root": ("sessionId", "other-root"),
+        "cwd": ("cwd", str(tmp_path / "other")),
+        "model": ("model", "other-model"),
+        "project": ("projectId", "other-project"),
+        "root": ("sessionId", "other-root"),
         "direct": ("canAcceptDirectInput", False),
     }
     if case in identity_fields:
@@ -99,8 +143,15 @@ async def test_uncertain_identity_runtime_or_input_refuses_control(tmp_path, cas
         thread["id"] = "other-thread"
     elif case == "direct_missing":
         del response["canAcceptDirectInput"], thread["canAcceptDirectInput"]
-    elif case in {"not_loaded", "unknown_status", "missing_flags", "approval",
-                  "unknown_flag", "active_without_turn", "two_active"}:
+    elif case in {
+        "not_loaded",
+        "unknown_status",
+        "missing_flags",
+        "approval",
+        "unknown_flag",
+        "active_without_turn",
+        "two_active",
+    }:
         status = {"type": "active", "activeFlags": []}
         if case == "not_loaded":
             status = {"type": "notLoaded"}

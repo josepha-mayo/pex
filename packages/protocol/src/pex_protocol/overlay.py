@@ -69,9 +69,7 @@ class Overlay(BaseModel):
     @field_validator("id", "session_id")
     @classmethod
     def validate_identifier(cls, value: str) -> str:
-        if value != value.strip() or any(
-            ord(char) < 0x20 or ord(char) == 0x7F for char in value
-        ):
+        if value != value.strip() or any(ord(char) < 0x20 or ord(char) == 0x7F for char in value):
             raise ValueError("overlay identifiers must be trimmed control-free text")
         return value
 

@@ -171,12 +171,10 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
             blockers.append(f"case {index} public task mismatch")
         base_wall = base.get("wall_seconds")
         pex_wall = pex.get("wall_seconds")
-        if (type(base_wall) not in (int, float) or not math.isfinite(base_wall)
-                or base_wall < 0):
+        if type(base_wall) not in (int, float) or not math.isfinite(base_wall) or base_wall < 0:
             blockers.append(f"case {index} baseline wall time is unavailable")
             continue
-        if (type(pex_wall) not in (int, float) or not math.isfinite(pex_wall)
-                or pex_wall < 0):
+        if type(pex_wall) not in (int, float) or not math.isfinite(pex_wall) or pex_wall < 0:
             blockers.append(f"case {index} treatment wall time is unavailable")
             continue
         pairs.append(

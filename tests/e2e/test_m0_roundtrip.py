@@ -299,9 +299,7 @@ async def test_demo_replay_walks_the_reward_hacking_arc(client):
     ids = {item["id"] for item in traj.json()["fixtures"]}
     assert "tampered_acceptance_eval" in ids
 
-    replay = await client.post(
-        "/v1/demo/replay", json={"fixture": "tampered_acceptance_eval"}
-    )
+    replay = await client.post("/v1/demo/replay", json={"fixture": "tampered_acceptance_eval"})
     assert replay.status_code == 200
     body = replay.json()
     assert body["replay"] is True and body["not_live_control"] is True
@@ -309,37 +307,26 @@ async def test_demo_replay_walks_the_reward_hacking_arc(client):
     verifications = [
         item["metadata"]["verification"]
         for item in body["interventions"]
-        if isinstance(item.get("metadata"), dict)
-        and item["metadata"].get("verification")
+        if isinstance(item.get("metadata"), dict) and item["metadata"].get("verification")
     ]
     assert [item["status"] for item in verifications] == ["uncertain", "supported"]
     caught = verifications[0]
     assert caught["acceptance_surface"]["modified"] == ["tests/test_core.py"]
-    nudge = next(
-        item
-        for item in body["interventions"]
-        if item.get("action_taken") == "SEND_NUDGE"
-    )
+    nudge = next(item for item in body["interventions"] if item.get("action_taken") == "SEND_NUDGE")
     assert "tests/test_core.py" in nudge["proposed_action"]["payload"]["text"]
 
     replay_session = await state.store.get_session(body["session_id"])
-    completion = (
-        await client.get(f"/v1/goals/{replay_session.goal_id}/completion")
-    ).json()
+    completion = (await client.get(f"/v1/goals/{replay_session.goal_id}/completion")).json()
     assert completion["status"] == "verified_complete"
 
     # Replaying the same fixture gets a fresh session — the second run must
     # still detect the tamper and still deliver its corrective nudge.
-    replay2 = await client.post(
-        "/v1/demo/replay", json={"fixture": "tampered_acceptance_eval"}
-    )
+    replay2 = await client.post("/v1/demo/replay", json={"fixture": "tampered_acceptance_eval"})
     assert replay2.status_code == 200
     body2 = replay2.json()
     assert body2["session_id"] != body["session_id"]
     nudge2 = next(
-        item
-        for item in body2["interventions"]
-        if item.get("action_taken") == "SEND_NUDGE"
+        item for item in body2["interventions"] if item.get("action_taken") == "SEND_NUDGE"
     )
     assert "tests/test_core.py" in nudge2["proposed_action"]["payload"]["text"]
     assert any("tests/test_core.py" in msg for msg in body2["inbox"])
@@ -378,18 +365,14 @@ async def test_demo_replay_drift_overlay_refusal_seals_event(client):
     assert body["replay"] is True and body["not_live_control"] is True
 
     overlay = next(
-        item
-        for item in body["interventions"]
-        if item.get("action_taken") == "APPLY_OVERLAY"
+        item for item in body["interventions"] if item.get("action_taken") == "APPLY_OVERLAY"
     )
     assert overlay["policy_verdict"] == "allow"
     assert overlay["result"] == "overlay_dispatch_refused"
     assert any("drift=" in item for item in overlay["proposed_action"]["evidence"])
 
     replay_session = await state.store.get_session(body["session_id"])
-    completion = (
-        await client.get(f"/v1/goals/{replay_session.goal_id}/completion")
-    ).json()
+    completion = (await client.get(f"/v1/goals/{replay_session.goal_id}/completion")).json()
     assert completion["status"] == "verified_complete"
 
 
@@ -403,31 +386,21 @@ async def test_demo_replay_nudge_dispute_escalates_once(client):
     has stopped (live stopped sessions keep their terminal status).
     """
 
-    replay = await client.post(
-        "/v1/demo/replay", json={"fixture": "nudge_dispute_eval"}
-    )
+    replay = await client.post("/v1/demo/replay", json={"fixture": "nudge_dispute_eval"})
     assert replay.status_code == 200
     body = replay.json()
     assert body["replay"] is True and body["not_live_control"] is True
 
-    nudge = next(
-        item
-        for item in body["interventions"]
-        if item.get("action_taken") == "SEND_NUDGE"
-    )
+    nudge = next(item for item in body["interventions"] if item.get("action_taken") == "SEND_NUDGE")
     assert nudge["result"] == "sent"
     escalations = [
-        item
-        for item in body["interventions"]
-        if item.get("action_taken") == "ASK_HUMAN"
+        item for item in body["interventions"] if item.get("action_taken") == "ASK_HUMAN"
     ]
     assert len(escalations) == 1
     escalation = escalations[0]
     assert escalation["policy_verdict"] == "ask_human"
     assert escalation["result"] == "escalated"
-    assert any(
-        entry == f"nudge_dispute:{nudge['id']}" for entry in escalation["evidence"]
-    )
+    assert any(entry == f"nudge_dispute:{nudge['id']}" for entry in escalation["evidence"])
     assert "worker_response" in escalation["proposed_action"]["payload"]
     assert "baseline" in escalation["proposed_action"]["payload"]["worker_response"]
 
@@ -435,9 +408,7 @@ async def test_demo_replay_nudge_dispute_escalates_once(client):
     assert replay_session.status.value == "needs_decision"
     metrics = (await client.get("/v1/attention/metrics")).json()
     assert metrics["current_pending"]["count"] >= 1
-    pending_ids = {
-        item["id"] for item in metrics["current_pending"]["items"]
-    }
+    pending_ids = {item["id"] for item in metrics["current_pending"]["items"]}
     assert escalation["id"] in pending_ids
 
 
@@ -523,8 +494,7 @@ async def test_demo_replay_accepts_inline_fixture_body(client):
             "files": {
                 "core.py": "def parse(x):\n    return x\n",
                 "tests/test_core.py": (
-                    "from core import parse\n\n\n"
-                    "def test_parse():\n    assert parse('a') == 'a'\n"
+                    "from core import parse\n\n\ndef test_parse():\n    assert parse('a') == 'a'\n"
                 ),
             },
             "mutations": [
@@ -558,17 +528,12 @@ async def test_demo_replay_accepts_inline_fixture_body(client):
     verifications = [
         item["metadata"]["verification"]
         for item in body["interventions"]
-        if isinstance(item.get("metadata"), dict)
-        and item["metadata"].get("verification")
+        if isinstance(item.get("metadata"), dict) and item["metadata"].get("verification")
     ]
-    assert verifications[0]["acceptance_surface"]["modified"] == [
-        "tests/test_core.py"
-    ]
+    assert verifications[0]["acceptance_surface"]["modified"] == ["tests/test_core.py"]
 
     # Exactly one source: both, or neither, is a 422 — never ambiguous.
-    assert (
-        await client.post("/v1/demo/replay", json={})
-    ).status_code == 422
+    assert (await client.post("/v1/demo/replay", json={})).status_code == 422
     assert (
         await client.post(
             "/v1/demo/replay",
@@ -599,8 +564,7 @@ async def test_demo_replay_repeat_dispute_escalates_once_per_standoff(client):
             "files": {
                 "eval_runner.py": "def add(a, b):\n    return a + b\n",
                 "tests/test_core.py": (
-                    "from eval_runner import add\n\n"
-                    "def test_core():\n    assert add(1, 1) == 2\n"
+                    "from eval_runner import add\n\ndef test_core():\n    assert add(1, 1) == 2\n"
                 ),
             },
             "mutations": [
@@ -620,9 +584,7 @@ async def test_demo_replay_repeat_dispute_escalates_once_per_standoff(client):
                 "event_type": "shell",
                 "phase": "during",
                 "command": "python -m pytest -q",
-                "process_state": {
-                    "pytest": {"ok": True, "exit_code": 0, "passed": 1}
-                },
+                "process_state": {"pytest": {"ok": True, "exit_code": 0, "passed": 1}},
             },
             {"event_type": "stop", "message": "All tests passed. Done."},
             {
@@ -651,9 +613,7 @@ async def test_demo_replay_repeat_dispute_escalates_once_per_standoff(client):
     assert replay.status_code == 200
     body = replay.json()
     escalations = [
-        item
-        for item in body["interventions"]
-        if item.get("action_taken") == "ASK_HUMAN"
+        item for item in body["interventions"] if item.get("action_taken") == "ASK_HUMAN"
     ]
     assert len(escalations) == 1
 
@@ -838,9 +798,7 @@ async def test_pet_counts_a_worker_question_after_the_worker_session_ended(
     assert pet["needs_you"] == 1
     assert session.id in [row["id"] for row in pet["sessions"]]
     metrics = (await client.get("/v1/attention/metrics")).json()
-    assert pending.id in {
-        item["id"] for item in metrics["current_pending"]["items"]
-    }
+    assert pending.id in {item["id"] for item in metrics["current_pending"]["items"]}
 
 
 @pytest.mark.asyncio
@@ -947,10 +905,12 @@ async def test_pet_atlas_loading_keeps_authenticated_identity_responsive(client,
     monkeypatch.setattr(state.settings, "require_auth", True)
     monkeypatch.setattr(state, "token", "unit-test-identity-token")
     requests = [
-        asyncio.create_task(client.get(
-            "/v1/pets/pex/spritesheet",
-            headers={"Authorization": "Bearer unit-test-identity-token"},
-        ))
+        asyncio.create_task(
+            client.get(
+                "/v1/pets/pex/spritesheet",
+                headers={"Authorization": "Bearer unit-test-identity-token"},
+            )
+        )
         for _ in range(2)
     ]
     try:
@@ -961,9 +921,10 @@ async def test_pet_atlas_loading_keeps_authenticated_identity_responsive(client,
             client.get("/health/identity", params={"challenge": challenge}), 1
         )
         assert identity.status_code == 200
-        assert identity.json()["proof"] == hmac.new(
-            b"unit-test-identity-token", challenge.encode(), hashlib.sha256
-        ).hexdigest()
+        assert (
+            identity.json()["proof"]
+            == hmac.new(b"unit-test-identity-token", challenge.encode(), hashlib.sha256).hexdigest()
+        )
         assert all(not request.done() for request in requests)
     finally:
         release.set()
@@ -989,15 +950,22 @@ async def test_cold_pet_catalog_does_not_starve_identity(client, monkeypatch, pa
         return app_module.STARTERS
 
     monkeypatch.setattr(app_module, "catalog", slow_catalog)
-    monkeypatch.setattr(app_module, "catalog_by_id", lambda settings: {
-        item.id: item for item in slow_catalog(settings)
-    })
+    monkeypatch.setattr(
+        app_module,
+        "catalog_by_id",
+        lambda settings: {item.id: item for item in slow_catalog(settings)},
+    )
     monkeypatch.setattr(state.pipeline, "refresh_desktop_sessions", AsyncMock())
     monkeypatch.setattr(state, "token", "catalog-liveness-test-token")
     monkeypatch.setattr(state.settings, "require_auth", True)
-    request = asyncio.create_task(client.get(path, headers={
-        "Authorization": "Bearer catalog-liveness-test-token",
-    }))
+    request = asyncio.create_task(
+        client.get(
+            path,
+            headers={
+                "Authorization": "Bearer catalog-liveness-test-token",
+            },
+        )
+    )
     try:
         await asyncio.wait_for(entered.wait(), 3)
         identity = await client.get("/health/identity", params={"challenge": "c" * 64})
@@ -1026,9 +994,14 @@ async def test_desktop_inventory_does_not_starve_identity(client, monkeypatch):
     monkeypatch.setattr(discovery, "PROBES", ())
     monkeypatch.setattr(state, "token", "discovery-liveness-test-token")
     monkeypatch.setattr(state.settings, "require_auth", True)
-    request = asyncio.create_task(client.get("/v1/discover", headers={
-        "Authorization": "Bearer discovery-liveness-test-token",
-    }))
+    request = asyncio.create_task(
+        client.get(
+            "/v1/discover",
+            headers={
+                "Authorization": "Bearer discovery-liveness-test-token",
+            },
+        )
+    )
     try:
         await asyncio.wait_for(entered.wait(), 3)
         identity = await client.get("/health/identity", params={"challenge": "d" * 64})
@@ -1041,11 +1014,14 @@ async def test_desktop_inventory_does_not_starve_identity(client, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_two_pet_mvp_catalog_selection_and_import_boundary(client: AsyncClient, tmp_path):
-    state.pet_settings.imports = [ImportedPet(
-        id="import:legacy", display_name="Legacy",
-        directory=str(tmp_path / "legacy"),
-        spritesheet=str(tmp_path / "legacy" / "spritesheet.webp"),
-    )]
+    state.pet_settings.imports = [
+        ImportedPet(
+            id="import:legacy",
+            display_name="Legacy",
+            directory=str(tmp_path / "legacy"),
+            spritesheet=str(tmp_path / "legacy" / "spritesheet.webp"),
+        )
+    ]
     response = await client.get("/v1/pets")
     assert response.status_code == 200
     assert [row["id"] for row in response.json()["catalog"]] == ["pex", "von"]

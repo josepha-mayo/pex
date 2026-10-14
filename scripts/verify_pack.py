@@ -146,10 +146,7 @@ def verify(pack: dict) -> list[str]:
         len(ids) == len(set(ids)),
         f"intervention ids unique ({len(ids)} records)",
     )
-    flagged_ids = {
-        str(entry.get("intervention_id"))
-        for entry in pack.get("flagged") or []
-    }
+    flagged_ids = {str(entry.get("intervention_id")) for entry in pack.get("flagged") or []}
     check(
         flagged_ids.issubset(set(ids)),
         "every flagged incident references a bundled intervention",

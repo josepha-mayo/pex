@@ -21,6 +21,7 @@ from test_workspace_continuity_pipeline import bound_pipeline as bound_pipeline
 @pytest.fixture
 async def ask_client(bound_pipeline, monkeypatch):
     bound = bound_pipeline
+
     async def no_discovery():
         return None
 
@@ -46,27 +47,44 @@ async def ask_client(bound_pipeline, monkeypatch):
         assert request is not None
         collector = EvidenceObservationCollector(request, stage="main", invocation_id="ask-test")
         collectors.append(collector)
-        tools = {tool.tool_name: tool for tool in build_evidence_tools(
-            request, [], collector=collector,
-        )}
+        tools = {
+            tool.tool_name: tool
+            for tool in build_evidence_tools(
+                request,
+                [],
+                collector=collector,
+            )
+        }
         output = tools["inspect_file"](path="report.txt")
         outputs.append(output)
         return output
 
     def answer(
-        question, sessions, interventions, goals, model,
-        *, context=None, observed_activity_at=None,
+        question,
+        sessions,
+        interventions,
+        goals,
+        model,
+        *,
+        context=None,
+        observed_activity_at=None,
     ):
         calls.append(model)
         return inspect(sessions, interventions, goals)
 
     monkeypatch.setattr(ask_module, "answer_question", answer)
     async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app_module.create_app()), base_url="http://127.0.0.1",
+        transport=httpx.ASGITransport(app=app_module.create_app()),
+        base_url="http://127.0.0.1",
     ) as client:
         yield SimpleNamespace(
-            bound=bound, client=client, calls=calls, reads=reads,
-            outputs=outputs, collectors=collectors, inspect=inspect,
+            bound=bound,
+            client=client,
+            calls=calls,
+            reads=reads,
+            outputs=outputs,
+            collectors=collectors,
+            inspect=inspect,
         )
 
 
@@ -106,12 +124,21 @@ async def test_ask_stale_before_answer_never_calls_answer_or_reads(ask_client, c
 @pytest.mark.asyncio
 @pytest.mark.parametrize("change", ["directory", "origin", "locator"])
 async def test_ask_revocation_during_answer_blocks_tool_and_stale_response(
-    ask_client, monkeypatch, change,
+    ask_client,
+    monkeypatch,
+    change,
 ):
     case = ask_client
+
     def revoked_answer(
-        question, sessions, interventions, goals, model,
-        *, context=None, observed_activity_at=None,
+        question,
+        sessions,
+        interventions,
+        goals,
+        model,
+        *,
+        context=None,
+        observed_activity_at=None,
     ):
         case.calls.append(model)
         _revoke(case, change)
@@ -134,20 +161,29 @@ async def _wait_event(event):
     async def wait():
         while not event.is_set():
             await asyncio.sleep(0.01)
+
     await asyncio.wait_for(wait(), timeout=5)
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("end", ["timeout", "cancel"])
 async def test_ask_ended_scope_denies_surviving_answer_thread_reads(
-    ask_client, monkeypatch, end,
+    ask_client,
+    monkeypatch,
+    end,
 ):
     case = ask_client
     started, release, finished = threading.Event(), threading.Event(), threading.Event()
 
     def held_answer(
-        question, sessions, interventions, goals, model,
-        *, context=None, observed_activity_at=None,
+        question,
+        sessions,
+        interventions,
+        goals,
+        model,
+        *,
+        context=None,
+        observed_activity_at=None,
     ):
         if model is None:
             return "Canonical fallback without model or inspection"
@@ -195,13 +231,16 @@ async def test_ask_ended_scope_denies_surviving_answer_thread_reads(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("filtered", [False, True])
 async def test_completion_guard_covers_attached_sessions_hidden_by_activity_filter(
-    ask_client, monkeypatch, filtered,
+    ask_client,
+    monkeypatch,
+    filtered,
 ):
     case = ask_client
     if filtered:
         # Use the real filter: this newly subscribed fixture has no invented
         # last_activity and is intentionally absent from the promptable deck.
         from pex_bridge.pipeline import collapse_promptable_agents
+
         monkeypatch.setattr(app_module, "collapse_promptable_agents", collapse_promptable_agents)
     projections = []
 
@@ -224,6 +263,7 @@ async def test_completion_guard_covers_attached_sessions_hidden_by_activity_filt
 @pytest.mark.asyncio
 async def test_completion_guard_rechecks_after_projection_await(ask_client, monkeypatch):
     case = ask_client
+
     async def changed_projection(goal_id):
         _revoke(case, "origin")
         await asyncio.sleep(0)
@@ -267,7 +307,8 @@ async def test_ask_queued_answer_checks_authority_when_thread_starts(ask_client,
 
 @pytest.mark.asyncio
 async def test_ask_cancelled_during_worker_entry_check_never_starts_answer(
-    ask_client, monkeypatch,
+    ask_client,
+    monkeypatch,
 ):
     from pex_bridge import workspace_access
 

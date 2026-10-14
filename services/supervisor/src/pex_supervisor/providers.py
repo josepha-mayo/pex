@@ -39,17 +39,19 @@ _CATALOG_MAX_MODELS = 1000
 _CATALOG_TEXT_MAX_BYTES = 512
 _RUNTIME_CONFIG: SupervisorRuntimeConfig | None = None
 _RUNTIME_UNSET = object()
-_RUNTIME_SCOPE: ContextVar[Any] = ContextVar(
-    "pex_supervisor_runtime_scope", default=_RUNTIME_UNSET
-)
+_RUNTIME_SCOPE: ContextVar[Any] = ContextVar("pex_supervisor_runtime_scope", default=_RUNTIME_UNSET)
 
 _RESPONSES_API_MODELS: dict[str, frozenset[str]] = {
     # Zen documents all three Muse IDs on /responses, not /chat/completions.
     # Exact IDs avoid changing the route for unrelated or future models.
     # https://opencode.ai/docs/zen/ (verified 2026-09-11)
-    "zen": frozenset({
-        "muse-spark-1.3-contributor-free", "muse-spark-1.3", "muse-spark-1.2",
-    }),
+    "zen": frozenset(
+        {
+            "muse-spark-1.3-contributor-free",
+            "muse-spark-1.3",
+            "muse-spark-1.2",
+        }
+    ),
 }
 
 
@@ -524,9 +526,7 @@ def _usable_base_url(value: str | None) -> str | None:
         port = parsed.port
         if port is not None and not 1 <= port <= 65_535:
             return None
-        if (parsed.scheme == "https" and port == 443) or (
-            parsed.scheme == "http" and port == 80
-        ):
+        if (parsed.scheme == "https" and port == 443) or (parsed.scheme == "http" and port == 80):
             return None
     except ValueError:
         return None
@@ -681,9 +681,7 @@ def validate_runtime_config(config: SupervisorRuntimeConfig) -> SupervisorRuntim
         raise ValueError("credential_source must be none, environment, or secret_store")
     api_key = config.api_key
     if api_key is not None:
-        if not 1 <= len(api_key) <= 16_384 or any(
-            char in api_key for char in ("\r", "\n", "\x00")
-        ):
+        if not 1 <= len(api_key) <= 16_384 or any(char in api_key for char in ("\r", "\n", "\x00")):
             raise ValueError("api_key must be a bounded single-line value")
     if credential_source == "secret_store" and not api_key:
         raise ValueError("the configured secret reference did not resolve")
@@ -738,9 +736,7 @@ def validate_runtime_config(config: SupervisorRuntimeConfig) -> SupervisorRuntim
         if not is_default and (
             spec is None or spec.kind not in {"openai_compat", "ollama", "llamacpp"}
         ):
-            raise ValueError(
-                "base_url overrides for native providers must use custom + protocol"
-            )
+            raise ValueError("base_url overrides for native providers must use custom + protocol")
     if auth_mode == "login":
         # Login adapters are not implemented.  Retain the choice for an honest
         # degraded status, but model construction must fail closed below.
@@ -784,9 +780,7 @@ def _credential_for(spec: ProviderSpec) -> str | None:
             return _first_env("PEX_SUPERVISOR_API_KEY")
         return _first_env(*spec.key_envs) if spec.key_envs else None
     if runtime.credential_source == "secret_store":
-        selected = runtime.provider or (
-            "custom" if runtime.base_url else None
-        )
+        selected = runtime.provider or ("custom" if runtime.base_url else None)
         if selected != spec.id:
             return None
         return runtime.api_key
@@ -824,10 +818,14 @@ def _auth_mode(spec: ProviderSpec) -> str:
 
     runtime = _active_runtime_config()
     override = (
-        (runtime.auth_mode or "")
-        if runtime is not None
-        else (os.environ.get("PEX_SUPERVISOR_AUTH") or "")
-    ).strip().lower()
+        (
+            (runtime.auth_mode or "")
+            if runtime is not None
+            else (os.environ.get("PEX_SUPERVISOR_AUTH") or "")
+        )
+        .strip()
+        .lower()
+    )
     if override in {"login", "bedrock", "agentcore"}:
         return override
     return override if override in spec.auth_modes else spec.auth_modes[0]
@@ -837,9 +835,7 @@ def resolve_provider_id() -> str | None:
     _load_dotenv()
     runtime = _active_runtime_config()
     configured_base = (
-        runtime.base_url
-        if runtime is not None
-        else os.environ.get("PEX_SUPERVISOR_BASE_URL")
+        runtime.base_url if runtime is not None else os.environ.get("PEX_SUPERVISOR_BASE_URL")
     )
     if configured_base and not _usable_base_url(configured_base):
         raise ValueError(
@@ -847,10 +843,14 @@ def resolve_provider_id() -> str | None:
             "credentials, query parameters, or fragments"
         )
     explicit = (
-        (runtime.provider or "")
-        if runtime is not None
-        else (os.environ.get("PEX_SUPERVISOR_PROVIDER") or "")
-    ).strip().lower()
+        (
+            (runtime.provider or "")
+            if runtime is not None
+            else (os.environ.get("PEX_SUPERVISOR_PROVIDER") or "")
+        )
+        .strip()
+        .lower()
+    )
     if explicit:
         if explicit not in PROVIDERS:
             raise ValueError("unknown PEX_SUPERVISOR_PROVIDER; use custom + BASE_URL")
@@ -862,13 +862,10 @@ def resolve_provider_id() -> str | None:
         if pid in {"ollama", "lmstudio"}:
             continue
         spec = PROVIDERS[pid]
-        unambiguous_envs = tuple(
-            name for name in spec.key_envs if name != "PEX_SUPERVISOR_API_KEY"
-        )
-        if (
-            runtime is None
-            or runtime.credential_source == "environment"
-        ) and _first_env(*unambiguous_envs):
+        unambiguous_envs = tuple(name for name in spec.key_envs if name != "PEX_SUPERVISOR_API_KEY")
+        if (runtime is None or runtime.credential_source == "environment") and _first_env(
+            *unambiguous_envs
+        ):
             logger.info("Auto-detected supervisor provider=%s from configured credential", pid)
             return pid
     for pid, probe in (
@@ -933,9 +930,7 @@ def describe_backend() -> dict[str, Any]:
         "requested_auth": requested,
         "login_implemented": login_implemented,
         "has_api_key": key_present,
-        "credential_source": (
-            runtime.credential_source if runtime is not None else "environment"
-        ),
+        "credential_source": (runtime.credential_source if runtime is not None else "environment"),
         "protocol": (
             runtime.protocol
             if runtime is not None
@@ -1153,9 +1148,7 @@ def refresh_model_catalog(
     # (None) snapshot. Never combine an old key with a new endpoint.
     token = _RUNTIME_SCOPE.set(_active_runtime_config())
     try:
-        return _refresh_model_catalog(
-            provider, client=client, bedrock_client=bedrock_client
-        )
+        return _refresh_model_catalog(provider, client=client, bedrock_client=bedrock_client)
     finally:
         _RUNTIME_SCOPE.reset(token)
 
@@ -1278,15 +1271,18 @@ def _refresh_model_catalog(
                 raise ModelCatalogRefreshError(
                     f"{pid} model listing requires PEX_SUPERVISOR_BASE_URL"
                 )
-            if spec.auth_modes[0] == "api_key" and not key and pid not in {
-                "lmstudio",
-                "vllm",
-                "llamacpp",
-                "custom",
-            }:
-                raise ModelCatalogRefreshError(
-                    f"{pid} model listing requires a configured API key"
-                )
+            if (
+                spec.auth_modes[0] == "api_key"
+                and not key
+                and pid
+                not in {
+                    "lmstudio",
+                    "vllm",
+                    "llamacpp",
+                    "custom",
+                }
+            ):
+                raise ModelCatalogRefreshError(f"{pid} model listing requires a configured API key")
             path = "models" if base_url.rstrip("/").endswith("/v1") else "v1/models"
             headers = {"Authorization": f"Bearer {key}"} if key else {}
             payload = _catalog_get(
@@ -1508,11 +1504,7 @@ def _load_supervisor_model() -> Any | None:
                 client_args=client_args or None,
                 model_id=model_id,
                 stream=False,
-                params=(
-                    _openai_compat_chat_params(spec)
-                    if generation_api == "chat"
-                    else {}
-                ),
+                params=(_openai_compat_chat_params(spec) if generation_api == "chat" else {}),
                 **transport_args,
             )
         )

@@ -73,7 +73,10 @@ def source_is_clean() -> bool:
 
 
 async def run_case(
-    root: Path, server: subprocess.Popen[bytes], worker_model: str, scenario: str,
+    root: Path,
+    server: subprocess.Popen[bytes],
+    worker_model: str,
+    scenario: str,
     worker_credential_source: str,
 ) -> dict:
     workspace = root / "workspace"
@@ -254,9 +257,7 @@ async def main() -> int:
     has_worker_credential = "PEX_PROOF_WORKER_KEY" in os.environ
     if has_worker_credential and not os.environ["PEX_PROOF_WORKER_KEY"].strip():
         parser.error("PEX_PROOF_WORKER_KEY was supplied but is empty")
-    worker_credential_source = (
-        "separate_environment" if has_worker_credential else "native_free"
-    )
+    worker_credential_source = "separate_environment" if has_worker_credential else "native_free"
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 4098))
     root = REPO / "build" / args.run_name
@@ -279,7 +280,9 @@ async def main() -> int:
     write_json(
         root / "opencode.json",
         proof_worker_config(
-            "opencode", args.worker_model, "OpenCode Zen",
+            "opencode",
+            args.worker_model,
+            "OpenCode Zen",
             native_free=not has_worker_credential,
         ),
     )
@@ -317,7 +320,11 @@ async def main() -> int:
                         except httpx.HTTPError:
                             await asyncio.sleep(0.5)
             receipt = await run_case(
-                root, server, args.worker_model, args.scenario, worker_credential_source,
+                root,
+                server,
+                args.worker_model,
+                args.scenario,
+                worker_credential_source,
             )
     except Exception as exc:
         error_type = type(exc).__name__

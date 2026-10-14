@@ -275,7 +275,10 @@ class SharedCodexAttachments:
             },
         )
         return CodexSharedAppServerTransport(
-            binary, body.socket_path, body.thread_id, receive_journal=journal,
+            binary,
+            body.socket_path,
+            body.thread_id,
+            receive_journal=journal,
         )
 
     async def inspect(self, body: SharedCodexInspect, state) -> dict:
@@ -298,7 +301,11 @@ class SharedCodexAttachments:
             inspection_id = uuid4().hex
             try:
                 transport = await asyncio.to_thread(
-                    self._new_transport, binary, body, workspace, inspection_id,
+                    self._new_transport,
+                    binary,
+                    body,
+                    workspace,
+                    inspection_id,
                     state.settings.home / "codex-received.sqlite",
                 )
                 coordinator = CodexExistingThreadSubscription(transport)

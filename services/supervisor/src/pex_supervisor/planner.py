@@ -77,6 +77,7 @@ _SENSITIVE_READ_PATH = re.compile(
     re.IGNORECASE,
 )
 
+
 def _observation_only_goal(request: SupervisorRequest) -> bool:
     return bool(request.goal and request.goal.observation_only)
 
@@ -705,11 +706,9 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
                 evidence=[
                     f"nudge_dispute:{nudge_id}",
                     f"outcome:{dispute.get('outcome') or 'unknown'}",
-                    *[
-                        str(item)
-                        for item in (dispute.get("evidence") or [])
-                        if str(item).strip()
-                    ][:8],
+                    *[str(item) for item in (dispute.get("evidence") or []) if str(item).strip()][
+                        :8
+                    ],
                     *([f"worker_response:{worker_words[:300]}"] if worker_words else []),
                 ][:128],
                 confidence=0.8,
@@ -844,10 +843,7 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
 
     if event.event_type == EventType.COMPACTION and goal is not None:
         title = (goal.title or "").strip() or "attached goal"
-        acceptance = (
-            "; ".join(item for item in goal.acceptance_criteria if item)
-            or goal.objective
-        )
+        acceptance = "; ".join(item for item in goal.acceptance_criteria if item) or goal.objective
         constraints = "; ".join(item for item in goal.constraints if item)
         preferences = "; ".join(item for item in goal.preferences if item)
         forbidden = "; ".join(item for item in goal.forbidden_outcomes if item)
@@ -878,20 +874,26 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
         if request.supervisor_context is not None:
             for decision in request.supervisor_context.decisions:
                 label = (
-                    "Rejected approach" if decision.kind == "rejected_approach"
-                    else "Unresolved question" if decision.kind == "unresolved_question"
-                    else "Uncertain decision" if decision.status == DecisionStatus.UNCERTAIN
+                    "Rejected approach"
+                    if decision.kind == "rejected_approach"
+                    else "Unresolved question"
+                    if decision.kind == "unresolved_question"
+                    else "Uncertain decision"
+                    if decision.status == DecisionStatus.UNCERTAIN
                     else "Current decision"
                 )
                 scope = f" (scope: {decision.scope})" if decision.scope else ""
-                partial = " [partial; retrieve the full record before acting]" if (
-                    decision.statement_truncated or decision.scope_truncated
-                ) else ""
+                partial = (
+                    " [partial; retrieve the full record before acting]"
+                    if (decision.statement_truncated or decision.scope_truncated)
+                    else ""
+                )
                 lines.append(f"{label}{scope}{partial}: {decision.statement}")
                 if decision.alternatives_rejected:
                     alternative_partial = (
                         " [partial; retrieve the full record before acting]"
-                        if decision.alternatives_rejected_truncated else ""
+                        if decision.alternatives_rejected_truncated
+                        else ""
                     )
                     lines.append(
                         f"Rejected alternatives{alternative_partial}: "

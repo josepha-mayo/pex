@@ -381,9 +381,7 @@ async def test_resolution_getters_reject_ambiguous_or_overflowed_stored_json(tmp
                 (lifecycle.id,),
             )
         ).fetchone()
-        permission_corrupt = (
-            str(permission_row["json"])[:-1] + ',"ignored":1,"ignored":2}'
-        )
+        permission_corrupt = str(permission_row["json"])[:-1] + ',"ignored":1,"ignored":2}'
         lifecycle_corrupt = str(lifecycle_row["json"])[:-1] + ',"ignored":1e9999}'
         await store.db.execute("DROP TRIGGER trg_permission_resolutions_bound_update")
         await store.db.execute("DROP TRIGGER trg_lifecycle_resolutions_bound_update")
@@ -512,9 +510,7 @@ async def test_permission_deny_quarantine_exception_rejects_target_drift(tmp_pat
             changed_session = session.model_copy(
                 update={
                     "vendor_session_id": (
-                        "replacement-vendor"
-                        if drift == "vendor"
-                        else session.vendor_session_id
+                        "replacement-vendor" if drift == "vendor" else session.vendor_session_id
                     ),
                     "harness_type": (
                         HarnessType.CURSOR if drift == "harness" else session.harness_type
@@ -594,9 +590,7 @@ async def test_stop_quarantine_exception_rejects_target_drift(tmp_path, drift: s
             changed_session = session.model_copy(
                 update={
                     "vendor_session_id": (
-                        "replacement-vendor"
-                        if drift == "vendor"
-                        else session.vendor_session_id
+                        "replacement-vendor" if drift == "vendor" else session.vendor_session_id
                     ),
                     "harness_type": (
                         HarnessType.CURSOR if drift == "harness" else session.harness_type
@@ -976,9 +970,7 @@ async def test_resolution_classification_survives_rebind_without_granting_author
         await store.add_intervention(allow)
         await _resolve_to_identity_b(store, suffix=suffix)
 
-        classified = await store.get_intervention_for_resolution_classification(
-            deny.id
-        )
+        classified = await store.get_intervention_for_resolution_classification(deny.id)
         assert classified == deny
         assert (
             await store.get_intervention_for_resolution_classification("missing-intervention")
@@ -1042,14 +1034,10 @@ async def test_resolution_classification_rejects_frozen_target_drift(tmp_path, d
                 session.model_copy(
                     update={
                         "vendor_session_id": (
-                            "replacement-vendor"
-                            if drift == "vendor"
-                            else session.vendor_session_id
+                            "replacement-vendor" if drift == "vendor" else session.vendor_session_id
                         ),
                         "harness_type": (
-                            HarnessType.CURSOR
-                            if drift == "harness"
-                            else session.harness_type
+                            HarnessType.CURSOR if drift == "harness" else session.harness_type
                         ),
                     }
                 ),
@@ -1096,9 +1084,7 @@ class _RecordingLifecycleExecutor:
         human_authorized: bool = False,
         lifecycle_resolution_id: str | None = None,
     ) -> str:
-        self.calls.append(
-            (action, verdict, human_authorized, lifecycle_resolution_id)
-        )
+        self.calls.append((action, verdict, human_authorized, lifecycle_resolution_id))
         return self.result
 
 

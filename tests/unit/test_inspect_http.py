@@ -20,13 +20,7 @@ from pex_supervisor.inspect_http import (
 
 def test_parse_review_answer_from_json_content():
     payload = {
-        "choices": [
-            {
-                "message": {
-                    "content": json.dumps({"answer": "Nothing needs you."})
-                }
-            }
-        ],
+        "choices": [{"message": {"content": json.dumps({"answer": "Nothing needs you."})}}],
         "usage": {"prompt_tokens": 11, "completion_tokens": 4},
     }
     parsed = _parse_response_object(payload)
@@ -39,17 +33,12 @@ def test_parse_review_answer_from_wrapped_json():
         "choices": [
             {
                 "message": {
-                    "content": (
-                        "Review:\n"
-                        '{"answer":"The latest verified action was NOOP."}\n'
-                    )
+                    "content": ('Review:\n{"answer":"The latest verified action was NOOP."}\n')
                 }
             }
         ]
     }
-    assert _parse_response_object(payload) == {
-        "answer": "The latest verified action was NOOP."
-    }
+    assert _parse_response_object(payload) == {"answer": "The latest verified action was NOOP."}
 
 
 def test_review_completion_rejects_action_payload(monkeypatch):
@@ -102,9 +91,7 @@ def test_review_uses_only_the_exact_configured_model():
         {"provider": "openrouter", "model_id": "anthropic/claude-sonnet-4.6"}
     )
     assert openrouter == ["anthropic/claude-sonnet-4.6"]
-    zen = _candidate_models(
-        {"provider": "zen", "model_id": "muse-spark-1.3"}
-    )
+    zen = _candidate_models({"provider": "zen", "model_id": "muse-spark-1.3"})
     assert zen == ["muse-spark-1.3"]
     assert _candidate_models({"provider": "zen", "model_id": ""}) == []
 
@@ -114,9 +101,7 @@ def test_parse_review_answer_from_responses_output():
         "output": [
             {
                 "type": "message",
-                "content": [
-                    {"type": "output_text", "text": '{"answer":"Bounded."}'}
-                ],
+                "content": [{"type": "output_text", "text": '{"answer":"Bounded."}'}],
             }
         ],
         "usage": {"input_tokens": 7, "output_tokens": 3},
@@ -131,9 +116,7 @@ def test_responses_review_uses_selected_zen_model_without_fallback(monkeypatch):
         "output": [
             {
                 "type": "message",
-                "content": [
-                    {"type": "output_text", "text": '{"answer":"Exact model."}'}
-                ],
+                "content": [{"type": "output_text", "text": '{"answer":"Exact model."}'}],
             }
         ],
         "usage": {"input_tokens": 4, "output_tokens": 2},

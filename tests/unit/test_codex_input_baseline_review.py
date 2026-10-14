@@ -21,7 +21,9 @@ async def test_unchanged_event_baseline_does_not_reclassify_entire_history(tmp_p
     for _ in range(12):
         assert ledger.snapshot() == first
     unchanged = ledger.observe_item(
-        turn_id="turn-1", item={"id": "agent-item", "type": "agentMessage"}, completed=True,
+        turn_id="turn-1",
+        item={"id": "agent-item", "type": "agentMessage"},
+        completed=True,
     )
     assert unchanged == first and ledger.snapshot() == first
     assert calls == after_initial
@@ -41,7 +43,9 @@ async def test_snapshot_cache_must_invalidate_on_pending_completion_and_sticky_g
     assert completed.digest != initial.digest and ledger.snapshot() == completed
     assert initial.complete and initial.external_count == 0 and pending.digest is None
     gap = ledger.observe_item(
-        turn_id="turn-1", item={"id": "unknown", "type": "futureInput"}, completed=True,
+        turn_id="turn-1",
+        item={"id": "unknown", "type": "futureInput"},
+        completed=True,
     )
     assert not gap.complete and gap.digest is None and gap.revision == 3
     assert ledger.snapshot() == gap

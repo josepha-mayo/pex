@@ -44,6 +44,7 @@ def _recent_activity(
     age = now - observed
     return timedelta(0) <= age <= _CURRENT_ACTIVITY_WINDOW
 
+
 _HARNESS_ALIASES: tuple[tuple[HarnessType, tuple[str, ...]], ...] = (
     (HarnessType.CLAUDE_CODE, ("claude code", "claude_code", "claude")),
     (HarnessType.GROK_BUILD, ("grok build", "grok_build")),
@@ -132,7 +133,10 @@ def answer_question(
         answer, _, _ = complete_review_answer(
             _REVIEW_SYSTEM,
             _review_user(
-                question, sessions, interventions, goals or [],
+                question,
+                sessions,
+                interventions,
+                goals or [],
                 observed_activity_at or {},
             ),
         )
@@ -181,9 +185,7 @@ def _review_user(
         )
     if interventions:
         last = interventions[0]
-        lines.append(
-            f"Last PEX action: {last.action_taken} result={safe_text(last.result)}"
-        )
+        lines.append(f"Last PEX action: {last.action_taken} result={safe_text(last.result)}")
     else:
         lines.append("Last PEX action: none")
     return "\n".join(lines)
@@ -201,9 +203,7 @@ def _keyword_answer(
     needs = [s for s in sessions if s.status == SessionStatus.NEEDS_DECISION]
     working = [s for s in sessions if s.status.value in {"working", "verifying"}]
     now = datetime.now(UTC)
-    recent_working = [
-        s for s in working if _recent_activity(s, now, observed_activity_at)
-    ]
+    recent_working = [s for s in working if _recent_activity(s, now, observed_activity_at)]
     unconfirmed_working = len(working) - len(recent_working)
     discovered = [s for s in sessions if s.status == SessionStatus.DISCOVERED]
     drifting = [s for s in sessions if s.status == SessionStatus.DRIFTING]
@@ -249,7 +249,8 @@ def _keyword_answer(
                 f" No latest bound event establishes recent activity for "
                 f"{unconfirmed_working} working/verifying "
                 f"session{'s' if unconfirmed_working != 1 else ''}."
-                if unconfirmed_working else ""
+                if unconfirmed_working
+                else ""
             )
             return _AskAnswer(
                 f"No decision request is recorded for the visible sessions. "
@@ -265,7 +266,8 @@ def _keyword_answer(
             other = (
                 f" {len(recent_working)} other working/verifying session"
                 f"{'s have' if len(recent_working) != 1 else ' has'} recent activity."
-                if recent_working else ""
+                if recent_working
+                else ""
             )
             return _AskAnswer(
                 "No decision request is recorded for the visible sessions. "
@@ -303,9 +305,7 @@ def _keyword_answer(
         )
 
     if _DOING.search(q) and mentioned:
-        return _AskAnswer(
-            _what_doing(mentioned[0], sessions, goals, observed_activity_at), True
-        )
+        return _AskAnswer(_what_doing(mentioned[0], sessions, goals, observed_activity_at), True)
 
     if _EVAL_FINISH.search(q):
         return _AskAnswer(_eval_finished(interventions, sessions, goals), True)
@@ -371,9 +371,7 @@ def _mentioned_harnesses(question: str) -> list[HarnessType]:
     hits: list[tuple[int, HarnessType]] = []
     seen: set[HarnessType] = set()
     for harness, aliases in _HARNESS_ALIASES:
-        indexes = [
-            index for alias in aliases if (index := _alias_index(question, alias)) >= 0
-        ]
+        indexes = [index for alias in aliases if (index := _alias_index(question, alias)) >= 0]
         if not indexes or harness in seen:
             continue
         hits.append((min(indexes), harness))
@@ -430,12 +428,11 @@ def _what_doing(
     session = rows[0]
     goal = next((item for item in goals if item.id == session.goal_id), None)
     recorded_working = session.status in {SessionStatus.WORKING, SessionStatus.VERIFYING}
-    recent_worker_event = _recent_activity(
-        session, datetime.now(UTC), observed_activity_at
-    )
+    recent_worker_event = _recent_activity(session, datetime.now(UTC), observed_activity_at)
     parts = [
         f"{name} was last recorded as {session.status.value.replace('_', ' ')}"
-        if recorded_working else f"{name} is {session.status.value.replace('_', ' ')}"
+        if recorded_working
+        else f"{name} is {session.status.value.replace('_', ' ')}"
     ]
     if goal:
         title, _ = redact_text(goal.title)
@@ -450,8 +447,8 @@ def _what_doing(
     if recorded_working:
         parts.append(
             "PEX has a recent observed worker event; the turn state may have changed"
-            if recent_worker_event else
-            "PEX has no latest bound event establishing recent worker activity"
+            if recent_worker_event
+            else "PEX has no latest bound event establishing recent worker activity"
         )
     return ". ".join(parts) + "."
 
@@ -515,10 +512,7 @@ def _observed_eval_artifacts(sessions: list[HarnessSession], goals: list[Goal]) 
     expected = _expected_rows(goal)
     harness = session.harness_type.value.replace("_", " ")
     if isinstance(count, int) and expected is not None and count < expected:
-        return (
-            f"No. Inspected {path} for {harness}: {count} rows; "
-            f"acceptance requires {expected}."
-        )
+        return f"No. Inspected {path} for {harness}: {count} rows; acceptance requires {expected}."
     if isinstance(count, int) and expected is not None:
         return (
             f"Inspected {path} for {harness}: {count} rows, matching the attached "

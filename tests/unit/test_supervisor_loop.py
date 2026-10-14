@@ -235,9 +235,7 @@ def test_deterministic_preplan_does_not_replace_completed_semantic_wording():
             "type": "SEND_NUDGE",
             "rationale": "model connected the observed failure to the goal",
             "evidence": ["report.txt absent"],
-            "payload": {
-                "text": "report.txt is absent; create it and verify its contents."
-            },
+            "payload": {"text": "report.txt is absent; create it and verify its contents."},
         },
     )
     semantic = __import__(

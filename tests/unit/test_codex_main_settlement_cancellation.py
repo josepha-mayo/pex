@@ -15,7 +15,9 @@ async def _wait_for_boundary(task: asyncio.Task, entered: asyncio.Event) -> None
     waiter = asyncio.create_task(entered.wait())
     try:
         done, _ = await asyncio.wait(
-            {task, waiter}, timeout=15, return_when=asyncio.FIRST_COMPLETED,
+            {task, waiter},
+            timeout=15,
+            return_when=asyncio.FIRST_COMPLETED,
         )
         if entered.is_set():
             return
@@ -200,8 +202,6 @@ async def test_executor_error_and_repeated_cancel_still_seal_delivery_uncertain(
     assert processing is not None and processing["state"] == "complete"
     assert effect is not None and effect["state"] == "delivery_uncertain"
     assert processing["receipt"]["effect_state"] == "delivery_uncertain"
-    assert processing["receipt"]["intervention"]["result"] == (
-        "worker_delivery_uncertain"
-    )
+    assert processing["receipt"]["intervention"]["result"] == ("worker_delivery_uncertain")
     case.execute.assert_awaited_once()
     case.private_dispatch.assert_not_awaited()

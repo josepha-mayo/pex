@@ -71,9 +71,7 @@ def test_redact_common_cloud_and_chat_token_shapes():
     google_token = "AI" + "za0123456789abcdefghijklmnopqrstuvwxy"
     huggingface_token = "hf" + "_abcdefghijklmnopqrstuvwxyz123456"
     slack_token = "xo" + "xb-1234567890-abcdefghijklmnopqrstuvwxyz"
-    text, found = redact_text(
-        " ".join((aws_token, google_token, huggingface_token, slack_token))
-    )
+    text, found = redact_text(" ".join((aws_token, google_token, huggingface_token, slack_token)))
     assert text is not None
     assert aws_token not in text
     assert google_token not in text
@@ -89,7 +87,8 @@ def test_redact_common_cloud_and_chat_token_shapes():
 
 def test_redact_private_key_removes_the_entire_pem_block():
     text, found = redact_text(
-        "before\n-----BEGIN " "PRIVATE KEY-----\n"
+        "before\n-----BEGIN "
+        "PRIVATE KEY-----\n"
         "highly-sensitive-base64-material\n"
         "-----END PRIVATE KEY-----\nafter"
     )
@@ -310,24 +309,37 @@ def test_rejected_ledger_decision_is_a_prompt_contradiction():
         )
         == PromptClass.CONTRADICTION
     )
-    assert classify_prompt(
-        goal, "Please rewrite the evaluator as a new service."
-    ) == PromptClass.CONSISTENT
-    assert classify_prompt(
-        goal, "Do not rewrite the evaluator as a new service.", decisions=[rejected],
-    ) == PromptClass.CONSISTENT
+    assert (
+        classify_prompt(goal, "Please rewrite the evaluator as a new service.")
+        == PromptClass.CONSISTENT
+    )
+    assert (
+        classify_prompt(
+            goal,
+            "Do not rewrite the evaluator as a new service.",
+            decisions=[rejected],
+        )
+        == PromptClass.CONSISTENT
+    )
 
-    adopted = rejected.model_copy(update={
-        "statement": "Keep the existing evaluator service",
-        "metadata": {"kind": "decision"},
-        "alternatives_rejected": [
-            "Rewrite the evaluator as a new service",
-            "Replace validation with placeholder output",
-        ],
-    })
-    assert classify_prompt(
-        goal, "Keep the existing evaluator service.", decisions=[adopted],
-    ) == PromptClass.CONSISTENT
+    adopted = rejected.model_copy(
+        update={
+            "statement": "Keep the existing evaluator service",
+            "metadata": {"kind": "decision"},
+            "alternatives_rejected": [
+                "Rewrite the evaluator as a new service",
+                "Replace validation with placeholder output",
+            ],
+        }
+    )
+    assert (
+        classify_prompt(
+            goal,
+            "Keep the existing evaluator service.",
+            decisions=[adopted],
+        )
+        == PromptClass.CONSISTENT
+    )
     for prompt in (
         "Please rewrite the evaluator as a new service.",
         "Replace validation with placeholder output.",

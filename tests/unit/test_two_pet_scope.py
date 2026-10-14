@@ -23,12 +23,17 @@ def test_current_catalog_does_not_scan_legacy_imports(monkeypatch):
         raise AssertionError("MVP must not read imported pet files")
 
     monkeypatch.setattr("pex_bridge.pets._validated_imported_sheet", unexpected_scan)
-    settings = PetSettings(imports=[{
-        "id": "import:old-cat",
-        "display_name": "Old cat",
-        "directory": "C:/legacy/pet",
-        "spritesheet": "C:/legacy/pet/spritesheet.webp",
-    }], selected_id="import:old-cat")
+    settings = PetSettings(
+        imports=[
+            {
+                "id": "import:old-cat",
+                "display_name": "Old cat",
+                "directory": "C:/legacy/pet",
+                "spritesheet": "C:/legacy/pet/spritesheet.webp",
+            }
+        ],
+        selected_id="import:old-cat",
+    )
     assert [pet.id for pet in catalog(settings)] == ["pex", "von"]
     migrated = shipping_pet_settings(settings)
     assert migrated.selected_id == "pex"

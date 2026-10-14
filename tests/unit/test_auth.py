@@ -94,8 +94,13 @@ def test_release_main_scrubs_operator_token_before_worker_spawns(monkeypatch):
     launched: dict[str, object] = {}
 
     def fake_run(app, *, host, port, log_level, ws_per_message_deflate):
-        launched.update(app=app, host=host, port=port, log_level=log_level,
-                        ws_per_message_deflate=ws_per_message_deflate)
+        launched.update(
+            app=app,
+            host=host,
+            port=port,
+            log_level=log_level,
+            ws_per_message_deflate=ws_per_message_deflate,
+        )
 
     monkeypatch.setattr(uvicorn, "run", fake_run)
     bridge_main.main()
@@ -428,11 +433,14 @@ async def test_lifespan_preserves_owned_operator_token_over_fallback_file(tmp_pa
                 params={"challenge": challenge},
             )
             assert identity.status_code == 200
-            assert identity.json()["proof"] == hmac.new(
-                operator.encode("ascii"),
-                challenge.encode("ascii"),
-                hashlib.sha256,
-            ).hexdigest()
+            assert (
+                identity.json()["proof"]
+                == hmac.new(
+                    operator.encode("ascii"),
+                    challenge.encode("ascii"),
+                    hashlib.sha256,
+                ).hexdigest()
+            )
             assert (
                 await client.get(
                     "/v1/goals",

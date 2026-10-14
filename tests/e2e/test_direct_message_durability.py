@@ -198,9 +198,7 @@ async def test_direct_message_requires_key_and_exact_replay_sends_once(direct_me
     assert replay.json()["receipt"] == first.json()["receipt"]
     assert changed.status_code == 409
     assert len(adapters.synthetic.inbox[session.id]) == 1
-    cursor = await store.db.execute(
-        "SELECT COUNT(*) FROM human_operator_terminal_actions"
-    )
+    cursor = await store.db.execute("SELECT COUNT(*) FROM human_operator_terminal_actions")
     assert (await cursor.fetchone())[0] == 1
 
     receipt_path = f"/v1/sessions/{session.id}/messages/{request['idempotency_key']}/receipt"
@@ -219,12 +217,10 @@ async def test_direct_message_requires_key_and_exact_replay_sends_once(direct_me
     assert no_bearer.status_code == 401
     assert len(adapters.synthetic.inbox[session.id]) == 1
     metrics = await store.attention_metrics()
-    assert metrics["human_interventions"]["source_counts"][
-        "direct_operator_message"
-    ] == 1
-    assert metrics["human_interventions"]["unverified_operator_action_counts"][
-        "operator_message"
-    ] == 0
+    assert metrics["human_interventions"]["source_counts"]["direct_operator_message"] == 1
+    assert (
+        metrics["human_interventions"]["unverified_operator_action_counts"]["operator_message"] == 0
+    )
 
 
 @pytest.mark.asyncio
@@ -238,9 +234,7 @@ async def test_reserved_message_receipt_is_read_only_and_does_not_dispatch(direc
         actor_assurance="bridge_bearer",
     )
     assert reservation["effect"]["state"] == "reserved"
-    response = await client.get(
-        f"/v1/sessions/{session.id}/messages/reserved-message-0001/receipt"
-    )
+    response = await client.get(f"/v1/sessions/{session.id}/messages/reserved-message-0001/receipt")
     assert response.status_code == 200
     assert response.json()["status"] == "reserved"
     assert response.json()["receipt"]["effect_id"] == reservation["effect"]["effect_id"]
@@ -273,9 +267,7 @@ async def test_direct_message_timeout_is_terminal_uncertain_and_never_resent(
 
     assert first.status_code == 502
     assert first.json()["status"] == "delivery_uncertain"
-    assert first.json()["receipt"]["result"]["reason"] == (
-        "adapter_timeout_after_dispatch_started"
-    )
+    assert first.json()["receipt"]["result"]["reason"] == ("adapter_timeout_after_dispatch_started")
     assert replay.status_code == 502
     assert replay.json()["replayed"] is True
     assert calls == 1

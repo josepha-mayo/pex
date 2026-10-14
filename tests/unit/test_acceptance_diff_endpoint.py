@@ -102,9 +102,7 @@ async def test_diff_shows_sealed_text_against_current_bytes(client) -> None:
     assert body["flagged"] == {"text": None}
 
 
-def _intervention_with_flagged(
-    goal: Goal, session: HarnessSession, flagged_text: str
-):
+def _intervention_with_flagged(goal: Goal, session: HarnessSession, flagged_text: str):
     from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
     from pex_protocol.enums import Authority, PolicyVerdict
     from pex_protocol.intervention import Intervention
@@ -201,14 +199,10 @@ async def test_diff_rejects_paths_outside_the_surface(client) -> None:
     http, store, tmp_path = client
     goal, _session = await _bind(store, tmp_path)
     assert (
-        await http.get(
-            f"/v1/goals/{goal.id}/acceptance-diff", params={"path": "../secret.txt"}
-        )
+        await http.get(f"/v1/goals/{goal.id}/acceptance-diff", params={"path": "../secret.txt"})
     ).status_code == 422
     assert (
-        await http.get(
-            f"/v1/goals/{goal.id}/acceptance-diff", params={"path": "src/app.py"}
-        )
+        await http.get(f"/v1/goals/{goal.id}/acceptance-diff", params={"path": "src/app.py"})
     ).status_code == 422
     assert (
         await http.get(
@@ -222,7 +216,5 @@ async def test_diff_without_baseline_is_a_404(client) -> None:
     http, store, tmp_path = client
     goal, _session = await _bind(store, tmp_path)
     assert (
-        await http.get(
-            f"/v1/goals/{goal.id}/acceptance-diff", params={"path": "test_a.py"}
-        )
+        await http.get(f"/v1/goals/{goal.id}/acceptance-diff", params={"path": "test_a.py"})
     ).status_code == 404

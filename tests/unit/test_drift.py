@@ -51,8 +51,13 @@ def test_overlap_candidate_requires_prior_sibling_action_provenance(case):
     current = _event(session_id="codex:two", ts=now, file_paths=["src/parser.py"])
     prior = _event(
         session_id="wrong:session" if case == "foreign" else "cursor:one",
-        ts=(now + timedelta(seconds=1) if case == "future"
-            else now.replace(tzinfo=None) if case == "naive" else now),
+        ts=(
+            now + timedelta(seconds=1)
+            if case == "future"
+            else now.replace(tzinfo=None)
+            if case == "naive"
+            else now
+        ),
         event_type=EventType.AGENT_RESPONSE if case == "narration" else EventType.FILE_EDIT,
         file_paths=["src/parser.py"],
     )

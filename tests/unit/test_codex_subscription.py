@@ -97,9 +97,7 @@ class FakeSharedTransport:
     def connection_token(self) -> tuple[str, int]:
         return self.endpoint_identity, self.connection_generation
 
-    async def request(
-        self, method: str, params: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    async def request(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(params or {})
         self.calls.append((method, payload))
         if method == "thread/read":
@@ -192,9 +190,7 @@ async def test_inspection_reads_identity_without_resuming_or_inventing_events(
 
     selected = await _inspect(coordinator, tmp_path)
 
-    assert transport.calls == [
-        ("thread/read", {"threadId": "thread-1", "includeTurns": True})
-    ]
+    assert transport.calls == [("thread/read", {"threadId": "thread-1", "includeTurns": True})]
     assert selected.root_session_id == "root-session-1"
     assert selected.project_id == "pex-project-1"
     assert selected.vendor_project_id == "vendor-project-1"
@@ -412,12 +408,8 @@ async def test_foreign_or_missing_live_identity_invalidates_subscription(tmp_pat
 @pytest.mark.asyncio
 async def test_live_order_and_duplicate_watermarks_are_exact(tmp_path: Path) -> None:
     coordinator, transport = await _subscribed(tmp_path)
-    started = _notification(
-        "turn/started", {"threadId": "thread-1", "turn": {"id": "turn-2"}}
-    )
-    completed = _notification(
-        "turn/completed", {"threadId": "thread-1", "turn": {"id": "turn-2"}}
-    )
+    started = _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "turn-2"}})
+    completed = _notification("turn/completed", {"threadId": "thread-1", "turn": {"id": "turn-2"}})
     transport.notifications.extend([started, completed, deepcopy(completed)])
 
     batch = await coordinator.drain_live()
@@ -439,9 +431,7 @@ async def test_missing_root_identity_and_history_pagination_fail_closed(tmp_path
         thread_update={"sessionId": None},
         response_update={"sessionId": None},
     )
-    transport = FakeSharedTransport(
-        [missing_root], _thread_response(tmp_path, include_turns=False)
-    )
+    transport = FakeSharedTransport([missing_root], _thread_response(tmp_path, include_turns=False))
     with pytest.raises(CodexSubscriptionError, match="root session"):
         await _inspect(CodexExistingThreadSubscription(transport), tmp_path)
 
@@ -510,9 +500,7 @@ async def test_notification_retention_overflow_invalidates_without_exposing_reco
     tmp_path: Path,
 ) -> None:
     coordinator, transport = await _subscribed(tmp_path)
-    transport.notifications.extend(
-        _notification("account/updated", {}) for _ in range(1_025)
-    )
+    transport.notifications.extend(_notification("account/updated", {}) for _ in range(1_025))
 
     with pytest.raises(CodexSubscriptionError, match="safety bound"):
         await coordinator.drain_live()
@@ -589,12 +577,8 @@ async def test_forged_selection_cannot_authorize_resume(
     tmp_path: Path,
     tamper: str,
 ) -> None:
-    response = _thread_response(
-        tmp_path, turns=[{"id": "turn-1", "items": [{"id": "item-1"}]}]
-    )
-    transport = FakeSharedTransport(
-        [response], _thread_response(tmp_path, include_turns=False)
-    )
+    response = _thread_response(tmp_path, turns=[{"id": "turn-1", "items": [{"id": "item-1"}]}])
+    transport = FakeSharedTransport([response], _thread_response(tmp_path, include_turns=False))
     coordinator = CodexExistingThreadSubscription(transport)
     selected = await _inspect(coordinator, tmp_path)
     if tamper == "generation":
@@ -621,9 +605,7 @@ async def test_delimiter_bearing_vendor_ids_have_distinct_derived_record_ids(
             {"id": "a", "items": [{"id": "b"}]},
         ],
     )
-    transport = FakeSharedTransport(
-        [response], _thread_response(tmp_path, include_turns=False)
-    )
+    transport = FakeSharedTransport([response], _thread_response(tmp_path, include_turns=False))
 
     selected = await _inspect(CodexExistingThreadSubscription(transport), tmp_path)
 
@@ -637,9 +619,7 @@ async def test_conflicting_direct_input_capability_fails_selection(tmp_path: Pat
         tmp_path,
         response_update={"canAcceptDirectInput": False},
     )
-    transport = FakeSharedTransport(
-        [conflicting], _thread_response(tmp_path, include_turns=False)
-    )
+    transport = FakeSharedTransport([conflicting], _thread_response(tmp_path, include_turns=False))
 
     with pytest.raises(CodexSubscriptionError, match="capability conflicted"):
         await _inspect(CodexExistingThreadSubscription(transport), tmp_path)
@@ -656,9 +636,7 @@ async def test_nullable_vendor_project_is_bound_separately_from_pex_project(
         thread_update={"projectId": None},
         response_update={"projectId": None},
     )
-    transport = FakeSharedTransport(
-        [response], _thread_response(tmp_path, include_turns=False)
-    )
+    transport = FakeSharedTransport([response], _thread_response(tmp_path, include_turns=False))
 
     selected = await _inspect(CodexExistingThreadSubscription(transport), tmp_path)
 
@@ -681,9 +659,7 @@ async def test_null_vendor_project_remains_bound_across_resume_and_receipt(
         thread_update={"projectId": None},
         response_update={"projectId": None},
     )
-    transport = FakeSharedTransport(
-        [null_project, null_project, null_project], null_resume
-    )
+    transport = FakeSharedTransport([null_project, null_project, null_project], null_resume)
     coordinator = CodexExistingThreadSubscription(transport)
     selected = await _inspect(coordinator, tmp_path)
 
@@ -698,9 +674,7 @@ async def test_missing_vendor_project_field_fails_closed(tmp_path: Path) -> None
     response = _thread_response(tmp_path)
     response["thread"].pop("projectId")
     response.pop("projectId")
-    transport = FakeSharedTransport(
-        [response], _thread_response(tmp_path, include_turns=False)
-    )
+    transport = FakeSharedTransport([response], _thread_response(tmp_path, include_turns=False))
 
     with pytest.raises(CodexSubscriptionError, match="vendor project field"):
         await _inspect(CodexExistingThreadSubscription(transport), tmp_path)
@@ -709,9 +683,7 @@ async def test_missing_vendor_project_field_fails_closed(tmp_path: Path) -> None
 @pytest.mark.asyncio
 async def test_expected_vendor_project_mismatch_fails_selection(tmp_path: Path) -> None:
     response = _thread_response(tmp_path)
-    transport = FakeSharedTransport(
-        [response], _thread_response(tmp_path, include_turns=False)
-    )
+    transport = FakeSharedTransport([response], _thread_response(tmp_path, include_turns=False))
 
     with pytest.raises(CodexSubscriptionError, match="vendor project"):
         await CodexExistingThreadSubscription(transport).inspect_thread(
@@ -774,9 +746,7 @@ async def test_nullable_model_and_originator_remain_honest_selection_fields(
     for field in ("model", "originator"):
         response["thread"].pop(field)
         response.pop(field)
-    transport = FakeSharedTransport(
-        [response], _thread_response(tmp_path, include_turns=False)
-    )
+    transport = FakeSharedTransport([response], _thread_response(tmp_path, include_turns=False))
 
     selected = await _inspect(CodexExistingThreadSubscription(transport), tmp_path)
 
@@ -786,9 +756,7 @@ async def test_nullable_model_and_originator_remain_honest_selection_fields(
 
 @pytest.mark.asyncio
 async def test_unknown_runtime_status_never_becomes_active(tmp_path: Path) -> None:
-    unknown = _thread_response(
-        tmp_path, thread_update={"status": {"type": "futureStatus"}}
-    )
+    unknown = _thread_response(tmp_path, thread_update={"status": {"type": "futureStatus"}})
     transport = FakeSharedTransport(
         [unknown, unknown, unknown], _thread_response(tmp_path, include_turns=False)
     )
@@ -987,14 +955,17 @@ async def test_existing_history_item_content_may_change_during_resume(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("method", ["thread/closed", "thread/archived", "thread/deleted"])
 async def test_selected_thread_lifecycle_ends_only_observer_connection(
-    tmp_path: Path, method: str,
+    tmp_path: Path,
+    method: str,
 ) -> None:
     coordinator, transport = await _subscribed(tmp_path)
     calls_before = deepcopy(transport.calls)
-    transport.notifications.extend([
-        _notification(method, {"threadId": "thread-1"}),
-        _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "later"}}),
-    ])
+    transport.notifications.extend(
+        [
+            _notification(method, {"threadId": "thread-1"}),
+            _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "later"}}),
+        ]
+    )
 
     with pytest.raises(CodexSubscriptionError, match="became unavailable"):
         await coordinator.drain_live()
@@ -1012,7 +983,8 @@ async def test_selected_thread_lifecycle_ends_only_observer_connection(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("method", ["thread/closed", "thread/archived", "thread/deleted"])
 async def test_thread_closure_during_reconciliation_never_publishes_subscription(
-    tmp_path: Path, method: str,
+    tmp_path: Path,
+    method: str,
 ) -> None:
     response = _thread_response(tmp_path)
 
@@ -1033,7 +1005,10 @@ async def test_thread_closure_during_reconciliation_never_publishes_subscription
     assert coordinator.state is None
     assert transport.closed
     assert [method for method, _ in transport.calls] == [
-        "thread/read", "thread/read", "thread/resume", "thread/read",
+        "thread/read",
+        "thread/read",
+        "thread/resume",
+        "thread/read",
     ]
 
 
@@ -1042,18 +1017,30 @@ async def test_turn_error_and_warning_do_not_imply_thread_or_connection_closure(
     tmp_path: Path,
 ) -> None:
     coordinator, transport = await _subscribed(tmp_path)
-    transport.notifications.extend([
-        _notification("warning", {"threadId": "thread-1", "message": "recoverable"}),
-        _notification("error", {
-            "threadId": "thread-1", "turnId": "turn-1",
-            "error": {"message": "turn failed"},
-        }),
-        _notification("turn/completed", {
-            "threadId": "thread-1", "turn": {
-                "id": "turn-1", "status": "failed", "error": {"message": "turn failed"},
-            },
-        }),
-    ])
+    transport.notifications.extend(
+        [
+            _notification("warning", {"threadId": "thread-1", "message": "recoverable"}),
+            _notification(
+                "error",
+                {
+                    "threadId": "thread-1",
+                    "turnId": "turn-1",
+                    "error": {"message": "turn failed"},
+                },
+            ),
+            _notification(
+                "turn/completed",
+                {
+                    "threadId": "thread-1",
+                    "turn": {
+                        "id": "turn-1",
+                        "status": "failed",
+                        "error": {"message": "turn failed"},
+                    },
+                },
+            ),
+        ]
+    )
 
     batch = await coordinator.drain_live()
 
@@ -1072,47 +1059,95 @@ async def test_turn_error_and_warning_do_not_imply_thread_or_connection_closure(
         (_notification("thread/closed", {"threadId": "thread-1"}), "vendor_thread_closed"),
         (_notification("thread/archived", {"threadId": "thread-1"}), "vendor_thread_archived"),
         (_notification("thread/deleted", {"threadId": "thread-1"}), "vendor_thread_deleted"),
-        (_notification("turn/completed", {"threadId": "thread-1"}),
-         "conflicting_notification_identity"),
-        (_notification("turn/started", {"threadId": "foreign", "turn": {"id": "foreign"}}),
-         "foreign_thread_notification"),
-        (_notification("thread/status/changed", {
-            "threadId": "thread-1", "status": {"type": "active", "activeFlags": "bad"},
-        }), "malformed_runtime_flags"),
-        (_notification("thread/status/changed", {
-            "threadId": "thread-1", "status": "idle",
-            "thread": {"id": "thread-1", "status": "active"},
-        }), "conflicting_runtime_status"),
-        (_notification("thread/status/changed", {
-            "threadId": "thread-1", "status": "active",
-        }), "malformed_runtime_status"),
-        (_notification("thread/status/changed", {
-            "threadId": "thread-1",
-        }), "malformed_runtime_status"),
+        (
+            _notification("turn/completed", {"threadId": "thread-1"}),
+            "conflicting_notification_identity",
+        ),
+        (
+            _notification("turn/started", {"threadId": "foreign", "turn": {"id": "foreign"}}),
+            "foreign_thread_notification",
+        ),
+        (
+            _notification(
+                "thread/status/changed",
+                {
+                    "threadId": "thread-1",
+                    "status": {"type": "active", "activeFlags": "bad"},
+                },
+            ),
+            "malformed_runtime_flags",
+        ),
+        (
+            _notification(
+                "thread/status/changed",
+                {
+                    "threadId": "thread-1",
+                    "status": "idle",
+                    "thread": {"id": "thread-1", "status": "active"},
+                },
+            ),
+            "conflicting_runtime_status",
+        ),
+        (
+            _notification(
+                "thread/status/changed",
+                {
+                    "threadId": "thread-1",
+                    "status": "active",
+                },
+            ),
+            "malformed_runtime_status",
+        ),
+        (
+            _notification(
+                "thread/status/changed",
+                {
+                    "threadId": "thread-1",
+                },
+            ),
+            "malformed_runtime_status",
+        ),
         ("not an object", "malformed_notification"),
         (_notification("account/updated", {"value": float("nan")}), "malformed_notification"),
-        (_notification("turn/started", {
-            "threadId": "thread-1", "turn": {"id": "old-generation"},
-        }, generation=2), "foreign_notification_generation"),
+        (
+            _notification(
+                "turn/started",
+                {
+                    "threadId": "thread-1",
+                    "turn": {"id": "old-generation"},
+                },
+                generation=2,
+            ),
+            "foreign_notification_generation",
+        ),
     ],
 )
 async def test_interrupted_live_batch_retains_only_valid_prefix(
-    tmp_path: Path, failure: Any, reason: str,
+    tmp_path: Path,
+    failure: Any,
+    reason: str,
 ) -> None:
     coordinator, transport = await _subscribed(tmp_path)
     original_token = transport.connection_token()
     calls_before = deepcopy(transport.calls)
     prefix = [
         _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "live"}}),
-        _notification("item/completed", {
-            "threadId": "thread-1", "turnId": "live",
-            "item": {"id": "message", "type": "agentMessage", "text": "real prefix"},
-        }),
+        _notification(
+            "item/completed",
+            {
+                "threadId": "thread-1",
+                "turnId": "live",
+                "item": {"id": "message", "type": "agentMessage", "text": "real prefix"},
+            },
+        ),
     ]
-    transport.notifications.extend([
-        *prefix, failure,
-        _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "suffix"}}),
-    ])
+    transport.notifications.extend(
+        [
+            *prefix,
+            failure,
+            _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "suffix"}}),
+        ]
+    )
 
     with pytest.raises(CodexObservationInterrupted) as caught:
         await coordinator.drain_live()
@@ -1140,18 +1175,29 @@ async def test_interrupted_prefix_preserves_previous_watermark_and_coalesces_dup
     tmp_path: Path,
 ) -> None:
     coordinator, transport = await _subscribed(tmp_path)
-    started = _notification("turn/started", {
-        "threadId": "thread-1", "turn": {"id": "live"},
-    })
+    started = _notification(
+        "turn/started",
+        {
+            "threadId": "thread-1",
+            "turn": {"id": "live"},
+        },
+    )
     transport.notifications.append(started)
     prior = await coordinator.drain_live()
-    transport.notifications.extend([
-        deepcopy(started),
-        _notification("item/completed", {
-            "threadId": "thread-1", "turnId": "live", "item": {"id": "message"},
-        }),
-        _notification("thread/closed", {"threadId": "thread-1"}),
-    ])
+    transport.notifications.extend(
+        [
+            deepcopy(started),
+            _notification(
+                "item/completed",
+                {
+                    "threadId": "thread-1",
+                    "turnId": "live",
+                    "item": {"id": "message"},
+                },
+            ),
+            _notification("thread/closed", {"threadId": "thread-1"}),
+        ]
+    )
 
     with pytest.raises(CodexObservationInterrupted) as caught:
         await coordinator.drain_live()
@@ -1168,20 +1214,29 @@ async def test_interrupted_prefix_preserves_previous_watermark_and_coalesces_dup
 @pytest.mark.asyncio
 @pytest.mark.parametrize("bound", ["count", "bytes"])
 async def test_raw_retention_bound_preserves_only_bounded_valid_prefix(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, bound: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    bound: str,
 ) -> None:
     coordinator, transport = await _subscribed(tmp_path)
-    prefix = _notification("turn/started", {
-        "threadId": "thread-1", "turn": {"id": "prefix"},
-    })
+    prefix = _notification(
+        "turn/started",
+        {
+            "threadId": "thread-1",
+            "turn": {"id": "prefix"},
+        },
+    )
     if bound == "count":
         monkeypatch.setattr(subscription_module, "MAX_NOTIFICATIONS_PER_DRAIN", 1)
     else:
         monkeypatch.setattr(subscription_module, "MAX_NOTIFICATION_BATCH_JSON_BYTES", 250)
-    transport.notifications.extend([
-        prefix, _notification("account/updated", {"value": "x" * 300}),
-        _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "suffix"}}),
-    ])
+    transport.notifications.extend(
+        [
+            prefix,
+            _notification("account/updated", {"value": "x" * 300}),
+            _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "suffix"}}),
+        ]
+    )
 
     with pytest.raises(CodexObservationInterrupted) as caught:
         await coordinator.drain_live()
@@ -1193,12 +1248,19 @@ async def test_raw_retention_bound_preserves_only_bounded_valid_prefix(
 
 @pytest.mark.asyncio
 async def test_connection_loss_before_raw_identity_check_does_not_expose_unverified_prefix(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     coordinator, transport = await _subscribed(tmp_path)
-    transport.notifications.append(_notification("turn/started", {
-        "threadId": "thread-1", "turn": {"id": "unverified"},
-    }))
+    transport.notifications.append(
+        _notification(
+            "turn/started",
+            {
+                "threadId": "thread-1",
+                "turn": {"id": "unverified"},
+            },
+        )
+    )
     original = transport.drain_notifications
 
     def lost_during_drain(*, limit: int = 256):
@@ -1221,13 +1283,16 @@ async def test_initial_reconciliation_prefix_never_establishes_partial_subscript
     response = _thread_response(tmp_path)
 
     def interrupted(transport: FakeSharedTransport) -> None:
-        transport.notifications.extend([
-            _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "prefix"}}),
-            _notification("thread/closed", {"threadId": "thread-1"}),
-        ])
+        transport.notifications.extend(
+            [
+                _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "prefix"}}),
+                _notification("thread/closed", {"threadId": "thread-1"}),
+            ]
+        )
 
     transport = FakeSharedTransport(
-        [response, response, response], _thread_response(tmp_path, include_turns=False),
+        [response, response, response],
+        _thread_response(tmp_path, include_turns=False),
         on_resume=interrupted,
     )
     coordinator = CodexExistingThreadSubscription(transport)
@@ -1244,7 +1309,8 @@ async def test_initial_reconciliation_prefix_never_establishes_partial_subscript
 
 @pytest.mark.asyncio
 async def test_interrupted_prefix_is_frozen_before_cancellable_connection_cleanup(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     coordinator, transport = await _subscribed(tmp_path)
     token = transport.connection_token()
@@ -1260,10 +1326,12 @@ async def test_interrupted_prefix_is_frozen_before_cancellable_connection_cleanu
         closed.set()
 
     monkeypatch.setattr(transport, "close", delayed_close)
-    transport.notifications.extend([
-        _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "prefix"}}),
-        _notification("thread/closed", {"threadId": "thread-1"}),
-    ])
+    transport.notifications.extend(
+        [
+            _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "prefix"}}),
+            _notification("thread/closed", {"threadId": "thread-1"}),
+        ]
+    )
     draining = asyncio.create_task(coordinator.drain_live())
     try:
         await asyncio.wait_for(entered.wait(), timeout=2)

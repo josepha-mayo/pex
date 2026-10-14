@@ -54,15 +54,22 @@ async def echo_pipeline(tmp_path, monkeypatch):
         effect = await attempt(fixture, prepared)
         await bound.pipeline._seal_main_event_effect(
             processing=await bound.store.get_event_processing(prepared[0].event_id),
-            effect=effect, reserved=prepared[1], session=session,
-            outcome="send_delivery_uncertain", effect_state="delivery_uncertain",
-            code="fixture_prior_attempt_uncertain", publish=False,
+            effect=effect,
+            reserved=prepared[1],
+            session=session,
+            outcome="send_delivery_uncertain",
+            effect_state="delivery_uncertain",
+            code="fixture_prior_attempt_uncertain",
+            publish=False,
         )
         # The Store result is real; no vendor delivery is being asserted.
         assert (await bound.store.get_event_processing(prepared[0].event_id))["state"] == "complete"
         yield SimpleNamespace(
-            bound=bound, correction=prepared[2]["codex_correction"],
-            release=release, loaded=loaded, bootstrap=bootstrap,
+            bound=bound,
+            correction=prepared[2]["codex_correction"],
+            release=release,
+            loaded=loaded,
+            bootstrap=bootstrap,
         )
     finally:
         release.set()
@@ -74,17 +81,24 @@ def item_for(case, *, item_id="correction-item", client_id=None, text=None):
     if text is not None:
         content[0]["text"] = text
     return {
-        "type": "userMessage", "id": item_id,
+        "type": "userMessage",
+        "id": item_id,
         "clientId": case.correction["client_message_id"] if client_id is None else client_id,
         "content": content,
     }
 
 
 def enqueue(case, item):
-    case.bound.transport.notifications.append(_notification("item/completed", {
-        "threadId": case.bound.adapter.session.vendor_session_id,
-        "turnId": "turn-1", "item": item,
-    }))
+    case.bound.transport.notifications.append(
+        _notification(
+            "item/completed",
+            {
+                "threadId": case.bound.adapter.session.vendor_session_id,
+                "turnId": "turn-1",
+                "item": item,
+            },
+        )
+    )
 
 
 async def settled(case, item_id):
@@ -139,13 +153,15 @@ async def test_receiver_loads_durable_history_then_records_exact_echo_without_su
 
 @pytest.mark.parametrize("kind", ["external_prefix", "conflicting_known"])
 async def test_external_input_not_suppressed_and_conflicting_known_cannot_become_override(
-    echo_pipeline, kind,
+    echo_pipeline,
+    kind,
 ):
     case = echo_pipeline
     session_id = case.bound.adapter.session.id
     before_goal = await case.bound.store.get_goal(case.bound.adapter.session.goal_id)
     item = item_for(
-        case, item_id="different-input",
+        case,
+        item_id="different-input",
         client_id="pex-correction-not-owned" if kind == "external_prefix" else None,
         text="Please inspect the public artifact against the existing task criteria.",
     )
@@ -231,10 +247,16 @@ async def test_pending_start_waits_for_complete_input_before_supervision(echo_pi
     )
     partial = copy.deepcopy(item)
     partial["content"] = []
-    case.bound.transport.notifications.append(_notification("item/started", {
-        "threadId": case.bound.adapter.session.vendor_session_id,
-        "turnId": "turn-1", "item": partial,
-    }))
+    case.bound.transport.notifications.append(
+        _notification(
+            "item/started",
+            {
+                "threadId": case.bound.adapter.session.vendor_session_id,
+                "turnId": "turn-1",
+                "item": partial,
+            },
+        )
+    )
     case.release.set()
 
     async def started_settled():

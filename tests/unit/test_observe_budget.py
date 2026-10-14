@@ -157,7 +157,12 @@ def test_bounded_scan_preserves_sorted_depth_first_manifest_order(tmp_path):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"tiny")
     assert observe.snapshot(tmp_path)["files"] == [
-        "a.txt", "z.txt", "a/a.txt", "a/z.txt", "a/sub/x.txt", "z/deep.txt"
+        "a.txt",
+        "z.txt",
+        "a/a.txt",
+        "a/z.txt",
+        "a/sub/x.txt",
+        "z/deep.txt",
     ]
 
 

@@ -17,17 +17,25 @@ def test_child_binds_isolated_receipt_to_command_and_snapshot(monkeypatch, mutat
         monkeypatch.setenv("PEX_MODEL_RELAY_SOCKET", "/model-relay.sock")
     result = {"ok": True, "exit_code": 0, "output": "1 passed"}
     observation = {
-        "files": ["test_public.py"], "public_workspace_sha256": "a" * 64,
-        "public_test_integrity": {"intact": True, "expected_sha256": "b" * 64,
-                                  "observed_sha256": "b" * 64},
+        "files": ["test_public.py"],
+        "public_workspace_sha256": "a" * 64,
+        "public_test_integrity": {
+            "intact": True,
+            "expected_sha256": "b" * 64,
+            "observed_sha256": "b" * 64,
+        },
         "pytest": result,
         "controller_verification": {
-            "owner": "benchmark_controller", "kind": "pytest", "executor": EXECUTOR,
-            "invocation_scope": "targeted", "relative_targets": ["test_public.py"],
+            "owner": "benchmark_controller",
+            "kind": "pytest",
+            "executor": EXECUTOR,
+            "invocation_scope": "targeted",
+            "relative_targets": ["test_public.py"],
             "command": isolated_pytest_display(sys.executable, ["test_public.py"]),
             "result": deepcopy(result),
             "provenance": {
-                "public_workspace_sha256": "a" * 64, "public_test_sha256": "b" * 64,
+                "public_workspace_sha256": "a" * 64,
+                "public_test_sha256": "b" * 64,
                 "workspace_stable_during_verification": True,
                 "executed_argv": isolated_pytest_argv(sys.executable, ["test_public.py"]),
             },

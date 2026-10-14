@@ -181,8 +181,10 @@ class _CodexRawCapture:
         if not self.raw_capture_complete:
             return
         size = len(strict_json_dumps(message, separators=(",", ":")).encode("utf-8"))
-        if (len(self.raw_capture) >= MAX_CODEX_RECORDS
-                or self.raw_capture_bytes + size > MAX_CODEX_CAPTURE_BYTES):
+        if (
+            len(self.raw_capture) >= MAX_CODEX_RECORDS
+            or self.raw_capture_bytes + size > MAX_CODEX_CAPTURE_BYTES
+        ):
             self.raw_capture_complete = False
             return
         self.raw_capture.append(dict(message))
@@ -198,8 +200,11 @@ class CodexAppServerTransport(_CodexRawCapture):
         self._init_raw_capture()
         self.approvals: list[dict[str, Any]] = []
         self.threads: list[dict[str, Any]] = [
-            {"id": "thr_demo", "preview": "synthetic thread",
-             "cwd": "C:/fake" if os.name == "nt" else "/fake"}
+            {
+                "id": "thr_demo",
+                "preview": "synthetic thread",
+                "cwd": "C:/fake" if os.name == "nt" else "/fake",
+            }
         ]
         self.initialized = False
         self.connection_generation = 0
@@ -330,16 +335,12 @@ class CodexStdioTransport(_CodexRawCapture):
         self._initialize_lock = asyncio.Lock()
         self._protocol_observer = protocol_observer
 
-    def _observe_protocol(
-        self, direction: Literal["stdin", "stdout"], payload: bytes
-    ) -> None:
+    def _observe_protocol(self, direction: Literal["stdin", "stdout"], payload: bytes) -> None:
         """Expose exact bounded protocol lines to an optional controller journal."""
         if self._protocol_observer is not None:
             self._protocol_observer(direction, bytes(payload))
 
-    def set_protocol_observer(
-        self, observer: CodexProtocolObserver | None
-    ) -> None:
+    def set_protocol_observer(self, observer: CodexProtocolObserver | None) -> None:
         """Attach capture before process start, or detach it at a run boundary."""
         if observer is not None and self._proc is not None:
             raise RuntimeError("Codex protocol observer must attach before process start")
@@ -1204,8 +1205,11 @@ class CodexAdapter(HarnessAdapter):
         if (
             session.status == status_before_dispatch
             and session.last_activity == activity_before_dispatch
-            and status_before_dispatch in {
-                SessionStatus.IDLE, SessionStatus.STOPPED, SessionStatus.ERROR,
+            and status_before_dispatch
+            in {
+                SessionStatus.IDLE,
+                SessionStatus.STOPPED,
+                SessionStatus.ERROR,
             }
         ):
             completion = self._completed_turns.get((session.vendor_session_id, turn_id))
@@ -1515,9 +1519,7 @@ class CodexAdapter(HarnessAdapter):
             self.sessions.pop(session_id, None)
             self._loaded_thread_bindings.pop(session.vendor_session_id, None)
 
-    async def discover_sessions(
-        self, *, observe_desktop: bool = True
-    ) -> list[HarnessSession]:
+    async def discover_sessions(self, *, observe_desktop: bool = True) -> list[HarnessSession]:
         if not await self._ready():
             self._drop_unconfirmed_app_server_sessions()
             if observe_desktop:
@@ -1528,9 +1530,7 @@ class CodexAdapter(HarnessAdapter):
         # large/moved rollout files here can exceed the transport deadline and
         # stall observation on otherwise healthy App Server connections.
         # Control still performs its separate live thread/binding validation.
-        listed = await self.transport.request(
-            "thread/list", {"limit": 50, "useStateDbOnly": True}
-        )
+        listed = await self.transport.request("thread/list", {"limit": 50, "useStateDbOnly": True})
         rows = _thread_rows(listed)
         if len(rows) > MAX_CODEX_SESSIONS:
             raise RuntimeError("Codex thread listing exceeded the safety bound")
@@ -1997,19 +1997,13 @@ class CodexAdapter(HarnessAdapter):
                 known_session_work_pending = any(
                     isinstance(message, dict)
                     and self._session_for(
-                        message.get("params")
-                        if isinstance(message.get("params"), dict)
-                        else {}
+                        message.get("params") if isinstance(message.get("params"), dict) else {}
                     )
                     is not None
                     for message in buffered_notifications[:MAX_CODEX_RECORDS]
                 )
-                if (
-                    not known_session_work_pending
-                    and (
-                        last_discover is None
-                        or now - last_discover >= CODEX_DISCOVERY_INTERVAL_SECONDS
-                    )
+                if not known_session_work_pending and (
+                    last_discover is None or now - last_discover >= CODEX_DISCOVERY_INTERVAL_SECONDS
                 ):
                     # The central desktop refresh owns one shared process snapshot.
                     # This event pump needs App Server threads only; asking it to

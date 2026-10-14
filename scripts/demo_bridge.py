@@ -64,5 +64,4 @@ state.settings = Settings.for_test(
 app = create_app()
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=_PORT, log_level="info",
-                ws_per_message_deflate=False)
+    uvicorn.run(app, host="127.0.0.1", port=_PORT, log_level="info", ws_per_message_deflate=False)

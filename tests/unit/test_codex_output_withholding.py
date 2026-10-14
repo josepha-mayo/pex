@@ -28,11 +28,16 @@ def command_message():
     return {
         "method": "item/completed",
         "params": {
-            "threadId": "thr_exact", "turnId": "turn_exact",
+            "threadId": "thr_exact",
+            "turnId": "turn_exact",
             "item": {
-                "id": "cmd_exact", "type": "commandExecution",
-                "command": "pytest -q", "cwd": "C:/proj", "status": "completed",
-                "exitCode": 0, "aggregatedOutput": "x" * 58_000 + "\n4 passed\n",
+                "id": "cmd_exact",
+                "type": "commandExecution",
+                "command": "pytest -q",
+                "cwd": "C:/proj",
+                "status": "completed",
+                "exitCode": 0,
+                "aggregatedOutput": "x" * 58_000 + "\n4 passed\n",
             },
         },
     }
@@ -40,7 +45,9 @@ def command_message():
 
 def prepare(message):
     return bounded_shared_command_params(
-        message, thread_id="thr_exact", received_bytes_journaled=True,
+        message,
+        thread_id="thr_exact",
+        received_bytes_journaled=True,
     )
 
 
@@ -57,9 +64,12 @@ def test_withholding_is_deterministic_and_never_infers_pytest_success():
     assert item[OUTPUT_WITHHELD_KEY]["sha256"] == hashlib.sha256(output.encode()).hexdigest()
     assert item["aggregatedOutput"] == OUTPUT_WITHHELD_NOTICE
     session = HarnessSession(
-        id="codex:thr_exact", harness_type=HarnessType.CODEX,
-        vendor_session_id="thr_exact", status=SessionStatus.WORKING,
-        cwd="C:/proj", project_id="C:/proj",
+        id="codex:thr_exact",
+        harness_type=HarnessType.CODEX,
+        vendor_session_id="thr_exact",
+        status=SessionStatus.WORKING,
+        cwd="C:/proj",
+        project_id="C:/proj",
     )
     adapter = CodexAdapter()
     adapter.sessions[session.id] = session
@@ -69,23 +79,35 @@ def test_withholding_is_deterministic_and_never_infers_pytest_success():
     assert event.process_state == {"pytest_unavailable_reason": "output_exceeds_bound"}
 
 
-@pytest.mark.parametrize(("where", "key", "value"), [
-    ("message", "id", None), ("message", "jsonrpc", "1.0"),
-    ("message", "method", "item/commandExecution/requestApproval"),
-    ("message", "method", {}), ("params", "threadId", "foreign"),
-    ("params", "turnId", " turn_exact"), ("params", "itemId", "other"),
-    ("params", "turn", {"id": "turn_exact"}),
-    ("item", "itemId", "other"), ("item", "threadId", "foreign"),
-    ("item", "turnId", "other"), ("item", "id", "cmd_exact "),
-    ("item", "status", []), ("item", "type", "agentMessage"),
-    ("item", "command", "x" * 32769), ("item", "pex_output_fake", True),
-    ("item", "aggregatedOutput", "x" * 32769 + "\x00"),
-    ("item", "aggregatedOutput", "x" * 32769 + "\ud800"),
-], ids=[f"invalid-{index}" for index in range(18)])
+@pytest.mark.parametrize(
+    ("where", "key", "value"),
+    [
+        ("message", "id", None),
+        ("message", "jsonrpc", "1.0"),
+        ("message", "method", "item/commandExecution/requestApproval"),
+        ("message", "method", {}),
+        ("params", "threadId", "foreign"),
+        ("params", "turnId", " turn_exact"),
+        ("params", "itemId", "other"),
+        ("params", "turn", {"id": "turn_exact"}),
+        ("item", "itemId", "other"),
+        ("item", "threadId", "foreign"),
+        ("item", "turnId", "other"),
+        ("item", "id", "cmd_exact "),
+        ("item", "status", []),
+        ("item", "type", "agentMessage"),
+        ("item", "command", "x" * 32769),
+        ("item", "pex_output_fake", True),
+        ("item", "aggregatedOutput", "x" * 32769 + "\x00"),
+        ("item", "aggregatedOutput", "x" * 32769 + "\ud800"),
+    ],
+    ids=[f"invalid-{index}" for index in range(18)],
+)
 def test_oversized_rewrite_rejects_ambiguous_or_unbounded_fields(where, key, value):
     message = command_message()
-    target = {"message": message, "params": message["params"],
-              "item": message["params"]["item"]}[where]
+    target = {"message": message, "params": message["params"], "item": message["params"]["item"]}[
+        where
+    ]
     target[key] = value
     assert prepare(message) is None
 
@@ -117,9 +139,15 @@ async def test_fragmented_output_is_committed_before_notice_and_stop_survives(tm
         assert_exact_committed_reads(transport, channel, generation)
         assert b"x" * 1000 in b"".join(row[2] for row in rows(transport))
         assert transport.notifications[0]["params"] == prepare(message)
-        await channel.emit({"method": "turn/completed", "params": {
-            "threadId": "thr_exact", "turn": {"id": "turn_exact", "status": "completed"},
-        }})
+        await channel.emit(
+            {
+                "method": "turn/completed",
+                "params": {
+                    "threadId": "thr_exact",
+                    "turn": {"id": "turn_exact", "status": "completed"},
+                },
+            }
+        )
         await until(lambda: len(transport.notifications) == 2)
         assert transport.initialized
         assert transport.notifications[1]["method"] == "turn/completed"
@@ -147,21 +175,36 @@ async def test_withheld_duplicate_coalesces_without_losing_stop_watermark(tmp_pa
     message = command_message()
     message["params"]["threadId"] = "thread-1"
     params = bounded_shared_command_params(
-        message, thread_id="thread-1", received_bytes_journaled=True,
+        message,
+        thread_id="thread-1",
+        received_bytes_journaled=True,
     )
     completed = _notification("item/completed", params)
-    transport.notifications.extend([
-        _notification("turn/started", {
-            "threadId": "thread-1", "turn": {"id": "turn_exact"},
-        }),
-        completed, copy.deepcopy(completed),
-        _notification("turn/completed", {
-            "threadId": "thread-1", "turn": {"id": "turn_exact"},
-        }),
-    ])
+    transport.notifications.extend(
+        [
+            _notification(
+                "turn/started",
+                {
+                    "threadId": "thread-1",
+                    "turn": {"id": "turn_exact"},
+                },
+            ),
+            completed,
+            copy.deepcopy(completed),
+            _notification(
+                "turn/completed",
+                {
+                    "threadId": "thread-1",
+                    "turn": {"id": "turn_exact"},
+                },
+            ),
+        ]
+    )
     batch = await coordinator.drain_live()
     assert batch.live_watermark == 3
     assert [record.method for record in batch.records] == [
-        "turn/started", "item/completed", "turn/completed",
+        "turn/started",
+        "item/completed",
+        "turn/completed",
     ]
     assert coordinator.state.active

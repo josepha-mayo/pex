@@ -96,7 +96,9 @@ async def test_invalid_normalized_hook_is_rejected_before_durable_upsert(monkeyp
 @pytest.mark.asyncio
 @pytest.mark.parametrize("recorded_status", ["working", "stopped"])
 async def test_replayed_cursor_hook_does_not_refresh_session_activity(
-    monkeypatch, tmp_path, recorded_status,
+    monkeypatch,
+    tmp_path,
+    recorded_status,
 ):
     from pex_bridge.store import Store
     from pex_protocol.enums import SessionStatus

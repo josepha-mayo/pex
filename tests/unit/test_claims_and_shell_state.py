@@ -32,9 +32,7 @@ def test_http_code_is_not_mistaken_for_process_exit_code():
         {"code": 200, "status_code": 200, "stdout": "1 passed in 0.01s"},
     )
 
-    assert state == {
-        "pytest": {"ok": None, "output": "1 passed in 0.01s", "passed": 1}
-    }
+    assert state == {"pytest": {"ok": None, "output": "1 passed in 0.01s", "passed": 1}}
 
 
 def test_explicit_process_exit_code_still_controls_result():
@@ -88,9 +86,7 @@ def test_generic_passed_status_is_not_a_terminal_process_exit_receipt():
         "pytest -q", {"status": "passed", "stdout": "4 passed in 0.02s"}
     )
 
-    assert state == {
-        "pytest": {"ok": None, "output": "4 passed in 0.02s", "passed": 4}
-    }
+    assert state == {"pytest": {"ok": None, "output": "4 passed in 0.02s", "passed": 4}}
 
 
 def test_conflicting_explicit_exit_fields_are_not_a_terminal_receipt():
@@ -99,9 +95,7 @@ def test_conflicting_explicit_exit_fields_are_not_a_terminal_receipt():
         {"exit_code": 0, "processExitCode": 1, "stdout": "4 passed in 0.02s"},
     )
 
-    assert state == {
-        "pytest": {"ok": None, "output": "4 passed in 0.02s", "passed": 4}
-    }
+    assert state == {"pytest": {"ok": None, "output": "4 passed in 0.02s", "passed": 4}}
 
 
 def test_distinct_pass_like_lines_do_not_choose_a_spoofed_count():

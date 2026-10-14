@@ -42,9 +42,15 @@ MAX_PATH_CHARS = 4_096
 MAX_DISPATCH_TEXT_BYTES = 65_536
 CLEANUP_TIMEOUT_SECONDS = 3.5
 _CONNECTOR_REAPERS: set[asyncio.Task[None]] = set()
-_FOREIGN_LIFECYCLE_STATUS_TYPES = frozenset({
-    "active", "idle", "notLoaded", "systemError", "unknown",
-})
+_FOREIGN_LIFECYCLE_STATUS_TYPES = frozenset(
+    {
+        "active",
+        "idle",
+        "notLoaded",
+        "systemError",
+        "unknown",
+    }
+)
 
 
 class SharedCodexProtocolError(RuntimeError):
@@ -248,6 +254,7 @@ def _windows_owned_by_current_user(path: Path, *, protected_launch: bool = False
             ("AceFlags", ctypes.c_ubyte),
             ("AceSize", wintypes.WORD),
         ]
+
     kernel32.GetCurrentProcess.restype = wintypes.HANDLE
     kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
     kernel32.CloseHandle.restype = wintypes.BOOL
@@ -280,9 +287,7 @@ def _windows_owned_by_current_user(path: Path, *, protected_launch: bool = False
     advapi32.GetNamedSecurityInfoW.restype = wintypes.DWORD
     advapi32.EqualSid.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
     advapi32.EqualSid.restype = wintypes.BOOL
-    advapi32.ConvertStringSidToSidW.argtypes = [
-        wintypes.LPCWSTR, ctypes.POINTER(ctypes.c_void_p)
-    ]
+    advapi32.ConvertStringSidToSidW.argtypes = [wintypes.LPCWSTR, ctypes.POINTER(ctypes.c_void_p)]
     advapi32.ConvertStringSidToSidW.restype = wintypes.BOOL
     advapi32.CreateWellKnownSid.argtypes = [
         ctypes.c_int,
@@ -341,9 +346,7 @@ def _windows_owned_by_current_user(path: Path, *, protected_launch: bool = False
         for sid_type in (win_local_system_sid, win_builtin_administrators_sid):
             sid_size = wintypes.DWORD(68)
             sid_buffer = ctypes.create_string_buffer(sid_size.value)
-            if not advapi32.CreateWellKnownSid(
-                sid_type, None, sid_buffer, ctypes.byref(sid_size)
-            ):
+            if not advapi32.CreateWellKnownSid(sid_type, None, sid_buffer, ctypes.byref(sid_size)):
                 return False
             trusted_buffers.append(sid_buffer)
             trusted_sids.append(ctypes.cast(sid_buffer, ctypes.c_void_p).value)
@@ -357,9 +360,7 @@ def _windows_owned_by_current_user(path: Path, *, protected_launch: bool = False
 
         # The Windows servicing account owns protected OS/package ancestors.
         if protected_launch:
-            installer = parse_sid(
-                "S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464"
-            )
+            installer = parse_sid("S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464")
             if installer is None:
                 return False
             trusted_sids.append(installer.value)
@@ -619,9 +620,7 @@ class CodexSharedAppServerTransport:
         self.connection_generation = 0
         self.init_result: dict[str, Any] | None = None
         self._notifications_ready = asyncio.Event()
-        self.notifications: list[dict[str, Any]] = _NotificationBuffer(
-            self._notifications_ready
-        )
+        self.notifications: list[dict[str, Any]] = _NotificationBuffer(self._notifications_ready)
         self.pending_approvals: dict[str, dict[str, Any]] = {}
         self._channel: RawByteChannel | None = None
         self._websocket: ClientProtocol | None = None
@@ -698,9 +697,7 @@ class CodexSharedAppServerTransport:
             return
         await self._notifications_ready.wait()
 
-    async def _flush(
-        self, websocket: ClientProtocol, channel: RawByteChannel
-    ) -> None:
+    async def _flush(self, websocket: ClientProtocol, channel: RawByteChannel) -> None:
         for chunk in websocket.data_to_send():
             if chunk:
                 await channel.write(chunk)
@@ -832,7 +829,8 @@ class CodexSharedAppServerTransport:
                         if message is not None:
                             self._received_envelope_revision += 1
                             self._route_message(
-                                message, received_bytes_journaled=self._receive_journal is not None,
+                                message,
+                                received_bytes_journaled=self._receive_journal is not None,
                             )
             async with asyncio.timeout(self.request_timeout_s):
                 await self._flush(websocket, channel)
@@ -941,13 +939,15 @@ class CodexSharedAppServerTransport:
             if capture is not None:
                 # Capture here, not when the waiter resumes: another envelope
                 # may be routed later in this same received chunk.
-                capture.append(SharedCodexReadSnapshot(
-                    result_json=strict_json_dumps(result, separators=(",", ":")),
-                    connection_token=self.connection_token(),
-                    received_envelope_revision=self.received_envelope_revision,
-                    received_chunk_revision=self.received_chunk_revision,
-                    observed_at_monotonic=time.monotonic(),
-                ))
+                capture.append(
+                    SharedCodexReadSnapshot(
+                        result_json=strict_json_dumps(result, separators=(",", ":")),
+                        connection_token=self.connection_token(),
+                        received_envelope_revision=self.received_envelope_revision,
+                        received_chunk_revision=self.received_chunk_revision,
+                        observed_at_monotonic=time.monotonic(),
+                    )
+                )
             future.set_result(result)
             return
         raw_method = message.get("method")
@@ -955,7 +955,9 @@ class CodexSharedAppServerTransport:
             raise SharedCodexProtocolError("shared Codex message has no route")
         method = bounded_adapter_id(raw_method, field="shared Codex event method")
         params = bounded_shared_command_params(
-            message, thread_id=self.thread_id, received_bytes_journaled=received_bytes_journaled,
+            message,
+            thread_id=self.thread_id,
+            received_bytes_journaled=received_bytes_journaled,
         )
         if params is None:
             raise SharedCodexProtocolError("shared Codex event has malformed params")
@@ -1043,8 +1045,11 @@ class CodexSharedAppServerTransport:
         self._pending.clear()
 
     async def _request_unchecked(
-        self, method: str, params: dict[str, Any],
-        *, _capture: list[SharedCodexReadSnapshot] | None = None,
+        self,
+        method: str,
+        params: dict[str, Any],
+        *,
+        _capture: list[SharedCodexReadSnapshot] | None = None,
     ) -> dict[str, Any]:
         if len(self._pending) >= MAX_PENDING:
             raise RuntimeError("shared Codex pending request bound reached")
@@ -1085,13 +1090,16 @@ class CodexSharedAppServerTransport:
         """
         token = self.connection_token()
         if (
-            not self.initialized or self._closing or self._channel is None
+            not self.initialized
+            or self._closing
+            or self._channel is None
             or not self.receive_protocol_complete
         ):
             raise SharedCodexTextDispatchRejected("current-thread read is unavailable")
         captures: list[SharedCodexReadSnapshot] = []
         await self._request_unchecked(
-            "thread/read", {"threadId": self.thread_id, "includeTurns": True},
+            "thread/read",
+            {"threadId": self.thread_id, "includeTurns": True},
             _capture=captures,
         )
         async with self._protocol_lock:
@@ -1099,7 +1107,9 @@ class CodexSharedAppServerTransport:
                 raise SharedCodexTextDispatchRejected("current-thread response has no witness")
             snapshot = captures[0]
             if (
-                not self.initialized or self._closing or self._channel is None
+                not self.initialized
+                or self._closing
+                or self._channel is None
                 or self.connection_token() != token
                 or snapshot.connection_token != token
                 or snapshot.received_envelope_revision != self.received_envelope_revision
@@ -1354,9 +1364,7 @@ class CodexSharedAppServerTransport:
             return {"threadId": self.thread_id}
         raise PermissionError("shared Codex observe-only transport rejected a worker mutation")
 
-    async def request(
-        self, method: str, params: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    async def request(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         method = bounded_adapter_id(method, field="shared Codex method")
         if method == "initialize":
             raise PermissionError("shared Codex initialization is transport-owned")

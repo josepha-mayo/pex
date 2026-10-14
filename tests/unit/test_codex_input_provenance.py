@@ -22,39 +22,54 @@ def record(*, client=CLIENT, effect="effect-one", state="dispatching", version=1
     # Only the integration layer can establish that records actually came from Store.
     return {
         "correction": {
-            "schema": CORRECTION_SCHEMA, "session_id": SESSION, "thread_id": THREAD,
-            "client_message_id": client, "effect_id": effect, "content": text(),
+            "schema": CORRECTION_SCHEMA,
+            "session_id": SESSION,
+            "thread_id": THREAD,
+            "client_message_id": client,
+            "effect_id": effect,
+            "content": text(),
             "subscription_receipt": {"connection_generation": 1},
         },
-        "effect_state": state, "effect_version": version,
+        "effect_state": state,
+        "effect_version": version,
     }
 
 
 def index(*records):
     supplied = records or (record(),)
     return CodexInputProvenance.from_store_records(
-        tuple(canonical(item) for item in supplied), session_id=SESSION, thread_id=THREAD,
+        tuple(canonical(item) for item in supplied),
+        session_id=SESSION,
+        thread_id=THREAD,
     )
 
 
 def item(*, client=CLIENT, content=None, item_id="item-one"):
     return {
-        "type": "userMessage", "id": item_id, "clientId": client,
+        "type": "userMessage",
+        "id": item_id,
+        "clientId": client,
         "content": text() if content is None else content,
     }
 
 
 def classify(current, raw, **changes):
     return current.classify_item(
-        session_id=SESSION, thread_id=THREAD, turn_id="turn-one", item=raw, **changes,
+        session_id=SESSION,
+        thread_id=THREAD,
+        turn_id="turn-one",
+        item=raw,
+        **changes,
     )
 
 
 def entry(raw=None, *, turn_id="turn-one"):
     raw = item() if raw is None else raw
     return {
-        "turn_id": turn_id, "item_id": raw["id"],
-        "client_id": raw["clientId"], "content": raw["content"],
+        "turn_id": turn_id,
+        "item_id": raw["id"],
+        "client_id": raw["clientId"],
+        "content": raw["content"],
     }
 
 
@@ -76,10 +91,14 @@ def test_unknown_correlation_is_external_even_for_same_text(client):
     assert result.correction_json is None
 
 
-@pytest.mark.parametrize("content", [
-    text("Exact instruction. "), text("Different instruction"),
-    text("Exact") + text(" instruction."),
-])
+@pytest.mark.parametrize(
+    "content",
+    [
+        text("Exact instruction. "),
+        text("Different instruction"),
+        text("Exact") + text(" instruction."),
+    ],
+)
 def test_known_id_different_content_never_becomes_pex_or_human(content):
     result = classify(index(), item(content=content))
     assert result.kind == "uncertain"
@@ -87,11 +106,23 @@ def test_known_id_different_content_never_becomes_pex_or_human(content):
 
 
 @pytest.mark.parametrize("client,expected", [(CLIENT, "uncertain"), (None, "incomplete")])
-@pytest.mark.parametrize("change", [
-    "missing_content", "empty_content", "missing_elements", "image", "redacted",
-    "truncated", "false_integer", "bad_text", "bad_id", "wrong_item_type",
-    "content_extra", "unpaired_surrogate",
-])
+@pytest.mark.parametrize(
+    "change",
+    [
+        "missing_content",
+        "empty_content",
+        "missing_elements",
+        "image",
+        "redacted",
+        "truncated",
+        "false_integer",
+        "bad_text",
+        "bad_id",
+        "wrong_item_type",
+        "content_extra",
+        "unpaired_surrogate",
+    ],
+)
 def test_partial_or_unsupported_input_has_no_external_baseline(client, expected, change):
     raw = item(client=client)
     if change == "missing_content":
@@ -130,7 +161,10 @@ def test_started_item_cannot_claim_complete_input(client, kind):
 @pytest.mark.parametrize("field", ["session_id", "thread_id"])
 def test_wrong_target_cannot_claim_correction(field):
     arguments = {
-        "session_id": SESSION, "thread_id": THREAD, "turn_id": "turn", "item": item(),
+        "session_id": SESSION,
+        "thread_id": THREAD,
+        "turn_id": "turn",
+        "item": item(),
     }
     arguments[field] = "other"
     result = index().classify_item(**arguments)
@@ -178,9 +212,12 @@ def test_same_correction_correlating_multiple_items_is_uncertain():
 
 
 def test_mismatch_never_returns_partial_human_digest():
-    result = index().external_snapshot([
-        entry(item(client=None, item_id="human")), entry(item(content=text("Wrong"))),
-    ])
+    result = index().external_snapshot(
+        [
+            entry(item(client=None, item_id="human")),
+            entry(item(content=text("Wrong"))),
+        ]
+    )
     assert not result.complete and result.external_inputs_json is None and result.digest is None
 
 
@@ -208,10 +245,21 @@ def test_registration_returns_new_index_without_mutating_old():
     assert classify(updated, item(client="new-client")).kind == "exact_pex"
 
 
-@pytest.mark.parametrize("change", [
-    "reserved", "skipped", "bool_version", "zero_version", "wrong_session", "wrong_thread",
-    "unknown_schema", "list_state", "missing_client", "content_mismatch_type",
-])
+@pytest.mark.parametrize(
+    "change",
+    [
+        "reserved",
+        "skipped",
+        "bool_version",
+        "zero_version",
+        "wrong_session",
+        "wrong_thread",
+        "unknown_schema",
+        "list_state",
+        "missing_client",
+        "content_mismatch_type",
+    ],
+)
 def test_invalid_store_record_shape_is_rejected(change):
     raw = record()
     if change in {"reserved", "skipped"}:
@@ -236,7 +284,9 @@ def test_noncanonical_and_duplicate_json_keys_rejected():
     for encoded in ('{"correction":{},"correction":{}}', " " + canonical(record())):
         with pytest.raises(ValueError):
             CodexInputProvenance.from_store_records(
-                (encoded,), session_id=SESSION, thread_id=THREAD,
+                (encoded,),
+                session_id=SESSION,
+                thread_id=THREAD,
             )
 
 
@@ -264,7 +314,8 @@ def test_results_and_index_have_no_mutable_aliases():
     assert "Mutated" not in result.entry_json
     assert "Mutated" not in baseline.external_inputs_json
     for target, field, value in (
-        (current, "session_id", "other"), (result, "kind", "exact_pex"),
+        (current, "session_id", "other"),
+        (result, "kind", "exact_pex"),
         (baseline, "complete", False),
     ):
         with pytest.raises(FrozenInstanceError):
@@ -274,9 +325,12 @@ def test_results_and_index_have_no_mutable_aliases():
 @pytest.mark.parametrize("start,end,valid", [(0, 2, True), (1, 2, False), (False, 2, False)])
 def test_text_elements_preserve_exact_utf8_ranges_without_boolean_aliases(start, end, valid):
     content = text("éx")
-    content[0]["text_elements"] = [{
-        "byteRange": {"start": start, "end": end}, "placeholder": None,
-    }]
+    content[0]["text_elements"] = [
+        {
+            "byteRange": {"start": start, "end": end},
+            "placeholder": None,
+        }
+    ]
     result = classify(index(), item(client=None, content=content))
     assert result.kind == ("external" if valid else "incomplete")
 

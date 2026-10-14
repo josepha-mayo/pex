@@ -168,12 +168,9 @@ class SyntheticAdapter(HarnessAdapter):
     async def respond_permission(
         self, session: HarnessSession, request_id: str, decision: str
     ) -> bool:
-        if (
-            not session_binding_matches(
-                self.sessions.get(session.id), session, harness_type=HarnessType.SYNTHETIC
-            )
-            or decision not in {"allow", "deny"}
-        ):
+        if not session_binding_matches(
+            self.sessions.get(session.id), session, harness_type=HarnessType.SYNTHETIC
+        ) or decision not in {"allow", "deny"}:
             return False
         try:
             request_id = bounded_adapter_id(request_id, field="permission request id")
@@ -182,9 +179,7 @@ class SyntheticAdapter(HarnessAdapter):
         records = self.permissions.setdefault(session.id, [])
         if len(records) >= MAX_SYNTHETIC_RECORDS:
             return False
-        records.append(
-            {"request_id": request_id, "decision": decision}
-        )
+        records.append({"request_id": request_id, "decision": decision})
         return True
 
     async def continue_or_resume(

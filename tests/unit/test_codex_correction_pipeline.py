@@ -47,11 +47,20 @@ def actual_observer_baseline_without_background_consumer(monkeypatch):
     """Use real selected history and explicit ownership for each manual ingress."""
 
     async def subscribed(workspace):
-        response = _thread_response(workspace, turns=[{
-            "id": "turn-1", "status": "completed", "itemsView": "full", "items": [],
-        }])
+        response = _thread_response(
+            workspace,
+            turns=[
+                {
+                    "id": "turn-1",
+                    "status": "completed",
+                    "itemsView": "full",
+                    "items": [],
+                }
+            ],
+        )
         transport = FakeSharedTransport(
-            [response, response, response], _thread_response(workspace, include_turns=False),
+            [response, response, response],
+            _thread_response(workspace, include_turns=False),
         )
         coordinator = CodexExistingThreadSubscription(transport)
         selected = await _inspect(coordinator, workspace)
@@ -61,7 +70,9 @@ def actual_observer_baseline_without_background_consumer(monkeypatch):
     def start(adapter, ingest, **kwargs):
         del ingest, kwargs
         provenance = CodexInputProvenance.from_store_records(
-            (), session_id=adapter.session.id, thread_id=adapter.session.vendor_session_id,
+            (),
+            session_id=adapter.session.id,
+            thread_id=adapter.session.vendor_session_id,
         )
         adapter._input_provenance = provenance
         adapter._input_baseline = CodexInputBaseline.from_selected(adapter._selected, provenance)
@@ -197,7 +208,9 @@ async def correction_pipeline(correction_bound_pipeline, monkeypatch):
 
     private_dispatch = AsyncMock(side_effect=fake_private_dispatch)
     monkeypatch.setattr(
-        bound.adapter, "_dispatch_claimed_text", private_dispatch,
+        bound.adapter,
+        "_dispatch_claimed_text",
+        private_dispatch,
     )
     generic_send = AsyncMock(side_effect=AssertionError("generic send forbidden"))
     generic_continue = AsyncMock(side_effect=AssertionError("generic continue forbidden"))
@@ -208,10 +221,15 @@ async def correction_pipeline(correction_bound_pipeline, monkeypatch):
     monkeypatch.setattr(pipeline.executor, "execute", execute)
 
     async def ingest_observed() -> HarnessEvent:
-        bound.transport.notifications.append(_notification("turn/completed", {
-            "threadId": session.vendor_session_id,
-            "turn": {"id": "turn-1", "status": "completed"},
-        }))
+        bound.transport.notifications.append(
+            _notification(
+                "turn/completed",
+                {
+                    "threadId": session.vendor_session_id,
+                    "turn": {"id": "turn-1", "status": "completed"},
+                },
+            )
+        )
         records = (await bound.adapter.subscription.drain_live()).records
         assert len(records) == 1
         ((event, observed_session),) = bound.adapter._prepare_records(records)
@@ -247,22 +265,34 @@ async def correction_pipeline(correction_bound_pipeline, monkeypatch):
             bound.adapter._input_baselines.pop(event.event_id, None)
 
     yield SimpleNamespace(
-        bound=bound, pipeline=pipeline, store=store, session=session, event=None,
-        ingest_observed=ingest_observed, replay_observed=replay_observed,
+        bound=bound,
+        pipeline=pipeline,
+        store=store,
+        session=session,
+        event=None,
+        ingest_observed=ingest_observed,
+        replay_observed=replay_observed,
         current_event=current_event,
         private_dispatch=private_dispatch,
-        generic_send=generic_send, generic_continue=generic_continue,
-        execute=execute, sequence=sequence, prepared_payloads=prepared_payloads,
+        generic_send=generic_send,
+        generic_continue=generic_continue,
+        execute=execute,
+        sequence=sequence,
+        prepared_payloads=prepared_payloads,
     )
 
 
-@pytest.mark.parametrize("action_type", [
-    InterventionType.SEND_NUDGE,
-    InterventionType.INJECT_CONTEXT,
-    InterventionType.CONTINUE_SESSION,
-])
+@pytest.mark.parametrize(
+    "action_type",
+    [
+        InterventionType.SEND_NUDGE,
+        InterventionType.INJECT_CONTEXT,
+        InterventionType.CONTINUE_SESSION,
+    ],
+)
 async def test_actual_pipeline_commits_exact_correction_before_executor(
-    correction_pipeline, action_type,
+    correction_pipeline,
+    action_type,
 ):
     case = correction_pipeline
     case.pipeline.supervisor = CorrectionSupervisor(action_type=action_type)
@@ -279,17 +309,25 @@ async def test_actual_pipeline_commits_exact_correction_before_executor(
     assert correction["effect_id"] == stable_event_effect_id(case.event.event_id, "main")
     assert correction["event_id"] == case.event.event_id
     assert correction["intervention_id"] == result.id
-    assert correction["content"] == [{
-        "type": "text", "text": EXACT_TEXT, "text_elements": [],
-    }]
+    assert correction["content"] == [
+        {
+            "type": "text",
+            "text": EXACT_TEXT,
+            "text_elements": [],
+        }
+    ]
     assert correction["workspace_binding"] == case.session.metadata["workspace_binding"]
     assert correction["subscription_receipt"] == case.session.metadata["subscription_receipt"]
-    assert correction["client_message_id"] == "pex-correction-" + hashlib.sha256(
-        canonical([CORRECTION_SCHEMA, correction["effect_id"]]).encode()
-    ).hexdigest()
-    assert effect["request_hash"] == hashlib.sha256(
-        canonical(effect["payload"]).encode()
-    ).hexdigest()
+    assert (
+        correction["client_message_id"]
+        == "pex-correction-"
+        + hashlib.sha256(
+            canonical([CORRECTION_SCHEMA, correction["effect_id"]]).encode()
+        ).hexdigest()
+    )
+    assert (
+        effect["request_hash"] == hashlib.sha256(canonical(effect["payload"]).encode()).hexdigest()
+    )
     assert effect["result"]["worker_delivery_receipt"] == {
         "schema": "pex.worker-delivery.codex-turn.v1",
         "target_session_id": case.session.id,
@@ -344,9 +382,7 @@ async def test_shared_delivery_scope_store_seal_rejects_corruption(correction_pi
         reserved.metadata.pop(key, None)
 
     generic_receipt = finalized.model_copy(deep=True)
-    generic_receipt.metadata["worker_delivery_receipt"]["schema"] = (
-        WORKER_DELIVERY_SCHEMA_GENERIC
-    )
+    generic_receipt.metadata["worker_delivery_receipt"]["schema"] = WORKER_DELIVERY_SCHEMA_GENERIC
     with pytest.raises(ValueError, match="shared delivery scope is corrupt"):
         _validate_event_delivery_update(reserved, generic_receipt)
 
@@ -371,7 +407,9 @@ async def test_shared_delivery_scope_store_seal_rejects_corruption(correction_pi
 
 @pytest.mark.parametrize("failure", ["prepare", "insert"])
 async def test_persistence_failure_prevents_executor_and_rolls_back_main_effect(
-    correction_pipeline, monkeypatch, failure,
+    correction_pipeline,
+    monkeypatch,
+    failure,
 ):
     case = correction_pipeline
     if failure == "prepare":
@@ -411,7 +449,8 @@ async def test_persistence_failure_prevents_executor_and_rolls_back_main_effect(
 
 @pytest.mark.parametrize("key", ["clientUserMessageId", "client_message_id", "codex_correction"])
 async def test_model_supplied_correlation_cannot_enter_committed_main_effect(
-    correction_pipeline, key,
+    correction_pipeline,
+    key,
 ):
     case = correction_pipeline
     case.pipeline.supervisor = CorrectionSupervisor(extra={key: "forged-correlation"})
@@ -439,7 +478,11 @@ async def test_existing_legacy_pipeline_payload_and_delivery_stay_unchanged(tmp_
         effect = await store.get_event_effect(event.event_id, "main")
         assert effect["state"] == "delivered"
         assert set(effect["payload"]) == {
-            "schema", "event_id", "intervention_id", "action", "required_capability",
+            "schema",
+            "event_id",
+            "intervention_id",
+            "action",
+            "required_capability",
         }
         assert effect["payload"]["schema"] == "pex.worker-effect.v1"
         assert effect["payload"]["action"]["payload"]["text"] == EXACT_TEXT

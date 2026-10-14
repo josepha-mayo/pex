@@ -100,10 +100,7 @@ def _user_prompt(
     observed = observed_activity_at.get(request.session.id)
     if observed is not None and observed.tzinfo is None:
         observed = observed.replace(tzinfo=UTC)
-    recent = (
-        observed is not None
-        and 0 <= (datetime.now(UTC) - observed).total_seconds() <= 600
-    )
+    recent = observed is not None and 0 <= (datetime.now(UTC) - observed).total_seconds() <= 600
     rendered = (
         "Read-only human review. Do not intervene.\n"
         f"Human asked: {_clip(question.strip(), 400)}\n"
@@ -141,6 +138,7 @@ async def complete_inspect_review_async(
         callback_handler=None,
         model=model,
     )
+
     async def invoke():
         require_review_authority()
         return await agent.invoke_async(
@@ -187,7 +185,11 @@ def complete_inspect_review(
     except RuntimeError:
         return asyncio.run(
             complete_inspect_review_async(
-                question, sessions, interventions, goals, model,
+                question,
+                sessions,
+                interventions,
+                goals,
+                model,
                 observed_activity_at=observed_activity_at,
             )
         )

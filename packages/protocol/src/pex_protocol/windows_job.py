@@ -9,9 +9,12 @@ CREATE_SUSPENDED = 0x00000004
 
 class _ThreadEntry32(ctypes.Structure):
     _fields_ = [
-        ("dwSize", wintypes.DWORD), ("cntUsage", wintypes.DWORD),
-        ("th32ThreadID", wintypes.DWORD), ("th32OwnerProcessID", wintypes.DWORD),
-        ("tpBasePri", wintypes.LONG), ("tpDeltaPri", wintypes.LONG),
+        ("dwSize", wintypes.DWORD),
+        ("cntUsage", wintypes.DWORD),
+        ("th32ThreadID", wintypes.DWORD),
+        ("th32OwnerProcessID", wintypes.DWORD),
+        ("tpBasePri", wintypes.LONG),
+        ("tpDeltaPri", wintypes.LONG),
         ("dwFlags", wintypes.DWORD),
     ]
 
@@ -32,15 +35,9 @@ def assign_job_and_resume(process):
 
         close_handle = win32api.CloseHandle
         job = win32job.CreateJobObject(None, "")
-        info = win32job.QueryInformationJobObject(
-            job, win32job.JobObjectExtendedLimitInformation
-        )
-        info["BasicLimitInformation"]["LimitFlags"] |= (
-            win32job.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
-        )
-        win32job.SetInformationJobObject(
-            job, win32job.JobObjectExtendedLimitInformation, info
-        )
+        info = win32job.QueryInformationJobObject(job, win32job.JobObjectExtendedLimitInformation)
+        info["BasicLimitInformation"]["LimitFlags"] |= win32job.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        win32job.SetInformationJobObject(job, win32job.JobObjectExtendedLimitInformation, info)
         win32job.AssignProcessToJobObject(job, int(process._handle))
         kernel = ctypes.WinDLL("kernel32", use_last_error=True)
         kernel.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]

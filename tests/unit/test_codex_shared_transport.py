@@ -61,8 +61,7 @@ class MemoryAppServerChannel:
             elif method == "thread/read":
                 result = {"thread": {"id": message["params"]["threadId"], "turns": []}}
             elif method == "thread/resume":
-                result = {"thread": {"id": message["params"]["threadId"]}
-                }
+                result = {"thread": {"id": message["params"]["threadId"]}}
             elif method == "thread/unsubscribe":
                 result = {}
             else:
@@ -163,13 +162,9 @@ async def test_exact_thread_read_resume_and_unsubscribe(tmp_path: Path) -> None:
     channel = MemoryAppServerChannel()
     transport = make_transport(tmp_path, channel)
 
-    read = await transport.request(
-        "thread/read", {"threadId": "thr_exact", "includeTurns": True}
-    )
+    read = await transport.request("thread/read", {"threadId": "thr_exact", "includeTurns": True})
     resumed = await transport.request("thread/resume", {"threadId": "thr_exact"})
-    unsubscribed = await transport.request(
-        "thread/unsubscribe", {"threadId": "thr_exact"}
-    )
+    unsubscribed = await transport.request("thread/unsubscribe", {"threadId": "thr_exact"})
 
     assert read["thread"]["id"] == "thr_exact"
     assert resumed["thread"]["id"] == "thr_exact"
@@ -314,8 +309,7 @@ async def test_server_request_is_observed_without_response_authority(tmp_path: P
     assert "id" not in transport.notifications[0]
     assert transport.pending_approvals == {}
     assert not any(
-        "result" in message and message.get("id") == "approval-1"
-        for message in channel.messages
+        "result" in message and message.get("id") == "approval-1" for message in channel.messages
     )
     await transport.close()
 
@@ -344,9 +338,7 @@ async def test_wrong_thread_notification_invalidates_connection(tmp_path: Path) 
     transport = make_transport(tmp_path, channel)
     await transport.ensure_ready()
 
-    await channel.emit(
-        {"method": "turn/completed", "params": {"threadId": "thr_other"}}
-    )
+    await channel.emit({"method": "turn/completed", "params": {"threadId": "thr_other"}})
     for _ in range(20):
         if not transport.initialized:
             break
@@ -360,7 +352,8 @@ async def test_wrong_thread_notification_invalidates_connection(tmp_path: Path) 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("timestamp", [{}, {"emittedAtMs": 1788715453323}])
 async def test_pure_foreign_lifecycle_broadcast_is_ignored_without_weakening_freshness(
-    tmp_path: Path, timestamp: dict[str, int],
+    tmp_path: Path,
+    timestamp: dict[str, int],
 ) -> None:
     channel = MemoryAppServerChannel()
     transport = make_transport(tmp_path, channel)
@@ -369,15 +362,21 @@ async def test_pure_foreign_lifecycle_broadcast_is_ignored_without_weakening_fre
     before_chunk = transport.received_chunk_revision
     generation = transport.connection_generation
 
-    await channel.emit({
-        **timestamp,
-        "jsonrpc": "2.0",
-        "method": "thread/status/changed",
-        "params": {"threadId": "thr_other", "status": {"type": "notLoaded"}},
-    })
-    await channel.emit({
-        **timestamp, "method": "thread/closed", "params": {"threadId": "thr_other"},
-    })
+    await channel.emit(
+        {
+            **timestamp,
+            "jsonrpc": "2.0",
+            "method": "thread/status/changed",
+            "params": {"threadId": "thr_other", "status": {"type": "notLoaded"}},
+        }
+    )
+    await channel.emit(
+        {
+            **timestamp,
+            "method": "thread/closed",
+            "params": {"threadId": "thr_other"},
+        }
+    )
     await channel.emit({"method": "turn/completed", "params": {"threadId": "thr_exact"}})
     for _ in range(40):
         if (
@@ -392,43 +391,71 @@ async def test_pure_foreign_lifecycle_broadcast_is_ignored_without_weakening_fre
     assert transport.connection_generation == generation
     assert transport.received_envelope_revision == before + 3
     assert transport.received_chunk_revision == before_chunk + 3
-    assert transport.drain_notifications() == [{
-        "method": "turn/completed",
-        "params": {"threadId": "thr_exact"},
-        "shared_server_request": False,
-        "connection_generation": generation,
-    }]
+    assert transport.drain_notifications() == [
+        {
+            "method": "turn/completed",
+            "params": {"threadId": "thr_exact"},
+            "shared_server_request": False,
+            "connection_generation": generation,
+        }
+    ]
     await transport.close()
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("message", [
-    *[
-        {"method": "thread/closed", "params": {"threadId": "thr_other"}, "emittedAtMs": value}
-        for value in (None, True, -1, 1.5, "1788715453323", 2**53)
+@pytest.mark.parametrize(
+    "message",
+    [
+        *[
+            {"method": "thread/closed", "params": {"threadId": "thr_other"}, "emittedAtMs": value}
+            for value in (None, True, -1, 1.5, "1788715453323", 2**53)
+        ],
+        {
+            "method": "thread/closed",
+            "params": {"threadId": "thr_other"},
+            "emittedAtMs": 1,
+            "extra": {},
+        },
+        {
+            "id": "foreign-request",
+            "method": "thread/closed",
+            "params": {"threadId": "thr_other"},
+            "emittedAtMs": 1,
+        },
+        {"method": "thread/status/changed", "params": {"threadId": "thr_other"}},
+        {
+            "method": "thread/status/changed",
+            "params": {
+                "threadId": "thr_other",
+                "status": {"type": "idle"},
+                "turn": {},
+            },
+        },
+        {
+            "method": "thread/status/changed",
+            "params": {
+                "threadId": "thr_other",
+                "status": {"type": "active", "activeFlags": []},
+            },
+        },
+        {"jsonrpc": "1.0", "method": "thread/closed", "params": {"threadId": "thr_other"}},
+        {
+            "method": "thread/status/changed",
+            "params": {
+                "threadId": "thr_other",
+                "status": {"type": "futureStatus"},
+            },
+        },
+        {"method": "thread/closed", "params": {"threadId": " thr_other "}},
+        {"method": "thread/closed", "params": {"threadId": "thr_other", "status": {}}},
+        {"id": None, "method": "thread/closed", "params": {"threadId": "thr_other"}},
+        {"id": "foreign-request", "method": "thread/closed", "params": {"threadId": "thr_other"}},
+        {"method": "item/completed", "params": {"threadId": "thr_other", "item": {}}},
     ],
-    {"method": "thread/closed", "params": {"threadId": "thr_other"}, "emittedAtMs": 1, "extra": {}},
-    {"id": "foreign-request", "method": "thread/closed",
-     "params": {"threadId": "thr_other"}, "emittedAtMs": 1},
-    {"method": "thread/status/changed", "params": {"threadId": "thr_other"}},
-    {"method": "thread/status/changed", "params": {
-        "threadId": "thr_other", "status": {"type": "idle"}, "turn": {},
-    }},
-    {"method": "thread/status/changed", "params": {
-        "threadId": "thr_other", "status": {"type": "active", "activeFlags": []},
-    }},
-    {"jsonrpc": "1.0", "method": "thread/closed", "params": {"threadId": "thr_other"}},
-    {"method": "thread/status/changed", "params": {
-        "threadId": "thr_other", "status": {"type": "futureStatus"},
-    }},
-    {"method": "thread/closed", "params": {"threadId": " thr_other "}},
-    {"method": "thread/closed", "params": {"threadId": "thr_other", "status": {}}},
-    {"id": None, "method": "thread/closed", "params": {"threadId": "thr_other"}},
-    {"id": "foreign-request", "method": "thread/closed", "params": {"threadId": "thr_other"}},
-    {"method": "item/completed", "params": {"threadId": "thr_other", "item": {}}},
-])
+)
 async def test_nonminimal_or_request_foreign_lifecycle_notification_invalidates(
-    tmp_path: Path, message: dict[str, Any],
+    tmp_path: Path,
+    message: dict[str, Any],
 ) -> None:
     channel = MemoryAppServerChannel()
     transport = make_transport(tmp_path, channel)
@@ -449,15 +476,20 @@ async def test_nonminimal_or_request_foreign_lifecycle_notification_invalidates(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("timestamp", [{}, {"emittedAtMs": 1788715453323}])
 async def test_selected_thread_close_remains_a_retained_notification(
-    tmp_path: Path, timestamp: dict[str, int],
+    tmp_path: Path,
+    timestamp: dict[str, int],
 ) -> None:
     channel = MemoryAppServerChannel()
     transport = make_transport(tmp_path, channel)
     await transport.ensure_ready()
 
-    await channel.emit({
-        **timestamp, "method": "thread/closed", "params": {"threadId": "thr_exact"},
-    })
+    await channel.emit(
+        {
+            **timestamp,
+            "method": "thread/closed",
+            "params": {"threadId": "thr_exact"},
+        }
+    )
     for _ in range(20):
         if transport.notifications:
             break
@@ -474,10 +506,12 @@ async def test_selected_thread_status_remains_a_retained_notification(tmp_path: 
     transport = make_transport(tmp_path, channel)
     await transport.ensure_ready()
 
-    await channel.emit({
-        "method": "thread/status/changed",
-        "params": {"threadId": "thr_exact", "status": {"type": "idle"}},
-    })
+    await channel.emit(
+        {
+            "method": "thread/status/changed",
+            "params": {"threadId": "thr_exact", "status": {"type": "idle"}},
+        }
+    )
     for _ in range(20):
         if transport.notifications:
             break
@@ -597,9 +631,7 @@ async def test_malformed_response_fails_closed_without_payload_in_error(tmp_path
     channel = MemoryAppServerChannel(withhold={"thread/read"})
     transport = make_transport(tmp_path, channel)
     await transport.ensure_ready()
-    task = asyncio.create_task(
-        transport.request("thread/read", {"threadId": "thr_exact"})
-    )
+    task = asyncio.create_task(transport.request("thread/read", {"threadId": "thr_exact"}))
     for _ in range(20):
         if any(message.get("method") == "thread/read" for message in channel.messages):
             break
@@ -862,9 +894,7 @@ def _make_private_windows_fixture(path):
     import win32con
     import win32security
 
-    token = win32security.OpenProcessToken(
-        win32api.GetCurrentProcess(), win32con.TOKEN_QUERY
-    )
+    token = win32security.OpenProcessToken(win32api.GetCurrentProcess(), win32con.TOKEN_QUERY)
     try:
         sid = win32security.GetTokenInformation(token, win32security.TokenUser)[0]
     finally:
@@ -873,14 +903,19 @@ def _make_private_windows_fixture(path):
     acl.AddAccessAllowedAceEx(
         win32security.ACL_REVISION,
         win32con.OBJECT_INHERIT_ACE | win32con.CONTAINER_INHERIT_ACE,
-        0x1F01FF, sid,  # FILE_ALL_ACCESS
+        0x1F01FF,
+        sid,  # FILE_ALL_ACCESS
     )
     win32security.SetNamedSecurityInfo(
-        str(path), win32security.SE_FILE_OBJECT,
+        str(path),
+        win32security.SE_FILE_OBJECT,
         win32security.OWNER_SECURITY_INFORMATION
         | win32security.DACL_SECURITY_INFORMATION
         | win32security.PROTECTED_DACL_SECURITY_INFORMATION,
-        sid, None, acl, None,
+        sid,
+        None,
+        acl,
+        None,
     )
 
 

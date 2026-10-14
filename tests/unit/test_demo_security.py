@@ -70,9 +70,7 @@ def test_demo_listing_surfaces_bounded_summary(tmp_path, monkeypatch) -> None:
         encoding="utf-8",
     )
     (tmp_path / "nonstr.json").write_text(
-        json.dumps(
-            {"id": "nonstr", "title": "Nonstr", "summary": 7, "events": []}
-        ),
+        json.dumps({"id": "nonstr", "title": "Nonstr", "summary": 7, "events": []}),
         encoding="utf-8",
     )
 
@@ -116,9 +114,7 @@ def test_demo_workspace_rejects_unsafe_paths(tmp_path, monkeypatch, relpath) -> 
 def test_demo_workspace_is_bounded(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr("pex_bridge.demo.fixture_dir", lambda: tmp_path)
     (tmp_path / "bigfile.json").write_text(
-        json.dumps(
-            {"events": [], "workspace": {"files": {"big.py": "x" * 65_537}}}
-        ),
+        json.dumps({"events": [], "workspace": {"files": {"big.py": "x" * 65_537}}}),
         encoding="utf-8",
     )
     with pytest.raises(ValueError, match="64 KiB"):
@@ -235,15 +231,11 @@ def test_inline_fixture_passes_through_the_same_gate() -> None:
     assert data["not_live_control"] is True
 
     with pytest.raises(ValueError, match="relative POSIX"):
-        parse_inline_fixture(
-            {"events": [], "workspace": {"files": {"../escape.py": "x"}}}
-        )
+        parse_inline_fixture({"events": [], "workspace": {"files": {"../escape.py": "x"}}})
     with pytest.raises(ValueError, match="at most 1000"):
         parse_inline_fixture({"events": [{}] * 1001})
     with pytest.raises(ValueError, match="64 KiB"):
-        parse_inline_fixture(
-            {"events": [], "workspace": {"files": {"big.py": "x" * 65_537}}}
-        )
+        parse_inline_fixture({"events": [], "workspace": {"files": {"big.py": "x" * 65_537}}})
 
 
 def test_inline_fixture_rejects_non_finite_and_non_serializable() -> None:

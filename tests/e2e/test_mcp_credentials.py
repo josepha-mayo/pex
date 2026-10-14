@@ -83,11 +83,7 @@ def _structured(result) -> dict:
     assert result.isError is False
     payload = result.structuredContent
     if payload is None:
-        texts = [
-            block.text
-            for block in (result.content or [])
-            if getattr(block, "text", None)
-        ]
+        texts = [block.text for block in (result.content or []) if getattr(block, "text", None)]
         assert texts, "MCP tool returned neither structured content nor text"
         payload = json.loads(texts[0])
     if (
@@ -118,9 +114,7 @@ async def test_operator_rotates_one_time_session_credential_without_storing_toke
                 headers={"Authorization": f"Bearer {operator_token}"},
             ) as operator:
                 session_id, goal_id = await _seed_attached_session(operator)
-                first = await operator.post(
-                    f"/v1/sessions/{session_id}/mcp-credential"
-                )
+                first = await operator.post(f"/v1/sessions/{session_id}/mcp-credential")
 
                 assert first.status_code == 200
                 assert first.headers["cache-control"] == "no-store"
@@ -136,9 +130,7 @@ async def test_operator_rotates_one_time_session_credential_without_storing_toke
                 assert first_record is not None
                 assert first_record["principal_id"] == first_body["principal_id"]
 
-                rows = await store.db.execute_fetchall(
-                    "SELECT json FROM mcp_principals"
-                )
+                rows = await store.db.execute_fetchall("SELECT json FROM mcp_principals")
                 assert all(first_token not in str(row["json"]) for row in rows)
 
                 async with AsyncClient(
@@ -164,24 +156,18 @@ async def test_operator_rotates_one_time_session_credential_without_storing_toke
                             )
                             assert goal["goal"]["id"] == goal_id
 
-                second = await operator.post(
-                    f"/v1/sessions/{session_id}/mcp-credential"
-                )
+                second = await operator.post(f"/v1/sessions/{session_id}/mcp-credential")
                 assert second.status_code == 200
                 second_body = second.json()
                 second_token = second_body["token"]
                 assert second_token != first_token
                 assert second_body["principal_id"] != first_body["principal_id"]
                 assert (
-                    await store.get_mcp_principal_by_digest(
-                        digest_mcp_session_token(first_token)
-                    )
+                    await store.get_mcp_principal_by_digest(digest_mcp_session_token(first_token))
                     is None
                 )
                 assert (
-                    await store.get_mcp_principal_by_digest(
-                        digest_mcp_session_token(second_token)
-                    )
+                    await store.get_mcp_principal_by_digest(digest_mcp_session_token(second_token))
                     is not None
                 )
     finally:
@@ -197,9 +183,7 @@ async def test_credential_issuance_is_unavailable_in_no_auth_mode(tmp_path):
             base_url="http://127.0.0.1",
         ) as client:
             session_id, _goal_id = await _seed_attached_session(client)
-            response = await client.post(
-                f"/v1/sessions/{session_id}/mcp-credential"
-            )
+            response = await client.post(f"/v1/sessions/{session_id}/mcp-credential")
 
         assert response.status_code == 403
         cursor = await store.db.execute("SELECT COUNT(*) AS count FROM mcp_principals")
@@ -223,9 +207,7 @@ async def test_goal_rebind_revokes_the_previous_session_credential(tmp_path):
             headers={"Authorization": f"Bearer {operator_token}"},
         ) as operator:
             session_id, goal_id = await _seed_attached_session(operator)
-            issued = await operator.post(
-                f"/v1/sessions/{session_id}/mcp-credential"
-            )
+            issued = await operator.post(f"/v1/sessions/{session_id}/mcp-credential")
             assert issued.status_code == 200
             worker_token = issued.json()["token"]
             worker_digest = digest_mcp_session_token(worker_token)

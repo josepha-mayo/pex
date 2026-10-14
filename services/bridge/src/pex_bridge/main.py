@@ -121,8 +121,7 @@ def bundled_pet_inventory() -> dict[str, object]:
     ids = tuple(pet.id for pet in pets)
     if ids != EXPECTED_BUNDLED_PET_IDS:
         raise RuntimeError(
-            "bundled pet roster mismatch: "
-            f"expected {EXPECTED_BUNDLED_PET_IDS!r}, got {ids!r}"
+            f"bundled pet roster mismatch: expected {EXPECTED_BUNDLED_PET_IDS!r}, got {ids!r}"
         )
 
     inventory: list[dict[str, object]] = []
@@ -218,7 +217,10 @@ def main() -> None:
     application = create_app()
     mark_startup_phase("routes_ready")
     uvicorn.run(
-        application, host=host, port=port, log_level="info",
+        application,
+        host=host,
+        port=port,
+        log_level="info",
         ws_per_message_deflate=False,
     )
 

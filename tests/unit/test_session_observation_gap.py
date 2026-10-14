@@ -73,9 +73,9 @@ def test_verifying_is_a_live_observed_status() -> None:
 
 
 def test_paused_supervision_suppresses_the_gap() -> None:
-    assert _session_observation(
-        _session(SessionStatus.WORKING, 9999, paused=True), utcnow()
-    ) is None
+    assert (
+        _session_observation(_session(SessionStatus.WORKING, 9999, paused=True), utcnow()) is None
+    )
 
 
 def test_no_activity_recorded_yields_no_gap() -> None:
@@ -119,10 +119,7 @@ async def test_sessions_endpoint_reports_the_gap(client) -> None:
 
     detail = (await http.get(f"/v1/sessions/{stalled.id}")).json()
     assert detail["observation"]["stalled"] is True
-    assert (
-        detail["observation"]["last_event_age_seconds"]
-        >= OBSERVATION_GAP_STALL_SECONDS + 120
-    )
+    assert detail["observation"]["last_event_age_seconds"] >= OBSERVATION_GAP_STALL_SECONDS + 120
 
     listing = {s["id"]: s for s in (await http.get("/v1/sessions")).json()}
     assert listing[stalled.id]["observation"]["stalled"] is True

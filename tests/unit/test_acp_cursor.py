@@ -10,6 +10,7 @@ from pex_protocol.session import HarnessSession
 
 _TEST_DRIVE = "C:" if os.name == "nt" else ""
 
+
 def test_never_resolves_grok_agent(monkeypatch, tmp_path):
     grok = tmp_path / ".grok" / "bin" / "agent.exe"
     grok.parent.mkdir(parents=True)

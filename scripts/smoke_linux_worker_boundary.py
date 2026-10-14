@@ -35,19 +35,31 @@ def main() -> None:
         environment = {**os.environ, "PEX_BOUNDARY_CONTROLLER_SENTINEL": "test-only"}
         completed = subprocess.run(
             module.worker_command(workspace, ["/usr/bin/python3", "-I", "-c", program]),
-            env=environment, capture_output=True, text=True, timeout=20, check=True,
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=True,
         )
         assert completed.stdout == ""
         assert (workspace / "result.txt").read_text() == "worker wrote only the task"
         assert oracle.read_text() == "CONTROLLER_ONLY"
-        print(json.dumps({
-            "boundary_source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
-            "smoke_source_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-            "task_read_and_write": True, "private_oracle_unavailable": True,
-            "controller_source_unavailable": True, "controller_environment_unavailable": True,
-            "network_interfaces": "loopback_only", "coding_harness_verified": False,
-            "pex_process_isolated": False, "model_calls": 0,
-        }))
+        print(
+            json.dumps(
+                {
+                    "boundary_source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+                    "smoke_source_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                    "task_read_and_write": True,
+                    "private_oracle_unavailable": True,
+                    "controller_source_unavailable": True,
+                    "controller_environment_unavailable": True,
+                    "network_interfaces": "loopback_only",
+                    "coding_harness_verified": False,
+                    "pex_process_isolated": False,
+                    "model_calls": 0,
+                }
+            )
+        )
 
 
 if __name__ == "__main__":

@@ -57,11 +57,7 @@ def _structured(result) -> dict:
     assert result.isError is False
     payload = result.structuredContent
     if payload is None:
-        texts = [
-            block.text
-            for block in (result.content or [])
-            if getattr(block, "text", None)
-        ]
+        texts = [block.text for block in (result.content or []) if getattr(block, "text", None)]
         assert texts
         payload = json.loads(texts[0])
     if isinstance(payload, dict) and set(payload) == {"result"}:
@@ -248,17 +244,13 @@ async def test_typed_aliases_work_for_mcp_and_bound_hook_authorization(tmp_path)
                     },
                 )
                 assert attached.status_code == 200
-                credential = await operator.post(
-                    f"/v1/sessions/{session.id}/mcp-credential"
-                )
+                credential = await operator.post(f"/v1/sessions/{session.id}/mcp-credential")
                 assert credential.status_code == 200
 
                 async with AsyncClient(
                     transport=ASGITransport(app=app),
                     base_url="http://127.0.0.1",
-                    headers={
-                        "Authorization": f"Bearer {credential.json()['token']}"
-                    },
+                    headers={"Authorization": f"Bearer {credential.json()['token']}"},
                 ) as worker:
                     async with streamable_http_client(
                         "http://127.0.0.1/mcp/",

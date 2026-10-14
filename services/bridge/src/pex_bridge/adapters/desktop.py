@@ -136,6 +136,7 @@ def _active_process_snapshot() -> DesktopProcessSnapshot | None:
         return None
     return snapshot
 
+
 def desktop_process_running(image: str, running: set[str] | None = None) -> bool:
     return matching_desktop_image(image, running) is not None
 
@@ -222,7 +223,8 @@ def _read_running_image_names() -> set[str] | None:
     try:
         raw = subprocess.check_output(
             ["tasklist", "/fo", "csv", "/nh"]
-            if sys.platform == "win32" else ["ps", "-A", "-o", "comm="],
+            if sys.platform == "win32"
+            else ["ps", "-A", "-o", "comm="],
             text=True,
             errors="replace",
             timeout=3.0,
@@ -253,7 +255,9 @@ def list_desktop_apps(running: set[str] | None = None) -> list[dict]:
                     "kind": "desktop",
                     "connect": app["connect"],
                     "process": hit,
-                    "surface": app["surface"] if sys.platform == "win32" else (
+                    "surface": app["surface"]
+                    if sys.platform == "win32"
+                    else (
                         f"Already-running {hit} process. Process inventory alone does not "
                         "identify a workspace or grant worker control. Connect its supported "
                         "API or hooks; window focus is unavailable on this platform."

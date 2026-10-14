@@ -208,19 +208,12 @@ def score_item(
         return -1.0
     raw_ledger_kind = item.metadata.get("kind")
     ledger_kind = raw_ledger_kind.strip().casefold() if isinstance(raw_ledger_kind, str) else ""
-    if ledger_kind in {
-        "decision", "rejected_approach", "unresolved_question"
-    } and not (
-        item.kind == ContextKind.DECISION
-        and item.provenance in {SourceKind.HUMAN, SourceKind.PEX}
+    if ledger_kind in {"decision", "rejected_approach", "unresolved_question"} and not (
+        item.kind == ContextKind.DECISION and item.provenance in {SourceKind.HUMAN, SourceKind.PEX}
     ):
         return -1.0
-    if (
-        project_binding_key(item.project_id) != project_binding_key(goal.project_id)
-        or (
-            item.goal_id != goal.id
-            and not is_shared_human_constraint(item)
-        )
+    if project_binding_key(item.project_id) != project_binding_key(goal.project_id) or (
+        item.goal_id != goal.id and not is_shared_human_constraint(item)
     ):
         return -1.0
     if target.project_id and (
@@ -312,7 +305,8 @@ def build_bundle(
     excluded = exclude_item_ids or set()
     previously_delivered = [item for item in items if item.id in excluded]
     human_commitments = {
-        item.id for item in items
+        item.id
+        for item in items
         if item.provenance == SourceKind.HUMAN
         and item.kind in {ContextKind.CONSTRAINT, ContextKind.DECISION}
         and item.goal_id in {None, goal.id}
@@ -332,8 +326,7 @@ def build_bundle(
     verified_refs = {
         ref
         for item in items
-        if _is_supported_result(item)
-        and score_item(item, goal, target, now=now) > 0
+        if _is_supported_result(item) and score_item(item, goal, target, now=now) > 0
         for ref in item.source_refs
     }
     eligible = [
@@ -483,6 +476,7 @@ def build_bundle(
         progress: list[str],
     ) -> ContextBundle:
         selected = [_safe_item(item) for item in chosen_raw]
+
         def critical_text(item: ContextItem) -> str:
             if item.kind == ContextKind.CONSTRAINT:
                 return f"Constraint: {item.content}"
@@ -603,11 +597,13 @@ def items_from_verification(
         provenance = SourceKind.TEST if is_test else SourceKind.WORKSPACE
         source_refs = [str(claim.get("source_event_id") or event.event_id)]
         if is_test:
-            declared_refs = list(dict.fromkeys(
-                value.partition("=")[2]
-                for value in evidence
-                if value.startswith(("pytest_event_id=", "unittest_event_id="))
-            ))
+            declared_refs = list(
+                dict.fromkeys(
+                    value.partition("=")[2]
+                    for value in evidence
+                    if value.startswith(("pytest_event_id=", "unittest_event_id="))
+                )
+            )
             if declared_refs:
                 if any(ref not in observed_event_ids for ref in declared_refs):
                     continue

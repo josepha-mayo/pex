@@ -88,10 +88,7 @@ _PER_RUN_ID = re.compile(r"=[0-9a-f]{16,64}$")
 
 
 def _normalized_evidence(result: dict) -> list[str]:
-    return [
-        _PER_RUN_ID.sub("=<id>", str(item))
-        for item in result.get("evidence_strings") or []
-    ]
+    return [_PER_RUN_ID.sub("=<id>", str(item)) for item in result.get("evidence_strings") or []]
 
 
 _EVAL_CSS = """
@@ -207,8 +204,8 @@ def render_html(
         if verdicts:
             parts.append('<div class="lbl">claim verdicts</div><div class="chips">')
             for verdict in verdicts:
-                cls = "ok" if verdict in _VERDICT_OK else (
-                    "warn" if verdict in _VERDICT_WARN else ""
+                cls = (
+                    "ok" if verdict in _VERDICT_OK else ("warn" if verdict in _VERDICT_WARN else "")
                 )
                 parts.append(f'<span class="{cls}">{_esc(verdict)}</span>')
             parts.append("</div>")
@@ -242,7 +239,7 @@ def render_html(
         ensure_ascii=False,
     ).replace("</", "<\\/")
     parts.append(
-        '<footer>The embedded JSON below is the same receipt '
+        "<footer>The embedded JSON below is the same receipt "
         "<code>--json</code> writes &mdash; this page is its human-readable "
         "form, not a separate claim.</footer>"
         f'<script type="application/json" id="eval-receipt">{payload}</script>'
@@ -275,9 +272,7 @@ def main() -> int:
         print(f"bridge unreachable at {base}: {exc}", file=sys.stderr)
         return 2
     fixture_ids = [f.get("id") for f in trajectories.get("fixtures") or []]
-    fixture_meta = {
-        str(f.get("id")): f for f in trajectories.get("fixtures") or [] if f.get("id")
-    }
+    fixture_meta = {str(f.get("id")): f for f in trajectories.get("fixtures") or [] if f.get("id")}
 
     print(f"{'fixture':<34} {'completion':<18} {'claims':>6} {'incidents':>9} verdict")
     print("-" * 78)
@@ -315,9 +310,7 @@ def main() -> int:
                 "verdicts",
             ):
                 if run.get(key) != result.get(key):
-                    failures.append(
-                        f"nondeterministic {key}: {result.get(key)} vs {run.get(key)}"
-                    )
+                    failures.append(f"nondeterministic {key}: {result.get(key)} vs {run.get(key)}")
             if _normalized_evidence(run) != _normalized_evidence(result):
                 failures.append(
                     f"nondeterministic evidence_strings: "

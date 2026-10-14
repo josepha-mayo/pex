@@ -16,10 +16,7 @@ def test_safe_external_url_allows_only_existing_devin_sessions():
 
 
 def test_devin_session_url_ignores_untrusted_api_links_and_does_not_invent_hosts():
-    assert (
-        devin_session_url(vendor_id="devin-1")
-        == "https://app.devin.ai/sessions/devin-1"
-    )
+    assert devin_session_url(vendor_id="devin-1") == "https://app.devin.ai/sessions/devin-1"
     assert (
         devin_session_url(
             vendor_id="devin-1",

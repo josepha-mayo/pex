@@ -223,9 +223,7 @@ async def test_verified_prepared_outcome_exposes_exact_followup_without_fake_sen
     text = "Verify report.txt before stopping."
     prepared = await adapter.send_message(session, text)
     assert isinstance(prepared, CursorHookPreparation)
-    receipt = resolve_adapter_message_result(
-        prepared, session=session
-    ).hook_preparation_receipt
+    receipt = resolve_adapter_message_result(prepared, session=session).hook_preparation_receipt
     assert receipt is not None
 
     intervention = _intervention(session, text, receipt)
@@ -260,9 +258,7 @@ async def test_followup_consumption_fails_closed_on_any_binding_mismatch(mutatio
     text = "Verify report.txt before stopping."
     prepared = await adapter.send_message(session, text)
     assert isinstance(prepared, CursorHookPreparation)
-    receipt = resolve_adapter_message_result(
-        prepared, session=session
-    ).hook_preparation_receipt
+    receipt = resolve_adapter_message_result(prepared, session=session).hook_preparation_receipt
     assert receipt is not None
 
     changed_receipt = dict(receipt)
@@ -286,14 +282,10 @@ async def test_followup_consumption_fails_closed_on_any_binding_mismatch(mutatio
         )
         intervention = intervention.model_copy(update={"proposed_action": action})
     elif mutation == "action_goal":
-        action = intervention.proposed_action.model_copy(
-            update={"goal_id": "goal-other"}
-        )
+        action = intervention.proposed_action.model_copy(update={"goal_id": "goal-other"})
         intervention = intervention.model_copy(update={"proposed_action": action})
     elif mutation == "worker_receipt":
-        intervention.metadata["worker_delivery_receipt"] = {
-            "schema": "pex.worker-delivery.v1"
-        }
+        intervention.metadata["worker_delivery_receipt"] = {"schema": "pex.worker-delivery.v1"}
 
     assert adapter.consume_verified_stop_followup(session, intervention) is None
     assert (session.id, event.event_id) not in adapter.pending_followups
@@ -306,9 +298,7 @@ async def test_unverified_consume_api_only_discards_exact_event():
     prepared = await adapter.send_message(session, "Do not expose this text.")
     assert isinstance(prepared, CursorHookPreparation)
 
-    assert (
-        adapter.consume_followup(session.id, trigger_event_id=event.event_id) is None
-    )
+    assert adapter.consume_followup(session.id, trigger_event_id=event.event_id) is None
     assert (session.id, event.event_id) not in adapter.pending_followups
 
 

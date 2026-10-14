@@ -57,18 +57,12 @@ def test_override_without_an_active_target_is_not_authoritative():
 @pytest.mark.parametrize(
     "prompt",
     [
+        ('Override the display theme. Add a regression test for "alter dataset preprocessing".'),
         (
-            'Override the display theme. Add a regression test for "alter dataset '
-            'preprocessing".'
-        ),
-        (
-            'Change of plan: do not alter dataset preprocessing; document the example '
+            "Change of plan: do not alter dataset preprocessing; document the example "
             '"alter dataset preprocessing".'
         ),
-        (
-            "Override the display theme. Add a regression test for `alter dataset "
-            "preprocessing`."
-        ),
+        ("Override the display theme. Add a regression test for `alter dataset preprocessing`."),
         (
             "Override the display theme. Add this fixture:\n```text\nalter dataset "
             "preprocessing\n```"
@@ -107,36 +101,51 @@ def test_simple_negative_constraint_restatement_is_consistent():
     assert result.classification is PromptClass.CONSISTENT
 
 
-@pytest.mark.parametrize("prompt", [
-    ("Do not modify tests, fixtures, task/goal/case\nmetadata, "
-     "install dependencies, or use the network."),
-    "Don't modify tests or install dependencies or use the network.",
-    "Never modify fixtures, install dependencies, or use the network.",
-])
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        (
+            "Do not modify tests, fixtures, task/goal/case\nmetadata, "
+            "install dependencies, or use the network."
+        ),
+        "Don't modify tests or install dependencies or use the network.",
+        "Never modify fixtures, install dependencies, or use the network.",
+    ],
+)
 def test_coordinated_negative_restrictions_do_not_create_a_conflict(prompt):
-    goal = _goal().model_copy(update={
-        "constraints": ["Do not install dependencies or use the network"],
-    })
+    goal = _goal().model_copy(
+        update={
+            "constraints": ["Do not install dependencies or use the network"],
+        }
+    )
     assert lint_prompt(goal, prompt).classification is not PromptClass.CONTRADICTION
 
 
-@pytest.mark.parametrize("prompt", [
-    "Do not modify tests, but install dependencies and use the network.",
-    "Do not modify tests. Install dependencies and use the network.",
-    "Do not modify tests; install dependencies and use the network.",
-    "Do not install dependencies or use the network. Now install dependencies using the network.",
-])
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        "Do not modify tests, but install dependencies and use the network.",
+        "Do not modify tests. Install dependencies and use the network.",
+        "Do not modify tests; install dependencies and use the network.",
+        "Do not install dependencies or use the network. Now install dependencies using the network.",  # noqa: E501
+    ],
+)
 def test_later_affirmative_install_is_not_hidden_by_a_negative_list(prompt):
-    goal = _goal().model_copy(update={
-        "constraints": ["Do not install dependencies or use the network"],
-    })
+    goal = _goal().model_copy(
+        update={
+            "constraints": ["Do not install dependencies or use the network"],
+        }
+    )
     assert lint_prompt(goal, prompt).classification is PromptClass.CONTRADICTION
 
 
-@pytest.mark.parametrize("constraint", [
-    "Don't alter dataset preprocessing.",
-    "Don’t alter dataset preprocessing.",
-])
+@pytest.mark.parametrize(
+    "constraint",
+    [
+        "Don't alter dataset preprocessing.",
+        "Don’t alter dataset preprocessing.",
+    ],
+)
 def test_contracted_negative_constraint_keeps_its_action_verb(constraint):
     goal = _goal().model_copy(update={"constraints": [constraint]})
     assert (
@@ -161,12 +170,15 @@ def test_later_affirmative_conflict_is_not_hidden_by_an_earlier_negation():
     assert result.matched_constraints == ("Do not alter dataset preprocessing.",)
 
 
-@pytest.mark.parametrize("prompt", [
-    "Create report.json. Do not create a git commit.",
-    "Create report.json; do not create a git commit.",
-    "Create report.json, but do not create a git commit.",
-    "Do not create a git commit. Only pytest may create or clean its scratch directory.",
-])
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        "Create report.json. Do not create a git commit.",
+        "Create report.json; do not create a git commit.",
+        "Create report.json, but do not create a git commit.",
+        "Do not create a git commit. Only pytest may create or clean its scratch directory.",
+    ],
+)
 def test_verb_in_another_clause_cannot_borrow_a_forbidden_object(prompt):
     goal = _goal().model_copy(update={"constraints": ["Do not create a git commit"]})
     assert lint_prompt(goal, prompt).classification is not PromptClass.CONTRADICTION

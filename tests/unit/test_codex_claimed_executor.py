@@ -28,19 +28,31 @@ async def case(bound_pipeline, monkeypatch):
     executor = bound.pipeline.executor
     session = await bound.store.get_session(bound.adapter.session.id)
     action = ProposedAction(
-        type=InterventionType.SEND_NUDGE, session_id=session.id, goal_id=session.goal_id,
+        type=InterventionType.SEND_NUDGE,
+        session_id=session.id,
+        goal_id=session.goal_id,
         payload={"text": "Check the missing public artifact."},
-        rationale="Explicit test-only decision", evidence=["fixture-event"], confidence=0.9,
+        rationale="Explicit test-only decision",
+        evidence=["fixture-event"],
+        confidence=0.9,
     )
     baseline = {
-        "schema": "pex.codex-input-baseline.v1", "complete": True,
-        "digest": "a" * 64, "revision": 4, "external_count": 1,
-        "pending_count": 0, "reason": None,
+        "schema": "pex.codex-input-baseline.v1",
+        "complete": True,
+        "digest": "a" * 64,
+        "revision": 4,
+        "external_count": 1,
+        "pending_count": 0,
+        "reason": None,
     }
     event = HarnessEvent(
-        event_id="fixture-event", session_id=session.id, harness_type=session.harness_type,
-        ts=utcnow(), event_type=EventType.AGENT_RESPONSE,
-        goal_id=session.goal_id, metadata={"pex_observer_snapshot": {"input_baseline": baseline}},
+        event_id="fixture-event",
+        session_id=session.id,
+        harness_type=session.harness_type,
+        ts=utcnow(),
+        event_type=EventType.AGENT_RESPONSE,
+        goal_id=session.goal_id,
+        metadata={"pex_observer_snapshot": {"input_baseline": baseline}},
     )
     correction = {"fixture": "not a production correction; adapter boundary is mocked"}
     grant = {"granted": True, "effect": {"payload": {"codex_correction": correction}}}
@@ -59,7 +71,9 @@ async def case(bound_pipeline, monkeypatch):
     monkeypatch.setattr(bound.store, "validate_main_event_effect_dispatch", validator)
     monkeypatch.setattr(bound.store, "get_event", AsyncMock(return_value=event))
     monkeypatch.setattr(
-        bound.store, "list_codex_correction_attributions", AsyncMock(return_value=()),
+        bound.store,
+        "list_codex_correction_attributions",
+        AsyncMock(return_value=()),
     )
     writes = []
 
@@ -85,35 +99,56 @@ async def case(bound_pipeline, monkeypatch):
 
     context = ClaimedMainEffect(event.event_id, "fixture-owner", "fixture-effect", 2, check_local)
     return SimpleNamespace(
-        bound=bound, executor=executor, session=session, action=action, event=event,
-        context=context, validator=validator, validation_threads=validation_threads,
-        grant=grant, sender=sender, dispatch=dispatch, writes=writes, control=control,
-        checks=checks, generic_send=generic_send,
+        bound=bound,
+        executor=executor,
+        session=session,
+        action=action,
+        event=event,
+        context=context,
+        validator=validator,
+        validation_threads=validation_threads,
+        grant=grant,
+        sender=sender,
+        dispatch=dispatch,
+        writes=writes,
+        control=control,
+        checks=checks,
+        generic_send=generic_send,
     )
 
 
 async def execute(case, **kwargs):
     return await case.executor.execute(
-        case.action, PolicyVerdict.ALLOW, main_effect_context=case.context, **kwargs,
+        case.action,
+        PolicyVerdict.ALLOW,
+        main_effect_context=case.context,
+        **kwargs,
     )
 
 
-@pytest.mark.parametrize("kind,outcome", [
-    (InterventionType.SEND_NUDGE, "sent"),
-    (InterventionType.INJECT_CONTEXT, "sent"),
-    (InterventionType.REQUEST_VERIFICATION, "verification_requested"),
-    (InterventionType.CONTINUE_SESSION, "continued"),
-])
+@pytest.mark.parametrize(
+    "kind,outcome",
+    [
+        (InterventionType.SEND_NUDGE, "sent"),
+        (InterventionType.INJECT_CONTEXT, "sent"),
+        (InterventionType.REQUEST_VERIFICATION, "verification_requested"),
+        (InterventionType.CONTINUE_SESSION, "continued"),
+    ],
+)
 async def test_private_route_revalidates_in_independent_loop_and_returns_exact_receipt(
-    case, kind, outcome,
+    case,
+    kind,
+    outcome,
 ):
     case.action.type = kind
     result = await execute(case)
     assert isinstance(result, ActionExecutionResult)
     assert result.outcome == outcome
     assert result.worker_delivery_receipt == {
-        "schema": "pex.worker-delivery.codex-turn.v1", "target_session_id": case.session.id,
-        "vendor_session_id": case.session.vendor_session_id, "vendor_turn_id": "fixture-turn",
+        "schema": "pex.worker-delivery.codex-turn.v1",
+        "target_session_id": case.session.id,
+        "vendor_session_id": case.session.vendor_session_id,
+        "vendor_turn_id": "fixture-turn",
     }
     subscription = case.session.metadata["subscription_receipt"]
     assert result.shared_delivery_scope == {
@@ -191,7 +226,8 @@ async def test_accepted_trigger_baseline_is_required(case, change):
     else:
         case.event.goal_id = "another-goal"
     assert (await execute(case)) in {
-        "codex_dispatch_preparation_refused", "codex_dispatch_input_incomplete",
+        "codex_dispatch_preparation_refused",
+        "codex_dispatch_input_incomplete",
         "codex_dispatch_trigger_mismatch",
     }
     case.sender.assert_not_awaited()

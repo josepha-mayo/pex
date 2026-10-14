@@ -52,42 +52,50 @@ class EchoingClaimedDispatchChannel(ClaimedDispatchChannel):
                 "content": deepcopy(params["input"]),
             }
             if method == "turn/start":
-                self.turns.append({
-                    "id": turn_id,
-                    "status": "inProgress",
-                    "itemsView": "full",
-                    "items": [deepcopy(item)],
-                })
-                await self.emit({
-                    "method": "turn/started",
-                    "params": {
-                        "threadId": params["threadId"],
-                        "turn": {"id": turn_id},
-                    },
-                })
+                self.turns.append(
+                    {
+                        "id": turn_id,
+                        "status": "inProgress",
+                        "itemsView": "full",
+                        "items": [deepcopy(item)],
+                    }
+                )
+                await self.emit(
+                    {
+                        "method": "turn/started",
+                        "params": {
+                            "threadId": params["threadId"],
+                            "turn": {"id": turn_id},
+                        },
+                    }
+                )
             else:
                 active = next(turn for turn in self.turns if turn["id"] == turn_id)
                 active["items"].append(deepcopy(item))
-            await self.emit({
-                "method": "item/completed",
-                "params": {
-                    "threadId": params["threadId"],
-                    "turnId": turn_id,
-                    "item": item,
-                },
-            })
-            await self.emit({
-                "method": "item/completed",
-                "params": {
-                    "threadId": params["threadId"],
-                    "turnId": turn_id,
-                    "item": {
-                        "id": f"outcome-{message['id']}",
-                        "type": "agentMessage",
-                        "text": "Completed the missing rows and verified the public artifact.",
+            await self.emit(
+                {
+                    "method": "item/completed",
+                    "params": {
+                        "threadId": params["threadId"],
+                        "turnId": turn_id,
+                        "item": item,
                     },
-                },
-            })
+                }
+            )
+            await self.emit(
+                {
+                    "method": "item/completed",
+                    "params": {
+                        "threadId": params["threadId"],
+                        "turnId": turn_id,
+                        "item": {
+                            "id": f"outcome-{message['id']}",
+                            "type": "agentMessage",
+                            "text": "Completed the missing rows and verified the public artifact.",
+                        },
+                    },
+                }
+            )
 
 
 class OneCorrectionSupervisor:
@@ -231,7 +239,8 @@ async def framed_pipeline(tmp_path, monkeypatch, request):
 
 @pytest.mark.asyncio
 async def test_framed_fixture_closes_inner_fixture_when_setup_after_anext_fails(
-    tmp_path, monkeypatch,
+    tmp_path,
+    monkeypatch,
 ):
     cleanup_started = asyncio.Event()
     original_cleanup = continuity_fixture._cleanup_bound_pipeline
@@ -245,27 +254,27 @@ async def test_framed_fixture_closes_inner_fixture_when_setup_after_anext_fails(
 
     monkeypatch.setattr(continuity_fixture, "_cleanup_bound_pipeline", observed_cleanup)
     monkeypatch.setattr(__import__(__name__), "enable_grant", fail_grant)
-    fixture = framed_pipeline.__wrapped__(
-        tmp_path, monkeypatch, SimpleNamespace(param=False)
-    )
+    fixture = framed_pipeline.__wrapped__(tmp_path, monkeypatch, SimpleNamespace(param=False))
     with pytest.raises(RuntimeError, match="injected post-anext setup failure"):
         await anext(fixture)
     assert cleanup_started.is_set()
 
 
 async def emit_trigger(case) -> None:
-    await case.channel.emit({
-        "method": "item/completed",
-        "params": {
-            "threadId": case.bound.adapter.session.vendor_session_id,
-            "turnId": "turn-existing",
-            "item": {
-                "id": "agent-trigger",
-                "type": "agentMessage",
-                "text": "The public artifact is incomplete.",
+    await case.channel.emit(
+        {
+            "method": "item/completed",
+            "params": {
+                "threadId": case.bound.adapter.session.vendor_session_id,
+                "turnId": "turn-existing",
+                "item": {
+                    "id": "agent-trigger",
+                    "type": "agentMessage",
+                    "text": "The public artifact is incomplete.",
+                },
             },
-        },
-    })
+        }
+    )
 
 
 async def initial_settled(case):
@@ -331,9 +340,7 @@ async def correction_echo_settled(case, effect_id: str):
 async def outcome_settled(case):
     async with asyncio.timeout(8):
         while True:
-            for event in await case.bound.store.recent_events(
-                case.bound.adapter.session.id
-            ):
+            for event in await case.bound.store.recent_events(case.bound.adapter.session.id):
                 if event.message_delta != (
                     "Completed the missing rows and verified the public artifact."
                 ):
@@ -352,7 +359,8 @@ async def test_idle_start_or_active_steer_is_durable_and_exactly_echoed(framed_p
     await emit_trigger(case)
     event, processing, effect = await initial_settled(case)
     writes = [
-        message for message in case.channel.messages
+        message
+        for message in case.channel.messages
         if message.get("method") in {"turn/start", "turn/steer"}
     ]
     assert len(writes) == 1
@@ -375,10 +383,16 @@ async def test_idle_start_or_active_steer_is_durable_and_exactly_echoed(framed_p
     assert outcome.event_type == EventType.AGENT_RESPONSE
     assert outcome_processing["receipt"]["terminal_reason"] == "no_action"
     assert case.bound.pipeline.supervisor.correction_calls == 1
-    assert len([
-        message for message in case.channel.messages
-        if message.get("method") in {"turn/start", "turn/steer"}
-    ]) == 1
+    assert (
+        len(
+            [
+                message
+                for message in case.channel.messages
+                if message.get("method") in {"turn/start", "turn/steer"}
+            ]
+        )
+        == 1
+    )
     assert event.event_id != echoed.event_id
 
 
@@ -387,7 +401,8 @@ async def wait_for_dispatch(case, *, timeout=8):
     written = asyncio.create_task(case.channel.dispatch_written.wait())
     try:
         done, _ = await asyncio.wait(
-            {written, case.bound.task}, timeout=timeout,
+            {written, case.bound.task},
+            timeout=timeout,
             return_when=asyncio.FIRST_COMPLETED,
         )
         if written in done:
@@ -397,13 +412,15 @@ async def wait_for_dispatch(case, *, timeout=8):
         events = await case.bound.store.recent_events(adapter.session.id)
         processing = {
             event.event_id: await case.bound.store.get_event_processing(event.event_id)
-            for event in events if event.event_type == EventType.AGENT_RESPONSE
+            for event in events
+            if event.event_type == EventType.AGENT_RESPONSE
         }
         states = {
             event_id: {
                 "state": row and row.get("state"),
                 "receipt": row and row.get("receipt"),
-            } for event_id, row in processing.items()
+            }
+            for event_id, row in processing.items()
         }
         raise AssertionError(
             f"dispatch not written; pump_done={case.bound.task.done()}; "
@@ -433,11 +450,13 @@ async def test_dispatch_wait_reports_stopped_or_pending_pump_without_cancelling_
             store=SimpleNamespace(recent_events=recent_events),
             adapter=SimpleNamespace(
                 session=SimpleNamespace(id="codex:fixture"),
-                subscription=SimpleNamespace(state=None), last_pump_error=None,
+                subscription=SimpleNamespace(state=None),
+                last_pump_error=None,
             ),
         ),
     )
     try:
+
         async def check():
             with pytest.raises(AssertionError, match=f"pump_done={stopped}"):
                 await wait_for_dispatch(case, timeout=0.01)
@@ -451,7 +470,8 @@ async def test_dispatch_wait_reports_stopped_or_pending_pump_without_cancelling_
 
 
 async def test_lost_ack_is_recovered_uncertain_without_redelivery(
-    framed_pipeline, tmp_path,
+    framed_pipeline,
+    tmp_path,
 ):
     case = framed_pipeline
     case.channel.hold_dispatch_response = True
@@ -460,7 +480,8 @@ async def test_lost_ack_is_recovered_uncertain_without_redelivery(
     await asyncio.wait_for(asyncio.shield(case.bound.task), 8)
 
     events = [
-        event for event in await case.bound.store.recent_events(case.bound.adapter.session.id)
+        event
+        for event in await case.bound.store.recent_events(case.bound.adapter.session.id)
         if event.event_type == EventType.AGENT_RESPONSE
     ]
     assert len(events) == 1
@@ -473,9 +494,7 @@ async def test_lost_ack_is_recovered_uncertain_without_redelivery(
         "codex_delivery_uncertain",
         "worker_delivery_uncertain",
     }
-    assert processing["receipt"]["intervention"]["outcome"] == (
-        "worker_delivery_uncertain"
-    )
+    assert processing["receipt"]["intervention"]["outcome"] == ("worker_delivery_uncertain")
     assert effect["state"] == "delivery_uncertain"
 
     restarted_store = Store(case.bound.store.path, process_boot_id="framed-restart")
@@ -497,10 +516,16 @@ async def test_lost_ack_is_recovered_uncertain_without_redelivery(
         assert terminal["receipt"]["effect_state"] == "delivery_uncertain"
         assert terminal["receipt"] == processing["receipt"]
         await restarted._resume_planned_event(terminal, owner="restart-review")
-        assert len([
-            message for message in case.channel.messages
-            if message.get("method") in {"turn/start", "turn/steer"}
-        ]) == 1
+        assert (
+            len(
+                [
+                    message
+                    for message in case.channel.messages
+                    if message.get("method") in {"turn/start", "turn/steer"}
+                ]
+            )
+            == 1
+        )
         assert (await restarted_store.get_event_effect(event.event_id, "main"))["state"] == (
             "delivery_uncertain"
         )

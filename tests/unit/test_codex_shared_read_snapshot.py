@@ -58,8 +58,7 @@ class SnapshotChannel(TextChannel):
             self.read_written.set()
             if not self.hold_read:
                 await self.incoming.put(
-                    encoded_frame({"id": message["id"], "result": self.result})
-                    + self.suffix
+                    encoded_frame({"id": message["id"], "result": self.result}) + self.suffix
                 )
 
 
@@ -98,11 +97,13 @@ async def test_read_captures_immutable_exact_response_without_draining_notificat
         decoded["thread"]["id"] = "changed"
         assert strict_json_loads(snapshot.result_json)["thread"]["id"] == "thr_exact"
         assert len(transport.drain_notifications()) == 1
-        assert [m for m in channel.messages if m.get("method") == "thread/read"] == [{
-            "id": 2,
-            "method": "thread/read",
-            "params": {"threadId": "thr_exact", "includeTurns": True},
-        }]
+        assert [m for m in channel.messages if m.get("method") == "thread/read"] == [
+            {
+                "id": 2,
+                "method": "thread/read",
+                "params": {"threadId": "thr_exact", "includeTurns": True},
+            }
+        ]
         assert not transport._read_captures
         assert not writes(channel)
     finally:
@@ -158,8 +159,13 @@ def incomplete_suffix(kind):
 
 
 INCOMPLETE_KINDS = [
-    "one-header-byte", "consumed-header", "extended-header", "extended-64-bit-header", "payload",
-    "empty-fragment", "fragment-and-ping",
+    "one-header-byte",
+    "consumed-header",
+    "extended-header",
+    "extended-64-bit-header",
+    "payload",
+    "empty-fragment",
+    "fragment-and-ping",
 ]
 
 
@@ -206,11 +212,13 @@ async def test_already_incomplete_message_refuses_read_and_dispatch_without_writ
         await feed_settled(transport, channel, remainder)
         assert transport.receive_protocol_complete
         snapshot = await transport.read_current_thread()
-        ack = await transport._dispatch_text(**dispatch_args(
-            transport,
-            expected_received_revision=snapshot.received_envelope_revision,
-            expected_received_chunk_revision=snapshot.received_chunk_revision,
-        ))
+        ack = await transport._dispatch_text(
+            **dispatch_args(
+                transport,
+                expected_received_revision=snapshot.received_envelope_revision,
+                expected_received_chunk_revision=snapshot.received_chunk_revision,
+            )
+        )
         assert ack.turn_id == "turn_new"
         assert len(writes(channel)) == 1
     finally:
@@ -312,7 +320,8 @@ async def test_complete_ping_after_response_does_not_invent_new_input(tmp_path):
 
 @pytest.mark.asyncio
 async def test_cancellation_while_final_read_witness_waits_for_protocol_lock_cleans_capture(
-    tmp_path, monkeypatch,
+    tmp_path,
+    monkeypatch,
 ):
     channel = SnapshotChannel()
     transport = make_transport(tmp_path, channel)

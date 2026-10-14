@@ -1078,8 +1078,15 @@ class OpenCodeAdapter(HarnessAdapter):
             kind == "message.updated"
             and role == "user"
             and message_id
-            and not any((payload.get("text"), payload.get("message"), props.get("delta"),
-                         props.get("text"), part.get("text")))
+            and not any(
+                (
+                    payload.get("text"),
+                    payload.get("message"),
+                    props.get("delta"),
+                    props.get("text"),
+                    part.get("text"),
+                )
+            )
             and (
                 self._completed_terminal_parents.get(session.id) == message_id
                 or self._message_roles.get((session.id, message_id)) == "user"
@@ -1242,8 +1249,7 @@ class OpenCodeAdapter(HarnessAdapter):
         permission_paths: list[str] = []
         if (
             permission
-            and permission_name
-            in {"read", "edit", "glob", "grep", "list", "external_directory"}
+            and permission_name in {"read", "edit", "glob", "grep", "list", "external_directory"}
             and len(raw_permission_patterns) <= MAX_PERMISSION_PATTERNS
         ):
             try:
@@ -1260,9 +1266,7 @@ class OpenCodeAdapter(HarnessAdapter):
             props.get("metadata") if isinstance(props.get("metadata"), dict) else {}
         )
         permission_command = (
-            permission_metadata.get("command")
-            if permission and permission_name == "bash"
-            else None
+            permission_metadata.get("command") if permission and permission_name == "bash" else None
         )
         try:
             request_id = (
@@ -1454,9 +1458,7 @@ class OpenCodeAdapter(HarnessAdapter):
         call_id = event.metadata.get("opencode_tool_call_id")
         if not isinstance(message_id, str) or not isinstance(call_id, str):
             return event
-        path = self._scoped_path(
-            f"/session/{session.vendor_session_id}/message", session.cwd
-        )
+        path = self._scoped_path(f"/session/{session.vendor_session_id}/message", session.cwd)
         # OpenCode can publish a completed SSE part just before the message
         # read model exposes its final metadata.exit. Retry this exact,
         # identity-bound read briefly; never infer an exit from output text.
@@ -1495,8 +1497,7 @@ class OpenCodeAdapter(HarnessAdapter):
                     if not isinstance(raw_exit, int) or isinstance(raw_exit, bool):
                         break
                     process_state = parse_test_process_state(
-                        event.metadata.get(OPENCODE_SCOPED_TEST_COMMAND_KEY)
-                        or event.command,
+                        event.metadata.get(OPENCODE_SCOPED_TEST_COMMAND_KEY) or event.command,
                         {
                             "output": state.get("output"),
                             "error": state.get("error"),

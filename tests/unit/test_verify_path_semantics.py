@@ -10,8 +10,15 @@ from pex_supervisor.verify import missing_required_files, verify_claims
 
 def _goal(criterion):
     now = datetime.now(UTC)
-    return Goal(id="g", project_id="p", title="Report", objective="Produce the report",
-                acceptance_criteria=[criterion], created_at=now, updated_at=now)
+    return Goal(
+        id="g",
+        project_id="p",
+        title="Report",
+        objective="Produce the report",
+        acceptance_criteria=[criterion],
+        created_at=now,
+        updated_at=now,
+    )
 
 
 @pytest.mark.parametrize("root", ["/public/workspace", "unclassified-workspace"])
@@ -34,7 +41,8 @@ def test_posix_backslash_filename_does_not_alias_a_nested_artifact():
 
 def test_posix_row_verification_uses_the_exact_required_artifact():
     workspace = {
-        "workspace": "/public/workspace", "files": ["REPORT.json", "report.json"],
+        "workspace": "/public/workspace",
+        "files": ["REPORT.json", "report.json"],
         "artifacts": [
             {"path": "REPORT.json", "row_count": 20, "row_count_complete": True},
             {"path": "report.json", "row_count": 0, "row_count_complete": True},

@@ -102,7 +102,8 @@ async def test_timed_out_real_answer_thread_cannot_start_fallback(ask_client, mo
 @pytest.mark.asyncio
 @pytest.mark.parametrize("with_history", [False, True])
 async def test_detached_history_does_not_hide_current_same_goal_progress(
-    ask_client, with_history,
+    ask_client,
+    with_history,
 ):
     bound = ask_client.bound
     current = bound.adapter.session.model_copy(deep=True)
@@ -118,7 +119,8 @@ async def test_detached_history_does_not_hide_current_same_goal_progress(
         old.status = SessionStatus.DISCOVERED
         old.metadata["subscription_receipt"] = {"authorization_id": "historical-fixture"}
         await bound.store.publish_observer_session(
-            old, expected_control_revision=None,
+            old,
+            expected_control_revision=None,
             expected_project_binding=bound.workspace_binding.project_binding,
             expected_workspace=bound.workspace_binding,
             local_origin_path=bound.origin_path,
@@ -129,7 +131,8 @@ async def test_detached_history_does_not_hide_current_same_goal_progress(
         old.status = SessionStatus.DETACHED
         old.capabilities = {"send_message": False, "observe_messages": False}
         await bound.store.publish_observer_session(
-            old, expected_control_revision=controls["control_revision"],
+            old,
+            expected_control_revision=controls["control_revision"],
             expected_project_binding=bound.workspace_binding.project_binding,
         )
     projection = await bound.store.goal_completion_projection(current.goal_id)

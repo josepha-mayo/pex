@@ -119,8 +119,7 @@ class Settings(BaseSettings):
             )
         if self.allow_unauthenticated_operator and self.require_auth:
             raise ValueError(
-                "allow_unauthenticated_operator is meaningless on an "
-                "authenticated bridge"
+                "allow_unauthenticated_operator is meaningless on an authenticated bridge"
             )
         if self.token is not None:
             configured_token = self.token.strip()
@@ -141,9 +140,7 @@ class Settings(BaseSettings):
                 )
         qualifier = self.agentcore_qualifier.strip()
         if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,47}", qualifier):
-            raise ValueError(
-                "PEX_AGENTCORE_QUALIFIER must be a valid AgentCore endpoint name"
-            )
+            raise ValueError("PEX_AGENTCORE_QUALIFIER must be a valid AgentCore endpoint name")
         self.agentcore_qualifier = qualifier
         if self.agentcore_region is not None:
             self.agentcore_region = self.agentcore_region.strip() or None

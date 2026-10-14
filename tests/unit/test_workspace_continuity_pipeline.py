@@ -38,9 +38,7 @@ def _task_location(task: asyncio.Task) -> str:
     frames = task.get_stack(limit=3)
     if not frames:
         return f"{state}:no Python stack"
-    location = " -> ".join(
-        f"{frame.f_code.co_name}:{frame.f_lineno}" for frame in frames
-    )
+    location = " -> ".join(f"{frame.f_code.co_name}:{frame.f_lineno}" for frame in frames)
     return f"{state}:{location}"
 
 
@@ -83,9 +81,7 @@ async def _cleanup_bound_pipeline(*, task, adapter, transport, pipeline, store) 
 
     async def attempt(label, cleanup) -> None:
         cleanup_task = asyncio.create_task(cleanup(), name=f"fixture-cleanup-{label}")
-        done, _ = await asyncio.wait(
-            {cleanup_task}, timeout=FIXTURE_CLEANUP_TIMEOUT_SECONDS
-        )
+        done, _ = await asyncio.wait({cleanup_task}, timeout=FIXTURE_CLEANUP_TIMEOUT_SECONDS)
         if not done:
             cleanup_task.cancel()
             unsettled.append((label, cleanup_task))
@@ -105,8 +101,7 @@ async def _cleanup_bound_pipeline(*, task, adapter, transport, pipeline, store) 
             task.cancel()
         if not await join_pump():
             failures.append(
-                "pump=TimeoutError "
-                f"({_task_location(task)}; {_pump_cleanup_locations(adapter)})"
+                f"pump=TimeoutError ({_task_location(task)}; {_pump_cleanup_locations(adapter)})"
             )
     await attempt("presentations", pipeline.close_presentations)
     await attempt("store", store.close)
@@ -132,9 +127,7 @@ async def _cleanup_bound_pipeline(*, task, adapter, transport, pipeline, store) 
                 except Exception as exc:
                     failures.append(f"pump_cleanup={type(exc).__name__}")
             else:
-                failures.append(
-                    f"pump_cleanup=TimeoutError ({_task_location(owned_cleanup)})"
-                )
+                failures.append(f"pump_cleanup=TimeoutError ({_task_location(owned_cleanup)})")
         task.cancel()
         if not await join_pump():
             failures.append(f"pump_final=TimeoutError ({_task_location(task)})")
@@ -151,9 +144,7 @@ async def _cleanup_bound_pipeline(*, task, adapter, transport, pipeline, store) 
             except asyncio.CancelledError:
                 pass
             except Exception as exc:
-                failures.append(
-                    f"{labels[cleanup_task]}_late={type(exc).__name__}"
-                )
+                failures.append(f"{labels[cleanup_task]}_late={type(exc).__name__}")
         for cleanup_task in pending:
             cleanup_task.cancel()
         if pending:
@@ -166,13 +157,10 @@ async def _cleanup_bound_pipeline(*, task, adapter, transport, pipeline, store) 
                 except asyncio.CancelledError:
                     pass
                 except Exception as exc:
-                    failures.append(
-                        f"{labels[cleanup_task]}_late={type(exc).__name__}"
-                    )
+                    failures.append(f"{labels[cleanup_task]}_late={type(exc).__name__}")
             for cleanup_task in still_pending:
                 failures.append(
-                    f"{labels[cleanup_task]}_unreaped=TimeoutError "
-                    f"({_task_location(cleanup_task)})"
+                    f"{labels[cleanup_task]}_unreaped=TimeoutError ({_task_location(cleanup_task)})"
                 )
 
     if failures:
@@ -182,9 +170,7 @@ async def _cleanup_bound_pipeline(*, task, adapter, transport, pipeline, store) 
 
 @pytest.mark.asyncio
 async def test_bound_fixture_cleanup_releases_pump_then_attempts_every_stage(monkeypatch):
-    monkeypatch.setattr(
-        __import__(__name__), "FIXTURE_CLEANUP_TIMEOUT_SECONDS", 0.02
-    )
+    monkeypatch.setattr(__import__(__name__), "FIXTURE_CLEANUP_TIMEOUT_SECONDS", 0.02)
     release = asyncio.Event()
     started = asyncio.Event()
     attempted: list[str] = []
@@ -245,9 +231,7 @@ async def test_bound_fixture_cleanup_attempts_later_stages_after_failures():
             task=task,
             adapter=SimpleNamespace(_cleanup_task=None),
             transport=SimpleNamespace(close=failing_cleanup("transport")),
-            pipeline=SimpleNamespace(
-                close_presentations=failing_cleanup("presentations")
-            ),
+            pipeline=SimpleNamespace(close_presentations=failing_cleanup("presentations")),
             store=SimpleNamespace(close=failing_cleanup("store")),
         )
     assert attempted == ["transport", "presentations", "store"]
@@ -257,9 +241,7 @@ async def test_bound_fixture_cleanup_attempts_later_stages_after_failures():
 async def test_bound_fixture_cleanup_reaps_initially_cancellation_resistant_stage(
     monkeypatch,
 ):
-    monkeypatch.setattr(
-        __import__(__name__), "FIXTURE_CLEANUP_TIMEOUT_SECONDS", 0.02
-    )
+    monkeypatch.setattr(__import__(__name__), "FIXTURE_CLEANUP_TIMEOUT_SECONDS", 0.02)
     release = asyncio.Event()
     attempted: list[str] = []
 
@@ -325,7 +307,8 @@ async def test_bound_fixture_reports_already_finished_cleanup_error(monkeypatch)
     try:
         with pytest.raises(AssertionError, match="pump_cleanup=RuntimeError"):
             await _cleanup_bound_pipeline(
-                task=task, adapter=SimpleNamespace(_cleanup_task=owned_cleanup),
+                task=task,
+                adapter=SimpleNamespace(_cleanup_task=owned_cleanup),
                 transport=SimpleNamespace(close=close),
                 pipeline=SimpleNamespace(close_presentations=close),
                 store=SimpleNamespace(close=close),
@@ -354,37 +337,50 @@ async def bound_pipeline(tmp_path, monkeypatch):
         workspace.mkdir()
         origin_path = tmp_path / "local-origin.json"
         choice = save_local_origin_choice(
-            origin_path, ProjectOrigin(namespace="machine", host="continuity-fixture"),
-            expected_revision=None, expected_choice_id=None,
+            origin_path,
+            ProjectOrigin(namespace="machine", host="continuity-fixture"),
+            expected_revision=None,
+            expected_choice_id=None,
         )
         directory = measure_local_directory(str(workspace))
         coordinator, transport = await _subscribed(workspace)
         adapter = CodexSharedAdapter(coordinator)
         locator = ProjectLocator.path(
-            str(workspace), platform=directory.platform, origin=choice.origin,
+            str(workspace),
+            platform=directory.platform,
+            origin=choice.origin,
             physical=directory.physical,
         )
         store = Store(tmp_path / "continuity.sqlite")
         await store.connect()
         await store.register_project_locator(
-            legacy_project_id=adapter.session.project_id, locator=locator,
+            legacy_project_id=adapter.session.project_id,
+            locator=locator,
         )
         binding = await store.project_binding_for_authority(adapter.session.project_id)
         workspace_binding = WorkspaceBinding(
-            project_id=adapter.session.project_id, project_binding=binding,
-            origin_choice=choice, directory=directory, locator=locator,
+            project_id=adapter.session.project_id,
+            project_binding=binding,
+            origin_choice=choice,
+            directory=directory,
+            locator=locator,
         )
         adapter.session.metadata["workspace_binding"] = workspace_binding.model_dump(mode="json")
         now = datetime.now(UTC)
         goal = Goal(
-            id="workspace-continuity-goal", project_id=adapter.session.project_id,
-            title="Observe the selected worker", objective="Inspect only the selected workspace.",
-            created_at=now, updated_at=now,
+            id="workspace-continuity-goal",
+            project_id=adapter.session.project_id,
+            title="Observe the selected worker",
+            objective="Inspect only the selected workspace.",
+            created_at=now,
+            updated_at=now,
         )
         await store.upsert_goal(goal)
         canonical = await store.publish_observer_session(
-            adapter.session, expected_control_revision=None,
-            expected_project_binding=binding, expected_workspace=workspace_binding,
+            adapter.session,
+            expected_control_revision=None,
+            expected_project_binding=binding,
+            expected_workspace=workspace_binding,
             local_origin_path=origin_path,
         )
         # The observer cannot assign human controls; attach the actual goal through
@@ -397,7 +393,10 @@ async def bound_pipeline(tmp_path, monkeypatch):
         registry = AdapterRegistry()
         registry.bind("codex", adapter)
         pipeline = Pipeline(
-            store, registry, EventBus(), Settings.for_test(home=tmp_path, require_auth=False),
+            store,
+            registry,
+            EventBus(),
+            Settings.for_test(home=tmp_path, require_auth=False),
         )
         snapshots, supervisor_calls = [], []
 
@@ -413,11 +412,14 @@ async def bound_pipeline(tmp_path, monkeypatch):
                 supervisor_calls.append(request.model_copy(deep=True))
                 return SupervisorResult(
                     action=ProposedAction(
-                        type=InterventionType.NOOP, session_id=request.session.id,
+                        type=InterventionType.NOOP,
+                        session_id=request.session.id,
                         goal_id=request.session.goal_id,
                         rationale="Test spy observed no reason to intervene.",
-                        evidence=[request.event.event_id], confidence=0.9,
-                        risk=RiskLevel.NONE, authority_required=Authority.LOCAL_POLICY,
+                        evidence=[request.event.event_id],
+                        confidence=0.9,
+                        risk=RiskLevel.NONE,
+                        authority_required=Authority.LOCAL_POLICY,
                     ),
                     diagnosis="test_spy_noop",
                 )
@@ -430,18 +432,29 @@ async def bound_pipeline(tmp_path, monkeypatch):
             retention_ingest=pipeline.retain_shared_codex_observations,
         )
         yield SimpleNamespace(
-            pipeline=pipeline, store=store, adapter=adapter, transport=transport,
-            task=task, workspace=workspace, origin_path=origin_path,
-            directory=directory, snapshots=snapshots, supervisor_calls=supervisor_calls,
+            pipeline=pipeline,
+            store=store,
+            adapter=adapter,
+            transport=transport,
+            task=task,
+            workspace=workspace,
+            origin_path=origin_path,
+            directory=directory,
+            snapshots=snapshots,
+            supervisor_calls=supervisor_calls,
             workspace_binding=workspace_binding,
         )
     finally:
         if task is not None:
             await _cleanup_bound_pipeline(
-                task=task, adapter=adapter, transport=transport,
-                pipeline=pipeline, store=store,
+                task=task,
+                adapter=adapter,
+                transport=transport,
+                pipeline=pipeline,
+                store=store,
             )
         else:
+
             async def noop() -> None:
                 return None
 
@@ -458,7 +471,8 @@ async def bound_pipeline(tmp_path, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_bound_fixture_closes_partial_resources_after_setup_failure(
-    tmp_path, monkeypatch,
+    tmp_path,
+    monkeypatch,
 ):
     transports = []
     stores_closed = []
@@ -490,8 +504,10 @@ async def test_bound_fixture_closes_partial_resources_after_setup_failure(
 def _change_origin(bound):
     choice = load_local_origin_choice(bound.origin_path)
     save_local_origin_choice(
-        bound.origin_path, choice.origin,
-        expected_revision=choice.revision, expected_choice_id=choice.choice_id,
+        bound.origin_path,
+        choice.origin,
+        expected_revision=choice.revision,
+        expected_choice_id=choice.choice_id,
     )
 
 
@@ -506,9 +522,15 @@ def _change_workspace(bound, change):
 
 
 async def _terminal_observation(bound):
-    bound.transport.notifications.append(_notification("turn/completed", {
-        "threadId": "thread-1", "turn": {"id": "turn-1", "status": "completed"},
-    }))
+    bound.transport.notifications.append(
+        _notification(
+            "turn/completed",
+            {
+                "threadId": "thread-1",
+                "turn": {"id": "turn-1", "status": "completed"},
+            },
+        )
+    )
 
     async def wait():
         while True:
@@ -539,7 +561,8 @@ async def _terminal_observation(bound):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("change", ["directory", "origin"])
 async def test_changed_attached_workspace_retains_stop_without_evidence_or_model(
-    bound_pipeline, change,
+    bound_pipeline,
+    change,
 ):
     bound = bound_pipeline
     _change_workspace(bound, change)
@@ -554,7 +577,9 @@ async def test_changed_attached_workspace_retains_stop_without_evidence_or_model
 @pytest.mark.asyncio
 @pytest.mark.parametrize("change", ["directory", "origin"])
 async def test_change_during_snapshot_rejects_result_before_supervisor(
-    bound_pipeline, monkeypatch, change,
+    bound_pipeline,
+    monkeypatch,
+    change,
 ):
     bound = bound_pipeline
     original_snapshot = pipeline_module.snapshot
@@ -581,7 +606,9 @@ async def test_change_during_snapshot_rejects_result_before_supervisor(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("change", ["directory", "origin"])
 async def test_change_during_supervisor_preserves_call_receipt_without_downstream_effects(
-    bound_pipeline, monkeypatch, change,
+    bound_pipeline,
+    monkeypatch,
+    change,
 ):
     bound = bound_pipeline
     original_decide = bound.pipeline.supervisor.decide
@@ -604,7 +631,8 @@ async def test_change_during_supervisor_preserves_call_receipt_without_downstrea
     assert "workspace" in str(processing["receipt"]).lower()
     assert await bound.store.list_interventions(bound.adapter.session.id) == []
     effects = await bound.store.db.execute(
-        "SELECT effect_key FROM event_effects WHERE event_id = ?", (event.event_id,),
+        "SELECT effect_key FROM event_effects WHERE event_id = ?",
+        (event.event_id,),
     )
     assert [row["effect_key"] for row in await effects.fetchall()] == ["planner"]
     # The observed STOP survives even though its planner output lost authority.
@@ -644,7 +672,8 @@ async def test_unchanged_directory_identity_still_processes_real_stop(bound_pipe
 
 @pytest.mark.asyncio
 async def test_origin_change_after_acceptance_terminalizes_without_planner(
-    bound_pipeline, monkeypatch,
+    bound_pipeline,
+    monkeypatch,
 ):
     bound = bound_pipeline
     original = bound.pipeline._build_and_commit_event_plan
@@ -666,7 +695,8 @@ async def test_origin_change_after_acceptance_terminalizes_without_planner(
 
 @pytest.mark.asyncio
 async def test_typed_workspace_loss_exits_adapter_retry_and_retains_pending_record(
-    bound_pipeline, monkeypatch,
+    bound_pipeline,
+    monkeypatch,
 ):
     bound = bound_pipeline
     attempts = 0
@@ -689,7 +719,9 @@ async def test_typed_workspace_loss_exits_adapter_retry_and_retains_pending_reco
 @pytest.mark.asyncio
 @pytest.mark.parametrize("change", ["directory", "origin"])
 async def test_queued_snapshot_checks_workspace_when_read_actually_starts(
-    bound_pipeline, monkeypatch, change,
+    bound_pipeline,
+    monkeypatch,
+    change,
 ):
     bound = bound_pipeline
     queued, release = asyncio.Event(), asyncio.Event()
@@ -722,7 +754,8 @@ async def test_queued_snapshot_checks_workspace_when_read_actually_starts(
 
 @pytest.mark.asyncio
 async def test_snapshot_cancellation_settles_owned_read_before_return(
-    bound_pipeline, monkeypatch,
+    bound_pipeline,
+    monkeypatch,
 ):
     bound = bound_pipeline
     started, release, finished = threading.Event(), threading.Event(), threading.Event()
@@ -740,6 +773,7 @@ async def test_snapshot_cancellation_settles_owned_read_before_return(
     monkeypatch.setattr(pipeline_module, "snapshot", held_snapshot)
     operation = asyncio.create_task(bound.pipeline._snapshot_for_session(bound.adapter.session))
     try:
+
         async def wait_for_start():
             while not started.is_set():
                 await asyncio.sleep(0.01)
@@ -766,21 +800,18 @@ async def test_snapshot_cancellation_settles_owned_read_before_return(
 
 @pytest.mark.asyncio
 async def test_advisory_workspace_scans_have_per_session_and_aggregate_budgets(
-    bound_pipeline, monkeypatch,
+    bound_pipeline,
+    monkeypatch,
 ):
     bound = bound_pipeline
     clock = [100.0]
     monkeypatch.setattr(bound.pipeline, "_monotonic", lambda: clock[0])
 
-    snapshot, reason = await bound.pipeline._advisory_snapshot_for_session(
-        bound.adapter.session
-    )
+    snapshot, reason = await bound.pipeline._advisory_snapshot_for_session(bound.adapter.session)
     assert snapshot == {"files": [], "git_diff": ""}
     assert reason is None
 
-    snapshot, reason = await bound.pipeline._advisory_snapshot_for_session(
-        bound.adapter.session
-    )
+    snapshot, reason = await bound.pipeline._advisory_snapshot_for_session(bound.adapter.session)
     assert snapshot is None
     assert reason == "workspace_snapshot_session_cooldown"
 
@@ -793,9 +824,7 @@ async def test_advisory_workspace_scans_have_per_session_and_aggregate_budgets(
         assert reason is None
 
     clock[0] = 108.0
-    snapshot, reason = await bound.pipeline._advisory_snapshot_for_session(
-        bound.adapter.session
-    )
+    snapshot, reason = await bound.pipeline._advisory_snapshot_for_session(bound.adapter.session)
     assert snapshot is None
     assert reason == "workspace_snapshot_aggregate_budget"
     assert len(bound.snapshots) == 4
@@ -819,18 +848,14 @@ async def test_advisory_workspace_scans_have_per_session_and_aggregate_budgets(
     )
     await bound.pipeline.ingest_event(event, bound.adapter.session)
     features = bound.supervisor_calls[-1].scores.features
-    assert features["prerequisite_evidence_unavailable"] == (
-        "workspace_snapshot_aggregate_budget"
-    )
+    assert features["prerequisite_evidence_unavailable"] == ("workspace_snapshot_aggregate_budget")
     assert "missing_prerequisites" not in features
     # The event also performed the one-time acceptance-baseline seal, which is
     # an authoritative, separately bounded observation — it does not consume
     # the advisory budget, and it does not run again once sealed. The spy's
     # minimal snapshot carries no file_meta, so nothing was fingerprinted.
     assert len(bound.snapshots) == 5
-    baseline = await bound.store.recall_acceptance_baseline(
-        bound.adapter.session.id, goal.id
-    )
+    baseline = await bound.store.recall_acceptance_baseline(bound.adapter.session.id, goal.id)
     assert baseline is None
 
     now = datetime.now(UTC)
@@ -863,9 +888,7 @@ async def test_advisory_workspace_scans_have_per_session_and_aggregate_budgets(
     assert len(bound.snapshots) == 7
 
     clock[0] = 110.0
-    snapshot, reason = await bound.pipeline._advisory_snapshot_for_session(
-        bound.adapter.session
-    )
+    snapshot, reason = await bound.pipeline._advisory_snapshot_for_session(bound.adapter.session)
     assert snapshot == {"files": [], "git_diff": ""}
     assert reason is None
     assert len(bound.snapshots) == 8
@@ -873,7 +896,8 @@ async def test_advisory_workspace_scans_have_per_session_and_aggregate_budgets(
 
 @pytest.mark.asyncio
 async def test_advisory_workspace_scan_burst_does_not_queue_behind_blocked_scan(
-    bound_pipeline, monkeypatch,
+    bound_pipeline,
+    monkeypatch,
 ):
     bound = bound_pipeline
     started, release = threading.Event(), threading.Event()
@@ -891,6 +915,7 @@ async def test_advisory_workspace_scan_burst_does_not_queue_behind_blocked_scan(
         bound.pipeline._advisory_snapshot_for_session(bound.adapter.session)
     )
     try:
+
         async def wait_for_start():
             while not started.is_set():
                 await asyncio.sleep(0.01)
@@ -913,7 +938,9 @@ async def test_advisory_workspace_scan_burst_does_not_queue_behind_blocked_scan(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("change", ["directory", "origin"])
 async def test_queued_supervisor_rechecks_before_actual_invocation(
-    bound_pipeline, monkeypatch, change,
+    bound_pipeline,
+    monkeypatch,
+    change,
 ):
     bound = bound_pipeline
     original_invoke = bound.pipeline._invoke_supervisor
@@ -937,7 +964,9 @@ async def test_queued_supervisor_rechecks_before_actual_invocation(
     planner = await bound.store.get_event_effect(event.event_id, "planner")
     assert planner["state"] == "failed"
     assert planner["result"] == {
-        "status": "failed", "code": WorkspaceAuthorityError.code, "provider_started": False,
+        "status": "failed",
+        "code": WorkspaceAuthorityError.code,
+        "provider_started": False,
     }
     assert processing["state"] == "failed"
     assert processing["receipt"]["intervention"] is None

@@ -386,12 +386,14 @@ async def test_opencode_listing_preserves_event_owned_projection(tmp_path, monke
         store, registry, EventBus(), Settings.for_test(home=tmp_path, require_auth=False)
     )
     stopped = HarnessSession(
-        id="opencode:recorded", harness_type=HarnessType.OPENCODE,
-        vendor_session_id="recorded", status=SessionStatus.STOPPED,
+        id="opencode:recorded",
+        harness_type=HarnessType.OPENCODE,
+        vendor_session_id="recorded",
+        status=SessionStatus.STOPPED,
         last_activity=datetime(2026, 1, 1, tzinfo=UTC),
-        capabilities=AdapterCapabilities(
-            support_label=AdapterSupportLabel.STRONG
-        ).model_dump(mode="json"),
+        capabilities=AdapterCapabilities(support_label=AdapterSupportLabel.STRONG).model_dump(
+            mode="json"
+        ),
     )
     await store.upsert_session(stopped)
     listing = stopped.model_copy(deep=True)
@@ -498,9 +500,7 @@ async def test_refresh_does_not_detach_a_working_codex_session(tmp_path, monkeyp
     assert stored.status == SessionStatus.WORKING
 
 
-async def test_desktop_refresh_coalesces_pollers_and_resumes_after_backoff(
-    tmp_path, monkeypatch
-):
+async def test_desktop_refresh_coalesces_pollers_and_resumes_after_backoff(tmp_path, monkeypatch):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()
     registry = AdapterRegistry()

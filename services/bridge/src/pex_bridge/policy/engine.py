@@ -85,10 +85,9 @@ class PolicyEngine:
             # command string (paid compute, production scope, or a one-shot
             # action), so an allowlisted prefix must never downgrade it.
             command_risk = self.command_risk(command)
-            deterministic_local_classification = (
-                action.payload.get("decision_source") == "local_policy"
-                and risk not in {RiskLevel.HIGH, RiskLevel.IRREVERSIBLE}
-            )
+            deterministic_local_classification = action.payload.get(
+                "decision_source"
+            ) == "local_policy" and risk not in {RiskLevel.HIGH, RiskLevel.IRREVERSIBLE}
             if deterministic_local_classification:
                 risk = command_risk
             elif _RISK_ORDER[command_risk] > _RISK_ORDER[risk]:

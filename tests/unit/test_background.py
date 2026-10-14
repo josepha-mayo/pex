@@ -20,21 +20,28 @@ def _job_event(index, *, pid=None, running=True, command="python train.py"):
     if pid is not None:
         state["pid"] = pid
     return HarnessEvent(
-        event_id=f"e{index}", ts=datetime(2026, 9, 6, tzinfo=UTC) + timedelta(seconds=index),
-        harness_type=HarnessType.SYNTHETIC, session_id="synthetic:jobs",
-        event_type=EventType.SHELL, command=command, process_state=state,
+        event_id=f"e{index}",
+        ts=datetime(2026, 9, 6, tzinfo=UTC) + timedelta(seconds=index),
+        harness_type=HarnessType.SYNTHETIC,
+        session_id="synthetic:jobs",
+        event_type=EventType.SHELL,
+        command=command,
+        process_state=state,
     )
 
 
 def test_background_jobs_can_finish_out_of_launch_order():
-    events = [_job_event(0, pid=101), _job_event(1, pid=102),
-              _job_event(2, pid=101, running=False), _job_event(3, pid=102, running=False)]
+    events = [
+        _job_event(0, pid=101),
+        _job_event(1, pid=102),
+        _job_event(2, pid=101, running=False),
+        _job_event(3, pid=102, running=False),
+    ]
     assert find_abandoned_background(events) is None
 
 
 def test_repeated_running_observations_do_not_duplicate_a_pid_bound_job():
-    events = [_job_event(0, pid=101), _job_event(1, pid=101),
-              _job_event(2, pid=101, running=False)]
+    events = [_job_event(0, pid=101), _job_event(1, pid=101), _job_event(2, pid=101, running=False)]
     assert find_abandoned_background(events) is None
 
 
@@ -60,8 +67,7 @@ def test_same_pid_observations_in_different_sessions_do_not_replace_each_other()
 
 
 def test_unidentified_command_exit_does_not_finish_an_identified_job():
-    events = [_job_event(0, pid=101),
-              _job_event(1, running=False, command="git status")]
+    events = [_job_event(0, pid=101), _job_event(1, running=False, command="git status")]
     assert find_abandoned_background(events)["pid"] == 101
 
 
@@ -78,15 +84,20 @@ def test_pid_running_sees_this_process():
 
 def test_long_background_command_matches_its_terminal_event_without_prefix_alias():
     command = "python train.py --label " + "x" * 220
-    events = [_job_event(0, command=command),
-              _job_event(1, command=command + "other", running=False)]
+    events = [
+        _job_event(0, command=command),
+        _job_event(1, command=command + "other", running=False),
+    ]
     assert find_abandoned_background(events) is not None
     events.append(_job_event(2, command=command, running=False))
     assert find_abandoned_background(events) is None
 
 
-@pytest.mark.parametrize("pid", [True, False, -1, 0, 2**80, "²", "9" * 5000],
-                         ids=["true", "false", "negative", "zero", "huge", "unicode", "long"])
+@pytest.mark.parametrize(
+    "pid",
+    [True, False, -1, 0, 2**80, "²", "9" * 5000],
+    ids=["true", "false", "negative", "zero", "huge", "unicode", "long"],
+)
 def test_invalid_observed_pid_is_unknown_not_a_process_identity(pid):
     launch = find_abandoned_background([_job_event(0, pid=pid)])
     assert launch is not None

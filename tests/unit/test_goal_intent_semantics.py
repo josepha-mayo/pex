@@ -58,9 +58,7 @@ def _projection(
     retired: bool = False,
 ) -> tuple[Decision, ContextItem]:
     live_status = (
-        DecisionStatus.UNCERTAIN
-        if kind == "unresolved_question"
-        else DecisionStatus.ACTIVE
+        DecisionStatus.UNCERTAIN if kind == "unresolved_question" else DecisionStatus.ACTIVE
     )
     decision = Decision(
         id=decision_id,
@@ -89,9 +87,7 @@ def _projection(
         metadata={
             "decision_id": decision_id,
             "kind": kind,
-            "status": (
-                DecisionStatus.SUPERSEDED.value if retired else live_status.value
-            ),
+            "status": (DecisionStatus.SUPERSEDED.value if retired else live_status.value),
             "unresolved": kind == "unresolved_question",
         },
     )

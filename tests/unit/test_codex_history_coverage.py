@@ -12,7 +12,10 @@ from test_codex_subscription import FakeSharedTransport, _inspect, _thread_respo
 @pytest.mark.parametrize("field", ["truncated", "hasMore", "has_more", "redacted"])
 @pytest.mark.parametrize("value", [True, 1, 0, "false", None, [], {}])
 async def test_ambiguous_coverage_cannot_be_discarded_before_selection(
-    tmp_path, level, field, value,
+    tmp_path,
+    level,
+    field,
+    value,
 ):
     response = _thread_response(tmp_path)
     target = response if level == "response" else response["thread"]
@@ -38,8 +41,13 @@ async def test_explicit_complete_coverage_remains_selectable(tmp_path, level):
     response = _thread_response(tmp_path)
     target = response if level == "response" else response["thread"]
     target.update(
-        truncated=False, hasMore=False, has_more=False, redacted=False,
-        nextCursor=None, next_cursor="", content_status="complete",
+        truncated=False,
+        hasMore=False,
+        has_more=False,
+        redacted=False,
+        nextCursor=None,
+        next_cursor="",
+        content_status="complete",
     )
     coordinator = CodexExistingThreadSubscription(FakeSharedTransport([response], {}))
     selected = await _inspect(coordinator, tmp_path)

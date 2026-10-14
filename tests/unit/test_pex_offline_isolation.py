@@ -53,8 +53,12 @@ async def test_process_launch_time_is_charged_to_supervisor_wait(tmp_path, monke
     monkeypatch.setattr(pex_attach.asyncio, "create_subprocess_exec", launch)
     monkeypatch.setattr(pex_attach.asyncio, "wait_for", capture_wait)
     code, _ = await pex_attach._run_supervisor_command(
-        command=["controlled"], workspace=tmp_path, runtime=tmp_path,
-        control=tmp_path, timeout=10, model_relay=None,
+        command=["controlled"],
+        workspace=tmp_path,
+        runtime=tmp_path,
+        control=tmp_path,
+        timeout=10,
+        model_relay=None,
     )
     assert code == 0
     assert observed == [7]
@@ -83,8 +87,12 @@ async def test_expiry_during_process_launch_kills_owned_child(tmp_path, monkeypa
     monkeypatch.setattr(pex_attach.asyncio, "create_subprocess_exec", launch)
     with pytest.raises(RuntimeError, match="timed out"):
         await pex_attach._run_supervisor_command(
-            command=["controlled"], workspace=tmp_path, runtime=tmp_path,
-            control=tmp_path, timeout=10, model_relay=None,
+            command=["controlled"],
+            workspace=tmp_path,
+            runtime=tmp_path,
+            control=tmp_path,
+            timeout=10,
+            model_relay=None,
         )
     assert cleanup == ["kill", "wait"]
 
@@ -115,14 +123,19 @@ async def test_local_decision_cap_expires_before_longer_relay_deadline(tmp_path,
     async def forbidden_launch(*args, **kwargs):
         pytest.fail("expired local cap must not launch even when relay has time left")
 
-    relay = SimpleNamespace(audit=[], deadline=1000, model="pinned", listen=listen,
-                            close_active=close_active)
+    relay = SimpleNamespace(
+        audit=[], deadline=1000, model="pinned", listen=listen, close_active=close_active
+    )
     monkeypatch.setattr(linux_sandbox, "supervisor_relay_command", slow_boundary)
     monkeypatch.setattr(pex_attach.asyncio, "create_subprocess_exec", forbidden_launch)
     with pytest.raises(TimeoutError, match="execution budget"):
         await pex_attach._run_supervisor_command(
-            command=[], workspace=tmp_path, runtime=tmp_path, control=tmp_path,
-            timeout=10, model_relay=relay,
+            command=[],
+            workspace=tmp_path,
+            runtime=tmp_path,
+            control=tmp_path,
+            timeout=10,
+            model_relay=relay,
         )
     assert cleanup == ["close", "wait_closed", "close_active"]
 
@@ -131,24 +144,34 @@ def _arguments(tmp_path):
     workspace = tmp_path / "worker"
     workspace.mkdir()
     session = HarnessSession(
-        id="codex:offline", harness_type=HarnessType.CODEX,
-        vendor_session_id="offline", project_id=str(workspace), cwd=str(workspace),
+        id="codex:offline",
+        harness_type=HarnessType.CODEX,
+        vendor_session_id="offline",
+        project_id=str(workspace),
+        cwd=str(workspace),
     )
     return {
-        "task_md": "Write report.json.", "workspace": workspace,
-        "session": session, "observed": {
-            "files": [], "file_manifest": [],
+        "task_md": "Write report.json.",
+        "workspace": workspace,
+        "session": session,
+        "observed": {
+            "files": [],
+            "file_manifest": [],
             "public_workspace_sha256": hashlib.sha256(b"[]").hexdigest(),
         },
-        "agent_messages": ["Done."], "goal_id": "public-offline",
-        "control_dir": tmp_path / "private", "timeout": 10,
+        "agent_messages": ["Done."],
+        "goal_id": "public-offline",
+        "control_dir": tmp_path / "private",
+        "timeout": 10,
         "offline_runtime": tmp_path / "runtime",
     }
 
 
 @pytest.mark.parametrize("inference", [False, True])
 async def test_offline_child_rebinds_identity_and_rejects_inference(
-    tmp_path, monkeypatch, inference,
+    tmp_path,
+    monkeypatch,
+    inference,
 ):
     arguments = _arguments(tmp_path)
     captured = {}
@@ -169,12 +192,18 @@ async def test_offline_child_rebinds_identity_and_rejects_inference(
         assert payload["session"]["project_id"] == "/workspace"
         assert payload["session"]["cwd"] == "/workspace"
         assert payload["session"]["id"] == arguments["session"].id
-        response_bytes = json.dumps({
-            "action": {"type": "NOOP", "session_id": payload["session"]["id"],
-                       "goal_id": payload["goal_id"], "rationale": "No action needed."},
-            "used_llm": inference,
-            "diagnosis": "No action needed.",
-        }).encode()
+        response_bytes = json.dumps(
+            {
+                "action": {
+                    "type": "NOOP",
+                    "session_id": payload["session"]["id"],
+                    "goal_id": payload["goal_id"],
+                    "rationale": "No action needed.",
+                },
+                "used_llm": inference,
+                "diagnosis": "No action needed.",
+            }
+        ).encode()
         (control / "response.json").write_bytes(response_bytes)
         captured.update(request=request_bytes, response=response_bytes)
 
@@ -196,9 +225,10 @@ async def test_offline_child_rebinds_identity_and_rejects_inference(
         boundary = decision["execution_boundary"]
         assert boundary["request_sha256"] == hashlib.sha256(captured["request"]).hexdigest()
         assert boundary["response_sha256"] == hashlib.sha256(captured["response"]).hexdigest()
-        assert pex_attach._audit(decision, arguments["observed"], "Task", 1)[
-            "execution_boundary"
-        ] == boundary
+        assert (
+            pex_attach._audit(decision, arguments["observed"], "Task", 1)["execution_boundary"]
+            == boundary
+        )
     assert arguments["session"].cwd == str(arguments["workspace"])
 
 
@@ -234,15 +264,21 @@ async def test_offline_supervision_selects_isolated_public_test_execution(tmp_pa
     monkeypatch.setattr(pex_attach, "_observe_controlled_workspace", observe)
     with pytest.raises(RuntimeError, match="observation boundary selected"):
         await pex_attach.supervise_isolated_codex(
-            object(), arguments["session"], arguments["workspace"], arguments["task_md"],
+            object(),
+            arguments["session"],
+            arguments["workspace"],
+            arguments["task_md"],
             store_path=tmp_path / "private" / "store.sqlite",
-            public_test_sha256="a" * 64, offline_runtime=Path("/runtime"),
+            public_test_sha256="a" * 64,
+            offline_runtime=Path("/runtime"),
         )
 
 
 @pytest.mark.parametrize("stalled_stage", ["delivery", "completion"])
 async def test_supervision_aborts_stalled_followup_at_shared_deadline(
-    tmp_path, monkeypatch, stalled_stage,
+    tmp_path,
+    monkeypatch,
+    stalled_stage,
 ):
     arguments = _arguments(tmp_path)
     cancelled = asyncio.Event()
@@ -251,7 +287,8 @@ async def test_supervision_aborts_stalled_followup_at_shared_deadline(
     async def decision(**kwargs):
         return {
             "action": {"type": "SEND_NUDGE", "payload": {"text": "Verify the report."}},
-            "diagnosis": "The report is missing.", "used_llm": False,
+            "diagnosis": "The report is missing.",
+            "used_llm": False,
         }
 
     async def stall():
@@ -278,14 +315,20 @@ async def test_supervision_aborts_stalled_followup_at_shared_deadline(
             await stall()
 
     monkeypatch.setattr(
-        pex_attach, "_observe_controlled_workspace", lambda *a, **kw: arguments["observed"],
+        pex_attach,
+        "_observe_controlled_workspace",
+        lambda *a, **kw: arguments["observed"],
     )
     monkeypatch.setattr(pex_attach, "_decide_out_of_process", decision)
     with pytest.raises(TimeoutError):
         await pex_attach.supervise_isolated_codex(
-            Adapter(), arguments["session"], arguments["workspace"], arguments["task_md"],
+            Adapter(),
+            arguments["session"],
+            arguments["workspace"],
+            arguments["task_md"],
             store_path=tmp_path / "private" / "store.sqlite",
-            turn_timeout=0.1, decision_timeout=0.1,
+            turn_timeout=0.1,
+            decision_timeout=0.1,
         )
     assert cancelled.is_set()
     assert dispatches == [(arguments["session"].id, "Verify the report.")]
@@ -299,7 +342,8 @@ async def test_expired_supervisor_decision_cannot_dispatch_followup(tmp_path, mo
         clock[0] = 2.0
         return {
             "action": {"type": "SEND_NUDGE", "payload": {"text": "Too late."}},
-            "diagnosis": "The report is missing.", "used_llm": False,
+            "diagnosis": "The report is missing.",
+            "used_llm": False,
         }
 
     class Adapter:
@@ -310,14 +354,20 @@ async def test_expired_supervisor_decision_cannot_dispatch_followup(tmp_path, mo
 
     monkeypatch.setattr(pex_attach.time, "perf_counter", lambda: clock[0])
     monkeypatch.setattr(
-        pex_attach, "_observe_controlled_workspace", lambda *a, **kw: arguments["observed"],
+        pex_attach,
+        "_observe_controlled_workspace",
+        lambda *a, **kw: arguments["observed"],
     )
     monkeypatch.setattr(pex_attach, "_decide_out_of_process", decision)
     with pytest.raises(TimeoutError, match="shared worker-plus-supervisor task budget"):
         await pex_attach.supervise_isolated_codex(
-            Adapter(), arguments["session"], arguments["workspace"], arguments["task_md"],
+            Adapter(),
+            arguments["session"],
+            arguments["workspace"],
+            arguments["task_md"],
             store_path=tmp_path / "private" / "store.sqlite",
-            turn_timeout=1, decision_timeout=1,
+            turn_timeout=1,
+            decision_timeout=1,
         )
 
 
@@ -328,7 +378,8 @@ async def test_supervisor_decision_cap_is_clipped_to_remaining_task_time(tmp_pat
     async def decision(**kwargs):
         requested_timeouts.append(kwargs["timeout"])
         return {
-            "action": {"type": "NOOP"}, "diagnosis": "No correction needed.",
+            "action": {"type": "NOOP"},
+            "diagnosis": "No correction needed.",
             "used_llm": False,
         }
 
@@ -336,13 +387,19 @@ async def test_supervisor_decision_cap_is_clipped_to_remaining_task_time(tmp_pat
         isolated_agent_messages = []
 
     monkeypatch.setattr(
-        pex_attach, "_observe_controlled_workspace", lambda *a, **kw: arguments["observed"],
+        pex_attach,
+        "_observe_controlled_workspace",
+        lambda *a, **kw: arguments["observed"],
     )
     monkeypatch.setattr(pex_attach, "_decide_out_of_process", decision)
     result = await pex_attach.supervise_isolated_codex(
-        Adapter(), arguments["session"], arguments["workspace"], arguments["task_md"],
+        Adapter(),
+        arguments["session"],
+        arguments["workspace"],
+        arguments["task_md"],
         store_path=tmp_path / "private" / "store.sqlite",
-        turn_timeout=1, decision_timeout=180,
+        turn_timeout=1,
+        decision_timeout=180,
     )
     assert len(requested_timeouts) == 1
     assert 0 < requested_timeouts[0] <= 1

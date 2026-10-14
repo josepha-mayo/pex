@@ -203,9 +203,7 @@ async def test_pipeline_rejects_cross_session_event_binding(tmp_path):
         EventBus(),
         Settings.for_test(require_auth=False, home=tmp_path),
     )
-    event = _stop(session, "wrong-binding").model_copy(
-        update={"session_id": "synthetic:other"}
-    )
+    event = _stop(session, "wrong-binding").model_copy(update={"session_id": "synthetic:other"})
     try:
         with pytest.raises(ValueError, match="identity mismatch"):
             await pipeline.ingest_event(event, session)
@@ -227,9 +225,7 @@ async def test_pipeline_rejects_cross_project_event_binding_before_persistence(t
         EventBus(),
         Settings.for_test(require_auth=False, home=tmp_path),
     )
-    event = _stop(session, "wrong-project-binding").model_copy(
-        update={"project_id": "project-b"}
-    )
+    event = _stop(session, "wrong-project-binding").model_copy(update={"project_id": "project-b"})
     try:
         with pytest.raises(ValueError, match="project identity mismatch"):
             await pipeline.ingest_event(event, session)
@@ -283,9 +279,7 @@ async def test_supervisor_cannot_redirect_action_before_adapter_io(tmp_path):
     )
     pipeline.supervisor = _CrossTargetSupervisor(target.id)
     try:
-        intervention = await pipeline.ingest_event(
-            _stop(source, "cross-target-result"), source
-        )
+        intervention = await pipeline.ingest_event(_stop(source, "cross-target-result"), source)
         assert intervention is not None
         assert intervention.session_id == source.id
         assert intervention.proposed_action.session_id == source.id
@@ -320,9 +314,7 @@ async def test_unattached_session_does_not_persist_intervention(tmp_path):
     )
     pipeline.supervisor = _CrossTargetSupervisor(session.id)
     try:
-        intervention = await pipeline.ingest_event(
-            _stop(session, "unattached-stop"), session
-        )
+        intervention = await pipeline.ingest_event(_stop(session, "unattached-stop"), session)
         assert intervention is None
         assert await store.list_interventions(session.id) == []
         processing = await store.get_event_processing("unattached-stop")

@@ -749,9 +749,7 @@ def _verification_gap_signature(value: object) -> tuple[str, tuple[str, ...]] | 
     raw_evidence = value.get("acceptance_evidence") or value.get("evidence") or []
     if not isinstance(raw_evidence, list):
         return None
-    evidence = tuple(
-        sorted({str(item).strip() for item in raw_evidence if str(item).strip()})
-    )
+    evidence = tuple(sorted({str(item).strip() for item in raw_evidence if str(item).strip()}))
     return (status, evidence) if evidence else None
 
 
@@ -1206,7 +1204,8 @@ class Pipeline:
             return await self._drain_event_and_followups(event.event_id)
         opencode_live = (
             await self.store.get_session_for_authority(session.id)
-            if event.harness_type == HarnessType.OPENCODE else None
+            if event.harness_type == HarnessType.OPENCODE
+            else None
         )
         opencode_projection_boundary = False
         if opencode_live is not None:
@@ -1225,8 +1224,10 @@ class Pipeline:
                         )
                         or (
                             observed_status in ("busy", "retry")
-                            and opencode_live.status not in {
-                                SessionStatus.WORKING, SessionStatus.DRIFTING,
+                            and opencode_live.status
+                            not in {
+                                SessionStatus.WORKING,
+                                SessionStatus.DRIFTING,
                             }
                         )
                         or (
@@ -1237,8 +1238,11 @@ class Pipeline:
                     )
                 )
                 or (
-                    event.event_type in {
-                        EventType.TOOL_CALL, EventType.TOOL_RESULT, EventType.FILE_EDIT,
+                    event.event_type
+                    in {
+                        EventType.TOOL_CALL,
+                        EventType.TOOL_RESULT,
+                        EventType.FILE_EDIT,
                     }
                     and opencode_live.status != SessionStatus.WORKING
                 )
@@ -2514,9 +2518,7 @@ class Pipeline:
         if not paths:
             return {}
         try:
-            captured = await asyncio.to_thread(
-                captured_flagged_contents, workspace, paths
-            )
+            captured = await asyncio.to_thread(captured_flagged_contents, workspace, paths)
         except Exception:
             return {}
         # Intervention metadata travels with the record; bound the evidence so
@@ -2551,9 +2553,7 @@ class Pipeline:
         files = acceptance_fingerprints(workspace)
         try:
             if files is None:
-                return await self.store.recall_acceptance_baseline(
-                    session.id, goal.id
-                )
+                return await self.store.recall_acceptance_baseline(session.id, goal.id)
             contents = await asyncio.to_thread(
                 sealed_acceptance_contents,
                 str(workspace.get("workspace") or session.cwd or ""),
@@ -2609,10 +2609,7 @@ class Pipeline:
         ):
             return False
         try:
-            if (
-                await self.store.recall_acceptance_baseline(session.id, goal.id)
-                is not None
-            ):
+            if await self.store.recall_acceptance_baseline(session.id, goal.id) is not None:
                 self._acceptance_baseline_attempts.pop(attempt_key, None)
                 return False
             if len(self._acceptance_baseline_attempts) > 4096:
@@ -2693,8 +2690,7 @@ class Pipeline:
             and live_session.metadata.get("opencode_free_tier_limited") is True
         )
         opencode_message_aborted_fenced = bool(
-            live_session is not None
-            and live_session.metadata.get("opencode_turn_aborted") is True
+            live_session is not None and live_session.metadata.get("opencode_turn_aborted") is True
         )
         opencode_work_reset = bool(
             event.harness_type == HarnessType.OPENCODE
@@ -2719,9 +2715,7 @@ class Pipeline:
             and not opencode_work_reset
         )
         observation = event.metadata.get("pex_observer_snapshot")
-        if opencode_work_reset and (
-            opencode_free_tier_fenced or opencode_message_aborted_fenced
-        ):
+        if opencode_work_reset and (opencode_free_tier_fenced or opencode_message_aborted_fenced):
             session.metadata.pop("opencode_free_tier_limited", None)
             session.metadata.pop("opencode_provider_block", None)
             session.metadata.pop("opencode_turn_aborted", None)
@@ -2850,8 +2844,11 @@ class Pipeline:
         notes = ""
         stored_decisions = (
             await self.store.list_decisions_for_authority(
-                goal.id, prioritize_active_human=True,
-            ) if goal is not None else []
+                goal.id,
+                prioritize_active_human=True,
+            )
+            if goal is not None
+            else []
         )
         plan_decisions: list[Decision] = []
 
@@ -3023,9 +3020,7 @@ class Pipeline:
                 scores.features["nudge_dispute"] = {
                     "intervention_id": dispute_nudge.id,
                     "outcome": str(dispute_nudge.outcome or ""),
-                    "evidence": [
-                        str(item) for item in (dispute_nudge.evidence or [])
-                    ][:12],
+                    "evidence": [str(item) for item in (dispute_nudge.evidence or [])][:12],
                     "worker_response": str(dispute_nudge.worker_response or "")[:1000],
                 }
             scores.features["verification"] = verification
@@ -3247,8 +3242,7 @@ class Pipeline:
             scores=scores,
             autonomy=self.settings.autonomy,
             trajectory_review_enabled=(
-                self.supervisor_dispatch_limit is not None
-                and self.supervisor_dispatch_limit > 0
+                self.supervisor_dispatch_limit is not None and self.supervisor_dispatch_limit > 0
             ),
             notes=notes,
             supervisor_context=build_supervisor_context(
@@ -3490,18 +3484,12 @@ class Pipeline:
                 # terminal status.
                 or (session.metadata or {}).get("replay")
             ):
-                action.payload.setdefault(
-                    "previous_session_status", session.status.value
-                )
+                action.payload.setdefault("previous_session_status", session.status.value)
                 session.status = SessionStatus.NEEDS_DECISION
         elif action.type == InterventionType.ASK_HUMAN:
             local_outcome = "escalated"
-            if session.status != SessionStatus.STOPPED or (session.metadata or {}).get(
-                "replay"
-            ):
-                action.payload.setdefault(
-                    "previous_session_status", session.status.value
-                )
+            if session.status != SessionStatus.STOPPED or (session.metadata or {}).get("replay"):
+                action.payload.setdefault("previous_session_status", session.status.value)
                 session.status = SessionStatus.NEEDS_DECISION
         elif action.type == InterventionType.ANNOTATE:
             local_outcome = "annotated"
@@ -5864,9 +5852,7 @@ class Pipeline:
         async with self._handoff_mutation_lock:
             queue_wait = time.monotonic() - lock_wait_started
             if queue_wait > 5.0:
-                logger.warning(
-                    "operator handoff waited %.1fs for the mutation lock", queue_wait
-                )
+                logger.warning("operator handoff waited %.1fs for the mutation lock", queue_wait)
             return await self._reserve_context_handoff_locked(
                 source=source,
                 target=target,
@@ -6705,9 +6691,7 @@ class Pipeline:
                         continue
                     raise
                 except ValueError as exc:
-                    if str(exc) == (
-                        "handoff bundle is not the canonical stored projection"
-                    ):
+                    if str(exc) == ("handoff bundle is not the canonical stored projection"):
                         continue
                     raise
             if record is None:
@@ -6812,9 +6796,7 @@ class Pipeline:
             return
         task = self._desktop_refresh_task
         if task is None or task.done():
-            self._desktop_refresh_task = asyncio.create_task(
-                self.refresh_desktop_sessions()
-            )
+            self._desktop_refresh_task = asyncio.create_task(self.refresh_desktop_sessions())
             # Consume failures so a dead discovery never surfaces as an
             # unretrieved task exception — the next poll simply retries.
             self._desktop_refresh_task.add_done_callback(
@@ -7131,10 +7113,7 @@ class Pipeline:
         )
         sessions = projection["sessions"]
         opencode = self.adapters.get("opencode")
-        if (
-            self._desktop_refresh_attempted_at is not None
-            and isinstance(opencode, OpenCodeAdapter)
-        ):
+        if self._desktop_refresh_attempted_at is not None and isinstance(opencode, OpenCodeAdapter):
             # Durable history survives a restart or failed HTTP discovery, but
             # neither proves the current server still lists that worker. Keep
             # desktop/plugin observations without offering stale HTTP rows.
@@ -7184,8 +7163,7 @@ class Pipeline:
         needs = [
             s
             for s in sessions
-            if s.status == SessionStatus.NEEDS_DECISION
-            or s.id in open_question_sessions
+            if s.status == SessionStatus.NEEDS_DECISION or s.id in open_question_sessions
         ]
         last = interventions[0] if interventions else None
         status_detail = (

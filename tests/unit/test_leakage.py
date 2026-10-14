@@ -19,15 +19,11 @@ def test_supervisor_loop_has_no_task_id_branches():
         root / "services" / "supervisor" / "src" / "pex_supervisor" / "planner.py"
     )
     boundary.supervisor_has_no_task_id_branches(root / "benchmarks" / "pex_attach.py")
-    boundary.supervisor_has_no_task_id_branches(
-        root / "benchmarks" / "cursor_isolated_stop.py"
-    )
+    boundary.supervisor_has_no_task_id_branches(root / "benchmarks" / "cursor_isolated_stop.py")
     boundary.supervisor_has_no_task_id_branches(
         root / "services" / "supervisor" / "src" / "pex_supervisor" / "public_task.py"
     )
-    boundary.supervisor_has_no_task_id_branches(
-        root / "benchmarks" / "pex_supervisor_process.py"
-    )
+    boundary.supervisor_has_no_task_id_branches(root / "benchmarks" / "pex_supervisor_process.py")
 
 
 def test_pex_attach_does_not_import_hidden_evaluator():
@@ -72,8 +68,7 @@ def test_supervisor_verification_never_executes_workspace_code(tmp_path):
 
     escaped = tmp_path.parent / "workspace_test_executed.txt"
     (tmp_path / "test_malicious.py").write_text(
-        "from pathlib import Path\n"
-        f"Path({str(escaped)!r}).write_text('executed')\n",
+        f"from pathlib import Path\nPath({str(escaped)!r}).write_text('executed')\n",
         encoding="utf-8",
     )
     seen = snapshot(tmp_path, run_pytest=True)

@@ -362,7 +362,10 @@ def test_post_replace_verification_failure_requires_reload_not_blind_retry(
 
 @pytest.mark.parametrize("change", ["same_payload_new_object", "valid_payload_modified_object"])
 def test_temporary_publication_requires_owned_object_and_exact_bytes(
-    tmp_path, origin, monkeypatch, change,
+    tmp_path,
+    origin,
+    monkeypatch,
+    change,
 ):
     path = tmp_path / "origin.json"
     old = _save(path, origin)
@@ -377,7 +380,7 @@ def test_temporary_publication_requires_owned_object_and_exact_bytes(
         measurements += 1
         measured = real_measure(candidate)
         if measurements == 2:
-            temporary, = tmp_path.glob(".origin.json.*.tmp")
+            (temporary,) = tmp_path.glob(".origin.json.*.tmp")
             payload = temporary.read_bytes()
             if change == "same_payload_new_object":
                 temporary.rename(preserved)
@@ -396,7 +399,7 @@ def test_temporary_publication_requires_owned_object_and_exact_bytes(
     assert load_local_origin_choice(path) == old
     if change == "same_payload_new_object":
         assert preserved.is_file()
-        temporary, = tmp_path.glob(".origin.json.*.tmp")
+        (temporary,) = tmp_path.glob(".origin.json.*.tmp")
         assert temporary.read_bytes() == foreign_bytes
     else:
         assert list(tmp_path.iterdir()) == [path]

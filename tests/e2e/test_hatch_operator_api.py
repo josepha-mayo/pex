@@ -102,9 +102,7 @@ def test_hatch_operator_requires_exact_confirmation_and_bound_provider(
 
         false_confirmation = _request()
         false_confirmation["confirm_one_base_candidate_call"] = False
-        assert (
-            client.post("/v1/pets/hatch", json=false_confirmation).status_code == 422
-        )
+        assert client.post("/v1/pets/hatch", json=false_confirmation).status_code == 422
         assert config_resolutions == 0
 
         legacy_confirmation = _request()
@@ -131,9 +129,7 @@ def test_hatch_operator_requires_exact_confirmation_and_bound_provider(
         assert unavailable.status_code == 409, unavailable.text
         assert unavailable.json()["detail"] == {
             "code": "hatch_disabled_for_mvp",
-            "message": (
-                "This MVP supports Pex and Von only; image generation is disabled."
-            ),
+            "message": ("This MVP supports Pex and Von only; image generation is disabled."),
         }
         assert config_resolutions == 0
         assert client.get("/v1/pets/hatch").json() == {"jobs": []}
@@ -154,7 +150,5 @@ def test_hatch_operator_route_is_closed_when_bridge_auth_is_disabled(
     with _configure_operator_app(tmp_path, require_auth=False) as client:
         response = client.post("/v1/pets/hatch", json=_request())
         assert response.status_code == 403
-        assert response.json()["detail"] == (
-            "operator mutations require bridge authentication"
-        )
+        assert response.json()["detail"] == ("operator mutations require bridge authentication")
         assert client.get("/v1/pets/hatch").json() == {"jobs": []}

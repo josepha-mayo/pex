@@ -19,7 +19,8 @@ async def _call(check, context):
 
 def _owned_workers():
     return {
-        thread.ident for thread in threading.enumerate()
+        thread.ident
+        for thread in threading.enumerate()
         if thread.name.startswith("pex-workspace-check")
     }
 
@@ -42,7 +43,9 @@ async def test_full_workspace_check_valid_in_both_calling_contexts(bound_pipelin
 @pytest.mark.parametrize("context", ["sync", "async"])
 @pytest.mark.parametrize("change", ["directory", "origin", "corrupt_origin", "locator", "session"])
 async def test_full_workspace_check_rejects_revoked_publication(
-    bound_pipeline, context, change,
+    bound_pipeline,
+    context,
+    change,
 ):
     bound = bound_pipeline
     witness = await bound.store.require_session_workspace_current(bound.adapter.session)

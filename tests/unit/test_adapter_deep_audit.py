@@ -51,6 +51,7 @@ from pex_protocol.session import HarnessEvent, HarnessSession
 
 _TEST_DRIVE = "C:" if os.name == "nt" else ""
 
+
 def _successful_stop_intervention(session_id: str, text: str) -> Intervention:
     action = ProposedAction(
         type=InterventionType.SEND_NUDGE,
@@ -238,13 +239,15 @@ async def test_opencode_discards_token_deltas_before_transport_gap_accounting():
     try:
         adapter.attach_transport(transport)
         for index in range(2_000):
-            transport._record_event({
-                "directory": f"{_TEST_DRIVE}/project",
-                "payload": {
-                    "type": "message.part.delta",
-                    "properties": {"delta": f"token-{index}"},
-                },
-            })
+            transport._record_event(
+                {
+                    "directory": f"{_TEST_DRIVE}/project",
+                    "payload": {
+                        "type": "message.part.delta",
+                        "properties": {"delta": f"token-{index}"},
+                    },
+                }
+            )
         terminal = {
             "directory": f"{_TEST_DRIVE}/project",
             "payload": {"type": "message.updated", "properties": {"id": "done"}},
@@ -277,8 +280,10 @@ async def test_live_http_event_size_accounting_survives_count_eviction(monkeypat
     try:
         for index in range(8):
             transport._record_event({"id": index, "text": "\N{CAT FACE}" * index})
-            expected = sum(len(json.dumps(row, separators=(",", ":")).encode("utf-8"))
-                           for row in transport.events)
+            expected = sum(
+                len(json.dumps(row, separators=(",", ":")).encode("utf-8"))
+                for row in transport.events
+            )
             assert transport._event_buffer_bytes == expected
             assert len(transport._event_sizes) == len(transport.events) <= 2
         assert transport.events_since(0)[2] == 6
@@ -342,24 +347,30 @@ async def test_live_http_clean_sse_eof_backs_off(monkeypatch):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("discarded, gap", [
-    (b"data: not-json\n\n", True),
-    (b"data: []\n\n", True),
-    (b"data: " + b"x" * 100 + b"\n\n", True),
-    (b"data: " + b"x" * 40 + b"\ndata: " + b"x" * 40 + b"\n\n", True),
-    # A later valid data line cannot salvage a partially discarded frame.
-    (b"data: " + b"x" * 100 + b'\ndata: {"id":2}\n\n', True),
-    (b": heartbeat\n\ndata:\n\n", False),
-])
+@pytest.mark.parametrize(
+    "discarded, gap",
+    [
+        (b"data: not-json\n\n", True),
+        (b"data: []\n\n", True),
+        (b"data: " + b"x" * 100 + b"\n\n", True),
+        (b"data: " + b"x" * 40 + b"\ndata: " + b"x" * 40 + b"\n\n", True),
+        # A later valid data line cannot salvage a partially discarded frame.
+        (b"data: " + b"x" * 100 + b'\ndata: {"id":2}\n\n', True),
+        (b": heartbeat\n\ndata:\n\n", False),
+    ],
+)
 async def test_live_http_discarded_sse_frame_exposes_history_gap(monkeypatch, discarded, gap):
     monkeypatch.setattr(http_json_module, "MAX_SSE_LINE_CHARS", 80)
     monkeypatch.setattr(http_json_module, "MAX_SSE_FRAME_CHARS", 70)
     transport = LiveHttpTransport("http://127.0.0.1:4096")
     stream = httpx.AsyncClient(
         base_url="http://127.0.0.1:4096",
-        transport=httpx.MockTransport(lambda _: httpx.Response(
-            200, content=b'data: {"id":1}\n\n' + discarded + b'data: {"id":3}\n\n',
-        )),
+        transport=httpx.MockTransport(
+            lambda _: httpx.Response(
+                200,
+                content=b'data: {"id":1}\n\n' + discarded + b'data: {"id":3}\n\n',
+            )
+        ),
     )
     monkeypatch.setattr(http_json_module.httpx, "AsyncClient", lambda *args, **kwargs: stream)
 
@@ -382,7 +393,10 @@ async def test_live_http_discarded_sse_frame_exposes_history_gap(monkeypatch, di
 @pytest.mark.parametrize("transport_kind", ["memory", "stdio"])
 @pytest.mark.parametrize("limit", ["bytes", "count"])
 async def test_codex_capture_budget_marks_incomplete_without_stopping_delivery(
-    monkeypatch, tmp_path, transport_kind, limit,
+    monkeypatch,
+    tmp_path,
+    transport_kind,
+    limit,
 ):
     from pex_bridge.adapters import codex as codex_module
 
@@ -471,9 +485,7 @@ async def test_sse_line_reader_captures_exact_chunks_before_utf8_decoding():
 
     captured = []
     response = httpx.Response(200, stream=ChunkStream())
-    lines = [
-        line async for line in _bounded_sse_lines(response, on_chunk=captured.append)
-    ]
+    lines = [line async for line in _bounded_sse_lines(response, on_chunk=captured.append)]
     assert captured == chunks
     assert lines == ['data: {"text":"é"}', ""]
 
@@ -486,9 +498,12 @@ async def test_live_http_sse_capture_failure_refuses_reconnect(monkeypatch):
     transport = LiveHttpTransport("http://127.0.0.1:4096", sse_chunk_sink=broken_sink)
     stream = httpx.AsyncClient(
         base_url="http://127.0.0.1:4096",
-        transport=httpx.MockTransport(lambda _: httpx.Response(
-            200, content=b'data: {"id":1}\n\n',
-        )),
+        transport=httpx.MockTransport(
+            lambda _: httpx.Response(
+                200,
+                content=b'data: {"id":1}\n\n',
+            )
+        ),
     )
     monkeypatch.setattr(http_json_module.httpx, "AsyncClient", lambda *args, **kwargs: stream)
     try:
@@ -1175,14 +1190,17 @@ async def test_codex_new_isolated_thread_is_already_loaded(tmp_path):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("receipt_status,expected_status", [
-    ("completed", SessionStatus.STOPPED),
-    ("interrupted", SessionStatus.STOPPED),
-    ("failed", SessionStatus.ERROR),
-    (None, SessionStatus.IDLE),
-    ("unknown", SessionStatus.IDLE),
-    ({"status": "inProgress"}, SessionStatus.IDLE),
-])
+@pytest.mark.parametrize(
+    "receipt_status,expected_status",
+    [
+        ("completed", SessionStatus.STOPPED),
+        ("interrupted", SessionStatus.STOPPED),
+        ("failed", SessionStatus.ERROR),
+        (None, SessionStatus.IDLE),
+        ("unknown", SessionStatus.IDLE),
+        ({"status": "inProgress"}, SessionStatus.IDLE),
+    ],
+)
 async def test_codex_first_turn_projects_receipt_status(tmp_path, receipt_status, expected_status):
     class StatusReceiptTransport(CodexAppServerTransport):
         async def request(self, method, params=None):
@@ -1198,8 +1216,9 @@ async def test_codex_first_turn_projects_receipt_status(tmp_path, receipt_status
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("observed_status", [SessionStatus.STOPPED, SessionStatus.ERROR,
-                                           SessionStatus.NEEDS_DECISION])
+@pytest.mark.parametrize(
+    "observed_status", [SessionStatus.STOPPED, SessionStatus.ERROR, SessionStatus.NEEDS_DECISION]
+)
 async def test_codex_start_receipt_preserves_notification_status(tmp_path, observed_status):
     class EarlyNotificationTransport(CodexAppServerTransport):
         async def request(self, method, params=None):
@@ -1234,7 +1253,9 @@ async def test_codex_unconfirmed_first_turn_does_not_claim_working(tmp_path):
 @pytest.mark.parametrize("previous_status", [SessionStatus.STOPPED, SessionStatus.ERROR])
 @pytest.mark.parametrize("completed_early", [False, True])
 async def test_codex_followup_activity_uses_current_turn_evidence(
-    tmp_path, previous_status, completed_early,
+    tmp_path,
+    previous_status,
+    completed_early,
 ):
     class FollowupTransport(CodexAppServerTransport):
         async def request(self, method, params=None):
@@ -1242,9 +1263,14 @@ async def test_codex_followup_activity_uses_current_turn_evidence(
             if method == "turn/start":
                 result["turn"]["status"] = "inProgress"
                 if completed_early:
-                    adapter._remember_turn_completion(session, {
-                        "id": result["turn"]["id"], "status": "completed", "items": [],
-                    })
+                    adapter._remember_turn_completion(
+                        session,
+                        {
+                            "id": result["turn"]["id"],
+                            "status": "completed",
+                            "items": [],
+                        },
+                    )
             return result
 
     adapter = CodexAdapter(FollowupTransport())

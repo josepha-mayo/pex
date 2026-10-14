@@ -38,16 +38,19 @@ def compile_overlay_runtime(
         if len(overlay.id) > MAX_PLUGIN_STRING_CHARS:
             raise ValueError("OpenCode overlay id exceeds the plugin contract")
         diff = overlay.diff
-        if any(
-            value is not None
-            for value in (
-                diff.tools_enabled,
-                diff.mcp_servers,
-                diff.model,
-                diff.reasoning_effort,
-                diff.permission_policy,
+        if (
+            any(
+                value is not None
+                for value in (
+                    diff.tools_enabled,
+                    diff.mcp_servers,
+                    diff.model,
+                    diff.reasoning_effort,
+                    diff.permission_policy,
+                )
             )
-        ) or set(diff.extra) - _SUPPORTED_METADATA_KEYS:
+            or set(diff.extra) - _SUPPORTED_METADATA_KEYS
+        ):
             raise ValueError("OpenCode overlay contains unsupported runtime fields")
         instructions = (diff.system_instructions or "").strip()
         phase = str(diff.extra.get("phase") or "").strip()

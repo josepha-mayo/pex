@@ -174,9 +174,7 @@ def usage_tokens(payload: dict[str, Any]) -> dict[str, int]:
     if not isinstance(usage, dict):
         usage = {}
     return {
-        "input_tokens": _bounded_count(
-            usage.get("prompt_tokens") or usage.get("input_tokens")
-        ),
+        "input_tokens": _bounded_count(usage.get("prompt_tokens") or usage.get("input_tokens")),
         "output_tokens": _bounded_count(
             usage.get("completion_tokens") or usage.get("output_tokens")
         ),
@@ -247,9 +245,9 @@ def _chat_json(
                 ) as response:
                     response_text = _read_response_text(response)
                     status_code = response.status_code
-                    content_type = response.headers.get("content-type", "").split(";", 1)[
-                        0
-                    ].strip().casefold()
+                    content_type = (
+                        response.headers.get("content-type", "").split(";", 1)[0].strip().casefold()
+                    )
                     if _skip_model(status_code, response_text):
                         last_error = f"model {model} unavailable"
                         if _model_unsupported(status_code, response_text):

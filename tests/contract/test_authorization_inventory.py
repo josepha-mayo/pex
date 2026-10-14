@@ -11,9 +11,7 @@ EXPECTED_GATES = {
         "PEX_LIVE_SUPERVISOR",
     ),
     "test_live_codex.py::test_live_codex_appserver_handshake": ("PEX_LIVE_CODEX",),
-    "test_live_codex_pump.py::test_live_codex_app_server_stop_reaches_ingest": (
-        "PEX_LIVE_CODEX",
-    ),
+    "test_live_codex_pump.py::test_live_codex_app_server_stop_reaches_ingest": ("PEX_LIVE_CODEX",),
     "test_live_codex_pump.py::test_live_codex_stop_inspects_with_strands": (
         "PEX_LIVE_CODEX",
         "PEX_LIVE_SUPERVISOR",
@@ -76,9 +74,13 @@ def _gate_flags(statement: ast.stmt) -> tuple[str, ...]:
     if isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Call):
         call = statement.value
         if isinstance(call.func, ast.Name) and call.func.id == "require_live_authorization":
-            if call.keywords or not call.args or any(
-                not isinstance(arg, ast.Constant) or not isinstance(arg.value, str)
-                for arg in call.args
+            if (
+                call.keywords
+                or not call.args
+                or any(
+                    not isinstance(arg, ast.Constant) or not isinstance(arg.value, str)
+                    for arg in call.args
+                )
             ):
                 return ()
             return tuple(str(arg.value) for arg in call.args)
@@ -90,8 +92,8 @@ def test_gate_inventory_requires_a_direct_literal_shared_gate():
     assert _gate_flags(valid) == ("PEX_AGENTCORE_LIVE",)
     for source in (
         'note = "PEX_AGENTCORE_LIVE pytest.skip"',
-        'require_live_authorization()',
-        'require_live_authorization(flag)',
+        "require_live_authorization()",
+        "require_live_authorization(flag)",
         'require_live_authorization("PEX_AGENTCORE_LIVE", extra=flag)',
     ):
         assert _gate_flags(ast.parse(source).body[0]) == ()

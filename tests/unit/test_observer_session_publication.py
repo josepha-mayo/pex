@@ -203,13 +203,15 @@ def _observation_event(session, *, event_id="observer-live"):
         session_id=session.id,
         project_id=session.project_id,
         event_type=EventType.STATUS,
-        metadata={"pex_observer_snapshot": {
-            "schema": "pex.codex-live-observation.v1",
-            "subscription_receipt": dict(session.metadata["subscription_receipt"]),
-            "status": SessionStatus.WORKING.value,
-            "last_activity": now.isoformat(),
-            "observation_coverage": {"state": "observing", "last_observed_live_sequence": 1},
-        }},
+        metadata={
+            "pex_observer_snapshot": {
+                "schema": "pex.codex-live-observation.v1",
+                "subscription_receipt": dict(session.metadata["subscription_receipt"]),
+                "status": SessionStatus.WORKING.value,
+                "last_activity": now.isoformat(),
+                "observation_coverage": {"state": "observing", "last_observed_live_sequence": 1},
+            }
+        },
     )
 
 
@@ -225,21 +227,27 @@ async def test_trusted_live_projection_advances_coverage_from_canonical_event(ob
     planned.metadata["observation_coverage"] = {"forged_plan_coverage": True}
 
     merged = _merge_event_session_projection(
-        accepted["processing"], baseline, planned, event=accepted["event"],
+        accepted["processing"],
+        baseline,
+        planned,
+        event=accepted["event"],
     )
 
     assert merged.status == SessionStatus.WORKING
     assert merged.last_activity == event.ts
-    assert merged.metadata["observation_coverage"] == event.metadata[
-        "pex_observer_snapshot"
-    ]["observation_coverage"]
+    assert (
+        merged.metadata["observation_coverage"]
+        == event.metadata["pex_observer_snapshot"]["observation_coverage"]
+    )
     assert "observation_coverage" not in baseline.metadata
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("changed", ["receipt", "cwd"])
 async def test_old_observer_plan_preserves_fresh_incarnation_even_equal_state(
-    observer, changed, tmp_path,
+    observer,
+    changed,
+    tmp_path,
 ):
     store, baseline, binding = observer
     await _publish(store, baseline, binding)
@@ -258,7 +266,10 @@ async def test_old_observer_plan_preserves_fresh_incarnation_even_equal_state(
     planned.metadata["observation_coverage"] = {"state": "old-plan"}
 
     merged = _merge_event_session_projection(
-        accepted["processing"], current, planned, event=accepted["event"],
+        accepted["processing"],
+        current,
+        planned,
+        event=accepted["event"],
     )
 
     assert merged == current
@@ -276,7 +287,10 @@ async def test_observer_plan_cannot_rollback_newer_coverage(observer):
     planned.metadata["observation_coverage"] = {"state": "old-observing"}
 
     merged = _merge_event_session_projection(
-        accepted["processing"], current, planned, event=accepted["event"],
+        accepted["processing"],
+        current,
+        planned,
+        event=accepted["event"],
     )
 
     assert merged.metadata["observation_coverage"] == current.metadata["observation_coverage"]
@@ -293,7 +307,10 @@ async def test_untrusted_plan_cannot_add_observer_coverage(observer):
     planned.metadata["observation_coverage"] = {"state": "invented"}
 
     merged = _merge_event_session_projection(
-        accepted["processing"], baseline, planned, event=accepted["event"],
+        accepted["processing"],
+        baseline,
+        planned,
+        event=accepted["event"],
     )
 
     assert "observation_coverage" not in merged.metadata
@@ -302,7 +319,9 @@ async def test_untrusted_plan_cannot_add_observer_coverage(observer):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("changed", ["missing", "receipt", "snapshot_receipt", "cwd"])
 async def test_observer_acceptance_rechecks_durable_receipt_after_pipeline_check(
-    observer, changed, tmp_path,
+    observer,
+    changed,
+    tmp_path,
 ):
     store, baseline, binding = observer
     event = _observation_event(baseline)
@@ -326,10 +345,16 @@ async def test_observer_acceptance_rechecks_durable_receipt_after_pipeline_check
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("field,value", [
-    ("schema", "wrong"), ("status", {}), ("last_activity", "not-ISO"),
-    ("last_activity", "2026-09-05T00:00:00"), ("observation_coverage", None),
-])
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("schema", "wrong"),
+        ("status", {}),
+        ("last_activity", "not-ISO"),
+        ("last_activity", "2026-09-05T00:00:00"),
+        ("observation_coverage", None),
+    ],
+)
 async def test_malformed_observer_marker_cannot_be_accepted(observer, field, value):
     store, baseline, binding = observer
     await _publish(store, baseline, binding)
@@ -379,6 +404,7 @@ async def test_plan_transaction_loads_canonical_observer_event(observer, replace
         assert saved == current
     else:
         assert saved.status == SessionStatus.WORKING
-        assert saved.metadata["observation_coverage"] == event.metadata[
-            "pex_observer_snapshot"
-        ]["observation_coverage"]
+        assert (
+            saved.metadata["observation_coverage"]
+            == event.metadata["pex_observer_snapshot"]["observation_coverage"]
+        )

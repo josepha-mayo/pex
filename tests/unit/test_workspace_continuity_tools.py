@@ -164,9 +164,7 @@ async def test_cancelled_invocation_discards_inflight_thread_result(bound, monke
 
     async def invoke():
         with workspace_evidence_guard(bound[0].session, lambda: check(bound)):
-            task = asyncio.create_task(
-                asyncio.to_thread(bound[1][name], path="report.txt")
-            )
+            task = asyncio.create_task(asyncio.to_thread(bound[1][name], path="report.txt"))
             tasks.append(task)
             return await asyncio.shield(task)
 
@@ -201,11 +199,15 @@ def test_already_stale_workspace_has_zero_reads(bound, monkeypatch, change):
     else:
         choice = bound[3].origin_choice
         save_local_origin_choice(
-            bound[4], choice.origin,
-            expected_revision=choice.revision, expected_choice_id=choice.choice_id,
+            bound[4],
+            choice.origin,
+            expected_revision=choice.revision,
+            expected_choice_id=choice.choice_id,
         )
     monkeypatch.setattr(
-        workspace_module, "read_visible", lambda *a, **k: pytest.fail("stale read"),
+        workspace_module,
+        "read_visible",
+        lambda *a, **k: pytest.fail("stale read"),
     )
     with workspace_evidence_guard(bound[0].session, lambda: check(bound)):
         unavailable(bound[1]["inspect_file"](path="report.txt"), bound[2])

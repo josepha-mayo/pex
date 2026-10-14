@@ -15,30 +15,57 @@ def response(identity, result):
 
 
 def stopped(*, session="session", identity="turn", status="completed"):
-    return {"method": "turn/completed", "params": {
-        "threadId": session, "turn": {"id": identity, "status": status},
-    }}
+    return {
+        "method": "turn/completed",
+        "params": {
+            "threadId": session,
+            "turn": {"id": identity, "status": status},
+        },
+    }
 
 
-@pytest.mark.parametrize("terminal", [stopped(), stopped(session="wrong"),
-                                      stopped(identity="wrong"), stopped(status="failed"),
-                                      {"id": 99, "method": "approve", "params": {}},
-                                      "deadline-after-thread", "repair-at-cap", "noop-at-cap",
-                                      "repair-then-noop", "review-failed"])
+@pytest.mark.parametrize(
+    "terminal",
+    [
+        stopped(),
+        stopped(session="wrong"),
+        stopped(identity="wrong"),
+        stopped(status="failed"),
+        {"id": 99, "method": "approve", "params": {}},
+        "deadline-after-thread",
+        "repair-at-cap",
+        "noop-at-cap",
+        "repair-then-noop",
+        "review-failed",
+    ],
+)
 async def test_worker_matches_terminal_receipts_and_reaps(tmp_path, monkeypatch, terminal):
-    rows = [response(1, {}), response(2, {"thread": {"id": "session"}}),
-            response(3, {"turn": {"id": "turn"}}), terminal]
+    rows = [
+        response(1, {}),
+        response(2, {"thread": {"id": "session"}}),
+        response(3, {"turn": {"id": "turn"}}),
+        terminal,
+    ]
     sent = []
     observed = {}
     review_modes = {"repair-at-cap", "noop-at-cap", "repair-then-noop", "review-failed"}
     supervised = isinstance(terminal, str) and terminal in review_modes
     reviews = []
     if supervised:
-        rows[-1:] = [{"method": "item/completed", "params": {
-            "threadId": "session", "turnId": "turn", "item": {
-                "type": "agentMessage", "text": "First completion",
+        rows[-1:] = [
+            {
+                "method": "item/completed",
+                "params": {
+                    "threadId": "session",
+                    "turnId": "turn",
+                    "item": {
+                        "type": "agentMessage",
+                        "text": "First completion",
+                    },
+                },
             },
-        }}, stopped()]
+            stopped(),
+        ]
         if terminal == "repair-then-noop":
             rows.extend([response(4, {"turn": {"id": "turn2"}}), stopped(identity="turn2")])
 
@@ -49,6 +76,7 @@ async def test_worker_matches_terminal_receipts_and_reaps(tmp_path, monkeypatch,
         if terminal == "noop-at-cap" or len(reviews) == 2:
             return {"type": "NOOP"}
         return {"type": "SEND_NUDGE", "payload": {"text": "Verify public tests"}}
+
     clock_reads_after_thread = []
 
     def clock():
@@ -96,14 +124,17 @@ async def test_worker_matches_terminal_receipts_and_reaps(tmp_path, monkeypatch,
         monkeypatch.setattr(codex_worker, "monotonic", clock)
     workspace = tmp_path / "workspace"
     workspace.mkdir()
-    run = codex_worker.run_worker(executable=tmp_path / "codex", workspace=workspace,
-                                  state_home=tmp_path / "state",
-                                  socket_path=str(tmp_path / "relay"),
-                                  model="pinned", prompts=["Public task"],
-                                  supervised=supervised,
-                                  max_followups=1 if terminal == "repair-then-noop" else 0,
-                                  deadline=5 if terminal == "deadline-after-thread"
-                                  else time.monotonic() + 5)
+    run = codex_worker.run_worker(
+        executable=tmp_path / "codex",
+        workspace=workspace,
+        state_home=tmp_path / "state",
+        socket_path=str(tmp_path / "relay"),
+        model="pinned",
+        prompts=["Public task"],
+        supervised=supervised,
+        max_followups=1 if terminal == "repair-then-noop" else 0,
+        deadline=5 if terminal == "deadline-after-thread" else time.monotonic() + 5,
+    )
     if terminal == stopped():
         result = await run
         assert result["turns"] == [{"turn_id": "turn", "status": "completed", "messages": []}]
@@ -138,8 +169,9 @@ async def test_worker_matches_terminal_receipts_and_reaps(tmp_path, monkeypatch,
     assert [row["method"] for row in sent] == expected
 
 
-@pytest.mark.parametrize("port,model", [(True, "pinned"), (0, "pinned"),
-                                      (1, ""), (1, "with space")])
+@pytest.mark.parametrize(
+    "port,model", [(True, "pinned"), (0, "pinned"), (1, ""), (1, "with space")]
+)
 def test_provider_configuration_rejects_unbounded_values(port, model):
     with pytest.raises(ValueError):
         codex_worker.provider_settings(port, model)

@@ -90,9 +90,7 @@ class MemoryHttpTransport:
                     for item in self.sessions
                     if str(item.get("cwd") or item.get("directory") or "") == directory
                 ]
-            return [
-                item for item in self.sessions if not item.get("isolated_project")
-            ]
+            return [item for item in self.sessions if not item.get("isolated_project")]
         if method == "GET" and path == "/capabilities":
             return {
                 "v": 1,

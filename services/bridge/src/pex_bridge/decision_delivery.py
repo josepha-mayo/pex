@@ -71,9 +71,7 @@ async def probe_human_decision_delivery(
 def _untrusted_decision_field(value: str, *, field: str) -> str:
     """Bound one untrusted human field and strip delimiter injection."""
 
-    text = bounded_adapter_text(
-        value, field=field, max_chars=MAX_HUMAN_DECISION_FIELD_CHARS
-    )
+    text = bounded_adapter_text(value, field=field, max_chars=MAX_HUMAN_DECISION_FIELD_CHARS)
     return text.replace(UNTRUSTED_HUMAN_DECISION_BEGIN, "").replace(
         UNTRUSTED_HUMAN_DECISION_END, ""
     )

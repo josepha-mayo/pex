@@ -33,9 +33,7 @@ def test_scoped_test_command_unwraps_only_the_exact_bound_workspace():
         == r"cd D:\other && python -m pytest -q"
     )
     assert (
-        _scoped_test_command(
-            r"cd D:\work\case && python -m pytest -q && echo done", cwd
-        )
+        _scoped_test_command(r"cd D:\work\case && python -m pytest -q && echo done", cwd)
         == r"cd D:\work\case && python -m pytest -q && echo done"
     )
 
@@ -57,9 +55,7 @@ def test_opencode_workspace_comparison_preserves_posix_and_opaque_identity(
 ):
     assert _same_path(bound, observed) is matches
     command = f'cd "{observed}" && python -m pytest -q'
-    assert _scoped_test_command(command, bound) == (
-        "python -m pytest -q" if matches else command
-    )
+    assert _scoped_test_command(command, bound) == ("python -m pytest -q" if matches else command)
 
 
 def test_opencode_rejects_case_distinct_posix_events_without_rebinding_the_worker():
@@ -288,19 +284,23 @@ async def test_opencode_shell_enrichment_retries_vendor_read_model_race(tmp_path
         nonlocal calls
         calls += 1
         metadata = {} if calls == 1 else {"exit": 1}
-        return [{
-            "info": {"id": "assistant"},
-            "parts": [{
-                "type": "tool",
-                "tool": "bash",
-                "callID": "call-pytest",
-                "state": {
-                    "status": "completed",
-                    "output": "FAILED test_csv.py::test_rows\n1 failed",
-                    "metadata": metadata,
-                },
-            }],
-        }]
+        return [
+            {
+                "info": {"id": "assistant"},
+                "parts": [
+                    {
+                        "type": "tool",
+                        "tool": "bash",
+                        "callID": "call-pytest",
+                        "state": {
+                            "status": "completed",
+                            "output": "FAILED test_csv.py::test_rows\n1 failed",
+                            "metadata": metadata,
+                        },
+                    }
+                ],
+            }
+        ]
 
     transport.request = delayed_exit
 
@@ -401,9 +401,7 @@ async def test_opencode_deltas_are_durable_record_only_and_do_not_delay_parent_b
         ),
     ],
 )
-async def test_opencode_progress_observations_take_record_only_path(
-    tmp_path, monkeypatch, event
-):
+async def test_opencode_progress_observations_take_record_only_path(tmp_path, monkeypatch, event):
     store, _, session, pipeline = await _bound_opencode_pipeline(tmp_path)
     normal: list[str] = []
 
@@ -437,18 +435,25 @@ async def test_opencode_progress_observations_take_record_only_path(
 async def test_fresh_progress_replaces_old_prompt_in_authoritative_pet_snapshot(tmp_path):
     store, _, session, pipeline = await _bound_opencode_pipeline(tmp_path)
     old = HarnessEvent(
-        event_id="old-correction", ts=datetime.now(UTC) - timedelta(seconds=10),
-        harness_type=session.harness_type, session_id=session.id,
-        goal_id=session.goal_id, project_id=session.project_id,
-        event_type=EventType.USER_PROMPT, phase=EventPhase.AFTER,
+        event_id="old-correction",
+        ts=datetime.now(UTC) - timedelta(seconds=10),
+        harness_type=session.harness_type,
+        session_id=session.id,
+        goal_id=session.goal_id,
+        project_id=session.project_id,
+        event_type=EventType.USER_PROMPT,
+        phase=EventPhase.AFTER,
         message_delta="Repair the missing output file.",
     )
-    fresh = old.model_copy(update={
-        "event_id": "fresh-worker-result", "ts": datetime.now(UTC),
-        "event_type": EventType.AGENT_RESPONSE,
-        "message_delta": "Output file written; exact bytes checked.",
-        "metadata": {"sse_type": "message.part.updated"},
-    })
+    fresh = old.model_copy(
+        update={
+            "event_id": "fresh-worker-result",
+            "ts": datetime.now(UTC),
+            "event_type": EventType.AGENT_RESPONSE,
+            "message_delta": "Output file written; exact bytes checked.",
+            "metadata": {"sse_type": "message.part.updated"},
+        }
+    )
     try:
         await store.add_event(old, bind_observation=True)
         await pipeline._ingest_event_locked(fresh, session)
@@ -464,10 +469,14 @@ async def test_fresh_progress_replaces_old_prompt_in_authoritative_pet_snapshot(
 async def test_live_progress_replay_does_not_promote_unbound_history(tmp_path):
     store, _, session, pipeline = await _bound_opencode_pipeline(tmp_path)
     event = HarnessEvent(
-        event_id="historical-progress", ts=datetime.now(UTC),
-        harness_type=session.harness_type, session_id=session.id,
-        goal_id=session.goal_id, project_id=session.project_id,
-        event_type=EventType.AGENT_RESPONSE, phase=EventPhase.AFTER,
+        event_id="historical-progress",
+        ts=datetime.now(UTC),
+        harness_type=session.harness_type,
+        session_id=session.id,
+        goal_id=session.goal_id,
+        project_id=session.project_id,
+        event_type=EventType.AGENT_RESPONSE,
+        phase=EventPhase.AFTER,
         message_delta="Historical worker response.",
         metadata={"sse_type": "message.part.updated"},
     )
@@ -476,10 +485,15 @@ async def test_live_progress_replay_does_not_promote_unbound_history(tmp_path):
         await pipeline._ingest_event_locked(event, session)
         processing = await store.get_event_processing(event.event_id)
         assert processing["accepted_project_binding"] is None
-        assert await store.recent_events_for_authority(
-            session.id, goal_id=session.goal_id, project_id=session.project_id,
-            harness_type=session.harness_type,
-        ) == []
+        assert (
+            await store.recent_events_for_authority(
+                session.id,
+                goal_id=session.goal_id,
+                project_id=session.project_id,
+                harness_type=session.harness_type,
+            )
+            == []
+        )
     finally:
         await store.close()
 
@@ -488,12 +502,14 @@ async def test_live_progress_replay_does_not_promote_unbound_history(tmp_path):
 async def test_bound_progress_rejects_changed_identity_without_inserting(tmp_path, mismatch):
     store, _, session, _ = await _bound_opencode_pipeline(tmp_path)
     event = HarnessEvent(
-        event_id="wrong-identity-progress", ts=datetime.now(UTC),
+        event_id="wrong-identity-progress",
+        ts=datetime.now(UTC),
         harness_type=HarnessType.CODEX if mismatch == "harness" else session.harness_type,
         session_id=session.id,
         goal_id="other-goal" if mismatch == "goal" else session.goal_id,
         project_id=session.project_id,
-        event_type=EventType.AGENT_RESPONSE, phase=EventPhase.AFTER,
+        event_type=EventType.AGENT_RESPONSE,
+        phase=EventPhase.AFTER,
         message_delta="This must not become current progress.",
     )
     try:

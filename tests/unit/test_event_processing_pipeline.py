@@ -192,7 +192,10 @@ async def test_compaction_contract_reaches_worker_after_durable_pipeline(tmp_pat
     goal = await store.get_goal(session.goal_id)
     goal.objective = "Keep the complete release objective. " * 10 + "Verify Linux too."
     fields = (
-        "acceptance_criteria", "constraints", "forbidden_outcomes", "non_goals",
+        "acceptance_criteria",
+        "constraints",
+        "forbidden_outcomes",
+        "non_goals",
         "evidence_requirements",
     )
     for field in fields:
@@ -273,9 +276,7 @@ async def test_committed_read_pool_reuses_connections(tmp_path):
             # A returned connection is re-borrowed instead of reconnecting.
             assert second is first
         event = _event(session, "evt-pool-committed")
-        acceptance = await store.accept_pipeline_event(
-            event, session_snapshot=session
-        )
+        acceptance = await store.accept_pipeline_event(event, session_snapshot=session)
         assert acceptance["created"] is True
         processing = await store.get_event_processing(event.event_id)
         assert processing is not None
@@ -352,7 +353,9 @@ def test_local_supervisor_dispatch_budget_outlives_main_agent_budget():
     ],
 )
 def test_worker_action_text_rejects_empty_and_spec_boilerplate(
-    action_type, text, expected,
+    action_type,
+    text,
+    expected,
 ):
     action = ProposedAction(
         type=action_type,
@@ -410,9 +413,7 @@ async def test_durable_pipeline_coerces_generic_worker_text_to_noop(tmp_path):
     class GenericSupervisor(_NudgeSupervisor):
         async def decide(self, request, *, local_model):
             result = await super().decide(request, local_model=local_model)
-            result.action.payload = {
-                "text": "Completion is contradicted by current state. Verify."
-            }
+            result.action.payload = {"text": "Completion is contradicted by current state. Verify."}
             return result
 
     store, adapters, session, pipeline = await _pipeline(tmp_path)
@@ -441,7 +442,9 @@ async def test_durable_pipeline_coerces_generic_worker_text_to_noop(tmp_path):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("mode", ["local", "agentcore"])
 async def test_trajectory_review_coalesces_across_restart_without_refunding(
-    tmp_path, monkeypatch, mode,
+    tmp_path,
+    monkeypatch,
+    mode,
 ):
     from pex_supervisor.loop import decide_async
 
@@ -482,7 +485,9 @@ async def test_trajectory_review_coalesces_across_restart_without_refunding(
                 for failure_kind in ("new failure", "third failure"):
                     for index in range(3):
                         event = _event(
-                            session, f"{failure_kind}-{index}", event_type=EventType.SHELL,
+                            session,
+                            f"{failure_kind}-{index}",
+                            event_type=EventType.SHELL,
                         )
                         event.command = "pytest -q"
                         event.error = failure_kind
@@ -494,9 +499,12 @@ async def test_trajectory_review_coalesces_across_restart_without_refunding(
                         assert deferred["result"]["provider_started"] is False
                         assert counted.calls == 1
                         review_clock += timedelta(seconds=61)
-                        later = event.model_copy(update={
-                            "event_id": "new-failure-after-interval", "ts": datetime.now(UTC),
-                        })
+                        later = event.model_copy(
+                            update={
+                                "event_id": "new-failure-after-interval",
+                                "ts": datetime.now(UTC),
+                            }
+                        )
                         await pipeline.ingest_event(later, session)
                     assert counted.calls == 2
                 exhausted = await store.get_event_effect(event.event_id, "planner")
@@ -504,17 +512,27 @@ async def test_trajectory_review_coalesces_across_restart_without_refunding(
                 resolve = pipeline._resolve_durable_supervisor
 
                 async def disable_before_dispatch(
-                    request, event, *, _pipeline=pipeline, _resolve=resolve, **kwargs,
+                    request,
+                    event,
+                    *,
+                    _pipeline=pipeline,
+                    _resolve=resolve,
+                    **kwargs,
                 ):
                     _pipeline.settings.supervisor_max_dispatches_per_session = None
                     return await _resolve(request, event, **kwargs)
 
                 monkeypatch.setattr(
-                    pipeline, "_resolve_durable_supervisor", disable_before_dispatch,
+                    pipeline,
+                    "_resolve_durable_supervisor",
+                    disable_before_dispatch,
                 )
-                pending = event.model_copy(update={
-                    "event_id": "disabled-before-dispatch", "ts": datetime.now(UTC),
-                })
+                pending = event.model_copy(
+                    update={
+                        "event_id": "disabled-before-dispatch",
+                        "ts": datetime.now(UTC),
+                    }
+                )
                 await pipeline.ingest_event(pending, session)
                 disabled = await store.get_event_effect(pending.event_id, "planner")
                 assert disabled["result"]["code"] == "trajectory_review_disabled"
@@ -554,9 +572,12 @@ async def test_unavailable_model_does_not_spend_or_coalesce_a_future_review(tmp_
             for table in ("supervisor_dispatch_reservations", "trajectory_review_reservations"):
                 assert inspection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0
         pipeline.model = object()
-        later = event.model_copy(update={
-            "event_id": "model-now-available", "ts": datetime.now(UTC),
-        })
+        later = event.model_copy(
+            update={
+                "event_id": "model-now-available",
+                "ts": datetime.now(UTC),
+            }
+        )
         await pipeline.ingest_event(later, session)
         assert counted.calls == 1
         assert not adapters.synthetic.inbox.get(session.id)
@@ -593,7 +614,10 @@ async def test_saved_zero_dispatch_cap_prevents_model_call(tmp_path):
 @pytest.mark.parametrize("mode", ["local", "agentcore"])
 @pytest.mark.parametrize("cap_source", ["startup", "saved"])
 async def test_semantic_dispatch_cap_survives_failure_replay_and_restart(
-    tmp_path, fail, mode, cap_source,
+    tmp_path,
+    fail,
+    mode,
+    cap_source,
 ):
     class CountedSupervisor(_NudgeSupervisor):
         async def decide(self, request, *, local_model):
@@ -675,26 +699,43 @@ async def test_supervisor_gets_durable_context_and_replay_keeps_first_packet(tmp
     pipeline.supervisor = CapturingSupervisor()
     now = datetime.now(UTC)
     context = ContextItem(
-        id="context-sibling-result", project_id=session.project_id, goal_id=session.goal_id,
-        kind=ContextKind.RESULT, content="Sibling test receipt: the parser rejects empty rows.",
-        source_refs=["sibling-test-event"], provenance=SourceKind.TEST, valid_from=now,
+        id="context-sibling-result",
+        project_id=session.project_id,
+        goal_id=session.goal_id,
+        kind=ContextKind.RESULT,
+        content="Sibling test receipt: the parser rejects empty rows.",
+        source_refs=["sibling-test-event"],
+        provenance=SourceKind.TEST,
+        valid_from=now,
         metadata={"source_session_id": "codex:sibling"},
     )
     decision = Decision(
-        id="decision-avoid-rejected-parser", goal_id=session.goal_id,
+        id="decision-avoid-rejected-parser",
+        goal_id=session.goal_id,
         statement="Preserve empty-row validation.",
-        alternatives_rejected=["Reusing the parser that silently drops rows"], created_at=now,
+        alternatives_rejected=["Reusing the parser that silently drops rows"],
+        created_at=now,
     )
     try:
         await store.add_context(context)
-        await store.add_context(context.model_copy(update={
-            "id": "context-project-guidance", "goal_id": None,
-            "content": "Project-wide parser guidance retained across goals.",
-        }))
-        await store.add_context(context.model_copy(update={
-            "id": "context-private", "content": "Private source must not enter inference.",
-            "sensitivity": Sensitivity.LOCAL_ONLY,
-        }))
+        await store.add_context(
+            context.model_copy(
+                update={
+                    "id": "context-project-guidance",
+                    "goal_id": None,
+                    "content": "Project-wide parser guidance retained across goals.",
+                }
+            )
+        )
+        await store.add_context(
+            context.model_copy(
+                update={
+                    "id": "context-private",
+                    "content": "Private source must not enter inference.",
+                    "sensitivity": Sensitivity.LOCAL_ONLY,
+                }
+            )
+        )
         await store.add_decision(decision)
         event = _event(session, "durable-supervisor-context")
         intervention = await pipeline.ingest_event(event, session)
@@ -726,22 +767,34 @@ async def test_supervisor_gets_durable_context_and_replay_keeps_first_packet(tmp
         assert intervention is not None
         reference = intervention.metadata["supervisor_context_reference"]
         assert reference["offered_context_ids"] == list(envelope.offered_context_ids)
-        expected_hash = hashlib.sha256(json.dumps(
-            envelope.model_dump(mode="json", by_alias=True), sort_keys=True,
-            separators=(",", ":"), ensure_ascii=False, allow_nan=False,
-        ).encode("utf-8")).hexdigest()
+        expected_hash = hashlib.sha256(
+            json.dumps(
+                envelope.model_dump(mode="json", by_alias=True),
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+                allow_nan=False,
+            ).encode("utf-8")
+        ).hexdigest()
         assert reference["packet_sha256"] == expected_hash
         committed = await store.list_context_for_authority(
-            session.project_id, goal_id=session.goal_id,
+            session.project_id,
+            goal_id=session.goal_id,
         )
         assert any(item.id == planned_id for item in committed)
-        assert store._intervention_audit_record(intervention, "test")[
-            "supervisor_context_reference"
-        ] == reference
+        assert (
+            store._intervention_audit_record(intervention, "test")["supervisor_context_reference"]
+            == reference
+        )
 
-        await store.add_context(context.model_copy(update={
-            "id": "context-added-after-inference", "content": "A later observation.",
-        }))
+        await store.add_context(
+            context.model_copy(
+                update={
+                    "id": "context-added-after-inference",
+                    "content": "A later observation.",
+                }
+            )
+        )
         assert await pipeline.ingest_event(event, session) == intervention
         assert len(requests) == 1
         replayed = await store.get_event_effect(event.event_id, "planner")
@@ -1089,9 +1142,7 @@ async def test_direct_agentcore_noop_does_not_revive_a_preplanned_nudge(tmp_path
         type=InterventionType.SEND_NUDGE,
         session_id=session.id,
         goal_id=goal.id,
-        payload={
-            "text": "report.txt is still missing; create and verify it before stopping."
-        },
+        payload={"text": "report.txt is still missing; create and verify it before stopping."},
         rationale="A required artifact is absent.",
         evidence=["missing:report.txt"],
         confidence=0.99,
@@ -1225,9 +1276,7 @@ async def test_quarantined_followup_completes_skipped_without_external_io(tmp_pa
             locator=ProjectLocator.path(
                 str(session.project_id),
                 platform=(
-                    PathPlatform.WINDOWS
-                    if ":" in str(session.project_id)
-                    else PathPlatform.POSIX
+                    PathPlatform.WINDOWS if ":" in str(session.project_id) else PathPlatform.POSIX
                 ),
                 origin=_IDENTITY_ORIGIN,
             ),
@@ -1238,9 +1287,7 @@ async def test_quarantined_followup_completes_skipped_without_external_io(tmp_pa
             locator=ProjectLocator.path(
                 str(tmp_path / "followup-conflict"),
                 platform=(
-                    PathPlatform.WINDOWS
-                    if ":" in str(session.project_id)
-                    else PathPlatform.POSIX
+                    PathPlatform.WINDOWS if ":" in str(session.project_id) else PathPlatform.POSIX
                 ),
                 origin=_IDENTITY_ORIGIN,
             ),
@@ -1367,9 +1414,7 @@ async def test_startup_recovers_pending_event_followup_without_replanning(tmp_pa
 
 
 @pytest.mark.asyncio
-async def test_recover_unfinished_events_skips_poison_rows_and_continues(
-    tmp_path, monkeypatch
-):
+async def test_recover_unfinished_events_skips_poison_rows_and_continues(tmp_path, monkeypatch):
     store, _, _, pipeline = await _pipeline(tmp_path)
     try:
 
@@ -1386,12 +1431,8 @@ async def test_recover_unfinished_events_skips_poison_rows_and_continues(
         async def no_followups():
             return []
 
-        monkeypatch.setattr(
-            pipeline.store, "list_recoverable_event_processing", list_rows
-        )
-        monkeypatch.setattr(
-            pipeline.store, "list_recoverable_event_followups", no_followups
-        )
+        monkeypatch.setattr(pipeline.store, "list_recoverable_event_processing", list_rows)
+        monkeypatch.setattr(pipeline.store, "list_recoverable_event_followups", no_followups)
         monkeypatch.setattr(pipeline, "_drain_event_processing", poison_then_ok)
         recovered = await pipeline.recover_unfinished_events()
         assert recovered == ["healthy"]
@@ -1407,6 +1448,7 @@ async def test_startup_followup_recovery_skips_invalid_binding_and_continues(
     store, _, _, pipeline = await _pipeline(tmp_path)
     attempted = []
     try:
+
         async def no_heads():
             return []
 
@@ -1437,6 +1479,7 @@ async def test_startup_followup_recovery_skips_invalid_binding_and_continues(
 async def test_startup_followup_recovery_does_not_hide_runtime_failure(tmp_path, monkeypatch):
     store, _, _, pipeline = await _pipeline(tmp_path)
     try:
+
         async def no_heads():
             return []
 

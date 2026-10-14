@@ -36,9 +36,7 @@ def merge_ledger_lists(
     merged: dict[str, list[str]] = {}
     for field in LEDGER_DECISION_FIELDS:
         provided = [
-            str(item).strip()
-            for item in (explicit or {}).get(field) or []
-            if str(item).strip()
+            str(item).strip() for item in (explicit or {}).get(field) or [] if str(item).strip()
         ]
         if field in skipped:
             merged[field] = provided
@@ -53,9 +51,7 @@ def decisions_from_lists(goal_id: str, lists: dict[str, list[str]]) -> list[Deci
     for field in LEDGER_DECISION_FIELDS:
         kind = _KIND_BY_FIELD[field]
         status = (
-            DecisionStatus.UNCERTAIN
-            if kind == "unresolved_question"
-            else DecisionStatus.ACTIVE
+            DecisionStatus.UNCERTAIN if kind == "unresolved_question" else DecisionStatus.ACTIVE
         )
         for item in lists.get(field) or []:
             statement = item.strip()

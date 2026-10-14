@@ -44,24 +44,27 @@ def register_autonomous_correction_routes(app, state, require_operator_token) ->
         # This opt-in changes local standing authority only. It never sends a
         # message, changes worker approval policy, or rewrites observation consent.
         adapter = state.adapters.for_session(session_id)
-        if body.enabled and not (
-            isinstance(adapter, CodexSharedAdapter) and adapter._connected()
-        ):
+        if body.enabled and not (isinstance(adapter, CodexSharedAdapter) and adapter._connected()):
             raise HTTPException(
-                409, "Reconnect the selected Codex session before enabling corrections.",
+                409,
+                "Reconnect the selected Codex session before enabling corrections.",
             )
         try:
             return await state.store.set_session_autonomous_corrections(
-                session_id, **body.model_dump(),
-                principal_id="local_bridge_operator", actor_assurance="bridge_bearer",
+                session_id,
+                **body.model_dump(),
+                principal_id="local_bridge_operator",
+                actor_assurance="bridge_bearer",
             )
         except LookupError as exc:
             raise HTTPException(404, "The selected session or goal is unavailable.") from exc
         except OperatorEffectConflictError as exc:
             raise HTTPException(
-                409, "This operation key belongs to a different control change.",
+                409,
+                "This operation key belongs to a different control change.",
             ) from exc
         except (ValueError, OSError) as exc:
             raise HTTPException(
-                409, "Control scope changed; reload and review before retrying.",
+                409,
+                "Control scope changed; reload and review before retrying.",
             ) from exc

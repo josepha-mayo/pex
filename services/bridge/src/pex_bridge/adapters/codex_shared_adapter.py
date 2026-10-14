@@ -230,11 +230,21 @@ class CodexSharedAdapter(HarnessAdapter):
                 type(correction_json) is not str
                 or type(correction) is not dict
                 or canonical(correction) != correction_json
-                or set(correction) != {
-                    "schema", "event_id", "effect_id", "intervention_id",
-                    "client_message_id", "content", "session_id", "thread_id",
-                    "root_session_id", "vendor_project_id", "project_binding",
-                    "workspace_binding", "subscription_receipt",
+                or set(correction)
+                != {
+                    "schema",
+                    "event_id",
+                    "effect_id",
+                    "intervention_id",
+                    "client_message_id",
+                    "content",
+                    "session_id",
+                    "thread_id",
+                    "root_session_id",
+                    "vendor_project_id",
+                    "project_binding",
+                    "workspace_binding",
+                    "subscription_receipt",
                 }
                 or correction.get("schema") != CORRECTION_SCHEMA
                 or type(correction.get("content")) is not list
@@ -275,8 +285,7 @@ class CodexSharedAdapter(HarnessAdapter):
                 or type(accepted_baseline.digest) is not str
                 or len(accepted_baseline.digest) != 64
                 or any(
-                    character not in "0123456789abcdef"
-                    for character in accepted_baseline.digest
+                    character not in "0123456789abcdef" for character in accepted_baseline.digest
                 )
                 or accepted_baseline.pending_count != 0
                 or accepted_baseline.reason is not None
@@ -442,15 +451,21 @@ class CodexSharedAdapter(HarnessAdapter):
             item = params["item"]
             if self._input_baseline is not None:
                 self._input_baseline.observe_item(
-                    turn_id=record.turn_id, item=item, completed=method == "item/completed",
+                    turn_id=record.turn_id,
+                    item=item,
+                    completed=method == "item/completed",
                 )
             is_user = item.get("type") == "userMessage"
             classification = (
                 self._input_provenance.classify_item(
-                    session_id=self.session.id, thread_id=self.session.vendor_session_id,
-                    turn_id=record.turn_id, item=item, completed=method == "item/completed",
+                    session_id=self.session.id,
+                    thread_id=self.session.vendor_session_id,
+                    turn_id=record.turn_id,
+                    item=item,
+                    completed=method == "item/completed",
                 )
-                if is_user and self._input_provenance is not None else None
+                if is_user and self._input_provenance is not None
+                else None
             )
             exact_correction = classification is not None and classification.kind == "exact_pex"
             if exact_correction:
@@ -462,7 +477,8 @@ class CodexSharedAdapter(HarnessAdapter):
                     # multiple vendor inputs. Match the history classifier's
                     # uncertainty rule; preserve evidence and revoke the fence.
                     classification = CodexInputClassification(
-                        "uncertain", reason="duplicate correction correlation",
+                        "uncertain",
+                        reason="duplicate correction correlation",
                     )
                     exact_correction = False
                 else:
@@ -505,9 +521,15 @@ class CodexSharedAdapter(HarnessAdapter):
                     event_suffix=record.stable_id,
                     vendor_turn_id=record.turn_id,
                 )
-                if event is not None and classification is not None and classification.kind in {
-                    "uncertain", "incomplete",
-                }:
+                if (
+                    event is not None
+                    and classification is not None
+                    and classification.kind
+                    in {
+                        "uncertain",
+                        "incomplete",
+                    }
+                ):
                     # Keep visible evidence and stale-action fencing, but never
                     # let a conflicting correction ID mint human override intent.
                     event.metadata["content_status"] = "uncertain_input_provenance"
@@ -625,10 +647,13 @@ class CodexSharedAdapter(HarnessAdapter):
             if not self._connected():
                 raise CodexSubscriptionError("connection lost during input provenance bootstrap")
             self._input_provenance = CodexInputProvenance.from_store_records(
-                records, session_id=self.session.id, thread_id=self.session.vendor_session_id,
+                records,
+                session_id=self.session.id,
+                thread_id=self.session.vendor_session_id,
             )
             self._input_baseline = CodexInputBaseline.from_selected(
-                self._selected, self._input_provenance,
+                self._selected,
+                self._input_provenance,
             )
         self._input_bootstrap_complete = True
         await self._receive()
@@ -765,7 +790,8 @@ class CodexSharedAdapter(HarnessAdapter):
         # No pump can mutate the pending ledger after this join.
         interrupted = self.subscription.interrupted_batch
         if (
-            interrupted is not None and interrupted is not self._received_interrupted_batch
+            interrupted is not None
+            and interrupted is not self._received_interrupted_batch
             and not (self._provenance_required and not self._input_bootstrap_complete)
         ):
             self._received_interrupted_batch = interrupted
@@ -821,7 +847,9 @@ class CodexSharedAdapter(HarnessAdapter):
             self._provenance_required = provenance_loader is not None
             self._pump_task = asyncio.create_task(
                 self.pump_into_pipeline(
-                    ingest, lifecycle_ingest=lifecycle_ingest, retention_ingest=retention_ingest,
+                    ingest,
+                    lifecycle_ingest=lifecycle_ingest,
+                    retention_ingest=retention_ingest,
                     provenance_loader=provenance_loader,
                 ),
                 name="codex-shared-pipeline-pump",

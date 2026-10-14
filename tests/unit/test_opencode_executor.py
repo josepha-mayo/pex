@@ -13,15 +13,34 @@ from benchmarks.opencode_executor import worker_observation
 
 
 def packet(vendor="vendor"):
-    events = [{"type": kind, "sessionID": vendor, "part": {
-        "sessionID": vendor, "messageID": "message", **extra,
-    }} for kind, extra in (("step_start", {}), ("step_finish", {"reason": "stop"}))]
+    events = [
+        {
+            "type": kind,
+            "sessionID": vendor,
+            "part": {
+                "sessionID": vendor,
+                "messageID": "message",
+                **extra,
+            },
+        }
+        for kind, extra in (("step_start", {}), ("step_finish", {"reason": "stop"}))
+    ]
     raw = b"\n".join(json.dumps(row).encode() for row in events) + b"\n"
     turn = completed_turn(raw, exit_code=0)
-    return {"schema": "pex.opencode-worker-output.v1", "turns": [{
-        "session_id": vendor, "stdout_sha256": turn.stdout_sha256,
-        "stdout_bytes": turn.stdout_bytes, "jsonl_base64": base64.b64encode(raw).decode(),
-    }], "actions": [], "followups": [], "followup_limit_reached": False}
+    return {
+        "schema": "pex.opencode-worker-output.v1",
+        "turns": [
+            {
+                "session_id": vendor,
+                "stdout_sha256": turn.stdout_sha256,
+                "stdout_bytes": turn.stdout_bytes,
+                "jsonl_base64": base64.b64encode(raw).decode(),
+            }
+        ],
+        "actions": [],
+        "followups": [],
+        "followup_limit_reached": False,
+    }
 
 
 def test_export_requires_exact_natural_stop_hash_and_baseline_parity():
@@ -45,9 +64,14 @@ def test_export_cannot_invent_supervision_or_omit_review_lineage(mutation):
         worker_observation(json.dumps(value).encode(), supervised=supervised, max_followups=0)
 
 
-@pytest.mark.parametrize("action,flag,capacity", [
-    ("SEND_NUDGE", False, 0), ("SEND_NUDGE", True, 1), ("NOOP", True, 0),
-])
+@pytest.mark.parametrize(
+    "action,flag,capacity",
+    [
+        ("SEND_NUDGE", False, 0),
+        ("SEND_NUDGE", True, 1),
+        ("NOOP", True, 0),
+    ],
+)
 def test_terminal_review_requires_consistent_capacity(action, flag, capacity):
     value = packet()
     value["actions"] = [action]
@@ -66,7 +90,9 @@ def test_terminal_review_accepts_natural_stop_or_exhausted_zero_capacity(action,
 
 @pytest.mark.parametrize("mode", ["success", "late_spawn", "reap_failure"])
 async def test_controller_retains_outcome_and_owns_even_a_late_spawn(
-    tmp_path, monkeypatch, mode,
+    tmp_path,
+    monkeypatch,
+    mode,
 ):
     late_spawn = mode != "success"
     monkeypatch.setattr(executor.sys, "platform", "linux")
@@ -78,8 +104,9 @@ async def test_controller_retains_outcome_and_owns_even_a_late_spawn(
     stdout.feed_data(json.dumps(packet()).encode())
     stdout.feed_eof()
     stderr.feed_eof()
-    process = SimpleNamespace(pid=123, returncode=None if late_spawn else 0,
-                              stdout=stdout, stderr=stderr)
+    process = SimpleNamespace(
+        pid=123, returncode=None if late_spawn else 0, stdout=stdout, stderr=stderr
+    )
 
     async def wait():
         if mode == "reap_failure":
@@ -121,7 +148,8 @@ async def test_controller_retains_outcome_and_owns_even_a_late_spawn(
 
     server.close = close
     relay = SimpleNamespace(
-        audit=[{"status": "completed"}], review_audit=[],
+        audit=[{"status": "completed"}],
+        review_audit=[],
         close_active=AsyncMock(side_effect=close_active),
         listen=AsyncMock(return_value=server),
     )
@@ -130,13 +158,25 @@ async def test_controller_retains_outcome_and_owns_even_a_late_spawn(
     monkeypatch.setattr(executor.runner, "benchmark_sha256", lambda: "c" * 64)
     monkeypatch.setattr(executor.boundary, "workspace_manifest_sha256", lambda *a, **k: "d" * 64)
     monkeypatch.setattr(executor, "measure_profile", lambda *a, **k: {"model": "pinned"})
-    monkeypatch.setattr(executor, "admit_opencode_relay", lambda *a, **k: (
-        relay, reservation, {"deadline": time.perf_counter() + (0.01 if late_spawn else 10),
-                             "max_followups": 0},
-    ))
+    monkeypatch.setattr(
+        executor,
+        "admit_opencode_relay",
+        lambda *a, **k: (
+            relay,
+            reservation,
+            {"deadline": time.perf_counter() + (0.01 if late_spawn else 10), "max_followups": 0},
+        ),
+    )
     monkeypatch.setattr(executor, "worker_runtime_relay_command", lambda *args: ["test-worker"])
-    options = dict(index=0, expected_plan_sha256="b" * 64, runtime=tmp_path / "runtime",
-                   model="pinned", backend=lambda _: None, review=lambda *_: None)
+    options = dict(
+        index=0,
+        expected_plan_sha256="b" * 64,
+        runtime=tmp_path / "runtime",
+        model="pinned",
+        backend=lambda _: None,
+        review=lambda *_: None,
+    )
+
     async def exercise():
         if late_spawn:
             with pytest.raises(RuntimeError if mode == "reap_failure" else TimeoutError):

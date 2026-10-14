@@ -292,9 +292,7 @@ class QwenAdapter(HarnessAdapter):
                 supervision_paused=paused,
                 metadata={
                     "source": "qwen_serve",
-                    "title": bounded_observed_text(
-                        item.get("title"), field="Qwen session title"
-                    ),
+                    "title": bounded_observed_text(item.get("title"), field="Qwen session title"),
                 },
             )
         self.sessions.update(updates)
@@ -483,9 +481,11 @@ class QwenAdapter(HarnessAdapter):
         if not session_binding_matches(bound, session, harness_type=HarnessType.QWEN):
             raise ValueError("Qwen hook session binding mismatch")
         payload_session_id = payload.get("session_id") or payload.get("sessionId")
-        if payload_session_id and bounded_adapter_id(
-            payload_session_id, field="Qwen session_id"
-        ) != bound.vendor_session_id:
+        if (
+            payload_session_id
+            and bounded_adapter_id(payload_session_id, field="Qwen session_id")
+            != bound.vendor_session_id
+        ):
             raise ValueError("Qwen hook payload session mismatch")
         session = bound
         hook_name = bounded_adapter_id(

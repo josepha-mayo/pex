@@ -94,9 +94,7 @@ async def test_operator_project_identity_conflict_flow_is_authenticated_and_repl
             assert quarantined.json()["outcome"] == "quarantined"
             second_identity_id = quarantined.json()["identity"]["id"]
 
-            assert (
-                await client.get("/v1/project-identities/conflicts")
-            ).status_code == 401
+            assert (await client.get("/v1/project-identities/conflicts")).status_code == 401
             conflicts = await client.get(
                 "/v1/project-identities/conflicts",
                 headers=headers,
@@ -247,9 +245,7 @@ async def test_project_identity_persistence_never_revives_credentials(
             await store.upsert_session(session)
             session_id = session.id
 
-            mcp_credential = await operator.post(
-                f"/v1/sessions/{session_id}/mcp-credential"
-            )
+            mcp_credential = await operator.post(f"/v1/sessions/{session_id}/mcp-credential")
             assert mcp_credential.status_code == 200, mcp_credential.text
             mcp_digest = digest_mcp_session_token(mcp_credential.json()["token"])
             hook_credential = await operator.post(

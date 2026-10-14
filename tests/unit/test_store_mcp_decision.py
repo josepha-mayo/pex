@@ -265,8 +265,7 @@ async def test_request_decision_rolls_back_on_every_write_stage(
                     principal=principal,
                     request=_request(
                         idempotency_key=(
-                            "rollback-"
-                            + hashlib.sha256(sql_prefix.encode()).hexdigest()[:16]
+                            "rollback-" + hashlib.sha256(sql_prefix.encode()).hexdigest()[:16]
                         )
                     ),
                 )
@@ -566,9 +565,7 @@ async def test_human_decision_resolution_is_atomic_replay_safe_and_supersedes_pe
         decisions = await store.list_decisions(goal.id)
         assert len(decisions) == 1
         assert decisions[0].statement == "iterate"
-        resolved_context = await store.get_context(
-            first.response()["resolution"]["context_id"]
-        )
+        resolved_context = await store.get_context(first.response()["resolution"]["context_id"])
         pending_context = await store.get_context(
             first.response()["resolution"]["pending_context_id"]
         )
@@ -583,8 +580,7 @@ async def test_human_decision_resolution_is_atomic_replay_safe_and_supersedes_pe
         assert stored is not None and stored.result == "human_decision_delivered"
         assert stored.metadata["worker_delivery_receipt"] == receipt
         audit_cursor = await store.db.execute(
-            "SELECT json FROM intervention_audit "
-            "WHERE intervention_id = ? AND record_type = ?",
+            "SELECT json FROM intervention_audit WHERE intervention_id = ? AND record_type = ?",
             (intervention_id, "human_decision_delivered"),
         )
         audit_row = await audit_cursor.fetchone()
@@ -623,9 +619,7 @@ async def test_human_decision_resolution_rolls_back_on_every_write_stage(
         )
         intervention_id = opened["intervention"]["id"]
         pending_id = opened["pending_context"]["id"]
-        audit_cursor = await store.db.execute(
-            "SELECT COUNT(*) AS count FROM intervention_audit"
-        )
+        audit_cursor = await store.db.execute("SELECT COUNT(*) AS count FROM intervention_audit")
         audit_before = int((await audit_cursor.fetchone())["count"])
 
         async def fail_selected(connection, sql, parameters=None):
@@ -654,9 +648,7 @@ async def test_human_decision_resolution_rolls_back_on_every_write_stage(
         assert intervention is not None and intervention.result == "awaiting_human"
         live = await store.get_session(session.id)
         assert live is not None and live.status == SessionStatus.NEEDS_DECISION
-        audit_cursor = await store.db.execute(
-            "SELECT COUNT(*) AS count FROM intervention_audit"
-        )
+        audit_cursor = await store.db.execute("SELECT COUNT(*) AS count FROM intervention_audit")
         assert int((await audit_cursor.fetchone())["count"]) == audit_before
     finally:
         await store.close()
@@ -1072,9 +1064,7 @@ async def test_request_decision_replays_across_exact_binding_credential_rotation
         assert replay["replayed"] is True
         assert replay["mutation_id"] == opened["mutation_id"]
         assert replay["intervention"]["id"] == opened["intervention"]["id"]
-        cursor = await store.db.execute(
-            "SELECT principal_id, COUNT(*) AS count FROM mcp_mutations"
-        )
+        cursor = await store.db.execute("SELECT principal_id, COUNT(*) AS count FROM mcp_mutations")
         row = await cursor.fetchone()
         assert row["principal_id"] == principal.principal_id
         assert int(row["count"]) == 1
@@ -1186,9 +1176,7 @@ async def test_freeform_answer_is_opaque_in_every_durable_record_and_replay(tmp_
         payload = resolved.response()
         opaque_choice = payload["resolution"]["choice"]
         assert opaque_choice == (
-            "[freeform answer sha256:"
-            + hashlib.sha256(raw_answer.encode()).hexdigest()
-            + "]"
+            "[freeform answer sha256:" + hashlib.sha256(raw_answer.encode()).hexdigest() + "]"
         )
         assert raw_answer not in json.dumps(payload, ensure_ascii=False)
         assert len(adapter.messages) == 1
@@ -1226,9 +1214,7 @@ async def test_freeform_answer_is_opaque_in_every_durable_record_and_replay(tmp_
             if not text_columns:
                 continue
             select_columns = ", ".join(f'"{column}"' for column in text_columns)
-            values_cursor = await store.db.execute(
-                f'SELECT {select_columns} FROM "{table}"'
-            )
+            values_cursor = await store.db.execute(f'SELECT {select_columns} FROM "{table}"')
             for row in await values_cursor.fetchall():
                 assert all(raw_answer not in str(value) for value in row)
 
@@ -1254,9 +1240,7 @@ async def test_reserved_pre_io_crash_replays_exactly_once(
         opened = await pipeline.request_human_decision(
             session,
             principal=principal,
-            request=_request(
-                idempotency_key=f"reserved-resume-{int(probe_before_crash):04d}"
-            ),
+            request=_request(idempotency_key=f"reserved-resume-{int(probe_before_crash):04d}"),
         )
         intervention_id = opened["intervention"]["id"]
         reserved = await store.reserve_human_decision_delivery(
@@ -1453,9 +1437,7 @@ async def test_cancelled_send_finalizes_uncertain_then_reraises_without_secret_l
         with pytest.raises(asyncio.CancelledError):
             await asyncio.wait_for(task, timeout=3.0)
 
-        current = await store.get_current_human_decision_resolution(
-            opened["intervention"]["id"]
-        )
+        current = await store.get_current_human_decision_resolution(opened["intervention"]["id"])
         assert current is not None
         assert current["status"] == "delivery_uncertain"
         assert current["delivery_code"] == "send_cancelled"
@@ -1514,9 +1496,7 @@ async def test_cancelled_send_preserves_cancellation_when_durable_finalize_fails
             await asyncio.wait_for(task, timeout=3.0)
 
         monkeypatch.setattr(store, "finalize_human_decision_delivery", original_finalize)
-        current = await store.get_current_human_decision_resolution(
-            opened["intervention"]["id"]
-        )
+        current = await store.get_current_human_decision_resolution(opened["intervention"]["id"])
         assert current is not None and current["status"] == "dispatching"
         replay = await resolve_requested_human_decision(
             store,
@@ -1585,9 +1565,7 @@ async def test_attention_generation_rollover_preserves_pending_and_newer_base_st
         assert middle is not None
         assert middle.status == SessionStatus.NEEDS_DECISION
         remaining = middle.metadata["human_decision_attention"]
-        assert remaining["pending_intervention_ids"] == [
-            intervention_ids[resolution_order[1]]
-        ]
+        assert remaining["pending_intervention_ids"] == [intervention_ids[resolution_order[1]]]
 
         second_result = await resolve_requested_human_decision(
             store,
@@ -1642,9 +1620,7 @@ async def test_resolution_never_overwrites_newer_external_session_status(tmp_pat
     ("adapter", "expected_status", "expected_calls"),
     [
         (
-            _DecisionDeliveryAdapter(
-                capabilities=AdapterCapabilities(send_message=False)
-            ),
+            _DecisionDeliveryAdapter(capabilities=AdapterCapabilities(send_message=False)),
             "unsupported",
             0,
         ),

@@ -32,7 +32,7 @@ def test_collector_returns_and_hashes_exact_receipt_with_reserved_id_authority()
     collector = _collector()
     output = collector.record(
         tool_name="inspect_workspace",
-        arguments_json=canonical_arguments({"path": "a\\\"b"}),
+        arguments_json=canonical_arguments({"path": 'a\\"b'}),
         value={"pex_observation_id": "pexobs_" + "0" * 32, "ok": True},
     )
 
@@ -40,7 +40,7 @@ def test_collector_returns_and_hashes_exact_receipt_with_reserved_id_authority()
     assert json.loads(output)["pex_observation_id"] == observation.observation_id
     assert observation.output == output
     assert observation.output_sha256 == hashlib.sha256(output.encode()).hexdigest()
-    assert json.loads(observation.arguments_json) == {"path": "a\\\"b"}
+    assert json.loads(observation.arguments_json) == {"path": 'a\\"b'}
 
 
 def test_final_serialized_tool_payloads_remain_within_byte_bounds():
@@ -99,10 +99,10 @@ def test_aggregate_serialized_receipt_budget_refuses_before_exposing_evidence():
     assert len(collector.observations) < 24
     assert any(output == '{"error":"evidence_observation_limit_reached"}' for output in outputs)
     assert disclosed_ids == [item.observation_id for item in collector.observations]
-    assert sum(
-        len(item.model_dump_json().encode("utf-8"))
-        for item in collector.observations
-    ) <= 128 * 1024
+    assert (
+        sum(len(item.model_dump_json().encode("utf-8")) for item in collector.observations)
+        <= 128 * 1024
+    )
     first = collector.observations[0]
     validate_evidence_observation_bindings(
         collector.observations,
@@ -237,11 +237,7 @@ def test_observation_rejects_overflowed_nonfinite_json_number():
     collector = _collector()
     collector.record(tool_name="get_scores", arguments_json="{}", value={"ok": True})
     payload = collector.observations[0].model_dump(mode="json")
-    payload["output"] = (
-        '{"pex_observation_id":"'
-        + payload["observation_id"]
-        + '","value":1e999}'
-    )
+    payload["output"] = '{"pex_observation_id":"' + payload["observation_id"] + '","value":1e999}'
     payload["output_sha256"] = hashlib.sha256(payload["output"].encode()).hexdigest()
 
     with pytest.raises(ValueError, match="non-finite JSON number"):

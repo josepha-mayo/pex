@@ -54,9 +54,7 @@ async def _disable(case) -> None:
         expected_goal_intent_hash=scope["goal_intent_hash"],
         expected_project_binding=scope["project_binding"],
         expected_workspace_sha256=scope["workspace_sha256"],
-        expected_subscription_authorization_id=scope[
-            "subscription_authorization_id"
-        ],
+        expected_subscription_authorization_id=scope["subscription_authorization_id"],
         expected_connection_generation=scope["connection_generation"],
         principal_id="local_bridge_operator",
         actor_assurance="bridge_bearer",
@@ -115,14 +113,18 @@ async def test_busy_goal_does_not_hide_shared_human_constraint_from_supervision(
     )
     await case.store.add_context(commitment)
     for index in range(257):
-        await case.store.add_context(commitment.model_copy(update={
-            "id": f"busy-goal-fact-{index}",
-            "goal_id": case.session.goal_id,
-            "kind": ContextKind.FACT,
-            "provenance": SourceKind.WORKSPACE,
-            "valid_from": now + timedelta(seconds=1),
-            "content": f"Observed workspace fact {index}.",
-        }))
+        await case.store.add_context(
+            commitment.model_copy(
+                update={
+                    "id": f"busy-goal-fact-{index}",
+                    "goal_id": case.session.goal_id,
+                    "kind": ContextKind.FACT,
+                    "provenance": SourceKind.WORKSPACE,
+                    "valid_from": now + timedelta(seconds=1),
+                    "content": f"Observed workspace fact {index}.",
+                }
+            )
+        )
     supervisor = _CapturingNoopSupervisor()
     case.pipeline.supervisor = supervisor
     await case.ingest_observed()
@@ -165,9 +167,9 @@ async def test_model_payload_cannot_enable_disabled_correction_route(correction_
 
     event = await case.ingest_observed()
 
-    assert (
-        await case.store.get_autonomous_correction_grant_status(case.session.id)
-    )["enabled"] is False
+    assert (await case.store.get_autonomous_correction_grant_status(case.session.id))[
+        "enabled"
+    ] is False
     assert await case.store.get_event_effect(event.event_id, "main") is None
     current = await case.store.get_session(case.session.id)
     assert current.capabilities.get("send_message") is not True

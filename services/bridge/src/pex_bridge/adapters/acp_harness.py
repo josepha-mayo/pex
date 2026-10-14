@@ -87,8 +87,8 @@ class AcpHarnessAdapter(HarnessAdapter):
             asyncio.Queue(maxsize=MAX_PENDING_RESULTS)
         )
         self._prompt_tasks: dict[str, asyncio.Task[bool]] = {}
-        self._permission_events: asyncio.Queue[tuple[HarnessSession, HarnessEvent]] = (
-            asyncio.Queue(maxsize=MAX_PENDING_RESULTS)
+        self._permission_events: asyncio.Queue[tuple[HarnessSession, HarnessEvent]] = asyncio.Queue(
+            maxsize=MAX_PENDING_RESULTS
         )
         self._permission_requests: dict[str, _PendingAcpPermission] = {}
         self._permission_handler_installed = False
@@ -213,9 +213,7 @@ class AcpHarnessAdapter(HarnessAdapter):
     ) -> HarnessEvent:
         raw_input = tool_call.get("rawInput")
         tool_input = bounded_observed_mapping(raw_input)
-        command = _optional_bounded_text(
-            (tool_input or {}).get("command"), field="ACP command"
-        )
+        command = _optional_bounded_text((tool_input or {}).get("command"), field="ACP command")
         locations = tool_call.get("locations")
         file_paths = [
             _bounded_path(item["path"])
@@ -313,12 +311,7 @@ class AcpHarnessAdapter(HarnessAdapter):
         transport = self.acp.transport if self.acp is not None else None
         reader = getattr(transport, "_reader_task", None)
         transport_healthy = reader is None or not reader.done()
-        controllable = (
-            connected
-            and pumping
-            and self._last_pump_error is None
-            and transport_healthy
-        )
+        controllable = connected and pumping and self._last_pump_error is None and transport_healthy
         permission_control = controllable and self._permission_handler_installed
         hook_live = (
             self.accepts_hooks
@@ -613,10 +606,13 @@ class AcpHarnessAdapter(HarnessAdapter):
             field="ACP session update",
         )
         state = _optional_bounded_text(update.get("state"), field="ACP state") or ""
-        stop = _optional_bounded_text(
-            update.get("stopReason") or update.get("stop_reason"),
-            field="ACP stop reason",
-        ) or ""
+        stop = (
+            _optional_bounded_text(
+                update.get("stopReason") or update.get("stop_reason"),
+                field="ACP stop reason",
+            )
+            or ""
+        )
         content = update.get("content")
         text = ""
         if isinstance(content, dict):
@@ -624,9 +620,14 @@ class AcpHarnessAdapter(HarnessAdapter):
         elif isinstance(content, str):
             text = content
         if not text:
-            text = _optional_bounded_text(
-                update.get("text") or update.get("title"), field="ACP event message"
-            ) or stop or kind or state
+            text = (
+                _optional_bounded_text(
+                    update.get("text") or update.get("title"), field="ACP event message"
+                )
+                or stop
+                or kind
+                or state
+            )
         if kind in {"agent_message_chunk", "agentMessageChunk"}:
             event_type = EventType.AGENT_RESPONSE
             phase = EventPhase.AFTER
@@ -678,9 +679,7 @@ class AcpHarnessAdapter(HarnessAdapter):
             message_delta=_optional_bounded_text(text, field="ACP event message"),
             tool_name=tool_name,
             tool_input=tool_input,
-            command=_optional_bounded_text(
-                (tool_input or {}).get("command"), field="ACP command"
-            ),
+            command=_optional_bounded_text((tool_input or {}).get("command"), field="ACP command"),
             file_paths=file_paths,
             error=(text if event_type == EventType.TOOL_FAILURE else None),
             metadata={
@@ -783,9 +782,7 @@ class AcpHarnessAdapter(HarnessAdapter):
                 local_activity = asyncio.create_task(self._pump_ready.wait())
                 wait_for_events = getattr(transport, "wait_for_events", None)
                 remote_activity = asyncio.create_task(
-                    wait_for_events(seen)
-                    if callable(wait_for_events)
-                    else asyncio.sleep(0.05)
+                    wait_for_events(seen) if callable(wait_for_events) else asyncio.sleep(0.05)
                 )
                 try:
                     done, _ = await asyncio.wait(
@@ -865,9 +862,7 @@ class HermesAdapter(AcpHarnessAdapter):
         from pex_bridge.adapters.desktop import desktop_focus_supported, matching_desktop_image
 
         hook_live = self._hook_live()
-        desktop = await asyncio.to_thread(
-            matching_desktop_image, ("Hermes.exe", "NousHermes.exe")
-        )
+        desktop = await asyncio.to_thread(matching_desktop_image, ("Hermes.exe", "NousHermes.exe"))
         desktop = desktop is not None
         if not hook_live:
             if desktop and caps.support_label == AdapterSupportLabel.UNAVAILABLE:
@@ -900,8 +895,7 @@ class HermesAdapter(AcpHarnessAdapter):
                 "deny": caps.deny or active_deny,
                 "permission_response_mode": (
                     PermissionResponseMode.BOTH
-                    if caps.permission_response_mode == PermissionResponseMode.ASYNC
-                    and active_deny
+                    if caps.permission_response_mode == PermissionResponseMode.ASYNC and active_deny
                     else PermissionResponseMode.INLINE
                     if active_deny
                     else caps.permission_response_mode
@@ -945,9 +939,11 @@ class HermesAdapter(AcpHarnessAdapter):
         ):
             raise ValueError("Hermes hook session binding mismatch")
         payload_session = payload.get("session_id") or payload.get("task_id")
-        if payload_session and bounded_adapter_id(
-            payload_session, field="Hermes session id"
-        ) != session.vendor_session_id:
+        if (
+            payload_session
+            and bounded_adapter_id(payload_session, field="Hermes session id")
+            != session.vendor_session_id
+        ):
             raise ValueError("Hermes hook payload session mismatch")
         hook_name = bounded_adapter_id(
             payload.get("hook_event_name") or payload.get("hook") or "unknown",

@@ -50,6 +50,7 @@ from pex_protocol.overlay import Overlay, OverlayDiff
 
 _TEST_DRIVE = "C:" if os.name == "nt" else ""
 
+
 def test_desktop_detection_uses_running_apps():
     from pex_bridge.adapters.desktop import list_desktop_apps
 
@@ -1533,8 +1534,7 @@ def test_import_codex_pet_contract(tmp_path: Path):
 
     sheet.unlink()
     stale = next(
-        pet for pet in catalog(settings, include_legacy_imports=True)
-        if pet.id == "import:von-test"
+        pet for pet in catalog(settings, include_legacy_imports=True) if pet.id == "import:von-test"
     )
     assert stale.atlas_ready is False
     assert stale.spritesheet is None

@@ -57,11 +57,7 @@ def test_summary_and_evidence_count_bounds_are_enforced_without_truncation():
     with pytest.raises(ValidationError):
         _report(evidence_refs=[])
     with pytest.raises(ValidationError):
-        _report(
-            evidence_refs=[
-                {"type": "event", "id": f"evt_{index}"} for index in range(25)
-            ]
-        )
+        _report(evidence_refs=[{"type": "event", "id": f"evt_{index}"} for index in range(25)])
 
 
 @pytest.mark.parametrize(

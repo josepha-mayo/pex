@@ -72,9 +72,7 @@ async def test_two_full_reconciliation_drains_survive_backpressure_and_cancellat
     async def lifecycle(event, session):
         disconnects.append((event, session))
 
-    task = adapter.start_pipeline_pump(
-        ingest, lifecycle_ingest=lifecycle, retention_ingest=retain
-    )
+    task = adapter.start_pipeline_pump(ingest, lifecycle_ingest=lifecycle, retention_ingest=retain)
     try:
         await asyncio.wait_for(entered.wait(), timeout=5)
         assert adapter._pending.full()

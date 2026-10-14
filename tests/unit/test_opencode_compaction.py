@@ -17,8 +17,11 @@ from pex_supervisor.planner import plan_deterministic
 def _worker():
     adapter = OpenCodeAdapter(MemoryHttpTransport())
     session = HarnessSession(
-        id="opencode:compact-worker", harness_type=HarnessType.OPENCODE,
-        vendor_session_id="compact-worker", cwd="/project", project_id="/project",
+        id="opencode:compact-worker",
+        harness_type=HarnessType.OPENCODE,
+        vendor_session_id="compact-worker",
+        cwd="/project",
+        project_id="/project",
         goal_id="persistent-goal",
     )
     adapter.sessions[session.id] = session
@@ -30,22 +33,33 @@ def _completed_message(session, message_id, **markers):
         "type": "message.updated",
         "properties": {
             "info": {
-                "id": message_id, "sessionID": session.vendor_session_id,
-                "role": "assistant", "parentID": "user-one", "finish": "stop",
-                "time": {"created": 1, "completed": 2}, **markers,
+                "id": message_id,
+                "sessionID": session.vendor_session_id,
+                "role": "assistant",
+                "parentID": "user-one",
+                "finish": "stop",
+                "time": {"created": 1, "completed": 2},
+                **markers,
             },
         },
     }
 
 
-@pytest.mark.parametrize("markers", [
-    {"summary": True}, {"mode": "compaction"}, {"agent": "compaction"},
-    {"summary": "true"}, {"summary": {"unexpected": True}},
-])
+@pytest.mark.parametrize(
+    "markers",
+    [
+        {"summary": True},
+        {"mode": "compaction"},
+        {"agent": "compaction"},
+        {"summary": "true"},
+        {"summary": {"unexpected": True}},
+    ],
+)
 def test_compaction_summary_cannot_complete_a_worker_turn(markers):
     adapter, session = _worker()
     summary = adapter.normalize_sse(
-        session, _completed_message(session, "summary-one", **markers),
+        session,
+        _completed_message(session, "summary-one", **markers),
     )
     assert summary.event_type == EventType.AGENT_RESPONSE
     assert summary.phase == EventPhase.AFTER
@@ -60,37 +74,63 @@ def test_compaction_summary_cannot_complete_a_worker_turn(markers):
 
 def test_compacted_lifecycle_event_restores_the_durable_goal():
     adapter, session = _worker()
-    compacted = adapter.normalize_sse(session, {
-        "type": "session.compacted",
-        "properties": {"sessionID": session.vendor_session_id},
-    })
+    compacted = adapter.normalize_sse(
+        session,
+        {
+            "type": "session.compacted",
+            "properties": {"sessionID": session.vendor_session_id},
+        },
+    )
     assert compacted.event_type == EventType.COMPACTION
     assert compacted.phase == EventPhase.AFTER
     assert compacted.goal_id == session.goal_id
     health = assess_context_health([compacted], [], now=compacted.ts)
     assert health.signals["compaction_count"] == 1
-    next_compaction = adapter.normalize_sse(session, {
-        "type": "session.compacted",
-        "properties": {"sessionID": session.vendor_session_id},
-    })
+    next_compaction = adapter.normalize_sse(
+        session,
+        {
+            "type": "session.compacted",
+            "properties": {"sessionID": session.vendor_session_id},
+        },
+    )
     assert next_compaction.event_id != compacted.event_id
-    assert assess_context_health(
-        [compacted, next_compaction], [], now=next_compaction.ts,
-    ).signals["compaction_count"] == 2
+    assert (
+        assess_context_health(
+            [compacted, next_compaction],
+            [],
+            now=next_compaction.ts,
+        ).signals["compaction_count"]
+        == 2
+    )
     now = datetime.now(UTC)
     goal = Goal(
-        id=session.goal_id, project_id=session.project_id, title="Finish the parser",
-        objective="Repair the parser and verify it.", acceptance_criteria=["parser tests pass"],
-        constraints=["Preserve the public API"], forbidden_outcomes=["Do not spend paid credits"],
-        evidence_requirements=["Record the test output"], created_at=now, updated_at=now,
+        id=session.goal_id,
+        project_id=session.project_id,
+        title="Finish the parser",
+        objective="Repair the parser and verify it.",
+        acceptance_criteria=["parser tests pass"],
+        constraints=["Preserve the public API"],
+        forbidden_outcomes=["Do not spend paid credits"],
+        evidence_requirements=["Record the test output"],
+        created_at=now,
+        updated_at=now,
     )
-    action = plan_deterministic(SupervisorRequest(
-        session=session, event=compacted, goal=goal,
-        scores=TrajectoryScores(features=health.planner_features()),
-    ))
+    action = plan_deterministic(
+        SupervisorRequest(
+            session=session,
+            event=compacted,
+            goal=goal,
+            scores=TrajectoryScores(features=health.planner_features()),
+        )
+    )
     assert action.type == InterventionType.SEND_NUDGE
-    for value in [goal.objective, *goal.acceptance_criteria, *goal.constraints,
-                  *goal.forbidden_outcomes, *goal.evidence_requirements]:
+    for value in [
+        goal.objective,
+        *goal.acceptance_criteria,
+        *goal.constraints,
+        *goal.forbidden_outcomes,
+        *goal.evidence_requirements,
+    ]:
         assert value in action.payload["text"]
 
 

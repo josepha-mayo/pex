@@ -507,14 +507,12 @@ async def test_pause_resume_routes_require_operator_auth_and_return_exact_receip
                 headers=headers,
             )
             assert resumed.status_code == 200
-            assert resumed.json()["human_action_receipt"]["action_kind"] == (
-                "resume_supervision"
-            )
+            assert resumed.json()["human_action_receipt"]["action_kind"] == ("resume_supervision")
             metrics = await client.get("/v1/attention/metrics", headers=headers)
             assert metrics.status_code == 200
-            assert metrics.json()["human_interventions"]["source_counts"][
-                "supervision_control"
-            ] == 2
+            assert (
+                metrics.json()["human_interventions"]["source_counts"]["supervision_control"] == 2
+            )
     finally:
         await store.close()
 
@@ -545,9 +543,7 @@ async def test_pause_route_refuses_test_only_no_auth_before_store_access(tmp_pat
         monkeypatch.setattr(store, "get_session_control_state", forbidden_lookup)
         transport = ASGITransport(app=create_app())
         async with AsyncClient(transport=transport, base_url="http://127.0.0.1") as client:
-            response = await client.post(
-                "/v1/sessions/synthetic:any/pause-supervision"
-            )
+            response = await client.post("/v1/sessions/synthetic:any/pause-supervision")
         assert response.status_code == 403
         assert touched is False
     finally:
@@ -600,9 +596,7 @@ async def test_attach_rejects_paused_goal_and_non_live_session(tmp_path):
     await paused_store.connect()
     try:
         session, goals = await _seed(paused_store)
-        paused_goal = goals["goal-a"].model_copy(
-            update={"paused": True, "updated_at": utcnow()}
-        )
+        paused_goal = goals["goal-a"].model_copy(update={"paused": True, "updated_at": utcnow()})
         await paused_store.patch_goal_with_ledger(goals["goal-a"], paused_goal, [])
         refused = await paused_store.attach_session_goal(
             session.id,
@@ -757,9 +751,7 @@ async def test_pause_resume_replay_is_exact_and_stale_opposite_cas_is_refused(tm
         assert resume_replay["granted"] is True
         assert resume_replay["changed"] is False
         assert resume_replay["control_revision"] == resumed["control_revision"]
-        receipts = await store.db.execute(
-            "SELECT COUNT(*) FROM human_session_control_actions"
-        )
+        receipts = await store.db.execute("SELECT COUNT(*) FROM human_session_control_actions")
         assert (await receipts.fetchone())[0] == 0
     finally:
         await store.close()
@@ -790,9 +782,7 @@ async def test_assured_pause_resume_receipts_are_atomic_append_only_and_replay_s
         assert pause_receipt["session_id"] == session.id
         assert pause_receipt["before_control_revision"] == control["control_revision"]
         assert pause_receipt["after_control_revision"] == paused["control_revision"]
-        assert pause_receipt["before_session_sha256"] != pause_receipt[
-            "after_session_sha256"
-        ]
+        assert pause_receipt["before_session_sha256"] != pause_receipt["after_session_sha256"]
 
         replay = await store.set_session_supervision_paused(
             session.id,
@@ -814,8 +804,7 @@ async def test_assured_pause_resume_receipts_are_atomic_append_only_and_replay_s
         assert resumed["human_action_receipt"]["action_kind"] == "resume_supervision"
 
         cursor = await store.db.execute(
-            "SELECT id, json FROM human_session_control_actions "
-            "ORDER BY after_control_revision"
+            "SELECT id, json FROM human_session_control_actions ORDER BY after_control_revision"
         )
         rows = await cursor.fetchall()
         assert len(rows) == 2
@@ -835,8 +824,7 @@ async def test_assured_pause_resume_receipts_are_atomic_append_only_and_replay_s
 
         with pytest.raises(sqlite3.IntegrityError, match="immutable"):
             await store.db.execute(
-                "UPDATE human_session_control_actions SET principal_id = 'forged' "
-                "WHERE id = ?",
+                "UPDATE human_session_control_actions SET principal_id = 'forged' WHERE id = ?",
                 (pause_receipt["id"],),
             )
         await store.db.rollback()
@@ -854,8 +842,7 @@ async def test_assured_pause_resume_receipts_are_atomic_append_only_and_replay_s
         await store.db.rollback()
         with pytest.raises(sqlite3.IntegrityError, match="coverage is append-only"):
             await store.db.execute(
-                "DELETE FROM human_session_control_coverage "
-                "WHERE action_kind = 'pause_supervision'"
+                "DELETE FROM human_session_control_coverage WHERE action_kind = 'pause_supervision'"
             )
         await store.db.rollback()
     finally:
@@ -904,9 +891,7 @@ async def test_assured_pause_receipt_failure_rolls_back_session_state(tmp_path):
         assert current is not None
         assert current["control_revision"] == control["control_revision"]
         assert current["session"].supervision_paused is False
-        count = await store.db.execute(
-            "SELECT COUNT(*) FROM human_session_control_actions"
-        )
+        count = await store.db.execute("SELECT COUNT(*) FROM human_session_control_actions")
         assert (await count.fetchone())[0] == 0
     finally:
         await store.close()
@@ -953,9 +938,7 @@ async def test_resume_rejects_detached_session_and_paused_or_superseded_goal(tmp
             paused=True,
             expected_control_revision=attached["control_revision"],
         )
-        paused_goal = goals["goal-a"].model_copy(
-            update={"paused": True, "updated_at": utcnow()}
-        )
+        paused_goal = goals["goal-a"].model_copy(update={"paused": True, "updated_at": utcnow()})
         await paused_goal_store.patch_goal_with_ledger(goals["goal-a"], paused_goal, [])
         refused = await paused_goal_store.set_session_supervision_paused(
             session.id,
@@ -965,9 +948,7 @@ async def test_resume_rejects_detached_session_and_paused_or_superseded_goal(tmp
         assert refused["granted"] is False
         assert refused["reason"] == "goal_paused"
 
-        unpaused_goal = paused_goal.model_copy(
-            update={"paused": False, "updated_at": utcnow()}
-        )
+        unpaused_goal = paused_goal.model_copy(update={"paused": False, "updated_at": utcnow()})
         await paused_goal_store.patch_goal_with_ledger(
             paused_goal,
             unpaused_goal,

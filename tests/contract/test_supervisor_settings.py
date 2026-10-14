@@ -92,9 +92,7 @@ async def supervisor_client(tmp_path):
     state.supervisor_config_operation = None
     await store.connect()
     app = create_app()
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://127.0.0.1"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://127.0.0.1") as client:
         yield client, secret_store, tmp_path
     operation = state.supervisor_config_operation
     active = state.supervisor_config_task
@@ -159,17 +157,25 @@ async def test_supervisor_reports_actual_pipeline_dispatch_limit(supervisor_clie
     assert response.json()["max_dispatches_per_session"] == limit
 
 
-@pytest.mark.parametrize("error,loaded,disabled,expected", [
-    ("SupervisorLoading", False, False, "loading"),
-    ("SupervisorActivationTimeout", False, False, "timed_out"),
-    ("PRIVATE_ERROR_DETAIL", False, False, "failed"),
-    ("SupervisorUnavailable", False, False, "unavailable"),
-    (None, False, False, "unavailable"),
-    (None, False, True, "disabled"),
-    (None, True, False, "configured"),
-])
+@pytest.mark.parametrize(
+    "error,loaded,disabled,expected",
+    [
+        ("SupervisorLoading", False, False, "loading"),
+        ("SupervisorActivationTimeout", False, False, "timed_out"),
+        ("PRIVATE_ERROR_DETAIL", False, False, "failed"),
+        ("SupervisorUnavailable", False, False, "unavailable"),
+        (None, False, False, "unavailable"),
+        (None, False, True, "disabled"),
+        (None, True, False, "configured"),
+    ],
+)
 async def test_settings_exposes_bounded_activation_state_without_raw_failure(
-    supervisor_client, monkeypatch, error, loaded, disabled, expected,
+    supervisor_client,
+    monkeypatch,
+    error,
+    loaded,
+    disabled,
+    expected,
 ):
     client, *_ = supervisor_client
     state.supervisor_error = error
@@ -204,7 +210,8 @@ async def _wait_until(predicate, *, attempts: int = 100) -> None:
 
 @pytest.mark.asyncio
 async def test_deck_reports_session_review_reservations_without_cross_session_leakage(
-    supervisor_client, monkeypatch,
+    supervisor_client,
+    monkeypatch,
 ):
     from datetime import UTC, datetime
 
@@ -215,10 +222,15 @@ async def test_deck_reports_session_review_reservations_without_cross_session_le
     monkeypatch.setattr(state.adapters, "all", lambda: [])
     now = datetime.now(UTC)
     for name in ("allowance-a", "allowance-b"):
-        await state.store.upsert_session(HarnessSession(
-            id=f"codex:{name}", harness_type=HarnessType.CODEX,
-            vendor_session_id=name, status=SessionStatus.IDLE, last_activity=now,
-        ))
+        await state.store.upsert_session(
+            HarnessSession(
+                id=f"codex:{name}",
+                harness_type=HarnessType.CODEX,
+                vendor_session_id=name,
+                status=SessionStatus.IDLE,
+                last_activity=now,
+            )
+        )
     # Seed retained reservations, independent of event retention. Dispatch and
     # restart semantics are exercised through the real planner in unit tests.
     await state.store.db.executemany(
@@ -241,8 +253,10 @@ async def test_deck_reports_session_review_reservations_without_cross_session_le
     state.pipeline.supervisor_dispatch_limit_override = None
     unlimited = await client.get("/v1/deck")
     assert unlimited.status_code == 200
-    assert all(row["supervisor_review_allowance"]["remaining"] is None
-               for row in unlimited.json()["sessions"])
+    assert all(
+        row["supervisor_review_allowance"]["remaining"] is None
+        for row in unlimited.json()["sessions"]
+    )
 
 
 def _custom_payload(**updates):
@@ -280,9 +294,13 @@ async def test_settings_read_exposes_explicit_first_run_and_committed_revisions(
 async def test_saved_dispatch_cap_preserves_startup_value_and_revision_authority(supervisor_client):
     client, _secret_store, home = supervisor_client
     state.pipeline.settings.supervisor_max_dispatches_per_session = 30
-    saved = await client.patch("/v1/supervisor", json=_custom_payload(
-        expected_revision=0, dispatch_limit_override=5,
-    ))
+    saved = await client.patch(
+        "/v1/supervisor",
+        json=_custom_payload(
+            expected_revision=0,
+            dispatch_limit_override=5,
+        ),
+    )
     assert saved.status_code == 200
     assert saved.json()["max_dispatches_per_session"] == 5
     assert state.pipeline.settings.supervisor_max_dispatches_per_session == 30
@@ -292,14 +310,22 @@ async def test_saved_dispatch_cap_preserves_startup_value_and_revision_authority
     unchanged = await client.patch("/v1/supervisor", json={"expected_revision": 1})
     assert unchanged.status_code == 200
     assert unchanged.json()["max_dispatches_per_session"] == 5
-    stale = await client.patch("/v1/supervisor", json={
-        "expected_revision": 1, "dispatch_limit_override": 99,
-    })
+    stale = await client.patch(
+        "/v1/supervisor",
+        json={
+            "expected_revision": 1,
+            "dispatch_limit_override": 99,
+        },
+    )
     assert stale.status_code == 409
     assert state.pipeline.supervisor_dispatch_limit == 5
-    inherited = await client.patch("/v1/supervisor", json={
-        "expected_revision": 2, "dispatch_limit_override": None,
-    })
+    inherited = await client.patch(
+        "/v1/supervisor",
+        json={
+            "expected_revision": 2,
+            "dispatch_limit_override": None,
+        },
+    )
     assert inherited.status_code == 200, inherited.text
     assert inherited.json()["max_dispatches_per_session"] == 30
 
@@ -307,9 +333,13 @@ async def test_saved_dispatch_cap_preserves_startup_value_and_revision_authority
 @pytest.mark.asyncio
 async def test_saved_zero_dispatch_cap_pauses_reviews_without_erasing_provider(supervisor_client):
     client, _secret_store, home = supervisor_client
-    saved = await client.patch("/v1/supervisor", json=_custom_payload(
-        expected_revision=0, dispatch_limit_override=0,
-    ))
+    saved = await client.patch(
+        "/v1/supervisor",
+        json=_custom_payload(
+            expected_revision=0,
+            dispatch_limit_override=0,
+        ),
+    )
     assert saved.status_code == 200, saved.text
     assert saved.json()["max_dispatches_per_session"] == 0
     choice = load_supervisor_choice(home / "supervisor.json")
@@ -323,16 +353,21 @@ async def test_saved_zero_dispatch_cap_pauses_reviews_without_erasing_provider(s
 @pytest.mark.parametrize("value", [-1, 100001, True, "5", 1.5])
 async def test_saved_dispatch_cap_rejects_noncanonical_values(supervisor_client, value):
     client, _secret_store, _home = supervisor_client
-    response = await client.patch("/v1/supervisor", json={
-        "expected_revision": 0, "dispatch_limit_override": value,
-    })
+    response = await client.patch(
+        "/v1/supervisor",
+        json={
+            "expected_revision": 0,
+            "dispatch_limit_override": value,
+        },
+    )
     assert response.status_code == 422
     assert state.supervisor_choice is None
 
 
 @pytest.mark.asyncio
 async def test_failed_limit_save_cannot_change_effective_or_persisted_cap(
-    supervisor_client, monkeypatch,
+    supervisor_client,
+    monkeypatch,
 ):
     client, _secret_store, home = supervisor_client
     saved = await client.patch("/v1/supervisor", json=_custom_payload(dispatch_limit_override=5))
@@ -342,9 +377,13 @@ async def test_failed_limit_save_cannot_change_effective_or_persisted_cap(
         raise OSError("fixture disk failure")
 
     monkeypatch.setattr("pex_bridge.app.save_supervisor_choice", reject_save)
-    failed = await client.patch("/v1/supervisor", json={
-        "expected_revision": 1, "dispatch_limit_override": 99,
-    })
+    failed = await client.patch(
+        "/v1/supervisor",
+        json={
+            "expected_revision": 1,
+            "dispatch_limit_override": 99,
+        },
+    )
     assert failed.status_code == 503
     assert state.pipeline.supervisor_dispatch_limit == 5
     assert load_supervisor_choice(home / "supervisor.json").dispatch_limit_override == 5
@@ -355,9 +394,7 @@ async def test_failed_limit_save_cannot_change_effective_or_persisted_cap(
 @pytest.mark.asyncio
 async def test_settings_read_never_calls_blocking_secret_store(supervisor_client, monkeypatch):
     client, secret_store, _home = supervisor_client
-    saved = await client.patch(
-        "/v1/supervisor", json=_custom_payload(api_key="stored-secret")
-    )
+    saved = await client.patch("/v1/supervisor", json=_custom_payload(api_key="stored-secret"))
     assert saved.status_code == 200
 
     def forbidden_get(*_args, **_kwargs):
@@ -431,13 +468,9 @@ async def test_saved_supervisor_activation_cannot_block_bridge_health(
         assert health.status_code == settings.status_code == 200
         assert health.json()["supervisor"] == "degraded"
         assert settings.json()["has_api_key"] is False
-        assert settings.json()["credential_configured"] is (
-            failure_phase == "hung_vault"
-        )
+        assert settings.json()["credential_configured"] is (failure_phase == "hung_vault")
         assert settings.json()["credential_status"] == (
-            "configured_unverified"
-            if failure_phase == "hung_vault"
-            else "not_configured"
+            "configured_unverified" if failure_phase == "hung_vault" else "not_configured"
         )
         await asyncio.wait_for(activation, timeout=0.2)
         if failure_phase == "constructor_error":
@@ -454,7 +487,8 @@ async def test_saved_supervisor_activation_cannot_block_bridge_health(
 
 @pytest.mark.asyncio
 async def test_cold_start_has_separate_budget_without_blocking_health(
-    supervisor_client, monkeypatch,
+    supervisor_client,
+    monkeypatch,
 ):
     import threading
 
@@ -611,9 +645,7 @@ async def test_lifespan_exits_while_supervisor_activation_remains_hung(
                         startup_source == "environment_success"
                     )
                     assert supervisor.json()["credential_status"] == (
-                        "available"
-                        if startup_source == "environment_success"
-                        else "not_required"
+                        "available" if startup_source == "environment_success" else "not_required"
                     )
                 deadline.reschedule(asyncio.get_running_loop().time() + 3.0)
 
@@ -642,20 +674,29 @@ async def test_lifespan_exits_while_supervisor_activation_remains_hung(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("provider, model_id, endpoint, model_class", [
-    (
-        "openrouter", "anthropic/claude-sonnet-4.6", "https://openrouter.ai/api/v1",
-        "strands.models.openai.OpenAIModel",
-    ),
-    (
-        "zen", "big-pickle", "https://opencode.ai/zen/v1",
-        "strands.models.openai.OpenAIModel",
-    ),
-    (
-        "zen", "muse-spark-1.3", "https://opencode.ai/zen/v1",
-        "pex_supervisor.openai_responses.OpenAIResponsesModel",
-    ),
-])
+@pytest.mark.parametrize(
+    "provider, model_id, endpoint, model_class",
+    [
+        (
+            "openrouter",
+            "anthropic/claude-sonnet-4.6",
+            "https://openrouter.ai/api/v1",
+            "strands.models.openai.OpenAIModel",
+        ),
+        (
+            "zen",
+            "big-pickle",
+            "https://opencode.ai/zen/v1",
+            "strands.models.openai.OpenAIModel",
+        ),
+        (
+            "zen",
+            "muse-spark-1.3",
+            "https://opencode.ai/zen/v1",
+            "pex_supervisor.openai_responses.OpenAIResponsesModel",
+        ),
+    ],
+)
 async def test_named_byok_constructs_with_exact_vault_key_and_canonical_endpoint(
     supervisor_client, monkeypatch, provider, model_id, endpoint, model_class
 ):
@@ -706,26 +747,32 @@ async def test_named_provider_key_rotation_uses_explicit_displayed_endpoint(
 
     monkeypatch.setattr("strands.models.openai.OpenAIModel", FakeOpenAIModel)
     override = "https://alternate.example.test/v1"
-    initial = await client.patch("/v1/supervisor", json={
-        "expected_revision": 0,
-        "provider": "groq",
-        "auth_mode": "api_key",
-        "model_id": "fixture-model",
-        "base_url": override,
-        "api_key": "fixture-old-key",
-    })
+    initial = await client.patch(
+        "/v1/supervisor",
+        json={
+            "expected_revision": 0,
+            "provider": "groq",
+            "auth_mode": "api_key",
+            "model_id": "fixture-model",
+            "base_url": override,
+            "api_key": "fixture-old-key",
+        },
+    )
     assert initial.status_code == 200
     observed = await client.get("/v1/supervisor")
     assert observed.json()["base_url"] == override
 
-    rotated = await client.patch("/v1/supervisor", json={
-        "expected_revision": observed.json()["revision"],
-        "provider": "groq",
-        "auth_mode": "api_key",
-        "model_id": "fixture-model",
-        "base_url": observed.json()["base_url"] if keep_override else None,
-        "api_key": "fixture-new-key",
-    })
+    rotated = await client.patch(
+        "/v1/supervisor",
+        json={
+            "expected_revision": observed.json()["revision"],
+            "provider": "groq",
+            "auth_mode": "api_key",
+            "model_id": "fixture-model",
+            "base_url": observed.json()["base_url"] if keep_override else None,
+            "api_key": "fixture-new-key",
+        },
+    )
     assert rotated.status_code == 200, rotated.text
     expected_endpoint = override if keep_override else "https://api.groq.com/openai/v1"
     assert rotated.json()["base_url"] == expected_endpoint
@@ -760,10 +807,13 @@ async def test_byok_is_write_only_audience_bound_and_restart_complete(supervisor
     persisted = load_supervisor_choice(config_path)
     assert persisted is not None
     assert persisted.secret_ref is not None
-    assert secret_store.get(
-        persisted.secret_ref,
-        audience=persisted.credential_audience(),
-    ) == canary
+    assert (
+        secret_store.get(
+            persisted.secret_ref,
+            audience=persisted.credential_audience(),
+        )
+        == canary
+    )
 
     # Re-resolve the exact persisted snapshot as startup does; no environment
     # fallback is involved and no secret/ref enters the public representation.
@@ -873,9 +923,7 @@ async def test_secret_store_failure_rolls_back_without_config_or_echo(supervisor
 @pytest.mark.asyncio
 async def test_secret_rotation_and_explicit_clear_retire_previous_values(supervisor_client):
     client, secret_store, home = supervisor_client
-    first = await client.patch(
-        "/v1/supervisor", json=_custom_payload(api_key="first-secret")
-    )
+    first = await client.patch("/v1/supervisor", json=_custom_payload(api_key="first-secret"))
     assert first.status_code == 200
     original = load_supervisor_choice(home / "supervisor.json")
     assert original is not None and original.secret_ref
@@ -889,10 +937,13 @@ async def test_secret_rotation_and_explicit_clear_retire_previous_values(supervi
     assert replacement is not None and replacement.secret_ref
     assert replacement.secret_ref != original.secret_ref
     await _wait_until(lambda: original.secret_ref in secret_store.deleted)
-    assert secret_store.get(
-        replacement.secret_ref,
-        audience=replacement.credential_audience(),
-    ) == "second-secret"
+    assert (
+        secret_store.get(
+            replacement.secret_ref,
+            audience=replacement.credential_audience(),
+        )
+        == "second-secret"
+    )
 
     cleared = await client.patch(
         "/v1/supervisor",
@@ -911,9 +962,7 @@ async def test_config_write_failure_deletes_staged_secret_and_keeps_prior_state(
     supervisor_client, monkeypatch
 ):
     client, secret_store, home = supervisor_client
-    first = await client.patch(
-        "/v1/supervisor", json=_custom_payload(api_key="committed-secret")
-    )
+    first = await client.patch("/v1/supervisor", json=_custom_payload(api_key="committed-secret"))
     assert first.status_code == 200
     before = (home / "supervisor.json").read_bytes()
     committed = state.supervisor_choice
@@ -961,7 +1010,7 @@ async def test_malformed_vault_reference_is_retired_before_patch_fails(
 
 @pytest.mark.asyncio
 async def test_published_abandoned_ref_delete_starts_before_background_cancellation(
-    supervisor_client
+    supervisor_client,
 ):
     from pex_bridge.app import (
         _abandon_supervisor_operation,
@@ -1018,9 +1067,7 @@ async def test_model_constructor_failure_rolls_back_and_never_logs_secret(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "hostile_error", [SystemExit, KeyboardInterrupt, asyncio.CancelledError]
-)
+@pytest.mark.parametrize("hostile_error", [SystemExit, KeyboardInterrupt, asyncio.CancelledError])
 async def test_hostile_constructor_base_exception_is_sanitized_and_rolled_back(
     supervisor_client, monkeypatch, caplog, hostile_error
 ):
@@ -1054,9 +1101,7 @@ async def test_hostile_constructor_base_exception_is_sanitized_and_rolled_back(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "hostile_error", [SystemExit, KeyboardInterrupt, asyncio.CancelledError]
-)
+@pytest.mark.parametrize("hostile_error", [SystemExit, KeyboardInterrupt, asyncio.CancelledError])
 async def test_hostile_vault_base_exception_is_sanitized_and_rolled_back(
     supervisor_client, monkeypatch, caplog, hostile_error
 ):
@@ -1141,9 +1186,7 @@ async def test_model_constructor_timeout_quarantines_until_worker_finishes(
 
 
 @pytest.mark.asyncio
-async def test_slow_first_save_commits_within_default_config_budget(
-    supervisor_client, monkeypatch
-):
+async def test_slow_first_save_commits_within_default_config_budget(supervisor_client, monkeypatch):
     client, secret_store, home = supervisor_client
     entered = __import__("threading").Event()
     proceed = __import__("threading").Event()
@@ -1154,10 +1197,12 @@ async def test_slow_first_save_commits_within_default_config_budget(
         return object()
 
     monkeypatch.setattr("pex_supervisor.providers.load_supervisor_model", slow_model)
-    request = asyncio.create_task(client.patch(
-        "/v1/supervisor",
-        json=_custom_payload(),
-    ))
+    request = asyncio.create_task(
+        client.patch(
+            "/v1/supervisor",
+            json=_custom_payload(),
+        )
+    )
     try:
         assert await asyncio.to_thread(entered.wait, 1)
         # Cold first saves pay for model-construction imports inside the
@@ -1193,10 +1238,12 @@ async def test_cancelled_model_construction_never_commits_or_stages_secret(
         return object()
 
     monkeypatch.setattr("pex_supervisor.providers.load_supervisor_model", block_model)
-    request = asyncio.create_task(client.patch(
-        "/v1/supervisor",
-        json={"expected_revision": 1, "api_key": "cancelled-secret"},
-    ))
+    request = asyncio.create_task(
+        client.patch(
+            "/v1/supervisor",
+            json={"expected_revision": 1, "api_key": "cancelled-secret"},
+        )
+    )
     assert await asyncio.to_thread(entered.wait, 0.25)
     request.cancel()
     with pytest.raises(asyncio.CancelledError):
@@ -1235,18 +1282,22 @@ async def test_cancelled_vault_write_is_cleaned_before_quarantine_releases(
         return original_put(value, audience=audience)
 
     monkeypatch.setattr(secret_store, "put", block_put)
-    request = asyncio.create_task(client.patch(
-        "/v1/supervisor",
-        json={"expected_revision": 1, "api_key": "cancelled-vault-secret"},
-    ))
+    request = asyncio.create_task(
+        client.patch(
+            "/v1/supervisor",
+            json={"expected_revision": 1, "api_key": "cancelled-vault-secret"},
+        )
+    )
     assert await asyncio.to_thread(entered.wait, 0.25)
     request.cancel()
     with pytest.raises(asyncio.CancelledError):
         await request
-    assert (await client.patch(
-        "/v1/supervisor",
-        json={"expected_revision": 1, "model_id": "must-not-overlap"},
-    )).status_code == 503
+    assert (
+        await client.patch(
+            "/v1/supervisor",
+            json={"expected_revision": 1, "model_id": "must-not-overlap"},
+        )
+    ).status_code == 503
 
     release.set()
     for _ in range(100):
@@ -1348,9 +1399,7 @@ async def test_lifespan_shutdown_abandons_active_supervisor_transaction(
         response = await request
         assert response.status_code in {409, 503, 504}
         after_file = (
-            (home / "supervisor.json").read_bytes()
-            if (home / "supervisor.json").exists()
-            else None
+            (home / "supervisor.json").read_bytes() if (home / "supervisor.json").exists() else None
         )
         assert after_file == before_file
         assert state.supervisor_choice == before_choice
@@ -1385,9 +1434,7 @@ async def test_missing_restart_secret_fails_closed_without_ambient_fallback(
     supervisor_client, monkeypatch
 ):
     client, secret_store, home = supervisor_client
-    created = await client.patch(
-        "/v1/supervisor", json=_custom_payload(api_key="restart-secret")
-    )
+    created = await client.patch("/v1/supervisor", json=_custom_payload(api_key="restart-secret"))
     assert created.status_code == 200
     persisted = load_supervisor_choice(home / "supervisor.json")
     assert persisted is not None and persisted.secret_ref
@@ -1408,9 +1455,7 @@ async def test_missing_saved_secret_preserves_revision_and_rotates_exact_referen
     from pex_bridge.app import _activate_saved_supervisor_choice
 
     client, secret_store, home = supervisor_client
-    created = await client.patch(
-        "/v1/supervisor", json=_custom_payload(api_key="old-secret")
-    )
+    created = await client.patch("/v1/supervisor", json=_custom_payload(api_key="old-secret"))
     assert created.status_code == 200
     persisted = load_supervisor_choice(home / "supervisor.json")
     assert persisted is not None and persisted.secret_ref
@@ -1428,18 +1473,14 @@ async def test_missing_saved_secret_preserves_revision_and_rotates_exact_referen
     state.supervisor_credential_status = "configured_unverified"
     state.supervisor_error = "SupervisorLoading"
     state.supervisor_config_generation += 1
-    await _activate_saved_supervisor_choice(
-        persisted, state.supervisor_config_generation
-    )
+    await _activate_saved_supervisor_choice(persisted, state.supervisor_config_generation)
 
     unavailable = await client.get("/v1/supervisor")
     assert unavailable.status_code == 200
     assert unavailable.json()["revision"] == persisted.revision
     assert unavailable.json()["credential_configured"] is True
     assert unavailable.json()["credential_status"] == (
-        "missing"
-        if activation_failure == "missing_secret"
-        else "configured_unverified"
+        "missing" if activation_failure == "missing_secret" else "configured_unverified"
     )
     assert unavailable.json()["has_api_key"] is False
     assert state.supervisor_choice == persisted

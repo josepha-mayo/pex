@@ -498,10 +498,9 @@ async def test_generic_freeform_rest_delivery_is_opaque_on_response_bus_and_repl
     assert body["resolution"]["status"] == "delivered"
     assert raw_answer not in json.dumps(body, ensure_ascii=False)
     assert raw_answer not in json.dumps(published, ensure_ascii=False)
-    assert sum(
-        raw_answer in message
-        for message in state.adapters.synthetic.inbox[session["id"]]
-    ) == 1
+    assert (
+        sum(raw_answer in message for message in state.adapters.synthetic.inbox[session["id"]]) == 1
+    )
 
     replay = await client.post(
         f"/v1/decisions/{opened['intervention']['id']}/resolve",
@@ -509,10 +508,9 @@ async def test_generic_freeform_rest_delivery_is_opaque_on_response_bus_and_repl
     )
     assert replay.status_code == 200
     assert replay.json()["replayed"] is True
-    assert sum(
-        raw_answer in message
-        for message in state.adapters.synthetic.inbox[session["id"]]
-    ) == 1
+    assert (
+        sum(raw_answer in message for message in state.adapters.synthetic.inbox[session["id"]]) == 1
+    )
 
 
 @pytest.mark.asyncio
@@ -596,9 +594,7 @@ async def test_terminal_worker_decision_resolution_is_recorded_not_delivered(
     # The unanswered question outlives the session's live status: the pending
     # intervention still rides the attention surface on a stopped session.
     metrics = (await client.get("/v1/attention/metrics")).json()
-    pending_ids = {
-        item["id"] for item in metrics["current_pending"]["items"]
-    }
+    pending_ids = {item["id"] for item in metrics["current_pending"]["items"]}
     assert opened["intervention"]["id"] in pending_ids
 
     response = await client.post(

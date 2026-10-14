@@ -87,9 +87,7 @@ class ReviewModel(Model):
                 "start": {"toolUse": {"toolUseId": "ask-answer", "name": review["name"]}}
             }
         }
-        yield {
-            "contentBlockDelta": {"delta": {"toolUse": {"input": json.dumps(arguments)}}}
-        }
+        yield {"contentBlockDelta": {"delta": {"toolUse": {"input": json.dumps(arguments)}}}}
         yield {"contentBlockStop": {}}
         yield {"messageStop": {"stopReason": "tool_use"}}
         yield {

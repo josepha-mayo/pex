@@ -21,12 +21,16 @@ def test_expired_public_test_budget_does_not_start_a_process(tmp_path, monkeypat
 
 def test_public_test_runtime_respects_short_shared_budget(tmp_path):
     (tmp_path / "test_public.py").write_text(
-        "import time\ndef test_slow():\n    time.sleep(10)\n", encoding="utf-8",
+        "import time\ndef test_slow():\n    time.sleep(10)\n",
+        encoding="utf-8",
     )
     started = time.perf_counter()
     with TemporaryDirectory() as cache:
         result = _run_public_pytest(
-            tmp_path, ["test_public.py"], cache, deadline=started + 1,
+            tmp_path,
+            ["test_public.py"],
+            cache,
+            deadline=started + 1,
         )
     assert result["timed_out"] is True
     assert result["ok"] is False

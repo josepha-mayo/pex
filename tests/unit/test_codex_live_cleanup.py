@@ -15,7 +15,9 @@ from tests.contract.test_live_codex_pump import _close_codex_probe
 async def test_stdio_close_retains_unexited_child_and_allows_cleanup_retry():
     transport = CodexStdioTransport(sys.executable)
     process = SimpleNamespace(
-        stdin=Mock(), kill=Mock(), returncode=None,
+        stdin=Mock(),
+        kill=Mock(),
+        returncode=None,
         wait=AsyncMock(side_effect=TimeoutError),
     )
     transport._proc = process
@@ -49,7 +51,9 @@ async def test_stdio_close_releases_owned_pipes_after_confirmed_exit(wait_times_
     transport = CodexStdioTransport(sys.executable)
     pipes = SimpleNamespace(close=Mock())
     process = SimpleNamespace(
-        stdin=Mock(), kill=Mock(side_effect=ProcessLookupError), returncode=0,
+        stdin=Mock(),
+        kill=Mock(side_effect=ProcessLookupError),
+        returncode=0,
         wait=AsyncMock(side_effect=TimeoutError if wait_times_out else None, return_value=0),
         _transport=pipes,
     )
@@ -65,8 +69,9 @@ async def test_stdio_close_releases_owned_pipes_after_confirmed_exit(wait_times_
 async def test_failed_pipe_cleanup_retains_handle_and_rejects_pending_receipts():
     transport = CodexStdioTransport(sys.executable)
     pipes = SimpleNamespace(close=Mock(side_effect=RuntimeError("fixture close failure")))
-    process = SimpleNamespace(stdin=Mock(), kill=Mock(), returncode=0,
-                              wait=AsyncMock(return_value=0), _transport=pipes)
+    process = SimpleNamespace(
+        stdin=Mock(), kill=Mock(), returncode=0, wait=AsyncMock(return_value=0), _transport=pipes
+    )
     transport._proc = process
     transport.initialized = True
     pending = asyncio.get_running_loop().create_future()
@@ -88,8 +93,9 @@ async def test_cancel_during_pipe_cleanup_settles_pending_and_keeps_retry_handle
     current = asyncio.current_task()
     assert current is not None
     pipes = SimpleNamespace(close=Mock(side_effect=current.cancel))
-    process = SimpleNamespace(stdin=Mock(), kill=Mock(), returncode=0,
-                              wait=AsyncMock(return_value=0), _transport=pipes)
+    process = SimpleNamespace(
+        stdin=Mock(), kill=Mock(), returncode=0, wait=AsyncMock(return_value=0), _transport=pipes
+    )
     transport._proc = process
     transport.initialized = True
     transport.init_result = {"ready": True}
@@ -114,8 +120,13 @@ async def test_cancel_during_pipe_cleanup_settles_pending_and_keeps_retry_handle
 async def test_unconfirmed_exit_does_not_discard_or_close_pipe_handle():
     transport = CodexStdioTransport(sys.executable)
     pipes = SimpleNamespace(close=Mock())
-    process = SimpleNamespace(stdin=Mock(), kill=Mock(), returncode=None,
-                              wait=AsyncMock(side_effect=TimeoutError), _transport=pipes)
+    process = SimpleNamespace(
+        stdin=Mock(),
+        kill=Mock(),
+        returncode=None,
+        wait=AsyncMock(side_effect=TimeoutError),
+        _transport=pipes,
+    )
     transport._proc = process
     with pytest.raises(RuntimeError, match="exit was not confirmed"):
         await transport.close()

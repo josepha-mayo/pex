@@ -217,9 +217,7 @@ async def test_migration_leaves_orphan_malformed_and_mismatched_goal_context_unb
     project_level = _pair(parent)[1].model_copy(
         update={"id": "context-project-level", "goal_id": None}
     )
-    orphan = _pair(parent)[1].model_copy(
-        update={"id": "context-orphan", "goal_id": "goal-missing"}
-    )
+    orphan = _pair(parent)[1].model_copy(update={"id": "context-orphan", "goal_id": "goal-missing"})
     malformed_parent = _pair(parent)[1].model_copy(
         update={"id": "context-malformed-parent", "goal_id": "goal-malformed"}
     )
@@ -261,10 +259,7 @@ async def test_migration_leaves_orphan_malformed_and_mismatched_goal_context_unb
             "SELECT id, project_binding, goal_id FROM context_items ORDER BY id"
         )
         migrated_rows = {str(row["id"]): dict(row) for row in await rows.fetchall()}
-        bindings = {
-            context_id: row["project_binding"]
-            for context_id, row in migrated_rows.items()
-        }
+        bindings = {context_id: row["project_binding"] for context_id, row in migrated_rows.items()}
         assert bindings == {
             "context-malformed-parent": None,
             "context-mismatched-parent": None,
@@ -278,9 +273,7 @@ async def test_migration_leaves_orphan_malformed_and_mismatched_goal_context_unb
                 (parent.id, orphan.id),
             )
         await restarted.db.rollback()
-        assert await restarted.list_context_for_authority(parent.project_id) == [
-            project_level
-        ]
+        assert await restarted.list_context_for_authority(parent.project_id) == [project_level]
         assert {item.id for item in await restarted.list_context(parent.project_id)} == {
             project_level.id,
             orphan.id,
@@ -486,9 +479,7 @@ async def test_goal_context_query_can_include_project_wide_without_foreign_goal(
             goal.project_id, goal_id=goal.id, include_project_wide=True, limit=1
         ) == [own]
         with pytest.raises(ValueError, match="requires a bound goal"):
-            await store.list_context_for_authority(
-                goal.project_id, include_project_wide=True
-            )
+            await store.list_context_for_authority(goal.project_id, include_project_wide=True)
     finally:
         await store.close()
 
@@ -497,7 +488,9 @@ async def test_goal_context_query_can_include_project_wide_without_foreign_goal(
 @pytest.mark.parametrize("replacement_time", ["active", "expired", "future", "other_goal"])
 @pytest.mark.parametrize("replacement_source", [SourceKind.HUMAN, SourceKind.WORKSPACE])
 async def test_supervisor_page_cannot_revive_retired_context_outside_page(
-    tmp_path, replacement_time, replacement_source,
+    tmp_path,
+    replacement_time,
+    replacement_source,
 ):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()
@@ -512,37 +505,53 @@ async def test_supervisor_page_cannot_revive_retired_context_outside_page(
         await store.add_context(original)
         replacement_from = (
             observed_at + timedelta(microseconds=1)
-            if replacement_time == "future" else base.valid_from + timedelta(minutes=1)
+            if replacement_time == "future"
+            else base.valid_from + timedelta(minutes=1)
         )
-        replacement = base.model_copy(update={
-            "id": "replacement",
-            "goal_id": other_goal.id if replacement_time == "other_goal" else None,
-            "kind": ContextKind.FACT, "provenance": replacement_source,
-            "supersedes": original.id, "valid_from": replacement_from,
-            "stale_after": (
-                observed_at - timedelta(minutes=1) if replacement_time == "expired" else None
-            ),
-        })
+        replacement = base.model_copy(
+            update={
+                "id": "replacement",
+                "goal_id": other_goal.id if replacement_time == "other_goal" else None,
+                "kind": ContextKind.FACT,
+                "provenance": replacement_source,
+                "supersedes": original.id,
+                "valid_from": replacement_from,
+                "stale_after": (
+                    observed_at - timedelta(minutes=1) if replacement_time == "expired" else None
+                ),
+            }
+        )
         await store.add_context(replacement)
         for index in range(4):
-            await store.add_context(base.model_copy(update={
-                "id": f"new-fact-{index}", "kind": ContextKind.FACT,
-                "provenance": SourceKind.WORKSPACE,
-                "valid_from": base.valid_from + timedelta(minutes=index + 2),
-            }))
+            await store.add_context(
+                base.model_copy(
+                    update={
+                        "id": f"new-fact-{index}",
+                        "kind": ContextKind.FACT,
+                        "provenance": SourceKind.WORKSPACE,
+                        "valid_from": base.valid_from + timedelta(minutes=index + 2),
+                    }
+                )
+            )
         original_page = await store.list_context_for_authority(
-            goal.project_id, goal_id=goal.id, include_project_wide=True,
-            prioritize_human_commitments=True, limit=2,
+            goal.project_id,
+            goal_id=goal.id,
+            include_project_wide=True,
+            prioritize_human_commitments=True,
+            limit=2,
         )
         assert original.id in {item.id for item in original_page}
         assert replacement.id not in {item.id for item in original_page}
         current_page = await store.list_context_for_authority(
-            goal.project_id, goal_id=goal.id, include_project_wide=True,
-            prioritize_human_commitments=True, observed_at=observed_at, limit=2,
+            goal.project_id,
+            goal_id=goal.id,
+            include_project_wide=True,
+            prioritize_human_commitments=True,
+            observed_at=observed_at,
+            limit=2,
         )
         assert (original.id in {item.id for item in current_page}) is (
-            replacement_time in {"future", "other_goal"}
-            or replacement_source != SourceKind.HUMAN
+            replacement_time in {"future", "other_goal"} or replacement_source != SourceKind.HUMAN
         )
         assert replacement.id not in {item.id for item in current_page}
     finally:
@@ -560,18 +569,29 @@ async def test_supervisor_context_page_retains_shared_human_commitments_before_g
         commitment = base.model_copy(update={"id": "shared-commitment", "goal_id": None})
         await store.add_context(commitment)
         for index in range(4):
-            await store.add_context(base.model_copy(update={
-                "id": f"fact-{index}", "kind": ContextKind.FACT,
-                "provenance": SourceKind.WORKSPACE,
-                "valid_from": base.valid_from + timedelta(minutes=index + 1),
-            }))
+            await store.add_context(
+                base.model_copy(
+                    update={
+                        "id": f"fact-{index}",
+                        "kind": ContextKind.FACT,
+                        "provenance": SourceKind.WORKSPACE,
+                        "valid_from": base.valid_from + timedelta(minutes=index + 1),
+                    }
+                )
+            )
         ordinary = await store.list_context_for_authority(
-            goal.project_id, goal_id=goal.id, include_project_wide=True, limit=2,
+            goal.project_id,
+            goal_id=goal.id,
+            include_project_wide=True,
+            limit=2,
         )
         assert [item.id for item in ordinary] == ["fact-3", "fact-2"]
         prioritized = await store.list_context_for_authority(
-            goal.project_id, goal_id=goal.id, include_project_wide=True,
-            prioritize_human_commitments=True, limit=2,
+            goal.project_id,
+            goal_id=goal.id,
+            include_project_wide=True,
+            prioritize_human_commitments=True,
+            limit=2,
         )
         assert [item.id for item in prioritized] == ["shared-commitment", "fact-3"]
     finally:
@@ -588,24 +608,31 @@ async def test_supervisor_decision_page_retains_active_human_decision(tmp_path):
         now = goal.created_at
         decisions = [
             Decision(
-                id="human-commitment", goal_id=goal.id,
+                id="human-commitment",
+                goal_id=goal.id,
                 statement="Keep the user's acceptance criterion.",
-                source=DecisionSource.HUMAN, status=DecisionStatus.ACTIVE,
+                source=DecisionSource.HUMAN,
+                status=DecisionStatus.ACTIVE,
                 created_at=now - timedelta(days=1),
             ),
             Decision(
-                id="superseded-human", goal_id=goal.id,
+                id="superseded-human",
+                goal_id=goal.id,
                 statement="An obsolete human decision.",
-                source=DecisionSource.HUMAN, status=DecisionStatus.SUPERSEDED,
+                source=DecisionSource.HUMAN,
+                status=DecisionStatus.SUPERSEDED,
                 created_at=now + timedelta(minutes=4),
             ),
             *[
                 Decision(
-                    id=f"agent-{index}", goal_id=goal.id,
+                    id=f"agent-{index}",
+                    goal_id=goal.id,
                     statement=f"Agent observation {index}",
-                    source=DecisionSource.AGENT, status=DecisionStatus.ACTIVE,
+                    source=DecisionSource.AGENT,
+                    status=DecisionStatus.ACTIVE,
                     created_at=now + timedelta(minutes=index + 1),
-                ) for index in range(3)
+                )
+                for index in range(3)
             ],
         ]
         for decision in decisions:
@@ -613,7 +640,9 @@ async def test_supervisor_decision_page_retains_active_human_decision(tmp_path):
         ordinary = await store.list_decisions_for_authority(goal.id, limit=2)
         assert [item.id for item in ordinary] == ["superseded-human", "agent-2"]
         prioritized = await store.list_decisions_for_authority(
-            goal.id, prioritize_active_human=True, limit=2,
+            goal.id,
+            prioritize_active_human=True,
+            limit=2,
         )
         assert [item.id for item in prioritized] == ["human-commitment", "agent-2"]
     finally:

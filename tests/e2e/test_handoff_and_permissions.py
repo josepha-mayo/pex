@@ -35,8 +35,8 @@ from pex_supervisor.loop import _action_from_proposal
 _OPERATOR_TOKEN = "handoff-operator-test-token-0123456789abcdef"
 
 
-
 _TEST_DRIVE = "C:" if os.name == "nt" else ""
+
 
 class _HandoffOperatorClient(AsyncClient):
     """Attach the authenticated goal-control contract to domain-focused requests."""
@@ -68,11 +68,7 @@ class _HandoffOperatorClient(AsyncClient):
                     goal = None
                 json.setdefault(
                     "expected_goal_id",
-                    (
-                        session_control["session"].goal_id
-                        if session_control is not None
-                        else None
-                    ),
+                    (session_control["session"].goal_id if session_control is not None else None),
                 )
                 json.setdefault(
                     "expected_control_revision",
@@ -327,7 +323,9 @@ async def test_delivered_handoff_receipt_is_independent_of_presentation(
     goal_response = await client.post(
         "/v1/goals",
         json={
-            "project_id": "demo", "title": "Reliable delivery", "objective": "Share parser context"
+            "project_id": "demo",
+            "title": "Reliable delivery",
+            "objective": "Share parser context",
         },
     )
     goal = goal_response.json()
@@ -387,9 +385,7 @@ async def _deliver_synthetic_artifact_handoff(
     source_session_id: str | None = None,
 ) -> dict[str, object]:
     if source_session_id is None:
-        source = state.adapters.synthetic.seed_session(
-            vendor_id=f"{key_prefix}-source-{index:03d}"
-        )
+        source = state.adapters.synthetic.seed_session(vendor_id=f"{key_prefix}-source-{index:03d}")
         await state.store.upsert_session(source)
         source_session_id = source.id
         attached = await client.post(
@@ -600,9 +596,7 @@ async def test_context_handoff_injects_bundle(client: AsyncClient):
     assert bundle_receipt["schema"] == "pex.handoff-bundle-receipt.v1"
     assert bundle_receipt["bundle_digest"] == body["assimilation"]["bundle_digest"]
     assert bundle_receipt["operator_effect_id"] == body["effect"]["effect_id"]
-    assert bundle_receipt["context_item_ids"] == [
-        item["id"] for item in body["bundle"]["items"]
-    ]
+    assert bundle_receipt["context_item_ids"] == [item["id"] for item in body["bundle"]["items"]]
     assert source_adapter.inbox[target.id]
     assert "context_id=" in source_adapter.inbox[target.id][0]
     intervention = body["intervention"]
@@ -616,28 +610,20 @@ async def test_context_handoff_injects_bundle(client: AsyncClient):
     )
     assert (await actor_cursor.fetchone())[0] == 1
     metrics = await state.store.attention_metrics()
-    assert metrics["human_interventions"]["source_counts"][
-        "operator_context_handoff"
-    ] == 1
-    assert metrics["human_interventions"]["unverified_operator_action_counts"][
-        "operator_handoff"
-    ] == 0
+    assert metrics["human_interventions"]["source_counts"]["operator_context_handoff"] == 1
+    assert (
+        metrics["human_interventions"]["unverified_operator_action_counts"]["operator_handoff"] == 0
+    )
     assert metrics["human_interventions"]["value"] is None
-    assert intervention["proposed_action"]["payload"] == {
-        "bundle_receipt": bundle_receipt
-    }
+    assert intervention["proposed_action"]["payload"] == {"bundle_receipt": bundle_receipt}
     assert "prepared_dataset" not in str(intervention["proposed_action"]["payload"]).lower()
     assert published_interventions
     assert published_interventions[-1]["proposed_action"]["payload"] == {
         "bundle_receipt": bundle_receipt
     }
     stored = await client.get("/v1/interventions", params={"session_id": target.id})
-    stored_intervention = next(
-        item for item in stored.json() if item["id"] == intervention["id"]
-    )
-    assert stored_intervention["proposed_action"]["payload"] == {
-        "bundle_receipt": bundle_receipt
-    }
+    stored_intervention = next(item for item in stored.json() if item["id"] == intervention["id"])
+    assert stored_intervention["proposed_action"]["payload"] == {"bundle_receipt": bundle_receipt}
     detailed = await client.get(
         "/v1/interventions",
         params={"session_id": target.id, "include_handoff_bundle": True},
@@ -645,28 +631,24 @@ async def test_context_handoff_injects_bundle(client: AsyncClient):
     detailed_intervention = next(
         item for item in detailed.json() if item["id"] == intervention["id"]
     )
-    assert "prepared_dataset" in str(
-        detailed_intervention["proposed_action"]["payload"]["bundle"]
-    ).lower()
+    assert (
+        "prepared_dataset"
+        in str(detailed_intervention["proposed_action"]["payload"]["bundle"]).lower()
+    )
     audit_cursor = await state.store.db.execute(
         "SELECT json FROM intervention_audit WHERE intervention_id = ? ORDER BY id",
         (intervention["id"],),
     )
     audit_rows = [json.loads(row["json"]) for row in await audit_cursor.fetchall()]
     assert len(audit_rows) == 3
-    assert all(
-        row["action_payload"] == {"bundle_receipt": bundle_receipt}
-        for row in audit_rows
-    )
+    assert all(row["action_payload"] == {"bundle_receipt": bundle_receipt} for row in audit_rows)
     assert "prepared_dataset" not in json.dumps(audit_rows).lower()
     projected = [
         json.loads(line)
         for line in state.store.audit_path.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
-    projected_rows = [
-        row for row in projected if row.get("intervention_id") == intervention["id"]
-    ]
+    projected_rows = [row for row in projected if row.get("intervention_id") == intervention["id"]]
     assert len(projected_rows) == 3
     assert "prepared_dataset" not in json.dumps(projected_rows).lower()
     effect = await state.store.get_operator_effect(body["effect"]["effect_id"])
@@ -697,9 +679,7 @@ async def test_context_handoff_injects_bundle(client: AsyncClient):
         },
     )
     assert generic.status_code == 200
-    still_pending = await client.get(
-        f"/v1/handoffs/{body['effect']['effect_id']}/assimilation"
-    )
+    still_pending = await client.get(f"/v1/handoffs/{body['effect']['effect_id']}/assimilation")
     assert still_pending.status_code == 200
     assert still_pending.json()["status"] == "awaiting_target_evidence"
     assert still_pending.json()["target_action_monitoring"]["observed_count"] == 0
@@ -714,18 +694,14 @@ async def test_context_handoff_injects_bundle(client: AsyncClient):
         },
     )
     assert failed_attempt.status_code == 200
-    failure_status = await client.get(
-        f"/v1/handoffs/{body['effect']['effect_id']}/assimilation"
-    )
+    failure_status = await client.get(f"/v1/handoffs/{body['effect']['effect_id']}/assimilation")
     assert failure_status.status_code == 200
     failure_monitoring = failure_status.json()["target_action_monitoring"]
     assert failure_status.json()["status"] == "awaiting_target_evidence"
     assert failure_monitoring["observed_count"] == 1
     assert failure_monitoring["possible_failure_observed"] is True
     assert failure_monitoring["handoff_failure_proven"] is False
-    assert failure_monitoring["actions"][0]["classification"] == (
-        "possible_failure_observed"
-    )
+    assert failure_monitoring["actions"][0]["classification"] == ("possible_failure_observed")
 
     relevant = await client.post(
         "/v1/synthetic/events",
@@ -913,9 +889,7 @@ async def test_target_can_acknowledge_exact_delivered_context_without_claiming_u
         report=report,
     )
     assert replay["replayed"] is True
-    replayed_status = await state.store.handoff_assimilation_status(
-        body["effect"]["effect_id"]
-    )
+    replayed_status = await state.store.handoff_assimilation_status(body["effect"]["effect_id"])
     assert replayed_status == assimilation
 
 
@@ -1025,9 +999,7 @@ async def test_corrupt_exact_ack_index_rolls_back_the_entire_progress_mutation(
             report=ProgressReport(
                 idempotency_key="corrupt-ack-report-0001",
                 summary="I received the exact contract.",
-                evidence_refs=(
-                    ProgressEvidenceReference(type="context", id=context_id),
-                ),
+                evidence_refs=(ProgressEvidenceReference(type="context", id=context_id),),
             ),
         )
     assert await counts() == before
@@ -1268,9 +1240,7 @@ async def test_indexed_handoff_routing_has_no_newest_64_blind_spot(client: Async
         report=ProgressReport(
             idempotency_key="indexed-capacity-ack-0001",
             summary="I received the oldest indexed artifact contract.",
-            evidence_refs=(
-                ProgressEvidenceReference(type="context", id=first_context_id),
-            ),
+            evidence_refs=(ProgressEvidenceReference(type="context", id=first_context_id),),
         ),
     )
     assert acknowledged["replayed"] is False
@@ -1622,9 +1592,9 @@ async def test_absolute_windows_path_requires_completed_in_root_action(
         },
     )
     assert before.status_code == 200
-    assert (
-        await state.store.handoff_assimilation_status(effect_id)
-    )["status"] == "awaiting_target_evidence"
+    assert (await state.store.handoff_assimilation_status(effect_id))[
+        "status"
+    ] == "awaiting_target_evidence"
 
     outside = await client.post(
         "/v1/synthetic/events",
@@ -1637,9 +1607,9 @@ async def test_absolute_windows_path_requires_completed_in_root_action(
         },
     )
     assert outside.status_code == 200
-    assert (
-        await state.store.handoff_assimilation_status(effect_id)
-    )["status"] == "awaiting_target_evidence"
+    assert (await state.store.handoff_assimilation_status(effect_id))[
+        "status"
+    ] == "awaiting_target_evidence"
 
     completed = await client.post(
         "/v1/synthetic/events",
@@ -1727,8 +1697,7 @@ async def test_artifact_path_matching_does_not_expand_unicode_or_posix_separator
         f"/v1/sessions/{source.id}/handoff",
         json={
             "idempotency_key": (
-                "path-semantics-handoff-"
-                + hashlib.sha256(project_root.encode()).hexdigest()[:12]
+                "path-semantics-handoff-" + hashlib.sha256(project_root.encode()).hexdigest()[:12]
             ),
             "target_session_id": target.id,
             "token_budget": 2_000,
@@ -1748,9 +1717,9 @@ async def test_artifact_path_matching_does_not_expand_unicode_or_posix_separator
         },
     )
     assert alias_event.status_code == 200, alias_event.text
-    assert (
-        await state.store.handoff_assimilation_status(effect_id)
-    )["status"] == "awaiting_target_evidence"
+    assert (await state.store.handoff_assimilation_status(effect_id))[
+        "status"
+    ] == "awaiting_target_evidence"
 
     exact_event = await client.post(
         "/v1/synthetic/events",
@@ -1763,9 +1732,9 @@ async def test_artifact_path_matching_does_not_expand_unicode_or_posix_separator
         },
     )
     assert exact_event.status_code == 200, exact_event.text
-    assert (
-        await state.store.handoff_assimilation_status(effect_id)
-    )["status"] == "relevant_action_observed"
+    assert (await state.store.handoff_assimilation_status(effect_id))[
+        "status"
+    ] == "relevant_action_observed"
 
 
 @pytest.mark.asyncio
@@ -1874,8 +1843,7 @@ async def test_auto_handoff_skips_observe_only_desktop_tiles(client: AsyncClient
             "session_id": source["id"],
             "event_type": EventType.AGENT_RESPONSE.value,
             "message": (
-                "Verified artifact path: artifacts/prepared_dataset.parquet. "
-                "Do not regenerate it."
+                "Verified artifact path: artifacts/prepared_dataset.parquet. Do not regenerate it."
             ),
         },
     )
@@ -1972,8 +1940,7 @@ async def test_auto_handoff_from_cursor_conversation_reaches_isolated_codex_not_
             "conversation_id": "conv-handoff",
             "workspace_roots": [f"{_TEST_DRIVE}/proj"],
             "text": (
-                "Verified artifact path: artifacts/prepared_dataset.parquet. "
-                "Do not regenerate it."
+                "Verified artifact path: artifacts/prepared_dataset.parquet. Do not regenerate it."
             ),
             "observed_ns": 1,
         },
@@ -2069,9 +2036,7 @@ async def test_auto_handoff_from_isolated_codex_reaches_cursor_conversation_not_
                 "project_id": project_id,
                 "title": "Share path",
                 "objective": "Share the dataset path Codex discovered with Cursor",
-                "acceptance_criteria": [
-                    "the Cursor conversation uses the discovered dataset path"
-                ],
+                "acceptance_criteria": ["the Cursor conversation uses the discovered dataset path"],
             },
         )
     ).json()
@@ -2105,8 +2070,7 @@ async def test_auto_handoff_from_isolated_codex_reaches_cursor_conversation_not_
             event_type=EventType.AGENT_RESPONSE,
             phase=EventPhase.AFTER,
             message_delta=(
-                "Verified artifact path: artifacts/prepared_dataset.parquet. "
-                "Do not regenerate it."
+                "Verified artifact path: artifacts/prepared_dataset.parquet. Do not regenerate it."
             ),
         ),
         source,
@@ -2160,8 +2124,7 @@ async def test_auto_handoff_injects_without_explicit_post(
             "session_id": source["id"],
             "event_type": EventType.AGENT_RESPONSE.value,
             "message": (
-                "Verified artifact path: artifacts/prepared_dataset.parquet. "
-                "Do not regenerate it."
+                "Verified artifact path: artifacts/prepared_dataset.parquet. Do not regenerate it."
             ),
         },
     )
@@ -2189,8 +2152,7 @@ async def test_auto_handoff_injects_without_explicit_post(
     assert handoff.metadata["trigger_event_id"] == event_id
     assert handoff.metadata["origin_event_id"] == event_id
     audit_cursor = await state.store.db.execute(
-        "SELECT record_type FROM intervention_audit WHERE intervention_id = ? "
-        "ORDER BY id",
+        "SELECT record_type FROM intervention_audit WHERE intervention_id = ? ORDER BY id",
         (handoff.id,),
     )
     assert [row["record_type"] for row in await audit_cursor.fetchall()] == [
@@ -2215,16 +2177,14 @@ async def test_auto_handoff_injects_without_explicit_post(
             "session_id": source["id"],
             "event_type": EventType.AGENT_RESPONSE.value,
             "message": (
-                "Verified artifact path: artifacts/prepared_dataset.parquet. "
-                "Do not regenerate it."
+                "Verified artifact path: artifacts/prepared_dataset.parquet. Do not regenerate it."
             ),
         },
     )
     assert repeated.status_code == 200
     assert len(source_adapter.inbox[target.id]) == 1
     effect_cursor = await state.store.db.execute(
-        "SELECT COUNT(*) AS count FROM operator_effects "
-        "WHERE action_kind = 'context_handoff'"
+        "SELECT COUNT(*) AS count FROM operator_effects WHERE action_kind = 'context_handoff'"
     )
     assert (await effect_cursor.fetchone())["count"] == 1
 
@@ -2320,9 +2280,7 @@ async def test_auto_handoff_uses_target_prompt_to_exclude_other_goal_phase_conte
         "/v1/interventions",
         params={"session_id": target.id, "include_handoff_bundle": True},
     )
-    handoff = next(
-        item for item in stored.json() if item["action_taken"] == "FRESH_HANDOFF"
-    )
+    handoff = next(item for item in stored.json() if item["action_taken"] == "FRESH_HANDOFF")
     bundled_items = handoff["proposed_action"]["payload"]["bundle"]["items"]
     assert [item["content"] for item in bundled_items] == [
         "Verified frontend pet sprites atlas artifact is ready."
@@ -2426,19 +2384,36 @@ async def test_context_listing_is_paginated_and_bounded(client: AsyncClient):
 async def test_goal_context_filters_before_pagination_and_keeps_shared_facts(client):
     now = datetime.now(UTC)
     for goal_id in ("context-goal-a", "context-goal-b"):
-        await state.store.upsert_goal(Goal(
-            id=goal_id, project_id="context-project", title=goal_id, objective="Verify work",
-            created_at=now, updated_at=now,
-        ))
-    for index, goal_id in enumerate((
-        "context-goal-a", "context-goal-a", None,
-        "context-goal-b", "context-goal-b", "context-goal-b",
-    )):
-        await state.store.add_context(ContextItem(
-            id=f"scoped-context-{index}", project_id="context-project", goal_id=goal_id,
-            kind=ContextKind.FACT, content=f"fact {index}",
-            valid_from=now + timedelta(seconds=index),
-        ))
+        await state.store.upsert_goal(
+            Goal(
+                id=goal_id,
+                project_id="context-project",
+                title=goal_id,
+                objective="Verify work",
+                created_at=now,
+                updated_at=now,
+            )
+        )
+    for index, goal_id in enumerate(
+        (
+            "context-goal-a",
+            "context-goal-a",
+            None,
+            "context-goal-b",
+            "context-goal-b",
+            "context-goal-b",
+        )
+    ):
+        await state.store.add_context(
+            ContextItem(
+                id=f"scoped-context-{index}",
+                project_id="context-project",
+                goal_id=goal_id,
+                kind=ContextKind.FACT,
+                content=f"fact {index}",
+                valid_from=now + timedelta(seconds=index),
+            )
+        )
     query = {"project_id": "context-project", "goal_id": "context-goal-a", "limit": 2}
     first = await client.get("/v1/context", params=query)
     assert first.status_code == 200
@@ -2457,13 +2432,23 @@ async def test_goal_context_filters_before_pagination_and_keeps_shared_facts(cli
 async def test_goal_context_rejects_another_projects_identity(client):
     now = datetime.now(UTC)
     for project_id in ("context-project-a", "context-project-b"):
-        await state.store.upsert_goal(Goal(
-            id=f"goal-{project_id}", project_id=project_id, title="Verify", objective="Verify work",
-            created_at=now, updated_at=now,
-        ))
-    response = await client.get("/v1/context", params={
-        "project_id": "context-project-b", "goal_id": "goal-context-project-a",
-    })
+        await state.store.upsert_goal(
+            Goal(
+                id=f"goal-{project_id}",
+                project_id=project_id,
+                title="Verify",
+                objective="Verify work",
+                created_at=now,
+                updated_at=now,
+            )
+        )
+    response = await client.get(
+        "/v1/context",
+        params={
+            "project_id": "context-project-b",
+            "goal_id": "goal-context-project-a",
+        },
+    )
     assert response.status_code == 409
 
 
@@ -2508,8 +2493,7 @@ async def test_auto_handoff_never_crosses_goal_boundary(client: AsyncClient):
             "session_id": source["id"],
             "event_type": EventType.AGENT_RESPONSE.value,
             "message": (
-                "Verified artifact path: artifacts/prepared_dataset.parquet. "
-                "Do not regenerate it."
+                "Verified artifact path: artifacts/prepared_dataset.parquet. Do not regenerate it."
             ),
         },
     )
@@ -2553,9 +2537,7 @@ async def test_operator_handoff_not_queued_behind_stalled_scan_probe(
         return goal["id"]
 
     await bind_goal("scan goal", "Share the discovered dataset path", scan_source, scan_sibling)
-    await bind_goal(
-        "operator goal", "Share the parser implementation path", op_source, op_target
-    )
+    await bind_goal("operator goal", "Share the parser implementation path", op_source, op_target)
     seeded = await client.post(
         "/v1/synthetic/events",
         json={
@@ -2586,8 +2568,7 @@ async def test_operator_handoff_not_queued_behind_stalled_scan_probe(
                 "session_id": scan_source.id,
                 "event_type": EventType.AGENT_RESPONSE.value,
                 "message": (
-                    "Verified artifact path: artifacts/scan_dataset.parquet. "
-                    "Do not regenerate it."
+                    "Verified artifact path: artifacts/scan_dataset.parquet. Do not regenerate it."
                 ),
             },
         )
@@ -2741,9 +2722,7 @@ async def test_same_probe_id_with_altered_payload_is_rejected_before_adapter_io(
 
     async def altered_decide(request, *, local_model):
         del local_model
-        minted = deepcopy(
-            request.scores.features["verification"]["evidence_gathering"]["probe"]
-        )
+        minted = deepcopy(request.scores.features["verification"]["evidence_gathering"]["probe"])
         minted["timeout_seconds"] += 1
         altered_payload.update(minted)
         return SupervisorResult(
@@ -2817,9 +2796,7 @@ async def test_model_verification_reference_binds_current_bridge_probe(
 
     async def decide(request, *, local_model):
         del local_model
-        probe = deepcopy(
-            request.scores.features["verification"]["evidence_gathering"]["probe"]
-        )
+        probe = deepcopy(request.scores.features["verification"]["evidence_gathering"]["probe"])
         if model_view == "reference":
             payload = {"probe_id": probe["id"], "kind": probe["kind"]}
         elif model_view == "hostile_text":
@@ -2897,9 +2874,7 @@ async def test_parsed_model_verification_payload_cannot_change_bridge_probe(
 
     async def decide(request, *, local_model):
         del local_model
-        probe = deepcopy(
-            request.scores.features["verification"]["evidence_gathering"]["probe"]
-        )
+        probe = deepcopy(request.scores.features["verification"]["evidence_gathering"]["probe"])
         payload = (
             {"probe_id": "foreign-bridge-probe", "kind": probe["kind"]}
             if model_view == "foreign_reference"
@@ -3125,9 +3100,7 @@ async def test_verification_delivery_exception_is_attempted_uncertain_and_not_re
     assert second_receipt["state"] == "attempted"
     assert second_receipt["execution"] is None
     send.assert_awaited_once()
-    stored = (await client.get(
-        "/v1/interventions", params={"session_id": session.id}
-    )).json()
+    stored = (await client.get("/v1/interventions", params={"session_id": session.id})).json()
     original = next(item for item in stored if item["id"] == first_intervention["id"])
     assert original["result"] == "verification_delivery_uncertain"
     assert original["metadata"].get("outcome_final") is not True
@@ -3182,9 +3155,7 @@ async def test_requested_pytest_receipt_requires_matching_execution_then_stop(
         },
     )
     assert unrelated.status_code == 200
-    stored = (await client.get(
-        "/v1/interventions", params={"session_id": session.id}
-    )).json()
+    stored = (await client.get("/v1/interventions", params={"session_id": session.id})).json()
     request = next(item for item in stored if item["action_taken"] == "REQUEST_VERIFICATION")
     gathering = request["metadata"]["verification"]["evidence_gathering"]
     assert gathering["state"] == "attempted"
@@ -3222,9 +3193,7 @@ async def test_requested_pytest_receipt_requires_matching_execution_then_stop(
     )
     assert observed.status_code == 200
     observed_event_id = observed.json()["event"]["event_id"]
-    stored = (await client.get(
-        "/v1/interventions", params={"session_id": session.id}
-    )).json()
+    stored = (await client.get("/v1/interventions", params={"session_id": session.id})).json()
     request = next(item for item in stored if item["action_taken"] == "REQUEST_VERIFICATION")
     gathering = request["metadata"]["verification"]["evidence_gathering"]
     assert gathering["state"] == "executed"
@@ -3262,14 +3231,9 @@ async def test_requested_pytest_receipt_requires_matching_execution_then_stop(
     completion = completed.json()["intervention"]
     assert completion["action_taken"] == "NOOP"
     assert completion["metadata"]["verification"]["status"] == "supported"
-    assert (
-        completion["metadata"]["verification"]["evidence_gathering"]["state"]
-        == "executed"
-    )
+    assert completion["metadata"]["verification"]["evidence_gathering"]["state"] == "executed"
     assert len(adapter.inbox[session.id]) == 1
-    stored = (await client.get(
-        "/v1/interventions", params={"session_id": session.id}
-    )).json()
+    stored = (await client.get("/v1/interventions", params={"session_id": session.id})).json()
     request = next(item for item in stored if item["action_taken"] == "REQUEST_VERIFICATION")
     assert request["outcome"] == "goal_evidence_supported"
     assert request["helped"] is True
@@ -3330,23 +3294,17 @@ async def test_requested_service_health_receipt_updates_after_matching_worker_ev
         },
     )
     assert observed.status_code == 200
-    stored = (
-        await client.get("/v1/interventions", params={"session_id": session.id})
-    ).json()
+    stored = (await client.get("/v1/interventions", params={"session_id": session.id})).json()
     request = next(item for item in stored if item["action_taken"] == "REQUEST_VERIFICATION")
     gathering = request["metadata"]["verification"]["evidence_gathering"]
     assert gathering["state"] == "executed"
     assert gathering["execution"]["result"] == "passed"
-    assert gathering["execution"]["observed_command"] == (
-        "curl -sf http://127.0.0.1:7420/health"
-    )
+    assert gathering["execution"]["observed_command"] == ("curl -sf http://127.0.0.1:7420/health")
     assert request["outcome"] == "verification_passed_after_intervention"
 
 
 @pytest.mark.asyncio
-async def test_edit_after_executed_pytest_mints_a_successor_probe(
-    client: AsyncClient, tmp_path
-):
+async def test_edit_after_executed_pytest_mints_a_successor_probe(client: AsyncClient, tmp_path):
     worker = tmp_path / "stale-verification-worker"
     worker.mkdir()
     adapter = state.adapters.synthetic
@@ -3412,9 +3370,7 @@ async def test_edit_after_executed_pytest_mints_a_successor_probe(
     assert successor_receipt["state"] == "attempted"
     assert successor_receipt["probe"]["id"] != first_probe["id"]
     assert len(adapter.inbox[session.id]) == 2
-    stored = (await client.get(
-        "/v1/interventions", params={"session_id": session.id}
-    )).json()
+    stored = (await client.get("/v1/interventions", params={"session_id": session.id})).json()
     old = next(item for item in stored if item["id"] == first_request["id"])
     assert old["outcome"] == "verification_result_staled_by_later_progress"
     assert old["helped"] is None
@@ -3457,9 +3413,7 @@ async def test_later_pytest_supersedes_old_receipt_without_mixing_event_ids(
             "session_id": session.id,
             "event_type": EventType.SHELL.value,
             "command": "pytest -q",
-            "process_state": {
-                "pytest": {"ok": True, "exit_code": 0, "output": "4 passed"}
-            },
+            "process_state": {"pytest": {"ok": True, "exit_code": 0, "output": "4 passed"}},
         },
     )
     passed_event_id = passed.json()["event"]["event_id"]
@@ -3495,13 +3449,9 @@ async def test_later_pytest_supersedes_old_receipt_without_mixing_event_ids(
     assert verification["status"] == "contradicted"
     assert verification["pytest_event_id"] == failed_event_id
     assert verification["evidence_gathering"]["state"] == "inspected"
-    stored = (await client.get(
-        "/v1/interventions", params={"session_id": session.id}
-    )).json()
+    stored = (await client.get("/v1/interventions", params={"session_id": session.id})).json()
     original = next(item for item in stored if item["id"] == request["id"])
-    old_execution = original["metadata"]["verification"]["evidence_gathering"][
-        "execution"
-    ]
+    old_execution = original["metadata"]["verification"]["evidence_gathering"]["execution"]
     assert old_execution["source_event_id"] == passed_event_id
     assert old_execution["source_event_id"] != verification["pytest_event_id"]
     assert original["outcome"] == "verification_superseded_by_newer_pytest"
@@ -3561,15 +3511,11 @@ async def test_newer_nudge_turn_cannot_mutate_pending_verification_result(
             "session_id": session.id,
             "event_type": EventType.SHELL.value,
             "command": "pytest -q",
-            "process_state": {
-                "pytest": {"ok": True, "exit_code": 0, "output": "4 passed"}
-            },
+            "process_state": {"pytest": {"ok": True, "exit_code": 0, "output": "4 passed"}},
         },
     )
     wrong_turn_event_id = wrong_turn_execution.json()["event"]["event_id"]
-    stored = (await client.get(
-        "/v1/interventions", params={"session_id": session.id}
-    )).json()
+    stored = (await client.get("/v1/interventions", params={"session_id": session.id})).json()
     original = next(item for item in stored if item["id"] == request["id"])
     receipt = original["metadata"]["verification"]["evidence_gathering"]
     assert receipt["state"] == "attempted"
@@ -3581,9 +3527,7 @@ async def test_newer_nudge_turn_cannot_mutate_pending_verification_result(
 
 
 @pytest.mark.asyncio
-async def test_goal_or_workspace_rebind_cannot_satisfy_old_probe(
-    client: AsyncClient, tmp_path
-):
+async def test_goal_or_workspace_rebind_cannot_satisfy_old_probe(client: AsyncClient, tmp_path):
     first_workspace = tmp_path / "bound-workspace-a"
     second_workspace = tmp_path / "bound-workspace-b"
     first_workspace.mkdir()
@@ -3648,15 +3592,11 @@ async def test_goal_or_workspace_rebind_cannot_satisfy_old_probe(
             "session_id": session.id,
             "event_type": EventType.SHELL.value,
             "command": "pytest -q",
-            "process_state": {
-                "pytest": {"ok": True, "exit_code": 0, "output": "4 passed"}
-            },
+            "process_state": {"pytest": {"ok": True, "exit_code": 0, "output": "4 passed"}},
         },
     )
     assert observed.status_code == 200
-    stored = (await client.get(
-        "/v1/interventions", params={"session_id": session.id}
-    )).json()
+    stored = (await client.get("/v1/interventions", params={"session_id": session.id})).json()
     original = next(item for item in stored if item["id"] == request["id"])
     receipt = original["metadata"]["verification"]["evidence_gathering"]
     assert receipt["state"] == "attempted"
@@ -3664,9 +3604,7 @@ async def test_goal_or_workspace_rebind_cannot_satisfy_old_probe(
 
 
 @pytest.mark.asyncio
-async def test_pending_verification_stop_does_not_repeat_or_finalize(
-    client: AsyncClient, tmp_path
-):
+async def test_pending_verification_stop_does_not_repeat_or_finalize(client: AsyncClient, tmp_path):
     worker = tmp_path / "pending-verification-worker"
     worker.mkdir()
     adapter = state.adapters.synthetic
@@ -3696,9 +3634,7 @@ async def test_pending_verification_stop_does_not_repeat_or_finalize(
         )
         assert stopped.status_code == 200
     assert len(adapter.inbox[session.id]) == 1
-    stored = (await client.get(
-        "/v1/interventions", params={"session_id": session.id}
-    )).json()
+    stored = (await client.get("/v1/interventions", params={"session_id": session.id})).json()
     request = next(item for item in stored if item["action_taken"] == "REQUEST_VERIFICATION")
     assert request["outcome"] == "worker_stopped_outcome_uncertain"
     assert request["helped"] is None
@@ -3769,9 +3705,7 @@ async def test_matching_failed_pytest_is_executed_and_drives_exact_nudge(
     assert gathering["state"] == "executed"
     assert gathering["execution"]["result"] == "failed"
     assert gathering["execution"]["failure_node"] == failed_node
-    stored = (await client.get(
-        "/v1/interventions", params={"session_id": session.id}
-    )).json()
+    stored = (await client.get("/v1/interventions", params={"session_id": session.id})).json()
     request = next(item for item in stored if item["action_taken"] == "REQUEST_VERIFICATION")
     assert request["outcome"] == "verification_revealed_unsatisfied_goal"
     assert request["helped"] is True
@@ -3837,30 +3771,47 @@ async def test_verification_request_without_send_capability_is_unavailable(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("ok", [None, True])
 async def test_nonzero_pytest_exit_nudges_same_worker_without_claim(
-    client: AsyncClient, tmp_path, ok,
+    client: AsyncClient,
+    tmp_path,
+    ok,
 ):
     worker = tmp_path / "failed-exit-worker"
     worker.mkdir()
     adapter = state.adapters.synthetic
     session = adapter.seed_session(vendor_id="failed-exit", cwd=str(worker))
     await state.store.upsert_session(session)
-    goal = (await client.post("/v1/goals", json={
-        "project_id": "demo", "title": "Finish parser",
-        "objective": "Implement the parser with passing tests",
-        "acceptance_criteria": ["tests pass"],
-    })).json()
+    goal = (
+        await client.post(
+            "/v1/goals",
+            json={
+                "project_id": "demo",
+                "title": "Finish parser",
+                "objective": "Implement the parser with passing tests",
+                "acceptance_criteria": ["tests pass"],
+            },
+        )
+    ).json()
     await client.post(f"/v1/sessions/{session.id}/attach", json={"goal_id": goal["id"]})
-    shell = await client.post("/v1/synthetic/events", json={
-        "session_id": session.id, "event_type": EventType.SHELL.value,
-        "command": "pytest -q", "process_state": {
-            "pytest": {"ok": ok, "exit_code": 2},
+    shell = await client.post(
+        "/v1/synthetic/events",
+        json={
+            "session_id": session.id,
+            "event_type": EventType.SHELL.value,
+            "command": "pytest -q",
+            "process_state": {
+                "pytest": {"ok": ok, "exit_code": 2},
+            },
         },
-    })
+    )
     assert shell.status_code == 200
-    stopped = await client.post("/v1/synthetic/events", json={
-        "session_id": session.id, "event_type": EventType.STOP.value,
-        "message": "Awaiting the next step.",
-    })
+    stopped = await client.post(
+        "/v1/synthetic/events",
+        json={
+            "session_id": session.id,
+            "event_type": EventType.STOP.value,
+            "message": "Awaiting the next step.",
+        },
+    )
     assert stopped.status_code == 200
     intervention = stopped.json()["intervention"]
     assert intervention["action_taken"] == "SEND_NUDGE"

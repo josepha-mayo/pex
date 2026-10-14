@@ -36,12 +36,9 @@ async def test_corrupt_intervention_binding_migration_marker_fails_reconnect(tmp
     store = Store(path)
     await store.connect()
     try:
+        await store.db.execute("DROP TRIGGER trg_intervention_binding_migration_immutable")
         await store.db.execute(
-            "DROP TRIGGER trg_intervention_binding_migration_immutable"
-        )
-        await store.db.execute(
-            "UPDATE intervention_binding_migration_state SET json = '{}' "
-            "WHERE singleton = 1"
+            "UPDATE intervention_binding_migration_state SET json = '{}' WHERE singleton = 1"
         )
         await store.db.commit()
     finally:

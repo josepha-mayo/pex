@@ -6,13 +6,17 @@ import pytest
 from benchmarks import paired_preparation
 from benchmarks.boundary import sha256_file
 
-FINGERPRINTS = {harness: {"runtime_sha256": "a" * 64, "settings_sha256": "b" * 64}
-                for harness in ("codex", "opencode")}
+FINGERPRINTS = {
+    harness: {"runtime_sha256": "a" * 64, "settings_sha256": "b" * 64}
+    for harness in ("codex", "opencode")
+}
 
 
 def prepare(path):
     return paired_preparation.prepare_experiment(
-        path, run_id="prospective-1", seed="predeclared-order",
+        path,
+        run_id="prospective-1",
+        seed="predeclared-order",
         models={"codex": "pinned/codex", "opencode": "pinned/opencode"},
         worker_fingerprints=FINGERPRINTS,
     )
@@ -36,8 +40,13 @@ def test_full_pairs_have_identical_public_seeds_and_external_plan(tmp_path):
     for first, second in grouped.values():
         assert {first["condition"], second["condition"]} == {"baseline", "pex"}
         assert first["workspace"] != second["workspace"]
-        for field in ("model", "worker_profile_sha256", "seed_manifest_sha256",
-                      "prompt_sha256", "protected_sha256"):
+        for field in (
+            "model",
+            "worker_profile_sha256",
+            "seed_manifest_sha256",
+            "prompt_sha256",
+            "protected_sha256",
+        ):
             assert first[field] == second[field]
 
 
@@ -65,9 +74,13 @@ def test_failed_preparation_remains_consumed_and_is_never_reused(tmp_path, monke
 def test_invalid_configuration_cannot_reserve_a_directory(tmp_path):
     root = tmp_path / "experiment"
     with pytest.raises(ValueError, match="both harnesses"):
-        paired_preparation.prepare_experiment(root, run_id="run", seed="seed",
-                                             models={"codex": "pinned"},
-                                             worker_fingerprints=FINGERPRINTS)
+        paired_preparation.prepare_experiment(
+            root,
+            run_id="run",
+            seed="seed",
+            models={"codex": "pinned"},
+            worker_fingerprints=FINGERPRINTS,
+        )
     assert not root.exists()
 
 
@@ -95,30 +108,46 @@ def test_invalid_task_package_is_rejected_before_reservation(tmp_path, monkeypat
     assert not root.exists()
 
 
-@pytest.mark.parametrize("limits", [
-    {"task_wall_seconds": True}, {"task_wall_seconds": 0},
-    {"max_model_calls": 0}, {"max_followups": 11}, {"review_seconds": 601},
-])
+@pytest.mark.parametrize(
+    "limits",
+    [
+        {"task_wall_seconds": True},
+        {"task_wall_seconds": 0},
+        {"max_model_calls": 0},
+        {"max_followups": 11},
+        {"review_seconds": 601},
+    ],
+)
 def test_invalid_limits_cannot_reserve_an_experiment(tmp_path, limits):
     root = tmp_path / "experiment"
     with pytest.raises(ValueError, match="execution budget"):
         paired_preparation.prepare_experiment(
-            root, run_id="run", seed="seed", models={"codex": "pinned", "opencode": "pinned"},
-            worker_fingerprints=FINGERPRINTS, **limits,
+            root,
+            run_id="run",
+            seed="seed",
+            models={"codex": "pinned", "opencode": "pinned"},
+            worker_fingerprints=FINGERPRINTS,
+            **limits,
         )
     assert not root.exists()
 
 
-@pytest.mark.parametrize("profile", [
-    {"runtime_sha256": "unknown", "settings_sha256": "b" * 64},
-    {"runtime_sha256": "a" * 64, "settings_sha256": "b" * 64, "extra": "ignored"},
-])
+@pytest.mark.parametrize(
+    "profile",
+    [
+        {"runtime_sha256": "unknown", "settings_sha256": "b" * 64},
+        {"runtime_sha256": "a" * 64, "settings_sha256": "b" * 64, "extra": "ignored"},
+    ],
+)
 def test_unknown_runtime_or_extra_configuration_cannot_be_predeclared(tmp_path, profile):
     root = tmp_path / "experiment"
     invalid = {**FINGERPRINTS, "codex": profile}
     with pytest.raises(ValueError, match="fingerprints"):
         paired_preparation.prepare_experiment(
-            root, run_id="run", seed="seed", models={"codex": "pinned", "opencode": "pinned"},
+            root,
+            run_id="run",
+            seed="seed",
+            models={"codex": "pinned", "opencode": "pinned"},
             worker_fingerprints=invalid,
         )
     assert not root.exists()
@@ -127,15 +156,29 @@ def test_unknown_runtime_or_extra_configuration_cannot_be_predeclared(tmp_path, 
 def test_changed_worker_settings_change_the_bound_profile(tmp_path):
     original = prepare(tmp_path / "original")
     changed = paired_preparation.prepare_experiment(
-        tmp_path / "changed", run_id="prospective-1", seed="predeclared-order",
+        tmp_path / "changed",
+        run_id="prospective-1",
+        seed="predeclared-order",
         models={"codex": "pinned/codex", "opencode": "pinned/opencode"},
-        worker_fingerprints={**FINGERPRINTS, "codex": {
-            "runtime_sha256": "a"*64, "settings_sha256": "c"*64,
-        }}, task_wall_seconds=300, review_seconds=60, max_model_calls=10, max_followups=1,
+        worker_fingerprints={
+            **FINGERPRINTS,
+            "codex": {
+                "runtime_sha256": "a" * 64,
+                "settings_sha256": "c" * 64,
+            },
+        },
+        task_wall_seconds=300,
+        review_seconds=60,
+        max_model_calls=10,
+        max_followups=1,
     )
     assert changed["budget"] == {
-        "task_wall_seconds": 300, "includes_worker_and_pex": True, "max_worker_model_calls": 10,
-        "max_pex_followups": 1, "max_review_seconds": 60, "evaluator_outside_task_budget": True,
+        "task_wall_seconds": 300,
+        "includes_worker_and_pex": True,
+        "max_worker_model_calls": 10,
+        "max_pex_followups": 1,
+        "max_review_seconds": 60,
+        "evaluator_outside_task_budget": True,
     }
     for first, second in zip(original["schedule"], changed["schedule"], strict=True):
         assert first["condition"] == second["condition"] and first["task"] == second["task"]
@@ -153,7 +196,10 @@ def test_attempt_reservation_is_exclusive_and_preserves_predeclared_budget(tmp_p
     def reserve():
         try:
             return paired_preparation.reserve_attempt(
-                root, index=0, expected_plan_sha256=digest, worker_profile=profile,
+                root,
+                index=0,
+                expected_plan_sha256=digest,
+                worker_profile=profile,
             )
         except FileExistsError:
             return None
@@ -188,7 +234,10 @@ def test_admission_drift_cannot_consume_an_attempt(tmp_path, monkeypatch, drift)
         monkeypatch.setattr(paired_preparation.runner, "benchmark_sha256", lambda: "c" * 64)
     with pytest.raises(ValueError):
         paired_preparation.reserve_attempt(
-            root, index=0, expected_plan_sha256=digest, worker_profile=profile,
+            root,
+            index=0,
+            expected_plan_sha256=digest,
+            worker_profile=profile,
         )
     assert not list((root / "controller").glob("attempt-*.json"))
 
@@ -197,7 +246,8 @@ def test_uncertain_reservation_write_is_not_reusable(tmp_path, monkeypatch):
     root = tmp_path / "experiment"
     plan = prepare(root)
     options = {
-        "index": 0, "expected_plan_sha256": sha256_file(root / "controller/plan.json"),
+        "index": 0,
+        "expected_plan_sha256": sha256_file(root / "controller/plan.json"),
         "worker_profile": plan["worker_profiles"][plan["schedule"][0]["harness"]],
     }
 
@@ -214,8 +264,14 @@ def test_uncertain_reservation_write_is_not_reusable(tmp_path, monkeypatch):
 async def test_admitted_relay_enforces_plan_limits_and_keeps_baseline_without_review(tmp_path):
     root = tmp_path / "experiment"
     plan = paired_preparation.prepare_experiment(
-        root, run_id="run", seed="seed", models={"codex": "pinned", "opencode": "pinned"},
-        worker_fingerprints=FINGERPRINTS, max_model_calls=1, max_followups=0, review_seconds=1,
+        root,
+        run_id="run",
+        seed="seed",
+        models={"codex": "pinned", "opencode": "pinned"},
+        worker_fingerprints=FINGERPRINTS,
+        max_model_calls=1,
+        max_followups=0,
+        review_seconds=1,
     )
     digest = sha256_file(root / "controller/plan.json")
     calls, reviews = [], []
@@ -232,23 +288,36 @@ async def test_admitted_relay_enforces_plan_limits_and_keeps_baseline_without_re
         if row["harness"] != "opencode":
             continue
         relay, receipt, limits = paired_preparation.admit_opencode_relay(
-            root, index=index, expected_plan_sha256=digest,
-            worker_profile=plan["worker_profiles"]["opencode"], backend=backend, review=review,
+            root,
+            index=index,
+            expected_plan_sha256=digest,
+            worker_profile=plan["worker_profiles"]["opencode"],
+            backend=backend,
+            review=review,
         )
         assert relay.deadline == limits["deadline"] and limits["max_followups"] == 0
         assert relay.max_review_seconds == 1 and relay.max_reviews == 1
         assert receipt["budget"] == plan["budget"]
-        model_request = {"schema": "pex.model-relay.v1", "request_id": "call-1", "body": {
-            "model": "pinned", "messages": [{"role": "user", "content": "public"}],
-            "max_tokens": 10,
-        }}
+        model_request = {
+            "schema": "pex.model-relay.v1",
+            "request_id": "call-1",
+            "body": {
+                "model": "pinned",
+                "messages": [{"role": "user", "content": "public"}],
+                "max_tokens": 10,
+            },
+        }
         assert (await relay.dispatch(json.dumps(model_request).encode()))["ok"]
         model_request["request_id"] = "call-2"
         assert (await relay.dispatch(json.dumps(model_request).encode()))["error"] == (
             "call_budget_exhausted"
         )
-        review_request = {"schema": "pex.opencode-review.v1", "request_id": "review-1",
-                          "vendor_session_id": "vendor", "agent_messages": []}
+        review_request = {
+            "schema": "pex.opencode-review.v1",
+            "request_id": "review-1",
+            "vendor_session_id": "vendor",
+            "agent_messages": [],
+        }
         result = await relay.dispatch(json.dumps(review_request).encode())
         if row["condition"] == "baseline":
             assert result["error"] == "reviews_disabled"
@@ -263,8 +332,11 @@ def test_wrong_harness_cannot_be_consumed_by_opencode_admission(tmp_path):
     index = next(i for i, row in enumerate(plan["schedule"]) if row["harness"] == "codex")
     with pytest.raises(ValueError, match="required harness"):
         paired_preparation.admit_opencode_relay(
-            root, index=index, expected_plan_sha256=sha256_file(root / "controller/plan.json"),
-            worker_profile=plan["worker_profiles"]["codex"], backend=lambda _: None,
+            root,
+            index=index,
+            expected_plan_sha256=sha256_file(root / "controller/plan.json"),
+            worker_profile=plan["worker_profiles"]["codex"],
+            backend=lambda _: None,
             review=lambda *_: None,
         )
     assert not list((root / "controller").glob("attempt-*.json"))

@@ -72,13 +72,21 @@ def test_runtime_schema_version_is_an_exact_integer_before_model_loading(monkeyp
         runtime.handle_payload(payload)
 
 
-@pytest.mark.parametrize("expected,observed", [
-    ("project_A", "project_a"), ("/work/Project", "/work/project"),
-    ("project", " project "), ("project", "project/"),
-    ("C:/work/straße", "c:/work/strasse"), ("c:/", "c:"),
-])
+@pytest.mark.parametrize(
+    "expected,observed",
+    [
+        ("project_A", "project_a"),
+        ("/work/Project", "/work/project"),
+        ("project", " project "),
+        ("project", "project/"),
+        ("C:/work/straße", "c:/work/strasse"),
+        ("c:/", "c:"),
+    ],
+)
 def test_runtime_keeps_opaque_and_posix_project_identities_distinct(
-    monkeypatch, expected, observed,
+    monkeypatch,
+    expected,
+    observed,
 ):
     payload = _payload(_request())
     payload["request"]["session"]["project_id"] = expected
@@ -95,8 +103,12 @@ def test_handle_payload_passes_configured_model_and_returns_versioned_result(mon
     captured = {}
 
     def fake_decide(seen, model=None, force_llm=False, allow_deterministic_fast_path=True):
-        captured.update(request=seen, model=model, force_llm=force_llm,
-                        allow_deterministic_fast_path=allow_deterministic_fast_path)
+        captured.update(
+            request=seen,
+            model=model,
+            force_llm=force_llm,
+            allow_deterministic_fast_path=allow_deterministic_fast_path,
+        )
         return _result(seen)
 
     monkeypatch.setattr(runtime, "decide", fake_decide)
@@ -300,7 +312,8 @@ def test_local_http_rejects_excessive_json_nesting_without_inference(monkeypatch
     monkeypatch.setattr(runtime, "handle_payload", lambda *a, **k: pytest.fail("no inference"))
     with TestClient(runtime._fastapi_app(model=object()), raise_server_exceptions=False) as client:
         response = client.post(
-            "/invocations", content=opening * 10_000 + b"0" + closing * 10_000,
+            "/invocations",
+            content=opening * 10_000 + b"0" + closing * 10_000,
             headers={"content-type": "application/json"},
         )
     assert response.status_code == 400

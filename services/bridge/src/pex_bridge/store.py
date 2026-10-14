@@ -1393,10 +1393,7 @@ def _validated_acceptance_baseline(
             or len(path) > 512
             or not (
                 digest is None
-                or (
-                    isinstance(digest, str)
-                    and _SHA256_PATTERN.fullmatch(digest) is not None
-                )
+                or (isinstance(digest, str) and _SHA256_PATTERN.fullmatch(digest) is not None)
             )
         ):
             raise RuntimeError("stored acceptance baseline is corrupt")
@@ -1416,6 +1413,8 @@ def _validated_acceptance_baseline(
             ):
                 raise RuntimeError("stored acceptance baseline is corrupt")
     return payload
+
+
 _MCP_REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$")
 _MCP_SCOPE_PATTERN = re.compile(r"^pex\.[a-z][a-z0-9_.-]{0,123}$")
 logger = logging.getLogger(__name__)
@@ -1568,9 +1567,10 @@ def _validate_human_decision_resolution_row(row: aiosqlite.Row) -> dict[str, Any
     status = str(record.get("status") or "")
     receipt = record.get("worker_delivery_receipt")
     if status == "delivered":
-        if record.get("delivery_code") != "send_confirmed" or record.get(
-            "exception_type"
-        ) is not None:
+        if (
+            record.get("delivery_code") != "send_confirmed"
+            or record.get("exception_type") is not None
+        ):
             raise RuntimeError("stored human decision delivery status is inconsistent")
         try:
             normalized = validate_worker_delivery_receipt_binding(
@@ -1587,9 +1587,7 @@ def _validate_human_decision_resolution_row(row: aiosqlite.Row) -> dict[str, Any
                 HarnessType.SYNTHETIC.value,
             }
             if receipt_required or receipt is not None:
-                raise RuntimeError(
-                    "stored human decision delivery receipt is invalid"
-                ) from exc
+                raise RuntimeError("stored human decision delivery receipt is invalid") from exc
         else:
             if receipt != normalized:
                 raise RuntimeError("stored human decision delivery receipt is invalid")
@@ -1677,9 +1675,7 @@ def _validate_human_decision_intervention_projection(
     if expected is None:
         raise RuntimeError("stored human decision delivery state is invalid")
     expected_result, expected_audit_type = expected
-    public_resolution = {
-        key: value for key, value in resolution.items() if key != "response"
-    }
+    public_resolution = {key: value for key, value in resolution.items() if key != "response"}
     metadata = intervention.metadata or {}
     receipt = resolution.get("worker_delivery_receipt")
     session_binding = resolution.get("session_binding")
@@ -1700,8 +1696,7 @@ def _validate_human_decision_intervention_projection(
         or session_binding.get("goal_id") != intervention.goal_id
         or session_binding.get("vendor_session_id")
         != action_payload.get("source_vendor_session_id")
-        or session_binding.get("harness_type")
-        != action_payload.get("source_harness_type")
+        or session_binding.get("harness_type") != action_payload.get("source_harness_type")
         or (session_binding.get("project_id") or session_binding.get("cwd"))
         != action_payload.get("source_project_id")
     ):
@@ -1713,8 +1708,7 @@ def _validate_human_decision_intervention_projection(
         or intervention.proposed_action.type != InterventionType.ASK_HUMAN
         or intervention.action_taken != InterventionType.ASK_HUMAN.value
         or intervention.policy_verdict != PolicyVerdict.ASK_HUMAN
-        or resolution.get("intervention_binding")
-        != _decision_intervention_binding(intervention)
+        or resolution.get("intervention_binding") != _decision_intervention_binding(intervention)
         or intervention.result != expected_result
         or metadata.get("human_decision_resolution") != public_resolution
         or metadata.get("worker_delivery_receipt") != receipt
@@ -1797,9 +1791,7 @@ async def _load_validated_human_decision_resolution(
     ):
         raise RuntimeError("stored human decision intervention authority is corrupt")
     if row["delivery_contract_version"] == HUMAN_DECISION_DELIVERY_CONTRACT_EXACT_TURN:
-        placeholders = ",".join(
-            "?" for _ in _HUMAN_DECISION_LIFECYCLE_AUDIT_TYPES
-        )
+        placeholders = ",".join("?" for _ in _HUMAN_DECISION_LIFECYCLE_AUDIT_TYPES)
         audit_cursor = await transaction.execute(
             "SELECT record_type, json FROM intervention_audit "
             f"WHERE intervention_id = ? AND record_type IN ({placeholders}) "
@@ -1807,9 +1799,7 @@ async def _load_validated_human_decision_resolution(
             (intervention_id, *_HUMAN_DECISION_LIFECYCLE_AUDIT_TYPES),
         )
         audit_row = await audit_cursor.fetchone()
-        audit_record = (
-            _strict_json_loads(str(audit_row["json"])) if audit_row is not None else None
-        )
+        audit_record = _strict_json_loads(str(audit_row["json"])) if audit_row is not None else None
         latest_cursor = await transaction.execute(
             "SELECT json FROM intervention_audit "
             "WHERE intervention_id = ? ORDER BY rowid DESC LIMIT 1",
@@ -1817,9 +1807,7 @@ async def _load_validated_human_decision_resolution(
         )
         latest_row = await latest_cursor.fetchone()
         latest_audit_record = (
-            _strict_json_loads(str(latest_row["json"]))
-            if latest_row is not None
-            else None
+            _strict_json_loads(str(latest_row["json"])) if latest_row is not None else None
         )
         _validate_human_decision_intervention_projection(
             resolution,
@@ -2106,11 +2094,9 @@ def _goal_control_operation_record(row: aiosqlite.Row) -> dict[str, Any]:
                 GOAL_CONTROL_ACTION_UPDATE: "update",
                 GOAL_CONTROL_ACTION_OVERRIDE: "override",
             }[record["action_kind"]]
-            and response_outcome.get("predecessor_goal_id")
-            == record["predecessor_goal_id"]
+            and response_outcome.get("predecessor_goal_id") == record["predecessor_goal_id"]
             and response_outcome.get("changed") is bool(record["changed"])
-            and response_outcome.get("after_intent_revision")
-            == response.get("intent_revision")
+            and response_outcome.get("after_intent_revision") == response.get("intent_revision")
             and response_outcome.get("after_intent_hash") == response.get("intent_hash")
         )
     if (
@@ -2275,10 +2261,7 @@ def _session_is_live_controllable(session: HarnessSession) -> bool:
         or session.vendor_session_id == "desktop"
         or source == "desktop"
         or session.id.endswith(":desktop")
-        or bool(
-            session.metadata.get("not_live_control")
-            or session.metadata.get("observe_only")
-        )
+        or bool(session.metadata.get("not_live_control") or session.metadata.get("observe_only"))
     )
 
 
@@ -2288,8 +2271,7 @@ async def _live_controllable_session_ids_for_goal(
     binding: ArtifactBinding,
 ) -> list[str]:
     cursor = await transaction.execute(
-        "SELECT id FROM sessions WHERE json_extract(json, '$.goal_id') = ? "
-        "ORDER BY id LIMIT 10001",
+        "SELECT id FROM sessions WHERE json_extract(json, '$.goal_id') = ? ORDER BY id LIMIT 10001",
         (goal.id,),
     )
     rows = await cursor.fetchall()
@@ -2674,9 +2656,13 @@ class OperatorEffectConflictError(ValueError):
     """A caller reused an idempotency key for a different logical request."""
 
 
-_OBSERVER_SESSION_METADATA_KEYS = frozenset({
-    "workspace_binding", "subscription_receipt", "observation_coverage",
-})
+_OBSERVER_SESSION_METADATA_KEYS = frozenset(
+    {
+        "workspace_binding",
+        "subscription_receipt",
+        "observation_coverage",
+    }
+)
 
 _EVENT_SESSION_METADATA_KEYS = frozenset(
     {
@@ -2732,8 +2718,15 @@ def _validate_observer_input_baseline(value: Any) -> None:
     """Validate content-free event evidence, never grant dispatch authority."""
     if (
         not isinstance(value, dict)
-        or set(value) != {
-            "schema", "complete", "digest", "revision", "external_count", "pending_count", "reason",
+        or set(value)
+        != {
+            "schema",
+            "complete",
+            "digest",
+            "revision",
+            "external_count",
+            "pending_count",
+            "reason",
         }
         or value.get("schema") != "pex.codex-input-baseline.v1"
         or type(value.get("complete")) is not bool
@@ -2755,9 +2748,7 @@ def _validate_observer_input_baseline(value: Any) -> None:
             or reason is not None
         ):
             raise ValueError("complete observer input baseline is invalid")
-    elif (
-        digest is not None or not isinstance(reason, str) or not reason or len(reason) > 160
-    ):
+    elif digest is not None or not isinstance(reason, str) or not reason or len(reason) > 160:
         raise ValueError("incomplete observer input baseline is invalid")
 
 
@@ -3105,9 +3096,7 @@ def _operator_effect_record(row: aiosqlite.Row) -> dict[str, Any]:
 
 
 def _human_operator_action_receipt_id(effect_id: str) -> str:
-    digest = hashlib.sha256(
-        f"pex.human-operator-terminal-action\0{effect_id}".encode()
-    ).hexdigest()
+    digest = hashlib.sha256(f"pex.human-operator-terminal-action\0{effect_id}".encode()).hexdigest()
     return f"human_operator_action_{digest}"
 
 
@@ -3156,8 +3145,7 @@ def _human_operator_action_reservation_payload(effect: dict[str, Any]) -> dict[s
     if (
         expected["principal_id"] != "local_bridge_operator"
         or expected["actor_assurance"] != OPERATOR_ACTOR_ASSURANCE
-        or expected["delivery_contract_version"]
-        != OPERATOR_DELIVERY_CONTRACT_EXACT_TURN
+        or expected["delivery_contract_version"] != OPERATOR_DELIVERY_CONTRACT_EXACT_TURN
         or not isinstance(expected["vendor_session_id"], str)
         or not expected["vendor_session_id"]
         or not isinstance(expected["harness_type"], str)
@@ -3253,8 +3241,7 @@ def _human_operator_action_receipt_payload(effect: dict[str, Any]) -> dict[str, 
     if (
         expected["principal_id"] != "local_bridge_operator"
         or expected["actor_assurance"] != OPERATOR_ACTOR_ASSURANCE
-        or expected["delivery_contract_version"]
-        != OPERATOR_DELIVERY_CONTRACT_EXACT_TURN
+        or expected["delivery_contract_version"] != OPERATOR_DELIVERY_CONTRACT_EXACT_TURN
         or not isinstance(expected["vendor_session_id"], str)
         or not expected["vendor_session_id"]
         or not isinstance(expected["harness_type"], str)
@@ -3311,8 +3298,7 @@ async def _validate_human_operator_action_receipt(
     )
     reservation_record = _strict_json_loads(str(reservation_row["json"]))
     if reservation_record != expected_reservation or any(
-        reservation_row[field] != expected_reservation[field]
-        for field in reservation_fields
+        reservation_row[field] != expected_reservation[field] for field in reservation_fields
     ):
         raise RuntimeError("human operator action reservation is corrupt")
     if effect.get("state") != "delivered":
@@ -3871,9 +3857,7 @@ def _handoff_context_candidate_id(effect_id: str, context_item_id: str) -> str:
         "effect_id": effect_id,
         "context_item_id": context_item_id,
     }
-    return "hcc_" + hashlib.sha256(
-        _canonical_json(identity).encode("utf-8")
-    ).hexdigest()[:40]
+    return "hcc_" + hashlib.sha256(_canonical_json(identity).encode("utf-8")).hexdigest()[:40]
 
 
 def _handoff_artifact_candidate_id(
@@ -3887,9 +3871,7 @@ def _handoff_artifact_candidate_id(
         "source_relative_path": path.relative,
         "source_windows_semantics": path.windows_semantics,
     }
-    return "hac_" + hashlib.sha256(
-        _canonical_json(identity).encode("utf-8")
-    ).hexdigest()[:40]
+    return "hac_" + hashlib.sha256(_canonical_json(identity).encode("utf-8")).hexdigest()[:40]
 
 
 def _handoff_item_artifact_paths(
@@ -3963,9 +3945,7 @@ def _utc_iso(value: datetime) -> str:
     return _time_key(value).isoformat()
 
 
-_GOAL_LEDGER_KINDS = frozenset(
-    {"decision", "rejected_approach", "unresolved_question"}
-)
+_GOAL_LEDGER_KINDS = frozenset({"decision", "rejected_approach", "unresolved_question"})
 
 
 def _reject_managed_goal_ledger_artifact(
@@ -3974,9 +3954,7 @@ def _reject_managed_goal_ledger_artifact(
     label: str,
 ) -> None:
     if str(artifact.metadata.get("kind") or "") in _GOAL_LEDGER_KINDS:
-        raise ValueError(
-            f"managed goal ledger {label} must use the atomic goal mutation boundary"
-        )
+        raise ValueError(f"managed goal ledger {label} must use the atomic goal mutation boundary")
 
 
 def _canonical_active_goal_ledger(
@@ -3999,9 +3977,7 @@ def _canonical_active_goal_ledger(
             raise ValueError("goal intent contains a duplicate ContextItem id")
         contexts_by_id[context.id] = context
         metadata_decision_id = context.metadata.get("decision_id")
-        referenced_decision_id = (
-            context.source_refs[0] if len(context.source_refs) == 1 else None
-        )
+        referenced_decision_id = context.source_refs[0] if len(context.source_refs) == 1 else None
         candidate_ids = {
             value
             for value in (metadata_decision_id, referenced_decision_id)
@@ -4039,9 +4015,7 @@ def _canonical_active_goal_ledger(
             raise ValueError("goal intent Decision must have exactly one ContextItem projection")
         context = matching_contexts[0]
         expected_status = (
-            DecisionStatus.UNCERTAIN
-            if kind == "unresolved_question"
-            else DecisionStatus.ACTIVE
+            DecisionStatus.UNCERTAIN if kind == "unresolved_question" else DecisionStatus.ACTIVE
         )
         retired = decision.status == DecisionStatus.SUPERSEDED
         expected_context_status = (
@@ -4149,19 +4123,13 @@ def _prospective_goal_intent_hash(
 ) -> str:
     invalid_kinds = replace_ledger_kinds - _GOAL_LEDGER_KINDS
     if invalid_kinds:
-        raise ValueError(
-            f"goal ledger replacement kind is invalid: {sorted(invalid_kinds)[0]}"
-        )
+        raise ValueError(f"goal ledger replacement kind is invalid: {sorted(invalid_kinds)[0]}")
     incoming = canonical_goal_intent_payload(
         goal,
         decisions=[pair[0] for pair in projections],
         context_items=[pair[1] for pair in projections],
     )["ledger"]
-    ledger = [
-        dict(item)
-        for item in current_ledger
-        if item["kind"] not in replace_ledger_kinds
-    ]
+    ledger = [dict(item) for item in current_ledger if item["kind"] not in replace_ledger_kinds]
     seen = {(item["kind"], item["statement"].strip().casefold()) for item in ledger}
     for item in incoming:
         key = (item["kind"], item["statement"].strip().casefold())
@@ -4194,9 +4162,7 @@ def _goal_ledger_projections_from_entries(
         if kind not in _GOAL_LEDGER_KINDS:
             raise ValueError("goal ledger inheritance kind is invalid")
         expected_status = (
-            DecisionStatus.UNCERTAIN
-            if kind == "unresolved_question"
-            else DecisionStatus.ACTIVE
+            DecisionStatus.UNCERTAIN if kind == "unresolved_question" else DecisionStatus.ACTIVE
         )
         if entry["status"] != expected_status.value:
             raise ValueError("goal ledger inheritance status is invalid")
@@ -4544,12 +4510,8 @@ async def _configure_connection(connection: aiosqlite.Connection) -> None:
     # Both settings are connection-local in the ways that matter to PEX's
     # short-lived writer connections.  Relying on SQLite defaults allowed a
     # reset WAL to retain hundreds of MiB of allocated space indefinitely.
-    await connection.execute(
-        f"PRAGMA wal_autocheckpoint={SQLITE_WAL_AUTOCHECKPOINT_PAGES}"
-    )
-    await connection.execute(
-        f"PRAGMA journal_size_limit={SQLITE_JOURNAL_SIZE_LIMIT_BYTES}"
-    )
+    await connection.execute(f"PRAGMA wal_autocheckpoint={SQLITE_WAL_AUTOCHECKPOINT_PAGES}")
+    await connection.execute(f"PRAGMA journal_size_limit={SQLITE_JOURNAL_SIZE_LIMIT_BYTES}")
 
 
 def _audit_projection_payload(value: dict[str, Any]) -> str:
@@ -4643,9 +4605,7 @@ _SHARED_DELIVERY_SCOPE_KEYS = frozenset(
 )
 
 
-def _validate_shared_delivery_scope_update(
-    reserved: Intervention, finalized: Intervention
-) -> None:
+def _validate_shared_delivery_scope_update(reserved: Intervention, finalized: Intervention) -> None:
     """Permit one validated shared delivery scope to be sealed with its receipt."""
 
     before = (reserved.metadata or {}).get("shared_delivery_scope")
@@ -4685,9 +4645,7 @@ def _validate_shared_delivery_scope_update(
             raise ValueError("shared delivery scope is corrupt") from exc
     for field in ("project_id", "cwd"):
         try:
-            value = bounded_adapter_binding(
-                after[field], field=f"shared delivery {field}"
-            )
+            value = bounded_adapter_binding(after[field], field=f"shared delivery {field}")
             if value != after[field]:
                 raise ValueError("shared delivery scope is corrupt")
         except (KeyError, TypeError, ValueError) as exc:
@@ -4701,9 +4659,7 @@ def _validate_shared_delivery_scope_result_binding(
 
     intervention_scope = (intervention.metadata or {}).get("shared_delivery_scope")
     effect_scope = (
-        effect_result.get("shared_delivery_scope")
-        if isinstance(effect_result, dict)
-        else None
+        effect_result.get("shared_delivery_scope") if isinstance(effect_result, dict) else None
     )
     if intervention_scope is None and effect_scope is None:
         return
@@ -4770,9 +4726,7 @@ def _validate_event_observation_update(
                 continue
             if not existing_has_key and not observed_has_key:
                 continue
-            raise ValueError(
-                "event observation cannot rewrite causal continuation proof"
-            )
+            raise ValueError("event observation cannot rewrite causal continuation proof")
         if existing_metadata.get(key) != observed_metadata.get(key):
             raise ValueError(f"event observation cannot change intervention metadata {key}")
 
@@ -4881,8 +4835,10 @@ def _merge_event_session_projection(
         merged.metadata["observation_coverage"] = json.loads(
             _canonical_json(observer["observation_coverage"])
         )
-    if accepted is not None and current.status == accepted.status and not (
-        observer_matches and current_newer
+    if (
+        accepted is not None
+        and current.status == accepted.status
+        and not (observer_matches and current_newer)
     ):
         merged.status = planned.status
     if current.last_activity and (
@@ -7024,12 +6980,14 @@ async def _require_session_workspace_current(
     """
     try:
         cursor = await transaction.execute(
-            "SELECT json, project_binding FROM sessions WHERE id = ?", (snapshot.id,),
+            "SELECT json, project_binding FROM sessions WHERE id = ?",
+            (snapshot.id,),
         )
         session_row = await cursor.fetchone()
         current = HarnessSession.model_validate_json(session_row["json"]) if session_row else None
         cursor = await transaction.execute(
-            "SELECT * FROM observer_workspace_authorities WHERE session_id = ?", (snapshot.id,),
+            "SELECT * FROM observer_workspace_authorities WHERE session_id = ?",
+            (snapshot.id,),
         )
         authority = await cursor.fetchone()
         current_has_workspace = current is not None and "workspace_binding" in current.metadata
@@ -7037,8 +6995,10 @@ async def _require_session_workspace_current(
         if authority is None and not current_has_workspace and not snapshot_has_workspace:
             return None
         if (
-            authority is None or current is None
-            or not current_has_workspace or not snapshot_has_workspace
+            authority is None
+            or current is None
+            or not current_has_workspace
+            or not snapshot_has_workspace
         ):
             raise ValueError("workspace receipt has no matching durable publication witness")
         workspace = WorkspaceBinding.model_validate_json(authority["workspace_json"])
@@ -7081,36 +7041,44 @@ async def _require_session_workspace_current(
                 raise ValueError("workspace locator has no registered identity")
             identity_id = workspace.project_binding.removeprefix("identity:")
             cursor = await transaction.execute(
-                "SELECT json FROM project_identities WHERE id = ?", (identity_id,),
+                "SELECT json FROM project_identities WHERE id = ?",
+                (identity_id,),
             )
             identity_row = await cursor.fetchone()
             cursor = await transaction.execute(
                 "SELECT fingerprint, json FROM project_locators WHERE project_identity_id = ? "
-                "ORDER BY fingerprint", (identity_id,),
+                "ORDER BY fingerprint",
+                (identity_id,),
             )
             locator_rows = await cursor.fetchall()
             selected = next(
                 (
-                    row for row in locator_rows
+                    row
+                    for row in locator_rows
                     if row["fingerprint"] == workspace.locator.fingerprint
                 ),
                 None,
             )
             if (
-                identity_row is None or selected is None
-                or workspace.locator.fingerprint not in ProjectIdentity.model_validate_json(
+                identity_row is None
+                or selected is None
+                or workspace.locator.fingerprint
+                not in ProjectIdentity.model_validate_json(
                     identity_row["json"]
                 ).locator_fingerprints
-                or _canonical_json(ProjectLocator.model_validate_json(selected["json"]).model_dump(
-                    mode="json"
-                )) != _canonical_json(workspace.locator.model_dump(mode="json"))
+                or _canonical_json(
+                    ProjectLocator.model_validate_json(selected["json"]).model_dump(mode="json")
+                )
+                != _canonical_json(workspace.locator.model_dump(mode="json"))
             ):
                 raise ValueError("selected workspace locator changed")
             locators = [ProjectLocator.model_validate_json(row["json"]) for row in locator_rows]
         raw_path = authority["local_origin_path"]
         if (
-            not isinstance(raw_path, str) or not raw_path
-            or len(raw_path) > 8192 or "\x00" in raw_path
+            not isinstance(raw_path, str)
+            or not raw_path
+            or len(raw_path) > 8192
+            or "\x00" in raw_path
         ):
             raise ValueError("trusted local origin path is invalid")
         origin_path = Path(raw_path)
@@ -7132,14 +7100,16 @@ async def _require_session_workspace_current(
 
 
 async def _require_processing_workspace_current(
-    transaction: aiosqlite.Connection, processing: dict[str, Any],
+    transaction: aiosqlite.Connection,
+    processing: dict[str, Any],
 ) -> None:
     accepted = processing.get("accepted_session")
     if isinstance(accepted, HarnessSession):
         await _require_session_workspace_current(transaction, accepted)
         return
     cursor = await transaction.execute(
-        "SELECT json FROM sessions WHERE id = ?", (processing["session_id"],),
+        "SELECT json FROM sessions WHERE id = ?",
+        (processing["session_id"],),
     )
     row = await cursor.fetchone()
     cursor = await transaction.execute(
@@ -7174,9 +7144,7 @@ async def _autonomous_correction_scope(
     ):
         raise ValueError("session is not eligible for autonomous corrections")
     goal, goal_binding = await _load_bound_goal(transaction, session.goal_id)
-    if goal.paused or await _has_authoritative_goal_successor(
-        transaction, goal, goal_binding
-    ):
+    if goal.paused or await _has_authoritative_goal_successor(transaction, goal, goal_binding):
         raise ValueError("goal is not eligible for autonomous corrections")
     witnessed = await _require_session_workspace_current(transaction, session)
     if witnessed is None:
@@ -7274,16 +7242,23 @@ async def _active_autonomous_correction_grant(
 
 
 async def _prepare_main_effect_payload(
-    transaction: aiosqlite.Connection, processing: dict[str, Any], *,
-    intervention_id: str, action: dict[str, Any], required_capability: Any,
+    transaction: aiosqlite.Connection,
+    processing: dict[str, Any],
+    *,
+    intervention_id: str,
+    action: dict[str, Any],
+    required_capability: Any,
 ) -> dict[str, Any]:
     payload = {
-        "schema": "pex.worker-effect.v1", "event_id": processing["event_id"],
-        "intervention_id": intervention_id, "action": action,
+        "schema": "pex.worker-effect.v1",
+        "event_id": processing["event_id"],
+        "intervention_id": intervention_id,
+        "action": action,
         "required_capability": required_capability,
     }
     cursor = await transaction.execute(
-        "SELECT json FROM sessions WHERE id = ?", (processing["session_id"],),
+        "SELECT json FROM sessions WHERE id = ?",
+        (processing["session_id"],),
     )
     row = await cursor.fetchone()
     current = HarnessSession.model_validate_json(row["json"]) if row else None
@@ -7292,7 +7267,8 @@ async def _prepare_main_effect_payload(
     if not any(codex_correction.requires_correction(item, action) for item in candidates):
         return payload
     if (
-        current is None or not isinstance(accepted, HarnessSession)
+        current is None
+        or not isinstance(accepted, HarnessSession)
         or not codex_correction.requires_correction(current, action)
         or not codex_correction.requires_correction(accepted, action)
         or current.goal_id != accepted.goal_id
@@ -7307,8 +7283,11 @@ async def _prepare_main_effect_payload(
     payload["codex_correction"] = codex_correction.build_correction(
         event_id=processing["event_id"],
         effect_id=stable_event_effect_id(processing["event_id"], "main"),
-        intervention_id=intervention_id, action=action, required_capability=required_capability,
-        session=accepted, workspace=workspace,
+        intervention_id=intervention_id,
+        action=action,
+        required_capability=required_capability,
+        session=accepted,
+        workspace=workspace,
     )
     return payload
 
@@ -7452,9 +7431,7 @@ class Store:
             try:
                 parsed_at = datetime.fromisoformat(initialized_at)
             except ValueError as exc:
-                raise RuntimeError(
-                    "goal control operation migration timestamp is invalid"
-                ) from exc
+                raise RuntimeError("goal control operation migration timestamp is invalid") from exc
             if parsed_at.tzinfo is None or parsed_at.utcoffset() is None:
                 raise RuntimeError("goal control operation migration timestamp is invalid")
             expected = {
@@ -7468,9 +7445,7 @@ class Store:
             try:
                 payload = _strict_json_loads(str(row["json"]))
             except (TypeError, ValueError, json.JSONDecodeError) as exc:
-                raise RuntimeError(
-                    "goal control operation migration marker is corrupt"
-                ) from exc
+                raise RuntimeError("goal control operation migration marker is corrupt") from exc
             if (
                 row["schema_version"] != 1
                 or payload != expected
@@ -7570,9 +7545,7 @@ class Store:
             legacy_operation_ids = [str(row["operation_id"]) for row in legacy_rows]
             if (
                 len(legacy_rows) != marker["legacy_operation_count"]
-                or hashlib.sha256(
-                    _canonical_json(legacy_operation_ids).encode("utf-8")
-                ).hexdigest()
+                or hashlib.sha256(_canonical_json(legacy_operation_ids).encode("utf-8")).hexdigest()
                 != marker["legacy_operation_set_hash"]
             ):
                 raise RuntimeError("goal control attention legacy snapshot is corrupt")
@@ -7645,9 +7618,7 @@ class Store:
 
         await self.db.execute("BEGIN IMMEDIATE")
         try:
-            columns_cursor = await self.db.execute(
-                "PRAGMA table_info(human_decision_resolutions)"
-            )
+            columns_cursor = await self.db.execute("PRAGMA table_info(human_decision_resolutions)")
             columns = {str(row["name"]) for row in await columns_cursor.fetchall()}
             if "delivery_contract_version" not in columns:
                 await self.db.execute(
@@ -7904,10 +7875,7 @@ class Store:
                         raise RuntimeError("stored bound ContextItem is corrupt")
                     continue
                 if not context_backfill:
-                    if (
-                        row["project_binding"] is not None
-                        and row["goal_id"] != item.goal_id
-                    ):
+                    if row["project_binding"] is not None and row["goal_id"] != item.goal_id:
                         raise RuntimeError("stored context scalar goal binding is corrupt")
                     continue
                 context_binding = row["project_binding"] or _legacy_artifact_project_binding(
@@ -7946,8 +7914,7 @@ class Store:
                 if row["goal_id"] not in {None, item.goal_id}:
                     raise RuntimeError("stored context scalar goal binding is corrupt")
                 await self.db.execute(
-                    "UPDATE context_items SET project_binding = ?, goal_id = ? "
-                    "WHERE id = ?",
+                    "UPDATE context_items SET project_binding = ?, goal_id = ? WHERE id = ?",
                     (context_binding, item.goal_id, item.id),
                 )
 
@@ -8276,9 +8243,7 @@ class Store:
             if boundary_row is not None:
                 try:
                     boundary = _strict_json_loads(str(boundary_row["json"]))
-                    initialized_at = datetime.fromisoformat(
-                        str(boundary_row["initialized_at"])
-                    )
+                    initialized_at = datetime.fromisoformat(str(boundary_row["initialized_at"]))
                 except (TypeError, ValueError) as exc:
                     raise RuntimeError("goal intent migration boundary is corrupt") from exc
                 if (
@@ -8289,8 +8254,7 @@ class Store:
                         "initialized_at",
                         "legacy_goal_action_cardinality",
                     }
-                    or boundary.get("schema")
-                    != "pex.goal-intent-migration-state.v1"
+                    or boundary.get("schema") != "pex.goal-intent-migration-state.v1"
                     or boundary.get("initialized_at") != boundary_row["initialized_at"]
                     or boundary.get("legacy_goal_action_cardinality") != "unknown"
                     or initialized_at.tzinfo is None
@@ -8328,9 +8292,7 @@ class Store:
                                 "stored goal intent authority was erased after migration"
                             ) from exc
                         continue
-                    raise RuntimeError(
-                        "stored goal intent authority cannot be validated"
-                    ) from exc
+                    raise RuntimeError("stored goal intent authority cannot be validated") from exc
 
                 if raw_revision is None and raw_hash is None:
                     if boundary_exists:
@@ -8473,7 +8435,8 @@ class Store:
                 raise RuntimeError("intervention binding migration marker is corrupt") from exc
             if (
                 not isinstance(marker, dict)
-                or marker != {
+                or marker
+                != {
                     "initialized_at": marker_row["initialized_at"],
                     "legacy_unbound_count": marker_row["legacy_unbound_count"],
                     "schema": "pex.intervention-binding-migration.v1",
@@ -9328,8 +9291,7 @@ class Store:
                 )
             if "accepted_goal_intent_revision" not in columns:
                 await self.db.execute(
-                    "ALTER TABLE event_processing ADD COLUMN "
-                    "accepted_goal_intent_revision INTEGER"
+                    "ALTER TABLE event_processing ADD COLUMN accepted_goal_intent_revision INTEGER"
                 )
             if "accepted_goal_intent_hash" not in columns:
                 await self.db.execute(
@@ -9656,16 +9618,14 @@ class Store:
                     handoff_intervention: Intervention | None = None
                     if effect["action_kind"] == OPERATOR_HANDOFF_ACTION:
                         handoff_payload = effect["payload"]
-                        _, handoff_intervention, _ = (
-                            await self._validate_operator_handoff_effect(
-                                transaction,
-                                effect,
-                                principal_id=str(effect["principal_id"]),
-                                idempotency_key=str(effect["idempotency_key"]),
-                                source_session_id=str(effect["source_session_id"]),
-                                target_session_id=str(effect["target_session_id"]),
-                                token_budget=int(handoff_payload.get("token_budget")),
-                            )
+                        _, handoff_intervention, _ = await self._validate_operator_handoff_effect(
+                            transaction,
+                            effect,
+                            principal_id=str(effect["principal_id"]),
+                            idempotency_key=str(effect["idempotency_key"]),
+                            source_session_id=str(effect["source_session_id"]),
+                            target_session_id=str(effect["target_session_id"]),
+                            token_budget=int(handoff_payload.get("token_budget")),
                         )
                     updated = await transaction.execute(
                         "UPDATE operator_effects SET state = 'delivery_uncertain', "
@@ -10332,8 +10292,7 @@ class Store:
             raise ValueError("project identity conflict offset is invalid")
         async with self._committed_connection() as committed:
             count_cursor = await committed.execute(
-                "SELECT COUNT(*) AS count FROM legacy_project_bindings "
-                "WHERE status = 'quarantined'"
+                "SELECT COUNT(*) AS count FROM legacy_project_bindings WHERE status = 'quarantined'"
             )
             count_row = await count_cursor.fetchone()
             total = int(count_row["count"]) if count_row is not None else 0
@@ -10824,9 +10783,7 @@ class Store:
                 await cursor.close()
         return _BufferedCursor(rows)
 
-    async def _committed_fetchone(
-        self, sql: str, params: tuple = ()
-    ) -> aiosqlite.Row | None:
+    async def _committed_fetchone(self, sql: str, params: tuple = ()) -> aiosqlite.Row | None:
         async with self._committed_connection() as connection:
             cursor = await connection.execute(sql, params)
             return await cursor.fetchone()
@@ -11435,12 +11392,10 @@ class Store:
                         if _time_key(goal.updated_at) < _time_key(current.updated_at):
                             raise ValueError("stale goal update rejected")
                         goal_binding = current_binding
-                        current_decisions, current_context = (
-                            await _load_goal_intent_artifacts(
-                                transaction,
-                                current,
-                                current_binding,
-                            )
+                        current_decisions, current_context = await _load_goal_intent_artifacts(
+                            transaction,
+                            current,
+                            current_binding,
                         )
                         current_ledger = canonical_goal_intent_payload(
                             current,
@@ -11470,12 +11425,10 @@ class Store:
                         if operation_template is not None and (
                             not current.paused or not goal.paused
                         ):
-                            attention_session_ids = (
-                                await _live_controllable_session_ids_for_goal(
-                                    transaction,
-                                    current,
-                                    current_binding,
-                                )
+                            attention_session_ids = await _live_controllable_session_ids_for_goal(
+                                transaction,
+                                current,
+                                current_binding,
                             )
                         final_revision = current_revision + 1
                         patch_current_revision = current_revision
@@ -11495,12 +11448,10 @@ class Store:
                                 "successor goal project identity changed",
                                 code="artifact_project_identity_changed",
                             )
-                        current_decisions, current_context = (
-                            await _load_goal_intent_artifacts(
-                                transaction,
-                                current,
-                                current_binding,
-                            )
+                        current_decisions, current_context = await _load_goal_intent_artifacts(
+                            transaction,
+                            current,
+                            current_binding,
                         )
                         current_ledger = canonical_goal_intent_payload(
                             current,
@@ -11544,12 +11495,10 @@ class Store:
                         if operation_template is not None and (
                             not current.paused or not goal.paused
                         ):
-                            attention_session_ids = (
-                                await _live_controllable_session_ids_for_goal(
-                                    transaction,
-                                    current,
-                                    current_binding,
-                                )
+                            attention_session_ids = await _live_controllable_session_ids_for_goal(
+                                transaction,
+                                current,
+                                current_binding,
                             )
                         replacement_cursor = await transaction.execute(
                             "SELECT 1 FROM goals WHERE id = ?",
@@ -11658,12 +11607,12 @@ class Store:
                         mode=(
                             "override"
                             if mode == "supersede"
-                            else "update" if mode == "patch" else "create"
+                            else "update"
+                            if mode == "patch"
+                            else "create"
                         ),
                         changed=True,
-                        predecessor_goal_id=(
-                            goal.supersedes if mode == "supersede" else None
-                        ),
+                        predecessor_goal_id=(goal.supersedes if mode == "supersede" else None),
                         before_intent_revision=mutation_before_revision,
                         after_intent_revision=final_revision,
                         before_intent_hash=mutation_before_hash,
@@ -11756,9 +11705,7 @@ class Store:
         )
 
     async def get_goal(self, goal_id: str) -> Goal | None:
-        row = await self._committed_fetchone(
-            "SELECT json FROM goals WHERE id = ?", (goal_id,)
-        )
+        row = await self._committed_fetchone("SELECT json FROM goals WHERE id = ?", (goal_id,))
         return Goal.model_validate_json(row["json"]) if row else None
 
     async def get_goal_intent_view(self, goal_id: str) -> dict[str, Any] | None:
@@ -12307,7 +12254,8 @@ class Store:
                 raise
 
     async def require_session_workspace_current(
-        self, session: HarnessSession,
+        self,
+        session: HarnessSession,
     ) -> tuple[WorkspaceBinding, Path] | None:
         """Return the validated workspace/path witness, or None for unbound legacy.
 
@@ -12418,7 +12366,8 @@ class Store:
                 )
                 locator_row = await cursor.fetchone()
                 cursor = await tx.execute(
-                    "SELECT json FROM project_identities WHERE id = ?", (identity_id,),
+                    "SELECT json FROM project_identities WHERE id = ?",
+                    (identity_id,),
                 )
                 identity_row = await cursor.fetchone()
                 if (
@@ -12429,21 +12378,25 @@ class Store:
                     )
                     != workspace.locator.model_dump(mode="json")
                     or identity_row is None
-                    or workspace.locator.fingerprint not in ProjectIdentity.model_validate_json(
+                    or workspace.locator.fingerprint
+                    not in ProjectIdentity.model_validate_json(
                         identity_row["json"]
                     ).locator_fingerprints
                 ):
                     raise ValueError("observer selected project locator changed")
                 cursor = await tx.execute(
                     "SELECT json FROM project_locators WHERE project_identity_id = ? "
-                    "ORDER BY fingerprint", (identity_id,),
+                    "ORDER BY fingerprint",
+                    (identity_id,),
                 )
                 locators = [
                     ProjectLocator.model_validate_json(item["json"])
                     for item in await cursor.fetchall()
                 ]
                 require_local_locator_consistency(
-                    locators, workspace.origin_choice, workspace.directory,
+                    locators,
+                    workspace.origin_choice,
+                    workspace.directory,
                 )
             # Last authority sample, after every awaited durable read and before
             # writing. This is not an OS lock on the worker's directory handle.
@@ -12512,7 +12465,8 @@ class Store:
                                 "observer workspace requires renewed selected authority"
                             )
                         if workspace is None and proposed_workspace not in (
-                            None, previous_workspace,
+                            None,
+                            previous_workspace,
                         ):
                             raise ValueError("observer workspace receipt cannot be replaced")
                         if reducing and "workspace_binding" not in incoming.metadata:
@@ -12563,14 +12517,19 @@ class Store:
                     ):
                         incoming.last_activity = current.last_activity
                     observer_metadata_keys = {
-                        "existing_session", "connection_kind", "subscription_receipt",
-                        "history_replayed_as_live", "delivery_proven", "observation_coverage",
+                        "existing_session",
+                        "connection_kind",
+                        "subscription_receipt",
+                        "history_replayed_as_live",
+                        "delivery_proven",
+                        "observation_coverage",
                         "workspace_binding",
                     }
                     incoming.metadata = {
                         **current.metadata,
                         **{
-                            key: value for key, value in incoming.metadata.items()
+                            key: value
+                            for key, value in incoming.metadata.items()
                             if key in observer_metadata_keys
                         },
                     }
@@ -12618,8 +12577,10 @@ class Store:
                     await tx.execute(
                         "INSERT INTO events(event_id, session_id, ts, json) VALUES (?, ?, ?, ?)",
                         (
-                            lifecycle.event_id, incoming.id,
-                            lifecycle.ts.isoformat(), _dump(lifecycle),
+                            lifecycle.event_id,
+                            incoming.id,
+                            lifecycle.ts.isoformat(),
+                            _dump(lifecycle),
                         ),
                     )
                 await tx.commit()
@@ -12678,18 +12639,32 @@ class Store:
         if canonical_cwd(receipt.get("cwd")) != target_cwd:
             raise ValueError("observer retention receipt cwd changed")
         snapshot_keys = {
-            "schema", "subscription_receipt", "status", "last_activity", "observation_coverage",
+            "schema",
+            "subscription_receipt",
+            "status",
+            "last_activity",
+            "observation_coverage",
         }
         if "workspace_binding" in binding_session.metadata:
             snapshot_keys.add("workspace_binding")
         coverage_keys = {
-            "schema", "state", "scope", "raw_stream_complete", "history_replayed_as_live",
-            "durable_before_ingest", "last_observed_live_sequence", "last_ingested_live_sequence",
-            "pending_normalized_events", "unobserved_event_count", "reason",
+            "schema",
+            "state",
+            "scope",
+            "raw_stream_complete",
+            "history_replayed_as_live",
+            "durable_before_ingest",
+            "last_observed_live_sequence",
+            "last_ingested_live_sequence",
+            "pending_normalized_events",
+            "unobserved_event_count",
+            "reason",
         }
         retention_coverage_keys = {
-            "disconnect_retention_state", "disconnect_retention_error",
-            "retained_after_disconnect_count", "last_retained_live_sequence",
+            "disconnect_retention_state",
+            "disconnect_retention_error",
+            "retained_after_disconnect_count",
+            "last_retained_live_sequence",
         }
         retained: list[HarnessEvent] = []
         seen_ids: set[str] = set()
@@ -12811,7 +12786,8 @@ class Store:
                     ):
                         raise ValueError("observer retention event project changed")
                     cursor = await tx.execute(
-                        "SELECT json FROM events WHERE event_id = ?", (event.event_id,),
+                        "SELECT json FROM events WHERE event_id = ?",
+                        (event.event_id,),
                     )
                     existing_row = await cursor.fetchone()
                     if existing_row is not None:
@@ -12895,8 +12871,7 @@ class Store:
             if not isinstance(path, str) or not path or len(path) > 512:
                 raise ValueError("acceptance baseline file path is invalid")
             if digest is not None and (
-                not isinstance(digest, str)
-                or _SHA256_PATTERN.fullmatch(digest) is None
+                not isinstance(digest, str) or _SHA256_PATTERN.fullmatch(digest) is None
             ):
                 raise ValueError("acceptance baseline digest is invalid")
             normalized[path] = digest
@@ -13055,14 +13030,9 @@ class Store:
         )
         rows = await cursor.fetchall()
         await cursor.close()
-        return {
-            str(row["id"]): _session_control_receipt(row)
-            for row in rows
-        }
+        return {str(row["id"]): _session_control_receipt(row) for row in rows}
 
-    async def get_autonomous_correction_grant_status(
-        self, session_id: str
-    ) -> dict[str, Any]:
+    async def get_autonomous_correction_grant_status(self, session_id: str) -> dict[str, Any]:
         """Return derived standing authority without changing observer capabilities."""
 
         _validate_store_id(session_id, label="autonomous correction session id")
@@ -13173,19 +13143,18 @@ class Store:
             "expected_goal_intent_hash": expected_goal_intent_hash,
             "expected_project_binding": expected_project_binding,
             "expected_workspace_sha256": expected_workspace_sha256,
-            "expected_subscription_authorization_id": (
-                expected_subscription_authorization_id
-            ),
+            "expected_subscription_authorization_id": (expected_subscription_authorization_id),
             "expected_connection_generation": expected_connection_generation,
         }
-        request_hash = hashlib.sha256(
-            _canonical_json(request).encode("utf-8")
-        ).hexdigest()
-        operation_id = "autonomous_correction_" + hashlib.sha256(
-            _canonical_json(
-                [AUTONOMOUS_CORRECTION_GRANT_SCHEMA, principal_id, idempotency_key]
-            ).encode("utf-8")
-        ).hexdigest()[:40]
+        request_hash = hashlib.sha256(_canonical_json(request).encode("utf-8")).hexdigest()
+        operation_id = (
+            "autonomous_correction_"
+            + hashlib.sha256(
+                _canonical_json(
+                    [AUTONOMOUS_CORRECTION_GRANT_SCHEMA, principal_id, idempotency_key]
+                ).encode("utf-8")
+            ).hexdigest()[:40]
+        )
 
         async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
             await _configure_connection(transaction)
@@ -13224,16 +13193,12 @@ class Store:
                     "goal_intent_hash": expected_goal_intent_hash,
                     "project_binding": expected_project_binding,
                     "workspace_sha256": expected_workspace_sha256,
-                    "subscription_authorization_id": (
-                        expected_subscription_authorization_id
-                    ),
+                    "subscription_authorization_id": (expected_subscription_authorization_id),
                     "connection_generation": expected_connection_generation,
                 }
                 if any(scope[name] != value for name, value in expected.items()):
                     raise ValueError("autonomous correction grant scope changed")
-                current = await _active_autonomous_correction_grant(
-                    transaction, session_row
-                )
+                current = await _active_autonomous_correction_grant(transaction, session_row)
                 if await _autonomous_correction_scope(transaction, session_row) != scope:
                     raise WorkspaceAuthorityError(
                         "autonomous correction scope changed during grant commit"
@@ -13257,9 +13222,7 @@ class Store:
                 final_session_row = await final_session_cursor.fetchone()
                 if (
                     final_session_row is None
-                    or await _autonomous_correction_scope(
-                        transaction, final_session_row
-                    )
+                    or await _autonomous_correction_scope(transaction, final_session_row)
                     != final_scope
                 ):
                     raise WorkspaceAuthorityError(
@@ -13488,11 +13451,9 @@ class Store:
                 goal_authority_row = await goal_authority_cursor.fetchone()
                 if goal_authority_row is None:  # pragma: no cover - snapshot invariant
                     raise RuntimeError("attachment goal authority disappeared")
-                goal_intent_revision, goal_intent_hash = (
-                    _validate_goal_intent_scalar_pair(
-                        goal_authority_row["intent_revision"],
-                        goal_authority_row["intent_hash"],
-                    )
+                goal_intent_revision, goal_intent_hash = _validate_goal_intent_scalar_pair(
+                    goal_authority_row["intent_revision"],
+                    goal_authority_row["intent_hash"],
                 )
                 if (
                     expected_goal_intent_revision is not None
@@ -13566,10 +13527,7 @@ class Store:
                     }
 
                 current_goal_id = session.goal_id
-                if (
-                    expected_goal_id is not None
-                    and current_goal_id != expected_goal_id
-                ):
+                if expected_goal_id is not None and current_goal_id != expected_goal_id:
                     await transaction.rollback()
                     return {
                         **receipt,
@@ -13868,9 +13826,7 @@ class Store:
                     raise RuntimeError("session supervision CAS was lost")
                 action_receipt: dict[str, Any] | None = None
                 if principal_id is not None:
-                    action_kind = (
-                        "pause_supervision" if paused else "resume_supervision"
-                    )
+                    action_kind = "pause_supervision" if paused else "resume_supervision"
                     after_control_revision = control_revision + 1
                     receipt_key = _canonical_json(
                         {
@@ -15094,9 +15050,7 @@ class Store:
                         )
                         matches: list[dict[str, Any]] = []
                         for handoff in indexed:
-                            bundle_items = {
-                                item.id: item for item in handoff["bundle"].items
-                            }
+                            bundle_items = {item.id: item for item in handoff["bundle"].items}
                             transferred = bundle_items.get(evidence_context.id)
                             if transferred is not None and transferred == evidence_context:
                                 matches.append(handoff)
@@ -15410,9 +15364,7 @@ class Store:
                     )
                     resolution_row = await resolution_cursor.fetchone()
                     if resolution_row is not None:
-                        current_resolution = _validate_human_decision_resolution_row(
-                            resolution_row
-                        )
+                        current_resolution = _validate_human_decision_resolution_row(resolution_row)
                         decision_cursor = await transaction.execute(
                             "SELECT json FROM decisions WHERE id = ?",
                             (str(current_resolution.get("decision_id") or ""),),
@@ -16231,9 +16183,7 @@ class Store:
                     sessions.append(session)
 
                 attached_ids = {
-                    session.id
-                    for session in sessions
-                    if session.status != SessionStatus.DETACHED
+                    session.id for session in sessions if session.status != SessionStatus.DETACHED
                 }
                 processing_cursor = await transaction.execute(
                     "SELECT p.*, e.ts AS event_ts FROM event_processing AS p "
@@ -18430,7 +18380,10 @@ class Store:
         return recovered
 
     async def add_event(
-        self, event: HarnessEvent, *, bind_observation: bool = False,
+        self,
+        event: HarnessEvent,
+        *,
+        bind_observation: bool = False,
     ) -> bool:
         """Retain an event; optionally bind fresh live progress for projection.
 
@@ -18637,7 +18590,10 @@ class Store:
                     ):
                         raise ValueError("trusted observer subscription changed before acceptance")
                     expected_observer_keys = {
-                        "schema", "subscription_receipt", "status", "last_activity",
+                        "schema",
+                        "subscription_receipt",
+                        "status",
+                        "last_activity",
                         "observation_coverage",
                     }
                     if "workspace_binding" in stored_session.metadata:
@@ -19287,9 +19243,7 @@ class Store:
                         require_goal_binding=True,
                     )
                 except LookupError as exc:
-                    raise PermissionError(
-                        "operator message session binding disappeared"
-                    ) from exc
+                    raise PermissionError("operator message session binding disappeared") from exc
                 if session.status == SessionStatus.DETACHED:
                     raise PermissionError("operator message session is detached")
                 if session.supervision_paused:
@@ -19318,9 +19272,7 @@ class Store:
                         str(effect["goal_id"]),
                     )
                 except LookupError as exc:
-                    raise PermissionError(
-                        "operator message goal binding disappeared"
-                    ) from exc
+                    raise PermissionError("operator message goal binding disappeared") from exc
                 if goal.paused:
                     raise PermissionError("operator message goal is paused")
                 if await _has_authoritative_goal_successor(
@@ -19704,8 +19656,7 @@ class Store:
             or intervention.proposed_action.payload != {"bundle": bundle.model_dump(mode="json")}
             or intervention.metadata.get("operator_effect_id") != expected_effect_id
             or intervention_envelope.get("project_id") != intervention_row["project_id"]
-            or intervention_envelope.get("project_binding")
-            != intervention_row["project_binding"]
+            or intervention_envelope.get("project_binding") != intervention_row["project_binding"]
             or intervention_envelope.get("vendor_session_id")
             != intervention_row["vendor_session_id"]
             or intervention_envelope.get("harness_type") != intervention_row["harness_type"]
@@ -19784,9 +19735,7 @@ class Store:
             result = effect.get("result")
             if not isinstance(result, dict):
                 raise RuntimeError("stored handoff terminal result is invalid")
-            expected_result = str(
-                result.get("reason") or f"handoff_{state}"
-            )
+            expected_result = str(result.get("reason") or f"handoff_{state}")
             expected_action = InterventionType.NOOP.value
             expected_audit = f"handoff_delivery_{state}"
         else:
@@ -19816,8 +19765,7 @@ class Store:
         if (
             intervention.result != expected_result
             or intervention.action_taken != expected_action
-            or intervention.metadata.get("handoff_delivery_status")
-            != state
+            or intervention.metadata.get("handoff_delivery_status") != state
             or intervention.metadata.get("worker_delivery_receipt") != receipt
             or audit_row["record_type"] != expected_audit
             or not isinstance(audit, dict)
@@ -19831,14 +19779,9 @@ class Store:
             raise RuntimeError("stored handoff terminal projection is corrupt")
         if state not in {"reserved", "skipped"}:
             watermark = await self._load_handoff_dispatch_watermark(connection, effect)
-            if (
-                watermark is None
-                or (
-                    effect.get("delivery_contract_version")
-                    == OPERATOR_DELIVERY_CONTRACT_EXACT_TURN
-                    and watermark.get("schema")
-                    != "pex.handoff-dispatch-watermark.v2"
-                )
+            if watermark is None or (
+                effect.get("delivery_contract_version") == OPERATOR_DELIVERY_CONTRACT_EXACT_TURN
+                and watermark.get("schema") != "pex.handoff-dispatch-watermark.v2"
             ):
                 raise RuntimeError("stored handoff dispatch authority is missing")
         return bundle, intervention, event
@@ -20036,10 +19979,10 @@ class Store:
                     raise PermissionError("handoff target cannot inject context")
                 for item in bundle.items:
                     if (
-                        (item.goal_id != goal.id and not is_shared_human_constraint(item))
-                        or await _project_binding_snapshot(transaction, item.project_id)
-                        != goal_project_binding
-                    ):
+                        item.goal_id != goal.id and not is_shared_human_constraint(item)
+                    ) or await _project_binding_snapshot(
+                        transaction, item.project_id
+                    ) != goal_project_binding:
                         raise ValueError("handoff item identity mismatch")
                     if item.sensitivity in {Sensitivity.SECRET, Sensitivity.LOCAL_ONLY}:
                         raise ValueError("handoff item sensitivity is forbidden")
@@ -20385,9 +20328,7 @@ class Store:
                 except ProjectIdentityBlockedError as exc:
                     if exc.code == "project_identity_quarantined":
                         raise
-                    raise PermissionError(
-                        "handoff physical project binding changed"
-                    ) from exc
+                    raise PermissionError("handoff physical project binding changed") from exc
                 except LookupError as exc:
                     raise PermissionError("handoff session binding disappeared") from exc
                 if (
@@ -20619,15 +20560,9 @@ class Store:
                 watermark.update(
                     {
                         "candidate_index_schema": candidate_manifest["schema"],
-                        "context_candidate_count": candidate_manifest[
-                            "context_candidate_count"
-                        ],
-                        "artifact_candidate_count": candidate_manifest[
-                            "artifact_candidate_count"
-                        ],
-                        "candidate_index_digest": candidate_manifest[
-                            "candidate_index_digest"
-                        ],
+                        "context_candidate_count": candidate_manifest["context_candidate_count"],
+                        "artifact_candidate_count": candidate_manifest["artifact_candidate_count"],
+                        "candidate_index_digest": candidate_manifest["candidate_index_digest"],
                     }
                 )
                 await transaction.execute(
@@ -20804,11 +20739,7 @@ class Store:
                             "handoff_delivery_result": dict(result),
                             "handoff_finished_at": now,
                             **(
-                                {
-                                    "worker_delivery_receipt": dict(
-                                        worker_delivery_receipt
-                                    )
-                                }
+                                {"worker_delivery_receipt": dict(worker_delivery_receipt)}
                                 if worker_delivery_receipt is not None
                                 else {}
                             ),
@@ -20836,10 +20767,7 @@ class Store:
                     raise RuntimeError("finalized handoff effect disappeared")
                 final = _operator_effect_record(final_row)
                 payload_schema = final["payload"].get("schema")
-                if (
-                    payload_schema == OPERATOR_HANDOFF_ACTOR_PAYLOAD_SCHEMA
-                    and state == "delivered"
-                ):
+                if payload_schema == OPERATOR_HANDOFF_ACTOR_PAYLOAD_SCHEMA and state == "delivered":
                     await _insert_human_operator_action_receipt(transaction, final)
                 else:
                     await _validate_human_operator_action_receipt(transaction, final)
@@ -20911,9 +20839,7 @@ class Store:
         watermark = record["watermark"]
         return {
             "schema": "pex.handoff-context-candidate.v1",
-            "candidate_id": _handoff_context_candidate_id(
-                str(effect["effect_id"]), item.id
-            ),
+            "candidate_id": _handoff_context_candidate_id(str(effect["effect_id"]), item.id),
             "effect_id": str(effect["effect_id"]),
             "handoff_intervention_id": record["intervention"].id,
             "target_session_id": str(effect["target_session_id"]),
@@ -20932,21 +20858,15 @@ class Store:
         path: _ArtifactPath,
     ) -> dict[str, Any]:
         effect = record["effect"]
-        context_candidate_id = _handoff_context_candidate_id(
-            str(effect["effect_id"]), item.id
-        )
+        context_candidate_id = _handoff_context_candidate_id(str(effect["effect_id"]), item.id)
         return {
             "schema": "pex.handoff-artifact-candidate.v1",
-            "candidate_id": _handoff_artifact_candidate_id(
-                str(effect["effect_id"]), item.id, path
-            ),
+            "candidate_id": _handoff_artifact_candidate_id(str(effect["effect_id"]), item.id, path),
             "context_candidate_id": context_candidate_id,
             "effect_id": str(effect["effect_id"]),
             "target_session_id": str(effect["target_session_id"]),
             "goal_id": str(effect["goal_id"]),
-            "target_project_binding": str(
-                record["payload"]["target_project_binding"]
-            ),
+            "target_project_binding": str(record["payload"]["target_project_binding"]),
             "context_item_id": item.id,
             "bundle_digest": _context_bundle_digest(record["bundle"]),
             "dispatch_started_at": str(record["watermark"]["dispatch_started_at"]),
@@ -20954,9 +20874,7 @@ class Store:
             "source_relative_path": path.relative,
             "source_windows_semantics": path.windows_semantics,
             "exact_path_hash": _artifact_path_hash(path.relative),
-            "folded_path_hash": _artifact_path_hash(
-                _windows_artifact_case_key(path.relative)
-            ),
+            "folded_path_hash": _artifact_path_hash(_windows_artifact_case_key(path.relative)),
         }
 
     def _handoff_candidate_manifest_receipt(
@@ -20994,8 +20912,7 @@ class Store:
             source_project_id=str(record["payload"]["source_project_id"]),
         )
         context_receipts = [
-            self._handoff_context_candidate_receipt(record, item)
-            for item in record["bundle"].items
+            self._handoff_context_candidate_receipt(record, item) for item in record["bundle"].items
         ]
         artifact_receipts = [
             self._handoff_artifact_candidate_receipt(record, item, path)
@@ -21020,9 +20937,7 @@ class Store:
     ) -> None:
         """Atomically index the exact immutable bundle at dispatch start."""
 
-        context_receipts, artifact_receipts, manifest = (
-            self._handoff_candidate_material(record)
-        )
+        context_receipts, artifact_receipts, manifest = self._handoff_candidate_material(record)
         await connection.execute(
             "INSERT INTO handoff_candidate_manifests("
             "effect_id, target_session_id, bundle_digest, dispatch_started_at, "
@@ -21237,8 +21152,7 @@ class Store:
             source_project_id=str(record["payload"]["source_project_id"]),
         )
         expected_context_receipts = [
-            self._handoff_context_candidate_receipt(record, item)
-            for item in record["bundle"].items
+            self._handoff_context_candidate_receipt(record, item) for item in record["bundle"].items
         ]
         expected_artifact_receipts = [
             self._handoff_artifact_candidate_receipt(record, item, path)
@@ -21299,9 +21213,7 @@ class Store:
         )
         artifact_rows = await artifact_cursor.fetchall()
         expected_artifacts = {
-            (item_id, path)
-            for item_id, paths in expected_paths.items()
-            for path in paths
+            (item_id, path) for item_id, paths in expected_paths.items() for path in paths
         }
         actual_artifacts: set[tuple[str, _ArtifactPath]] = set()
         for row in artifact_rows:
@@ -21408,8 +21320,7 @@ class Store:
         if folded_hashes:
             folded_placeholders = ",".join("?" for _ in folded_hashes)
             match_sql.append(
-                "(source_windows_semantics = 1 AND "
-                f"folded_path_hash IN ({folded_placeholders}))"
+                f"(source_windows_semantics = 1 AND folded_path_hash IN ({folded_placeholders}))"
             )
             match_params.extend(folded_hashes)
         match_clause = " OR ".join(match_sql)
@@ -21449,9 +21360,7 @@ class Store:
                 watermark = record["watermark"]
                 if accept_seq <= int(watermark["target_accept_seq_through"]):
                     continue
-                dispatch_started_at = datetime.fromisoformat(
-                    str(watermark["dispatch_started_at"])
-                )
+                dispatch_started_at = datetime.fromisoformat(str(watermark["dispatch_started_at"]))
                 if _time_key(observed_at) > (
                     _time_key(dispatch_started_at) + HANDOFF_ASSIMILATION_WINDOW
                 ):
@@ -21471,8 +21380,7 @@ class Store:
                         record=record,
                     )
                     if any(
-                        _artifact_paths_match(source_path, event_path)
-                        for event_path in event_paths
+                        _artifact_paths_match(source_path, event_path) for event_path in event_paths
                     ):
                         matched_ids.add(item.id)
                         matched_paths.add(source_path.relative)
@@ -21510,9 +21418,9 @@ class Store:
             "target_event_id": target_event.event_id,
             "evidence_kind": evidence_kind,
         }
-        evidence_id = "hae_" + hashlib.sha256(
-            _canonical_json(identity).encode("utf-8")
-        ).hexdigest()[:40]
+        evidence_id = (
+            "hae_" + hashlib.sha256(_canonical_json(identity).encode("utf-8")).hexdigest()[:40]
+        )
         evidence = HandoffAssimilationEvidence(
             evidence_id=evidence_id,
             effect_id=str(effect["effect_id"]),
@@ -21520,9 +21428,7 @@ class Store:
             bundle_digest=_context_bundle_digest(bundle),
             dispatch_started_at=datetime.fromisoformat(str(watermark["dispatch_started_at"])),
             dispatch_version=int(watermark["effect_version"]),
-            dispatch_target_accept_seq_through=int(
-                watermark["target_accept_seq_through"]
-            ),
+            dispatch_target_accept_seq_through=int(watermark["target_accept_seq_through"]),
             source_session_id=str(effect["source_session_id"]),
             source_vendor_session_id=str(payload["source_vendor_session_id"]),
             source_harness_type=HarnessType(str(payload["source_harness_type"])),
@@ -21681,10 +21587,8 @@ class Store:
             if (
                 processing["mode"] != "pipeline"
                 or processing["accept_seq"] != evidence.target_event_accept_seq
-                or int(processing["accept_seq"])
-                <= evidence.dispatch_target_accept_seq_through
-                or processing.get("accepted_project_binding")
-                != evidence.target_project_binding
+                or int(processing["accept_seq"]) <= evidence.dispatch_target_accept_seq_through
+                or processing.get("accepted_project_binding") != evidence.target_project_binding
                 or accepted.id != evidence.target_session_id
                 or accepted.vendor_session_id != evidence.target_vendor_session_id
                 or accepted.harness_type != evidence.target_harness_type
@@ -21718,8 +21622,7 @@ class Store:
                 not any(
                     source_path.relative == stored_path
                     and any(
-                        _artifact_paths_match(source_path, event_path)
-                        for event_path in event_paths
+                        _artifact_paths_match(source_path, event_path) for event_path in event_paths
                     )
                     for source_path in matched_item_paths
                 )
@@ -21943,31 +21846,24 @@ class Store:
                     for action_row in action_rows[:3]:
                         processing = _event_processing_record(action_row)
                         accepted = processing.get("accepted_session")
-                        action_event = HarnessEvent.model_validate_json(
-                            action_row["event_json"]
-                        )
+                        action_event = HarnessEvent.model_validate_json(action_row["event_json"])
                         if (
                             not isinstance(accepted, HarnessSession)
                             or accepted.id != effect["target_session_id"]
-                            or accepted.vendor_session_id
-                            != payload["target_vendor_session_id"]
-                            or accepted.harness_type.value
-                            != payload["target_harness_type"]
+                            or accepted.vendor_session_id != payload["target_vendor_session_id"]
+                            or accepted.harness_type.value != payload["target_harness_type"]
                             or accepted.goal_id != effect["goal_id"]
                             or action_event.event_id != processing["event_id"]
                             or action_event.session_id != accepted.id
                             or action_event.goal_id != accepted.goal_id
                             or action_event.harness_type != accepted.harness_type
                         ):
-                            raise RuntimeError(
-                                "stored handoff target action binding is invalid"
-                            )
+                            raise RuntimeError("stored handoff target action binding is invalid")
                         linked_evidence = evidence_by_event.get(action_event.event_id, [])
-                        possible_failure = (
-                            action_event.event_type
-                            in {EventType.ERROR, EventType.TOOL_FAILURE}
-                            or bool(action_event.error)
-                        )
+                        possible_failure = action_event.event_type in {
+                            EventType.ERROR,
+                            EventType.TOOL_FAILURE,
+                        } or bool(action_event.error)
                         first_target_actions.append(
                             {
                                 "event_id": action_event.event_id,
@@ -21979,8 +21875,7 @@ class Store:
                                 "classification": (
                                     "relevant_action_observed"
                                     if any(
-                                        item.evidence_kind
-                                        in {"artifact_read", "artifact_edit"}
+                                        item.evidence_kind in {"artifact_read", "artifact_edit"}
                                         for item in linked_evidence
                                     )
                                     else (
@@ -21989,9 +21884,7 @@ class Store:
                                         else "other_target_action_observed"
                                     )
                                 ),
-                                "evidence_ids": [
-                                    item.evidence_id for item in linked_evidence
-                                ],
+                                "evidence_ids": [item.evidence_id for item in linked_evidence],
                                 "possible_failure": possible_failure,
                                 "handoff_failure_proven": False,
                             }
@@ -22008,9 +21901,7 @@ class Store:
         )
         if effect["state"] != "delivered":
             status = "not_delivered"
-        elif watermark is None or (
-            not candidate_index_available and not evidence
-        ):
+        elif watermark is None or (not candidate_index_available and not evidence):
             status = "monitoring_unavailable_legacy"
         elif any(item.evidence_kind in {"artifact_read", "artifact_edit"} for item in evidence):
             status = "relevant_action_observed"
@@ -22239,8 +22130,7 @@ class Store:
         ):
             raise ValueError("trajectory review requires an exact candidate key")
         if semantic_dispatch_limit is not None and (
-            type(semantic_dispatch_limit) is not int
-            or not 0 <= semantic_dispatch_limit <= 100_000
+            type(semantic_dispatch_limit) is not int or not 0 <= semantic_dispatch_limit <= 100_000
         ):
             raise ValueError("semantic dispatch limit must be an integer from 0 to 100000")
         if effect_key != "planner":
@@ -22341,7 +22231,8 @@ class Store:
                 if semantic_dispatch_limit is not None:
                     count_cursor = await transaction.execute(
                         "SELECT COUNT(*) FROM supervisor_dispatch_reservations "
-                        "WHERE session_id = ?", (processing["session_id"],),
+                        "WHERE session_id = ?",
+                        (processing["session_id"],),
                     )
                     count_row = await count_cursor.fetchone()
                     if int(count_row[0]) >= semantic_dispatch_limit:
@@ -22354,10 +22245,13 @@ class Store:
                             (processing["session_id"],),
                         )
                         latest_row = await latest.fetchone()
-                        if latest_row is not None and (
-                            datetime.fromisoformat(now)
-                            - datetime.fromisoformat(latest_row[0])
-                        ).total_seconds() < 60:
+                        if (
+                            latest_row is not None
+                            and (
+                                datetime.fromisoformat(now) - datetime.fromisoformat(latest_row[0])
+                            ).total_seconds()
+                            < 60
+                        ):
                             # Do not consume the cap or candidate key: a later
                             # material event may earn review after the interval.
                             await transaction.commit()
@@ -22371,8 +22265,12 @@ class Store:
                 if trajectory_candidate_key is not None:
                     await transaction.execute(
                         "INSERT INTO trajectory_review_reservations VALUES (?, ?, ?, ?)",
-                        (processing["session_id"], trajectory_candidate_key,
-                         effect["effect_id"], now),
+                        (
+                            processing["session_id"],
+                            trajectory_candidate_key,
+                            effect["effect_id"],
+                            now,
+                        ),
                     )
                 updated = await transaction.execute(
                     "UPDATE event_effects SET state = 'dispatching', "
@@ -22708,7 +22606,11 @@ class Store:
         return recovered
 
     async def prepare_main_effect_payload(
-        self, *, event_id: str, intervention_id: str, action: dict[str, Any],
+        self,
+        *,
+        event_id: str,
+        intervention_id: str,
+        action: dict[str, Any],
         required_capability: str | None,
     ) -> dict[str, Any]:
         """Prepare provenance from durable authority; this grants no dispatch right."""
@@ -22721,20 +22623,25 @@ class Store:
             await _configure_connection(transaction)
             await transaction.execute("BEGIN IMMEDIATE")
             cursor = await transaction.execute(
-                "SELECT * FROM event_processing WHERE event_id = ?", (event_id,),
+                "SELECT * FROM event_processing WHERE event_id = ?",
+                (event_id,),
             )
             row = await cursor.fetchone()
             if row is None:
                 raise LookupError("event processing row not found")
             payload = await _prepare_main_effect_payload(
-                transaction, _event_processing_record(row), intervention_id=intervention_id,
-                action=frozen_action, required_capability=required_capability,
+                transaction,
+                _event_processing_record(row),
+                intervention_id=intervention_id,
+                action=frozen_action,
+                required_capability=required_capability,
             )
             await transaction.commit()
             return payload
 
     async def list_codex_correction_attributions(
-        self, session: HarnessSession,
+        self,
+        session: HarnessSession,
     ) -> tuple[str, ...]:
         """Bounded canonical historical records, never live dispatch grants.
 
@@ -22748,7 +22655,8 @@ class Store:
             await transaction.execute("BEGIN IMMEDIATE")
             witnessed = await _require_session_workspace_current(transaction, snapshot)
             if (
-                witnessed is None or snapshot.harness_type != HarnessType.CODEX
+                witnessed is None
+                or snapshot.harness_type != HarnessType.CODEX
                 or snapshot.metadata.get("connection_kind") != "codex_shared"
             ):
                 raise ValueError("Codex attribution requires a current published shared session")
@@ -22791,13 +22699,16 @@ class Store:
                 expected = codex_correction.build_correction(
                     event_id=effect["event_id"],
                     effect_id=stable_event_effect_id(effect["event_id"], "main"),
-                    intervention_id=payload.get("intervention_id"), action=payload.get("action"),
+                    intervention_id=payload.get("intervention_id"),
+                    action=payload.get("action"),
                     required_capability=payload.get("required_capability"),
-                    session=historical, workspace=workspace,
+                    session=historical,
+                    workspace=workspace,
                 )
                 plan = _strict_json_loads(row["plan_json"]) if row["plan_json"] else {}
                 intervention_cursor = await transaction.execute(
-                    "SELECT json FROM interventions WHERE id = ?", (expected["intervention_id"],),
+                    "SELECT json FROM interventions WHERE id = ?",
+                    (expected["intervention_id"],),
                 )
                 intervention_row = await intervention_cursor.fetchone()
                 reserved = (
@@ -22806,7 +22717,8 @@ class Store:
                 if (
                     _canonical_json(correction) != _canonical_json(expected)
                     or effect["effect_id"] != expected["effect_id"]
-                    or effect["effect_key"] != "main" or effect["ordinal"] != 1
+                    or effect["effect_key"] != "main"
+                    or effect["ordinal"] != 1
                     or effect["kind"] != "worker_action"
                     or effect["target_session_id"] != historical.id
                     or row["processing_session_id"] != historical.id
@@ -22818,28 +22730,36 @@ class Store:
                     != effect["request_hash"]
                     or plan.get("intervention_id") != expected["intervention_id"]
                     or _canonical_json(plan.get("action")) != _canonical_json(payload.get("action"))
-                    or reserved is None or reserved.session_id != historical.id
+                    or reserved is None
+                    or reserved.session_id != historical.id
                     or reserved.goal_id != historical.goal_id
                     or reserved.metadata.get("trigger_event_id") != effect["event_id"]
                     or _canonical_json(reserved.proposed_action.model_dump(mode="json"))
                     != _canonical_json(payload.get("action"))
-                    or not effect["dispatch_started_at"] or not effect["dispatcher_boot_id"]
+                    or not effect["dispatch_started_at"]
+                    or not effect["dispatcher_boot_id"]
                     or effect["version"] < 1
                 ):
                     raise ValueError("Codex correction attribution binding is corrupt")
                 if codex_correction.correction_scope(historical, workspace) != current_scope:
                     continue
-                records.append(_canonical_json({
-                    "correction": correction, "effect_state": effect["state"],
-                    "effect_version": effect["version"],
-                }))
+                records.append(
+                    _canonical_json(
+                        {
+                            "correction": correction,
+                            "effect_state": effect["state"],
+                            "effect_version": effect["version"],
+                        }
+                    )
+                )
             await _require_session_workspace_current(transaction, snapshot)
             await transaction.commit()
             return tuple(records)
 
     @staticmethod
     async def _require_unique_codex_correction_observation(
-        transaction: aiosqlite.Connection, event: HarnessEvent,
+        transaction: aiosqlite.Connection,
+        event: HarnessEvent,
     ) -> None:
         marker = event.metadata["pex_correction_observation"]
         if (
@@ -22861,8 +22781,12 @@ class Store:
             )
 
     async def record_codex_correction_observation(
-        self, event: HarnessEvent, session: HarnessSession, *,
-        raw_item: dict[str, Any], turn_id: str,
+        self,
+        event: HarnessEvent,
+        session: HarnessSession,
+        *,
+        raw_item: dict[str, Any],
+        turn_id: str,
     ) -> HarnessEvent:
         """Record an exact attempted correction echo without human/planner effects.
 
@@ -22903,22 +22827,23 @@ class Store:
         _validate_store_id(observed.event_id, label="correction observation event id")
         records = await self.list_codex_correction_attributions(snapshot)
         index = CodexInputProvenance.from_store_records(
-            records, session_id=snapshot.id, thread_id=snapshot.vendor_session_id,
+            records,
+            session_id=snapshot.id,
+            thread_id=snapshot.vendor_session_id,
         )
         match = index.classify_item(
-            session_id=snapshot.id, thread_id=snapshot.vendor_session_id,
-            turn_id=turn_id, item=item,
+            session_id=snapshot.id,
+            thread_id=snapshot.vendor_session_id,
+            turn_id=turn_id,
+            item=item,
         )
-        if (
-            match.kind != "exact_pex" or match.correction_json is None
-            or match.entry_json is None
-        ):
+        if match.kind != "exact_pex" or match.correction_json is None or match.entry_json is None:
             raise ValueError("correction observation is not an exact attempted PEX message")
         correction = _strict_json_loads(match.correction_json)
         matching_record = next(
-            _strict_json_loads(record) for record in records
-            if _canonical_json(_strict_json_loads(record)["correction"])
-            == match.correction_json
+            _strict_json_loads(record)
+            for record in records
+            if _canonical_json(_strict_json_loads(record)["correction"]) == match.correction_json
         )
         # Persist identity/digests only; the raw item is checked locally above,
         # not copied into event metadata or exported by the event bus.
@@ -22941,14 +22866,17 @@ class Store:
                 await _require_session_workspace_current(transaction, snapshot)
                 current, _ = await _load_bound_session(transaction, snapshot.id)
                 cursor = await transaction.execute(
-                    "SELECT * FROM event_effects WHERE effect_id = ?", (correction["effect_id"],),
+                    "SELECT * FROM event_effects WHERE effect_id = ?",
+                    (correction["effect_id"],),
                 )
                 row = await cursor.fetchone()
                 effect = _event_effect_record(row) if row else None
                 if (
-                    effect is None or effect["state"] != matching_record["effect_state"]
+                    effect is None
+                    or effect["state"] != matching_record["effect_state"]
                     or effect["version"] != matching_record["effect_version"]
-                    or not effect["dispatch_started_at"] or not effect["dispatcher_boot_id"]
+                    or not effect["dispatch_started_at"]
+                    or not effect["dispatcher_boot_id"]
                     or effect["target_session_id"] != snapshot.id
                     or _canonical_json(effect["payload"].get("codex_correction"))
                     != match.correction_json
@@ -22961,16 +22889,16 @@ class Store:
                 await self._require_unique_codex_correction_observation(transaction, observed)
                 cursor = await transaction.execute(
                     "SELECT e.json, p.mode FROM events e JOIN event_processing p "
-                    "ON p.event_id=e.event_id WHERE e.event_id=?", (observed.event_id,),
+                    "ON p.event_id=e.event_id WHERE e.event_id=?",
+                    (observed.event_id,),
                 )
                 prior = await cursor.fetchone()
                 if prior is not None:
                     existing = HarnessEvent.model_validate_json(prior["json"])
                     observed.goal_id, observed.project_id = existing.goal_id, existing.project_id
-                    if (
-                        prior["mode"] != "record_only"
-                        or event_semantic_payload(existing) != event_semantic_payload(observed)
-                    ):
+                    if prior["mode"] != "record_only" or event_semantic_payload(
+                        existing
+                    ) != event_semantic_payload(observed):
                         raise ValueError("correction observation event id collision")
                     await _require_session_workspace_current(transaction, snapshot)
                     await transaction.commit()
@@ -22979,8 +22907,10 @@ class Store:
                 await transaction.execute(
                     "INSERT INTO events(event_id,session_id,ts,json) VALUES (?,?,?,?)",
                     (
-                        observed.event_id, observed.session_id,
-                        observed.ts.isoformat(), _dump(observed),
+                        observed.event_id,
+                        observed.session_id,
+                        observed.ts.isoformat(),
+                        _dump(observed),
                     ),
                 )
                 # Existing insert trigger creates record_only_complete and its
@@ -23206,7 +23136,8 @@ class Store:
                     else None
                 )
                 canonical_event_cursor = await transaction.execute(
-                    "SELECT json FROM events WHERE event_id = ?", (event_id,),
+                    "SELECT json FROM events WHERE event_id = ?",
+                    (event_id,),
                 )
                 canonical_event_row = await canonical_event_cursor.fetchone()
                 if canonical_event_row is None:
@@ -23446,8 +23377,11 @@ class Store:
                     if payload.get("required_capability") != plan.get("required_capability"):
                         raise ValueError("main event effect capability binding mismatch")
                     prepared_payload = await _prepare_main_effect_payload(
-                        transaction, processing, intervention_id=intervention.id,
-                        action=action_payload, required_capability=plan.get("required_capability"),
+                        transaction,
+                        processing,
+                        intervention_id=intervention.id,
+                        action=action_payload,
+                        required_capability=plan.get("required_capability"),
                     )
                     if "codex_correction" in prepared_payload or "codex_correction" in payload:
                         if _canonical_json(payload) != _canonical_json(prepared_payload):
@@ -23910,14 +23844,11 @@ class Store:
                     grant_projected_capability = bool(
                         isinstance(action_payload, dict)
                         and isinstance(payload.get("codex_correction"), dict)
-                        and codex_correction.requires_correction(
-                            live_session, action_payload
-                        )
+                        and codex_correction.requires_correction(live_session, action_payload)
                         and required_capability
                         == (
                             "resume"
-                            if action_payload.get("type")
-                            == InterventionType.CONTINUE_SESSION.value
+                            if action_payload.get("type") == InterventionType.CONTINUE_SESSION.value
                             else "send_message"
                         )
                     )
@@ -23961,10 +23892,7 @@ class Store:
                             skip_reason = "goal_superseded_before_dispatch"
 
                 if skip_reason is None and not containment_effect:
-                    if (
-                        session_row is None
-                        or processing.get("accepted_session_authority") is None
-                    ):
+                    if session_row is None or processing.get("accepted_session_authority") is None:
                         skip_reason = "accepted_session_authority_missing"
                     elif processing["accepted_session_authority"] != _event_session_authority(
                         session_row
@@ -24008,10 +23936,7 @@ class Store:
                 if skip_reason is None and "codex_correction" in payload:
                     action = payload.get("action")
                     action_type = action.get("type") if isinstance(action, dict) else None
-                    if (
-                        live_session is None
-                        or action_type not in AUTONOMOUS_CORRECTION_ACTIONS
-                    ):
+                    if live_session is None or action_type not in AUTONOMOUS_CORRECTION_ACTIONS:
                         skip_reason = "autonomous_correction_action_not_allowed"
                     else:
                         try:
@@ -24285,9 +24210,7 @@ class Store:
                     reserved_intervention,
                     intervention,
                 )
-                _validate_shared_delivery_scope_result_binding(
-                    intervention, effect_result
-                )
+                _validate_shared_delivery_scope_result_binding(intervention, effect_result)
                 if reserved_intervention != intervention:
                     await _update_bound_intervention(transaction, intervention)
                     audit_json = _canonical_json(
@@ -24334,7 +24257,8 @@ class Store:
                     ):
                         raise ValueError("event finalization project binding mismatch")
                     canonical_event_cursor = await transaction.execute(
-                        "SELECT json FROM events WHERE event_id = ?", (event_id,),
+                        "SELECT json FROM events WHERE event_id = ?",
+                        (event_id,),
                     )
                     canonical_event_row = await canonical_event_cursor.fetchone()
                     if canonical_event_row is None:
@@ -24870,9 +24794,7 @@ class Store:
                 "ORDER BY pub.accept_seq DESC LIMIT 1) AS latest",
             ) as bounds_cursor:
                 bounds = await bounds_cursor.fetchone()
-            earliest = (
-                int(bounds["earliest"]) if bounds and bounds["earliest"] is not None else 0
-            )
+            earliest = int(bounds["earliest"]) if bounds and bounds["earliest"] is not None else 0
             watermark = int(bounds["latest"]) if bounds and bounds["latest"] is not None else 0
             frozen_through = watermark if through is None else through
             if frozen_through > watermark:
@@ -25238,12 +25160,10 @@ class Store:
                     or session.supervision_paused
                     or session.status == SessionStatus.DETACHED
                     or goal.paused
-                    or receipt["trigger_event_id"]
-                    != intervention.metadata.get("trigger_event_id")
+                    or receipt["trigger_event_id"] != intervention.metadata.get("trigger_event_id")
                     or receipt["target_session_id"] != intervention.session_id
                     or receipt["vendor_session_id"] != session.vendor_session_id
-                    or receipt["target_session_id"]
-                    != f"cursor:{receipt['vendor_session_id']}"
+                    or receipt["target_session_id"] != f"cursor:{receipt['vendor_session_id']}"
                     or intervention.trigger != EventType.STOP.value
                     or intervention.policy_verdict != PolicyVerdict.ALLOW
                     or intervention.action_taken != intervention.proposed_action.type.value
@@ -25257,19 +25177,15 @@ class Store:
                     or intervention.result != CURSOR_HOOK_PREPARED_OUTCOME
                     or intervention.outcome != "worker_delivery_uncertain"
                     or intervention.helped is not None
-                    or (intervention.metadata or {}).get("effect_state")
-                    != "delivery_uncertain"
-                    or (intervention.metadata or {}).get("worker_delivery_receipt")
-                    is not None
-                    or (intervention.metadata or {}).get("hook_preparation_receipt")
-                    != receipt
+                    or (intervention.metadata or {}).get("effect_state") != "delivery_uncertain"
+                    or (intervention.metadata or {}).get("worker_delivery_receipt") is not None
+                    or (intervention.metadata or {}).get("hook_preparation_receipt") != receipt
                 ):
                     raise PermissionError("Cursor hook preparation is not authoritative")
                 action_text = intervention.proposed_action.payload.get("text")
                 if (
                     not isinstance(action_text, str)
-                    or cursor_message_sha256(action_text.strip())
-                    != receipt["message_sha256"]
+                    or cursor_message_sha256(action_text.strip()) != receipt["message_sha256"]
                 ):
                     raise ValueError("Cursor hook preparation message does not match action")
 
@@ -25486,12 +25402,9 @@ class Store:
                     caller_binding = await _project_binding_snapshot(transaction, project_id)
                 except (ProjectIdentityBlockedError, RuntimeError, ValueError) as exc:
                     raise PermissionError("Cursor hook project binding changed") from exc
-                if (
-                    not same_project
-                    or not hmac.compare_digest(
-                        caller_binding,
-                        preparation["project_binding"],
-                    )
+                if not same_project or not hmac.compare_digest(
+                    caller_binding,
+                    preparation["project_binding"],
                 ):
                     raise PermissionError("Cursor hook project binding changed")
                 watermark_cursor = await transaction.execute(
@@ -25671,9 +25584,7 @@ class Store:
                         "target_session_id": candidate_row["flush_target_session_id"],
                         "vendor_session_id": candidate_row["flush_vendor_session_id"],
                         "message_sha256": candidate_row["flush_message_sha256"],
-                        "target_accept_seq_through": candidate_row[
-                            "target_accept_seq_through"
-                        ],
+                        "target_accept_seq_through": candidate_row["target_accept_seq_through"],
                         "flushed_at": candidate_row["flushed_at"],
                         "json": candidate_row["flush_json"],
                     }
@@ -25744,9 +25655,7 @@ class Store:
                     accepted_session_raw = event_row["accepted_session_json"]
                     if not isinstance(accepted_session_raw, str):
                         continue
-                    accepted_session = HarnessSession.model_validate_json(
-                        accepted_session_raw
-                    )
+                    accepted_session = HarnessSession.model_validate_json(accepted_session_raw)
                     if (
                         session.id != preparation["target_session_id"]
                         or session.vendor_session_id != preparation["vendor_session_id"]
@@ -25754,10 +25663,8 @@ class Store:
                         or session.goal_id != preparation["goal_id"]
                         or session.supervision_paused
                         or session.status == SessionStatus.DETACHED
-                        or int(session_row["control_revision"])
-                        != preparation["control_revision"]
-                        or session_row["project_binding"]
-                        != preparation["project_binding"]
+                        or int(session_row["control_revision"]) != preparation["control_revision"]
+                        or session_row["project_binding"] != preparation["project_binding"]
                         or session_row["discovery_generation"]
                         != preparation["discovery_generation"]
                         or goal.paused
@@ -25769,15 +25676,12 @@ class Store:
                         or event.session_id != preparation["target_session_id"]
                         or event_row["harness_type"] != HarnessType.CURSOR.value
                         or event_row["goal_id"] != preparation["goal_id"]
-                        or event_row["accepted_project_binding"]
-                        != preparation["project_binding"]
+                        or event_row["accepted_project_binding"] != preparation["project_binding"]
                         or event_row["accepted_goal_intent_revision"]
                         != preparation["goal_intent_revision"]
-                        or event_row["accepted_goal_intent_hash"]
-                        != preparation["goal_intent_hash"]
+                        or event_row["accepted_goal_intent_hash"] != preparation["goal_intent_hash"]
                         or accepted_session.id != preparation["target_session_id"]
-                        or accepted_session.vendor_session_id
-                        != preparation["vendor_session_id"]
+                        or accepted_session.vendor_session_id != preparation["vendor_session_id"]
                         or accepted_session.goal_id != preparation["goal_id"]
                     ):
                         continue
@@ -26186,8 +26090,7 @@ class Store:
         )
         if context_cursor.rowcount != 1:
             existing_cursor = await self.db.execute(
-                "SELECT project_id, project_binding, goal_id, json "
-                "FROM context_items WHERE id = ?",
+                "SELECT project_id, project_binding, goal_id, json FROM context_items WHERE id = ?",
                 (context.id,),
             )
             existing_row = await existing_cursor.fetchone()
@@ -26463,8 +26366,7 @@ class Store:
                 )
 
                 control_coverage_cursor = await transaction.execute(
-                    "SELECT action_kind, actor_assurance FROM "
-                    "human_session_control_coverage"
+                    "SELECT action_kind, actor_assurance FROM human_session_control_coverage"
                 )
                 control_coverage = {
                     str(row["action_kind"]): str(row["actor_assurance"])
@@ -26517,9 +26419,7 @@ class Store:
                     receipt_key = _canonical_json(
                         {
                             "action_kind": expected["action_kind"],
-                            "after_control_revision": expected[
-                                "after_control_revision"
-                            ],
+                            "after_control_revision": expected["after_control_revision"],
                             "principal_id": expected["principal_id"],
                             "session_id": expected["session_id"],
                         }
@@ -26531,13 +26431,11 @@ class Store:
                     if (
                         record != expected
                         or expected["action_kind"] not in control_coverage
-                        or expected["actor_assurance"]
-                        != control_coverage[expected["action_kind"]]
+                        or expected["actor_assurance"] != control_coverage[expected["action_kind"]]
                         or expected["principal_id"] != "local_bridge_operator"
                         or expected["after_control_revision"]
                         != expected["before_control_revision"] + 1
-                        or expected["after_control_revision"]
-                        > int(row["session_control_revision"])
+                        or expected["after_control_revision"] > int(row["session_control_revision"])
                         or not isinstance(before_paused, bool)
                         or not isinstance(after_paused, bool)
                         or before_paused == after_paused
@@ -26577,9 +26475,7 @@ class Store:
                 goal_legacy_ids = [str(row["operation_id"]) for row in goal_legacy_rows]
                 if (
                     len(goal_legacy_rows) != goal_marker["legacy_operation_count"]
-                    or hashlib.sha256(
-                        _canonical_json(goal_legacy_ids).encode("utf-8")
-                    ).hexdigest()
+                    or hashlib.sha256(_canonical_json(goal_legacy_ids).encode("utf-8")).hexdigest()
                     != goal_marker["legacy_operation_set_hash"]
                 ):
                     raise RuntimeError("goal control attention legacy snapshot is corrupt")
@@ -26907,27 +26803,36 @@ class Store:
                     for table in watermark_tables
                 }
                 intervention_count = await scalar("SELECT COUNT(*) FROM interventions")
-                excluded_source_rows = await scalar(
-                    "SELECT COUNT(*) FROM interventions WHERE project_binding IS NULL AND "
-                    "COALESCE(json_extract(json, '$.payload.policy_verdict'), "
-                    "json_extract(json, '$.policy_verdict')) = 'ask_human'"
-                ) + await scalar(
-                    "SELECT COUNT(*) FROM permission_resolutions WHERE project_binding IS NULL"
-                ) + await scalar(
-                    "SELECT COUNT(*) FROM lifecycle_resolutions WHERE project_binding IS NULL"
-                ) + await scalar(
-                    "SELECT COUNT(*) FROM human_decision_resolutions WHERE "
-                    "json_extract(json, '$.project_binding') IS NULL"
-                ) + await scalar(
-                    "SELECT COUNT(*) FROM overlay_operations WHERE kind = 'revert' AND "
-                    "project_binding IS NULL"
-                ) + await scalar(
-                    "SELECT COUNT(*) FROM lifecycle_restore_operations WHERE "
-                    "project_binding IS NULL"
-                ) + await scalar(
-                    "SELECT COUNT(*) FROM human_session_control_actions WHERE "
-                    "project_binding IS NULL"
-                ) + goal_attention_legacy_unverified
+                excluded_source_rows = (
+                    await scalar(
+                        "SELECT COUNT(*) FROM interventions WHERE project_binding IS NULL AND "
+                        "COALESCE(json_extract(json, '$.payload.policy_verdict'), "
+                        "json_extract(json, '$.policy_verdict')) = 'ask_human'"
+                    )
+                    + await scalar(
+                        "SELECT COUNT(*) FROM permission_resolutions WHERE project_binding IS NULL"
+                    )
+                    + await scalar(
+                        "SELECT COUNT(*) FROM lifecycle_resolutions WHERE project_binding IS NULL"
+                    )
+                    + await scalar(
+                        "SELECT COUNT(*) FROM human_decision_resolutions WHERE "
+                        "json_extract(json, '$.project_binding') IS NULL"
+                    )
+                    + await scalar(
+                        "SELECT COUNT(*) FROM overlay_operations WHERE kind = 'revert' AND "
+                        "project_binding IS NULL"
+                    )
+                    + await scalar(
+                        "SELECT COUNT(*) FROM lifecycle_restore_operations WHERE "
+                        "project_binding IS NULL"
+                    )
+                    + await scalar(
+                        "SELECT COUNT(*) FROM human_session_control_actions WHERE "
+                        "project_binding IS NULL"
+                    )
+                    + goal_attention_legacy_unverified
+                )
                 pending_cursor = await transaction.execute(
                     "SELECT id FROM interventions AS i WHERE "
                     "COALESCE(json_extract(i.json, '$.payload.policy_verdict'), "
@@ -26944,11 +26849,9 @@ class Store:
                 current_pending: list[Intervention] = []
                 for row in await pending_cursor.fetchall():
                     try:
-                        intervention, binding, session, goal, _ = (
-                            await _load_bound_intervention(
-                                transaction,
-                                str(row["id"]),
-                            )
+                        intervention, binding, session, goal, _ = await _load_bound_intervention(
+                            transaction,
+                            str(row["id"]),
                         )
                     except (LookupError, ProjectIdentityBlockedError):
                         continue
@@ -26960,8 +26863,7 @@ class Store:
                     # permission requests, which die with the session.
                     if (
                         session.status != SessionStatus.NEEDS_DECISION
-                        and intervention.metadata.get("decision_kind")
-                        != "mcp_human_request"
+                        and intervention.metadata.get("decision_kind") != "mcp_human_request"
                     ):
                         continue
                     if await _has_authoritative_goal_successor(
@@ -26983,8 +26885,7 @@ class Store:
                         current_pending.append(intervention)
                 pending_detail_limit = 200
                 current_pending_items = [
-                    item.model_dump(mode="json")
-                    for item in current_pending[:pending_detail_limit]
+                    item.model_dump(mode="json") for item in current_pending[:pending_detail_limit]
                 ]
                 pending_session_ids = {item.session_id for item in current_pending}
                 unexplained_session_count = 0
@@ -27206,9 +27107,9 @@ class Store:
                 "incidents": surface_incidents,
                 "integrity_nudges": integrity_nudges,
                 "flagged_files": len(flagged_paths),
-                "top_flagged": sorted(
-                    flagged_paths.items(), key=lambda item: (-item[1], item[0])
-                )[:16],
+                "top_flagged": sorted(flagged_paths.items(), key=lambda item: (-item[1], item[0]))[
+                    :16
+                ],
             },
         }
 
@@ -27654,10 +27555,8 @@ class Store:
                     ):
                         raise ValueError("human decision active binding changed")
                     if (
-                        action.payload.get("source_vendor_session_id")
-                        != session.vendor_session_id
-                        or action.payload.get("source_harness_type")
-                        != session.harness_type.value
+                        action.payload.get("source_vendor_session_id") != session.vendor_session_id
+                        or action.payload.get("source_harness_type") != session.harness_type.value
                         or not isinstance(action.payload.get("source_project_id"), str)
                         or not await _same_live_project_binding(
                             transaction,
@@ -28111,8 +28010,7 @@ class Store:
                         existing_status != status
                         or resolution.get("delivery_code") != delivery_code
                         or resolution.get("exception_type") != exception_type
-                        or resolution.get("worker_delivery_receipt")
-                        != normalized_delivery_receipt
+                        or resolution.get("worker_delivery_receipt") != normalized_delivery_receipt
                     ):
                         raise ValueError("terminal human decision delivery receipt cannot change")
                     await transaction.commit()
@@ -28134,9 +28032,7 @@ class Store:
                     == HUMAN_DECISION_DELIVERY_CONTRACT_EXACT_TURN
                     and normalized_delivery_receipt is None
                 ):
-                    raise ValueError(
-                        "delivered human decision requires an exact turn receipt"
-                    )
+                    raise ValueError("delivered human decision requires an exact turn receipt")
                 decision_cursor = await transaction.execute(
                     "SELECT json FROM decisions WHERE id = ?",
                     (str(resolution.get("decision_id") or ""),),
@@ -29484,6 +29380,7 @@ class Store:
                     query = "SELECT json FROM context_items WHERE project_binding = ?"
                     parameters = [live_binding]
                 if observed_at is not None:
+
                     def observed(value: object) -> bool:
                         try:
                             instant = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
@@ -29527,10 +29424,7 @@ class Store:
                     parameters.append(goal_id)
                     query += "json_extract(json, '$.valid_from') DESC, id DESC LIMIT ? OFFSET ?"
                 else:
-                    query += (
-                        "json_extract(json, '$.valid_from') DESC, id DESC "
-                        "LIMIT ? OFFSET ?"
-                    )
+                    query += "json_extract(json, '$.valid_from') DESC, id DESC LIMIT ? OFFSET ?"
                 parameters.extend((limit, offset))
                 cursor = await transaction.execute(query, tuple(parameters))
                 rows = await cursor.fetchall()
@@ -29647,8 +29541,7 @@ class Store:
                     )
                     parameters.extend(ancestor_ids)
                 query = (
-                    "SELECT json FROM decisions WHERE project_binding = ? "
-                    f"AND ({scope}) ORDER BY "
+                    f"SELECT json FROM decisions WHERE project_binding = ? AND ({scope}) ORDER BY "
                 )
                 if prioritize_active_human:
                     query += (

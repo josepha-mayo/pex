@@ -147,27 +147,23 @@ def main() -> None:
         contract_root = hash_root(contract_cells)
         direction_root = hash_root(direction_cells)
         direction_roots[pet_id] = direction_root
-        structural_entry = (
-            {
-                "id": pet_id,
-                "spritesheet_sha256": current_sha,
-                "spritesheet_bytes": atlas_path.stat().st_size,
-                "contract_cell_hash_root": contract_root,
-                "direction_cell_hash_root": direction_root,
-                "contract_cell_count": len(contract_cells),
-                "neutral_matches_idle_zero": neutral_matches,
-                "transparent_rgb_residue_pixels": transparent_rgb_residue,
-                "all_contract_cells_nonempty": all(occupied),
-                "all_unused_cells_transparent": all(unused),
-            }
-        )
-        release_entry = (
-            {
-                "id": pet_id,
-                "manifest_sha256": sha256_file(manifest_path),
-                "spritesheet_sha256": current_sha,
-            }
-        )
+        structural_entry = {
+            "id": pet_id,
+            "spritesheet_sha256": current_sha,
+            "spritesheet_bytes": atlas_path.stat().st_size,
+            "contract_cell_hash_root": contract_root,
+            "direction_cell_hash_root": direction_root,
+            "contract_cell_count": len(contract_cells),
+            "neutral_matches_idle_zero": neutral_matches,
+            "transparent_rgb_residue_pixels": transparent_rgb_residue,
+            "all_contract_cells_nonempty": all(occupied),
+            "all_unused_cells_transparent": all(unused),
+        }
+        release_entry = {
+            "id": pet_id,
+            "manifest_sha256": sha256_file(manifest_path),
+            "spritesheet_sha256": current_sha,
+        }
         if pet_id in SHIPPED_PET_IDS:
             sheet_hashes.append(current_sha)
             contract_roots.append(contract_root)

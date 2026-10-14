@@ -626,9 +626,9 @@ def acceptance_surface_delta(
     # A baseline first sealed from the claim-time scan proves nothing when a
     # surface exists; one sealed by a verify_claim tool call is claim-adjacent
     # forever, even empty — a worker could bootstrap it then add test files.
-    sealed_at_claim = (
-        baseline.get("sealed_now") is True and bool(baseline_files)
-    ) or baseline.get("sealed_context") == "verify"
+    sealed_at_claim = (baseline.get("sealed_now") is True and bool(baseline_files)) or baseline.get(
+        "sealed_context"
+    ) == "verify"
     empty["sealed_at_claim"] = sealed_at_claim
     if current is None:
         empty["reason"] = "workspace_unobserved"
@@ -636,8 +636,7 @@ def acceptance_surface_delta(
     empty["checked"] = True
     empty["reason"] = None
     current_by_key = {
-        _workspace_path_key(path, workspace): (path, digest)
-        for path, digest in current.items()
+        _workspace_path_key(path, workspace): (path, digest) for path, digest in current.items()
     }
     modified: list[str] = []
     deleted: list[str] = []
@@ -732,12 +731,13 @@ def _tests_pass_verdict(
 ) -> dict[str, Any]:
     requirements = _goal_requirement_text(goal)
     if not (
-        re.search(r"\bpytest\b", requirements, re.I)
-        and _UNITTEST_REQUIREMENT.search(requirements)
+        re.search(r"\bpytest\b", requirements, re.I) and _UNITTEST_REQUIREMENT.search(requirements)
     ):
         return _single_tests_pass_verdict(claim, events, goal)
     pytest_verdict = _single_tests_pass_verdict(
-        claim, [event for event in events if _unittest_info(event) is None], goal,
+        claim,
+        [event for event in events if _unittest_info(event) is None],
+        goal,
     )
     unittest_events = [event for event in events if _pytest_info(event) is None]
     unittest_verdict = (
@@ -747,20 +747,25 @@ def _tests_pass_verdict(
     )
     verdicts = [pytest_verdict, unittest_verdict]
     status = (
-        "contradicted" if any(item["status"] == "contradicted" for item in verdicts)
-        else "supported" if all(item["status"] == "supported" for item in verdicts)
+        "contradicted"
+        if any(item["status"] == "contradicted" for item in verdicts)
+        else "supported"
+        if all(item["status"] == "supported" for item in verdicts)
         else "uncertain"
     )
     corrections = [item["correction"] for item in verdicts if item.get("correction")]
     return {
-        "claim": claim, "status": status,
+        "claim": claim,
+        "status": status,
         "evidence": [value for item in verdicts for value in item["evidence"]],
         "correction": " ".join(corrections) if corrections else None,
     }
 
 
 def _single_tests_pass_verdict(
-    claim: dict[str, Any], events: list[HarnessEvent], goal: Goal | None,
+    claim: dict[str, Any],
+    events: list[HarnessEvent],
+    goal: Goal | None,
 ) -> dict[str, Any]:
     latest_unittest = _latest_unittest(events)
     latest_pytest = _latest_pytest(events)
@@ -1055,7 +1060,7 @@ def _expected_content(raw: str) -> tuple[str, str, bool] | None:
         path = quoted_path.group("path")
         if not FILE_TOKEN.fullmatch(path) or not _visible_goal_path(path):
             return None
-        raw = path + raw[quoted_path.end():]
+        raw = path + raw[quoted_path.end() :]
     exact = FILE_EXACT_CONTENT.fullmatch(raw.strip())
     if exact is not None:
         path = exact.group("path")
@@ -1131,7 +1136,7 @@ def _read_goal_file(
 
 
 def _trailing_byte_hex(text: str, limit: int = 16) -> str:
-    suffix = text[len(text.rstrip("\r\n")):].encode("utf-8")
+    suffix = text[len(text.rstrip("\r\n")) :].encode("utf-8")
     hexed = suffix[:limit].hex(" ").upper()
     if len(suffix) > limit:
         hexed = f"{hexed} …+{len(suffix) - limit} more bytes"
@@ -1155,11 +1160,8 @@ def _required_content_note(goal: Goal | None, name: str) -> tuple[str, bool] | N
             and expected[2]
             and len(expected[1]) <= 160
         ):
-            has_trailing = bool(expected[1][len(expected[1].rstrip("\r\n")):])
-            note = (
-                f"The attached acceptance criterion requires exact content "
-                f"{expected[1]!r}"
-            )
+            has_trailing = bool(expected[1][len(expected[1].rstrip("\r\n")) :])
+            note = f"The attached acceptance criterion requires exact content {expected[1]!r}"
             if has_trailing:
                 note += f", which ends with byte {_trailing_byte_hex(expected[1])}"
             return f"{note}.", has_trailing
@@ -1300,8 +1302,7 @@ def _goal_file_verdict(
                     }
                 continue
             fragments.append(
-                f"{path} exists but does not {'equal' if exact else 'contain'} "
-                f"{expected[:160]!r}."
+                f"{path} exists but does not {'equal' if exact else 'contain'} {expected[:160]!r}."
             )
             if exact and content.rstrip("\r\n") == expected.rstrip("\r\n"):
                 fragments[-1] += (
@@ -1336,9 +1337,7 @@ def _goal_file_verdict(
                 }
             continue
         if count < expected_rows:
-            fragments.append(
-                f"{path} contains {count} rows; acceptance requires {expected_rows}."
-            )
+            fragments.append(f"{path} contains {count} rows; acceptance requires {expected_rows}.")
             evidence.extend([f"expected_rows={expected_rows}", f"{path}_rows={count}"])
             continue
         evidence.append(f"{path}_rows={count}")
@@ -1692,13 +1691,8 @@ def verify_claims(
         surface_flags.append("acceptance_surface_baseline_incomplete")
     if surface["baselined"] and not surface["checked"]:
         surface_flags.append("acceptance_surface_check_incomplete")
-    if (
-        surface["reason"] == "unsealed"
-        or (
-            acceptance_baseline is not None
-            and not surface["baselined"]
-            and surface["surface_files"]
-        )
+    if surface["reason"] == "unsealed" or (
+        acceptance_baseline is not None and not surface["baselined"] and surface["surface_files"]
     ):
         # The caller engaged integrity checking but no baseline could be
         # established — unsealed (corrupt/failed) rows flag unconditionally;
@@ -1727,9 +1721,7 @@ def verify_claims(
                 }
             )
         verdicts = downgraded
-        acceptance_evidence = list(
-            dict.fromkeys([*acceptance_evidence, *surface_flags])
-        )
+        acceptance_evidence = list(dict.fromkeys([*acceptance_evidence, *surface_flags]))
         if acceptance_status == "supported":
             acceptance_status = "uncertain"
     contradicted = [item for item in verdicts if item["status"] == "contradicted"]

@@ -192,12 +192,11 @@ async def test_restore_success_is_atomic_idempotent_and_path_free_in_interventio
         assert replay["operation"]["id"] == reserved["operation"]["id"]
         entry = reserved["operation"]["manifest"][0]
         assert entry["cleanup_operation_id"] == cleanup["id"]
-        assert entry["cleanup_resource_version"] == cleanup["manifest"][0][
-            "resource_version"
-        ]
-        assert entry["cleanup_readiness_fingerprint"] == cleanup["manifest"][0][
-            "readiness_fingerprint"
-        ]
+        assert entry["cleanup_resource_version"] == cleanup["manifest"][0]["resource_version"]
+        assert (
+            entry["cleanup_readiness_fingerprint"]
+            == cleanup["manifest"][0]["readiness_fingerprint"]
+        )
         started = await store.start_restore_operation(reserved["operation"]["id"])
         assert started["granted"] is True
         os.replace(Path(entry["source_path"]), Path(entry["destination_path"]))

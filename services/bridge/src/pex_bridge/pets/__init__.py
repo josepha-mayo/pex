@@ -62,6 +62,7 @@ def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
         result[key] = value
     return result
 
+
 CODEX_ROWS = [
     "idle",
     "running-right",
@@ -116,9 +117,7 @@ def validate_codex_v2_atlas(image: Image.Image, *, subject: str = "spritesheet")
     if image.format != "WEBP":
         raise ValueError(f"{subject} must be a WebP image")
     if image.size != (CODEX_ATLAS_W, CODEX_ATLAS_H):
-        raise ValueError(
-            f"{subject} must be exactly {CODEX_ATLAS_W}x{CODEX_ATLAS_H} pixels"
-        )
+        raise ValueError(f"{subject} must be exactly {CODEX_ATLAS_W}x{CODEX_ATLAS_H} pixels")
     if getattr(image, "n_frames", 1) != 1:
         raise ValueError(f"{subject} must be one static atlas image")
     if "A" not in image.getbands():
@@ -150,8 +149,7 @@ def validate_codex_v2_atlas(image: Image.Image, *, subject: str = "spritesheet")
                 )
             if not required and visible:
                 raise ValueError(
-                    f"{subject} unused frame {CODEX_ROWS[row]}[{column}] "
-                    "must be fully transparent"
+                    f"{subject} unused frame {CODEX_ROWS[row]}[{column}] must be fully transparent"
                 )
 
 

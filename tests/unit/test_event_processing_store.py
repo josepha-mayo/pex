@@ -251,9 +251,7 @@ async def test_migration_marks_preexisting_events_legacy_complete(tmp_path):
         assert processing["state"] == "legacy_complete"
         assert await store.list_recoverable_event_processing() == []
 
-        replay = await store.accept_pipeline_event(
-            legacy.model_copy(update={"ts": utcnow()})
-        )
+        replay = await store.accept_pipeline_event(legacy.model_copy(update={"ts": utcnow()}))
         assert replay["created"] is False
         assert replay["processing"]["state"] == "legacy_complete"
     finally:
@@ -345,9 +343,10 @@ async def test_acceptance_order_blocks_later_event_and_freezes_recent_prefix(tmp
     try:
         first_acceptance = await store.accept_pipeline_event(first)
         second_acceptance = await store.accept_pipeline_event(second)
-        assert first_acceptance["processing"]["accept_seq"] < second_acceptance[
-            "processing"
-        ]["accept_seq"]
+        assert (
+            first_acceptance["processing"]["accept_seq"]
+            < second_acceptance["processing"]["accept_seq"]
+        )
 
         blocked = await store.claim_event_processing(second.event_id, owner="worker-b")
         assert blocked["outcome"] == "blocked_by_earlier_event"
@@ -444,9 +443,12 @@ async def test_two_store_instances_claim_once_and_stale_dispatch_is_uncertain(tm
         with pytest.raises(ValueError):
             await first.supervisor_dispatch_counts([event.session_id] * 1001)
         with sqlite3.connect(path) as inspection:
-            assert inspection.execute(
-                "SELECT COUNT(*) FROM supervisor_dispatch_reservations"
-            ).fetchone()[0] == 1
+            assert (
+                inspection.execute(
+                    "SELECT COUNT(*) FROM supervisor_dispatch_reservations"
+                ).fetchone()[0]
+                == 1
+            )
 
         recovery = Store(path, process_boot_id="boot-recovery")
         await recovery.connect()
@@ -784,9 +786,7 @@ async def test_plan_projects_locally_and_finalizes_main_effect_atomically(tmp_pa
         assert final["state"] == "complete"
         assert final["receipt"] == receipt
 
-        replay = await store.accept_pipeline_event(
-            event.model_copy(update={"ts": utcnow()})
-        )
+        replay = await store.accept_pipeline_event(event.model_copy(update={"ts": utcnow()}))
         assert replay["processing"]["receipt"] == receipt
         exact = await store.finalize_event_processing(
             event_id=event.event_id,
@@ -800,8 +800,7 @@ async def test_plan_projects_locally_and_finalizes_main_effect_atomically(tmp_pa
         assert exact["receipt"] == receipt
 
         audit_cursor = await store.db.execute(
-            "SELECT record_type FROM intervention_audit "
-            "WHERE intervention_id = ? ORDER BY id",
+            "SELECT record_type FROM intervention_audit WHERE intervention_id = ? ORDER BY id",
             (intervention.id,),
         )
         assert [row["record_type"] for row in await audit_cursor.fetchall()] == [
@@ -1362,12 +1361,10 @@ async def test_plan_commit_rejects_project_identity_reresolved_after_acceptance(
         )
         event, session = await _bound_event(store, "plan-identity-reresolved")
         accepted = await store.accept_pipeline_event(event, session_snapshot=session)
-        assert accepted["processing"]["accepted_project_binding"] == (
-            f"identity:{identity_a}"
-        )
-        assert (
-            await store.claim_event_processing(event.event_id, owner="attempt")
-        )["outcome"] == "claimed"
+        assert accepted["processing"]["accepted_project_binding"] == (f"identity:{identity_a}")
+        assert (await store.claim_event_processing(event.event_id, owner="attempt"))[
+            "outcome"
+        ] == "claimed"
 
         identity_b = await _reresolve_event_project_identity(store, event)
         assert identity_b != identity_a
@@ -1456,9 +1453,7 @@ async def test_main_claim_rejects_project_identity_reresolved_after_plan(tmp_pat
         )
         event, session = await _bound_event(store, "dispatch-identity-reresolved")
         accepted = await store.accept_pipeline_event(event, session_snapshot=session)
-        assert accepted["processing"]["accepted_project_binding"] == (
-            f"identity:{identity_a}"
-        )
+        assert accepted["processing"]["accepted_project_binding"] == (f"identity:{identity_a}")
         assert await store.recent_events_for_authority(
             session.id,
             goal_id=str(event.goal_id),
@@ -1491,9 +1486,7 @@ async def test_main_claim_rejects_project_identity_reresolved_after_plan(tmp_pat
 
 
 @pytest.mark.asyncio
-async def test_recent_authority_events_reuse_one_live_project_check(
-    tmp_path, monkeypatch
-):
+async def test_recent_authority_events_reuse_one_live_project_check(tmp_path, monkeypatch):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()
     try:
@@ -1610,9 +1603,7 @@ async def test_unchanged_typed_project_commits_and_claims_main_effect(tmp_path):
         )
         event, session = await _bound_event(store, "unchanged-typed-project")
         accepted = await store.accept_pipeline_event(event, session_snapshot=session)
-        assert accepted["processing"]["accepted_project_binding"] == (
-            f"identity:{identity_a}"
-        )
+        assert accepted["processing"]["accepted_project_binding"] == (f"identity:{identity_a}")
         await store.claim_event_processing(event.event_id, owner="attempt")
 
         committed = await _commit_worker_plan(store, event, session, owner="attempt")

@@ -21,10 +21,11 @@ def _drain_fixture(home: Path) -> list[dict]:
 def _write_rows(home: Path, count: int) -> Path:
     path = inbox.inbox_path(home)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(b"".join(
-        json.dumps({"conversation_id": str(index)}).encode() + b"\n"
-        for index in range(count)
-    ))
+    path.write_bytes(
+        b"".join(
+            json.dumps({"conversation_id": str(index)}).encode() + b"\n" for index in range(count)
+        )
+    )
     return path
 
 
@@ -83,12 +84,14 @@ def test_production_batch_cap_advances_exactly_128_records(tmp_path):
     _write_rows(tmp_path, 130)
     assert len(_drain_fixture(tmp_path)) == 128
     assert _drain_fixture(tmp_path) == [
-        {"conversation_id": "128"}, {"conversation_id": "129"},
+        {"conversation_id": "128"},
+        {"conversation_id": "129"},
     ]
 
 
 def test_byte_offset_preserves_unicode_crlf_and_skips_oversized_complete_line(
-    tmp_path, monkeypatch,
+    tmp_path,
+    monkeypatch,
 ):
     path = _write_rows(tmp_path, 0)
     first = json.dumps({"name": "猫"}, ensure_ascii=False).encode() + b"\r\n"
@@ -124,14 +127,14 @@ def test_invalid_or_overlong_offset_is_a_bounded_fresh_read(tmp_path, invalid):
 
 def test_batch_limit_counts_malformed_lines_and_preserves_partial_json(tmp_path, monkeypatch):
     path = _write_rows(tmp_path, 0)
-    path.write_bytes(b"bad\n\n{}\n{\"conversation_id\":\"split")
+    path.write_bytes(b'bad\n\n{}\n{"conversation_id":"split')
     monkeypatch.setattr(inbox, "MAX_RECORDS_PER_DRAIN", 2, raising=False)
     assert _drain_fixture(tmp_path) == []
     assert inbox._read_offset(inbox.offset_path(tmp_path)) == 5
     assert _drain_fixture(tmp_path) == [{}]
     assert inbox._read_offset(inbox.offset_path(tmp_path)) == 8
     with path.open("ab") as handle:
-        handle.write(b"\"}\n")
+        handle.write(b'"}\n')
     assert _drain_fixture(tmp_path) == [{"conversation_id": "split"}]
 
 
@@ -147,7 +150,8 @@ def test_inbox_rejects_ambiguous_or_nonstandard_json_records(tmp_path):
 
 
 def test_newline_free_oversized_record_advances_once_and_preserves_next_row(
-    tmp_path, monkeypatch,
+    tmp_path,
+    monkeypatch,
 ):
     path = _write_rows(tmp_path, 0)
     poison = b"x" * 80

@@ -177,9 +177,7 @@ def test_windows_job_assignment_failure_reaps_root_and_closes_pipes(monkeypatch)
 
 @pytest.mark.parametrize("failure", ["missing_handle", "import", "create"])
 @pytest.mark.skipif(sys.platform != "win32", reason="requires native Windows Job Objects")
-def test_windows_job_setup_failures_reap_root_and_close_every_pipe(
-    monkeypatch, failure
-):
+def test_windows_job_setup_failures_reap_root_and_close_every_pipe(monkeypatch, failure):
     import win32job
     from pex_protocol import windows_job
 

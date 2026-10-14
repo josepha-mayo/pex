@@ -275,7 +275,8 @@ class ActionExecutor:
             try:
                 ok = await asyncio.wait_for(
                     self._workspace_dispatch(
-                        session, lambda: adapter.respond_permission(session, request_id, decision),
+                        session,
+                        lambda: adapter.respond_permission(session, request_id, decision),
                     ),
                     timeout=PERMISSION_ADAPTER_TIMEOUT_SECONDS,
                 )
@@ -381,12 +382,17 @@ class ActionExecutor:
             return "missing_session_or_adapter"
 
         raw_text = action.payload.get("text")
-        if action.type in {
-            InterventionType.SEND_NUDGE,
-            InterventionType.INJECT_CONTEXT,
-            InterventionType.REQUEST_VERIFICATION,
-            InterventionType.CONTINUE_SESSION,
-        } and raw_text is not None and not isinstance(raw_text, str):
+        if (
+            action.type
+            in {
+                InterventionType.SEND_NUDGE,
+                InterventionType.INJECT_CONTEXT,
+                InterventionType.REQUEST_VERIFICATION,
+                InterventionType.CONTINUE_SESSION,
+            }
+            and raw_text is not None
+            and not isinstance(raw_text, str)
+        ):
             return "worker_action_text_invalid"
         text = raw_text if isinstance(raw_text, str) else ""
         if len(text) > MAX_ACTION_TEXT_CHARS:
@@ -403,7 +409,10 @@ class ActionExecutor:
 
         if requires_correction(session, action.model_dump(mode="json")):
             return await self._execute_shared_codex_correction(
-                action, session, adapter, main_effect_context,
+                action,
+                session,
+                adapter,
+                main_effect_context,
             )
 
         try:
@@ -493,7 +502,8 @@ class ActionExecutor:
                         return "handoff_context_mismatch"
                     ok = await asyncio.wait_for(
                         self._workspace_dispatch(
-                            session, lambda: adapter.inject_context(session, bundle),
+                            session,
+                            lambda: adapter.inject_context(session, bundle),
                             sources=sources,
                         ),
                         timeout=HANDOFF_ADAPTER_TIMEOUT_SECONDS,
@@ -503,7 +513,8 @@ class ActionExecutor:
                         return "handoff_skipped_no_specific_context"
                     ok = await asyncio.wait_for(
                         self._workspace_dispatch(
-                            session, lambda: adapter.send_message(session, text),
+                            session,
+                            lambda: adapter.send_message(session, text),
                         ),
                         timeout=HANDOFF_ADAPTER_TIMEOUT_SECONDS,
                     )
@@ -529,7 +540,8 @@ class ActionExecutor:
             try:
                 ok = await asyncio.wait_for(
                     self._workspace_dispatch(
-                        session, lambda: adapter.continue_or_resume(session, text or None),
+                        session,
+                        lambda: adapter.continue_or_resume(session, text or None),
                     ),
                     timeout=MESSAGE_ADAPTER_TIMEOUT_SECONDS,
                 )
@@ -645,7 +657,8 @@ class ActionExecutor:
             def final_check() -> None:
                 check_local()
                 with ThreadPoolExecutor(
-                    max_workers=1, thread_name_prefix="pex-codex-dispatch-check",
+                    max_workers=1,
+                    thread_name_prefix="pex-codex-dispatch-check",
                 ) as pool:
                     pool.submit(validate_store).result()
                 # Database connection cleanup and transport locks may outlast
@@ -682,7 +695,9 @@ class ActionExecutor:
             InterventionType.CONTINUE_SESSION: "continued",
         }[action.type]
         execution = _message_execution_result(
-            result, session=session, accepted_outcome=accepted_outcome,
+            result,
+            session=session,
+            accepted_outcome=accepted_outcome,
             rejected_outcome="codex_dispatch_failed",
         )
         if not isinstance(execution, ActionExecutionResult):
@@ -746,7 +761,8 @@ class ActionExecutor:
         """Re-probe immediately before a lifecycle side effect and fail closed."""
         try:
             capabilities = await asyncio.wait_for(
-                self._workspace_dispatch(session, adapter.probe), timeout=2.0,
+                self._workspace_dispatch(session, adapter.probe),
+                timeout=2.0,
             )
         except _WorkspaceDispatchRefused:
             raise
@@ -787,8 +803,11 @@ class ActionExecutor:
         try:
             created = await asyncio.wait_for(
                 self._workspace_dispatch(
-                    source, lambda: adapter.start_session(
-                        project, prompt, config if isinstance(config, dict) else None,
+                    source,
+                    lambda: adapter.start_session(
+                        project,
+                        prompt,
+                        config if isinstance(config, dict) else None,
                     ),
                 ),
                 timeout=LIFECYCLE_ADAPTER_TIMEOUT_SECONDS,
@@ -891,7 +910,8 @@ class ActionExecutor:
         try:
             child = await asyncio.wait_for(
                 self._workspace_dispatch(
-                    session, lambda: adapter.fork_or_fresh_handoff(session, bundle),
+                    session,
+                    lambda: adapter.fork_or_fresh_handoff(session, bundle),
                 ),
                 timeout=LIFECYCLE_ADAPTER_TIMEOUT_SECONDS,
             )
@@ -967,7 +987,8 @@ class ActionExecutor:
             try:
                 await asyncio.wait_for(
                     self._workspace_dispatch(
-                        parent, lambda: adapter.continue_or_resume(parent, parent_objective),
+                        parent,
+                        lambda: adapter.continue_or_resume(parent, parent_objective),
                     ),
                     timeout=MESSAGE_ADAPTER_TIMEOUT_SECONDS,
                 )
@@ -997,9 +1018,7 @@ class ActionExecutor:
         if not lifecycle_resolution_id:
             return "cleanup_lifecycle_resolution_required"
         try:
-            reservation = await self.store.reserve_cleanup_operation(
-                lifecycle_resolution_id
-            )
+            reservation = await self.store.reserve_cleanup_operation(lifecycle_resolution_id)
         except (LookupError, PermissionError, TypeError, ValueError):
             return "cleanup_reservation_refused"
         except Exception:
@@ -1101,11 +1120,7 @@ class ActionExecutor:
         grants restore authority and continues to fail closed.
         """
 
-        if (
-            legacy_manifest is not None
-            or authorized_by is None
-            or idempotency_key is None
-        ):
+        if legacy_manifest is not None or authorized_by is None or idempotency_key is None:
             return "cleanup_restore_reservation_required"
         try:
             reservation = await self.store.reserve_restore_operation(
@@ -1364,9 +1379,7 @@ class ActionExecutor:
         resource_id = str(entry.get("resource_id") or "")
         expected = str(entry.get("entity_fingerprint") or "")
         source = cls._observed_cleanup_fingerprint(str(entry.get("source_path") or ""))
-        destination = cls._observed_cleanup_fingerprint(
-            str(entry.get("destination_path") or "")
-        )
+        destination = cls._observed_cleanup_fingerprint(str(entry.get("destination_path") or ""))
         outcome = (
             "not_restored"
             if source == expected and destination is None
@@ -1397,16 +1410,13 @@ class ActionExecutor:
         raw_outcomes = operation.get("outcomes")
         outcomes = raw_outcomes if isinstance(raw_outcomes, list) else []
         restored = sum(
-            isinstance(row, dict) and row.get("outcome") == "restored"
-            for row in outcomes
+            isinstance(row, dict) and row.get("outcome") == "restored" for row in outcomes
         )
         not_restored = sum(
-            isinstance(row, dict) and row.get("outcome") == "not_restored"
-            for row in outcomes
+            isinstance(row, dict) and row.get("outcome") == "not_restored" for row in outcomes
         )
         conflicts = sum(
-            isinstance(row, dict) and row.get("outcome") == "conflict"
-            for row in outcomes
+            isinstance(row, dict) and row.get("outcome") == "conflict" for row in outcomes
         )
         if state == "completed" and outcomes and restored == len(outcomes):
             code = f"cleanup_restored:{restored}"
@@ -1440,21 +1450,16 @@ class ActionExecutor:
     ) -> dict[str, object]:
         outcomes = (
             operation.get("outcomes")
-            if isinstance(operation, dict)
-            and isinstance(operation.get("outcomes"), list)
+            if isinstance(operation, dict) and isinstance(operation.get("outcomes"), list)
             else []
         )
         manifest = (
             operation.get("manifest")
-            if isinstance(operation, dict)
-            and isinstance(operation.get("manifest"), list)
+            if isinstance(operation, dict) and isinstance(operation.get("manifest"), list)
             else []
         )
         outcome_counts = {
-            name: sum(
-                isinstance(row, dict) and row.get("outcome") == name
-                for row in outcomes
-            )
+            name: sum(isinstance(row, dict) and row.get("outcome") == name for row in outcomes)
             for name in ("restored", "not_restored", "conflict")
         }
         receipt = (
@@ -1570,12 +1575,8 @@ class ActionExecutor:
             raise ValueError("cleanup manifest entry is invalid")
         resource_id = str(entry.get("resource_id") or "")
         expected = str(entry.get("entity_fingerprint") or "")
-        source = cls._observed_cleanup_fingerprint(
-            str(entry.get("source_path") or "")
-        )
-        destination = cls._observed_cleanup_fingerprint(
-            str(entry.get("destination_path") or "")
-        )
+        source = cls._observed_cleanup_fingerprint(str(entry.get("source_path") or ""))
+        destination = cls._observed_cleanup_fingerprint(str(entry.get("destination_path") or ""))
         outcome = (
             "not_moved"
             if source == expected and destination is None
@@ -1598,16 +1599,9 @@ class ActionExecutor:
         state = str(operation.get("state") or "")
         outcomes = operation.get("outcomes")
         rows = outcomes if isinstance(outcomes, list) else []
-        moved = sum(
-            isinstance(row, dict) and row.get("outcome") == "moved" for row in rows
-        )
-        not_moved = sum(
-            isinstance(row, dict) and row.get("outcome") == "not_moved"
-            for row in rows
-        )
-        conflicts = sum(
-            isinstance(row, dict) and row.get("outcome") == "conflict" for row in rows
-        )
+        moved = sum(isinstance(row, dict) and row.get("outcome") == "moved" for row in rows)
+        not_moved = sum(isinstance(row, dict) and row.get("outcome") == "not_moved" for row in rows)
+        conflicts = sum(isinstance(row, dict) and row.get("outcome") == "conflict" for row in rows)
         if state == "completed" and rows and moved == len(rows):
             return f"cleanup_quarantined:{moved}"
         if state == "failed" and rows and not_moved == len(rows):
@@ -1683,10 +1677,7 @@ class ActionExecutor:
             operation_id = str(operation.get("operation_id") or "")
             if not operation_id:
                 return "overlay_apply_reservation_uncertain"
-            if (
-                expected_goal_id is not None
-                and operation.get("goal_id") != expected_goal_id
-            ):
+            if expected_goal_id is not None and operation.get("goal_id") != expected_goal_id:
                 skipped = await self._finalize_overlay_skipped(
                     operation_id,
                     code="action_goal_mismatch",
@@ -1707,11 +1698,13 @@ class ActionExecutor:
                 return _overlay_operation_outcome(skipped, kind="apply")
             try:
                 capabilities = await asyncio.wait_for(
-                    self._workspace_dispatch(session, adapter.probe), timeout=2.0,
+                    self._workspace_dispatch(session, adapter.probe),
+                    timeout=2.0,
                 )
             except _WorkspaceDispatchRefused:
                 skipped = await self._finalize_overlay_skipped(
-                    operation_id, code="workspace_authority_changed",
+                    operation_id,
+                    code="workspace_authority_changed",
                 )
                 return _overlay_operation_outcome(skipped, kind="apply")
             except asyncio.CancelledError:
@@ -1748,8 +1741,7 @@ class ActionExecutor:
                         {
                             **overlay.model_dump(mode="python"),
                             "applied_at": candidate_at,
-                            "expires_at": candidate_at
-                            + timedelta(seconds=overlay.ttl_seconds),
+                            "expires_at": candidate_at + timedelta(seconds=overlay.ttl_seconds),
                         }
                     )
                     compile_overlay_runtime([*active, candidate], now=candidate_at)
@@ -1762,7 +1754,8 @@ class ActionExecutor:
 
             if not await self._workspace_is_current(session):
                 skipped = await self._finalize_overlay_skipped(
-                    operation_id, code="workspace_authority_changed",
+                    operation_id,
+                    code="workspace_authority_changed",
                 )
                 return _overlay_operation_outcome(skipped, kind="apply")
             started = await self._start_overlay_operation(
@@ -1894,10 +1887,7 @@ class ActionExecutor:
                 if operation.get("state") == "delivered":
                     return "overlay_already_reverted", operation
                 return _overlay_operation_outcome(operation, kind="revert"), operation
-            if (
-                expected_goal_id is not None
-                and operation.get("goal_id") != expected_goal_id
-            ):
+            if expected_goal_id is not None and operation.get("goal_id") != expected_goal_id:
                 skipped = await self._finalize_overlay_skipped(
                     str(operation.get("operation_id") or ""),
                     code="action_goal_mismatch",
@@ -1944,9 +1934,7 @@ class ActionExecutor:
                             kind="revert",
                         )
                     except asyncio.CancelledError:
-                        await self._skip_unstarted_expiry_operations(
-                            operations[index + 1 :]
-                        )
+                        await self._skip_unstarted_expiry_operations(operations[index + 1 :])
                         raise
                 cursor = claimed.get("next_cursor")
                 if not isinstance(cursor, dict):
@@ -1975,9 +1963,7 @@ class ActionExecutor:
             return operation
         operation_id = str(operation.get("operation_id") or "")
         payload = operation.get("payload")
-        adapter_name = (
-            str(payload.get("adapter") or "") if isinstance(payload, dict) else ""
-        )
+        adapter_name = str(payload.get("adapter") or "") if isinstance(payload, dict) else ""
         if not operation_id or not adapter_name:
             return {
                 "state": "delivery_uncertain",
@@ -1994,17 +1980,12 @@ class ActionExecutor:
             kind=kind,
             store_projected=adapter_name == "opencode",
             refusal_code=(
-                "overlay_dispatch_refused"
-                if kind == "apply"
-                else "overlay_revert_refused"
+                "overlay_dispatch_refused" if kind == "apply" else "overlay_revert_refused"
             ),
         )
         if (
             isinstance(started, dict)
-            and (
-                operation.get("replayed") is True
-                or operation.get("blocked_by_existing") is True
-            )
+            and (operation.get("replayed") is True or operation.get("blocked_by_existing") is True)
             and started.get("replayed") is not True
         ):
             # Replay is caller-observation metadata, not persisted authority.
@@ -2130,7 +2111,8 @@ class ActionExecutor:
             if kind == "apply":
                 succeeded = await asyncio.wait_for(
                     self._workspace_dispatch(
-                        session, lambda: adapter.apply_overlay(session, overlay),
+                        session,
+                        lambda: adapter.apply_overlay(session, overlay),
                     ),
                     timeout=OVERLAY_ADAPTER_TIMEOUT_SECONDS,
                 )
@@ -2141,7 +2123,8 @@ class ActionExecutor:
                 )
         except _WorkspaceDispatchRefused:
             return await self._finalize_overlay_skipped(
-                operation_id, code="workspace_authority_changed",
+                operation_id,
+                code="workspace_authority_changed",
             )
         except asyncio.CancelledError:
             await self._finalize_overlay_with_recovery(
@@ -2377,9 +2360,7 @@ def _parse_overlay_cursor_time(value: str) -> datetime:
 def _overlay_has_local_reversibility_proof(overlay: Overlay, adapter_name: str) -> bool:
     """Allow only bounded, session-scoped, authority-reducing runtime overlays."""
 
-    return adapter_name in {"opencode", "synthetic"} and locally_proven_session_overlay(
-        overlay
-    )
+    return adapter_name in {"opencode", "synthetic"} and locally_proven_session_overlay(overlay)
 
 
 def _overlay_operation_outcome(operation: dict, *, kind: str) -> str:
@@ -2409,8 +2390,7 @@ def _overlay_structured_result(code: str, operation: dict | None) -> dict:
             "result": result,
         }
         replayed = bool(
-            operation.get("replayed") is True
-            or operation.get("blocked_by_existing") is True
+            operation.get("replayed") is True or operation.get("blocked_by_existing") is True
         )
     else:
         if code == "overlay_not_found":
@@ -2422,7 +2402,9 @@ def _overlay_structured_result(code: str, operation: dict | None) -> dict:
         receipt = None
         replayed = False
     return {
-        "ok": state == "delivered" and code in {
+        "ok": state == "delivered"
+        and code
+        in {
             "overlay_reverted",
             "overlay_already_reverted",
         },
@@ -2438,11 +2420,7 @@ def _overlay_public_result(value: object) -> dict | None:
 
     if not isinstance(value, dict):
         return None
-    result = {
-        key: value[key]
-        for key in ("code", "mode")
-        if isinstance(value.get(key), str)
-    }
+    result = {key: value[key] for key in ("code", "mode") if isinstance(value.get(key), str)}
     return result or None
 
 

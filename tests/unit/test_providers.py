@@ -67,10 +67,14 @@ def test_nebius_saved_byok_constructs_strands_model_with_scoped_endpoint(monkeyp
     monkeypatch.setattr(strands.models.openai, "OpenAIModel", Model)
     sentinel = object()
     monkeypatch.setattr(providers, "credential_safe_http_client", lambda **_: sentinel)
-    model = load_supervisor_model(SupervisorRuntimeConfig(
-        provider="nebius", auth_mode="api_key", credential_source="secret_store",
-        api_key="local-test-credential",
-    ))
+    model = load_supervisor_model(
+        SupervisorRuntimeConfig(
+            provider="nebius",
+            auth_mode="api_key",
+            credential_source="secret_store",
+            api_key="local-test-credential",
+        )
+    )
     assert captured["client_args"]["base_url"] == "https://api.tokenfactory.nebius.com/v1"
     assert captured["client_args"]["api_key"] == "local-test-credential"
     assert captured["client_args"]["http_client"] is sentinel
@@ -106,9 +110,7 @@ def test_dotenv_loader_refuses_oversized_files(monkeypatch, tmp_path):
 
     marker = "PEX_SUPERVISOR_MODEL"
     monkeypatch.delenv(marker, raising=False)
-    (tmp_path / ".env").write_bytes(
-        f"{marker}=must-not-load\n".encode() + (b"x" * 1_048_576)
-    )
+    (tmp_path / ".env").write_bytes(f"{marker}=must-not-load\n".encode() + (b"x" * 1_048_576))
 
     source = tmp_path / "services/supervisor/src/pex_supervisor/providers.py"
     source.parent.mkdir(parents=True)
@@ -128,7 +130,8 @@ def test_installed_provider_does_not_probe_ancestor_dotenv(monkeypatch, tmp_path
 
     source = (
         tmp_path / "lib/python3.12/site-packages/pex_supervisor/providers.py"
-        if layout == "installed" else providers.Path(layout)
+        if layout == "installed"
+        else providers.Path(layout)
     )
     (tmp_path / ".env").write_text("PEX_SUPERVISOR_MODEL=untrusted-ancestor\n")
     monkeypatch.delenv("PEX_SUPERVISOR_MODEL", raising=False)
@@ -309,9 +312,13 @@ def test_zen_chat_model_excludes_reasoning_on_follow_up_turns(monkeypatch):
     asyncio.run(http_client.aclose())
 
 
-@pytest.mark.parametrize("model_id", [
-    "muse-spark-1.3", "muse-spark-1.2",
-])
+@pytest.mark.parametrize(
+    "model_id",
+    [
+        "muse-spark-1.3",
+        "muse-spark-1.2",
+    ],
+)
 def test_zen_responses_model_is_routed_by_catalog_id(monkeypatch, model_id):
     from pex_supervisor.openai_responses import OpenAIResponsesModel
 
@@ -613,8 +620,10 @@ def test_zen_free_tier_cannot_be_configured_as_a_supervisor(monkeypatch):
     from pex_supervisor.providers import _live_rows, apply_runtime_choice
 
     candidate = SupervisorRuntimeConfig(
-        provider="zen", model_id="mimo-v2.6-flash-free",
-        credential_source="environment", auth_mode="api_key",
+        provider="zen",
+        model_id="mimo-v2.6-flash-free",
+        credential_source="environment",
+        auth_mode="api_key",
     )
     with pytest.raises(ValueError, match="only inside OpenCode"):
         validate_runtime_config(candidate)
@@ -622,8 +631,11 @@ def test_zen_free_tier_cannot_be_configured_as_a_supervisor(monkeypatch):
         apply_runtime_choice(provider="zen", model_id="mimo-v2.6-flash-free")
     assert _live_rows("zen", [("mimo-v2.6-flash-free", "Free"), ("big-pickle", "API")]) == [
         {
-            "provider": "zen", "model_id": "big-pickle", "label": "API",
-            "source": "live_provider_list", "availability": "listed",
+            "provider": "zen",
+            "model_id": "big-pickle",
+            "label": "API",
+            "source": "live_provider_list",
+            "availability": "listed",
         }
     ]
 
@@ -874,9 +886,7 @@ def isolated_runtime():
         "https://example.invalid:443/v1",
     ],
 )
-def test_runtime_config_rejects_ambiguous_or_unsafe_endpoints(
-    isolated_runtime, base_url
-):
+def test_runtime_config_rejects_ambiguous_or_unsafe_endpoints(isolated_runtime, base_url):
     with pytest.raises(ValueError, match="base_url"):
         configure_runtime(
             SupervisorRuntimeConfig(
@@ -924,9 +934,7 @@ def test_request_destination_pins_global_dns_so_later_answers_cannot_rebind(monk
     assert request.url.host == "8.8.8.8"
 
 
-def test_custom_without_key_never_inherits_ambient_openai_key(
-    monkeypatch, isolated_runtime
-):
+def test_custom_without_key_never_inherits_ambient_openai_key(monkeypatch, isolated_runtime):
     monkeypatch.delenv("PEX_SUPERVISOR_DISABLE", raising=False)
     monkeypatch.setenv("OPENAI_API_KEY", "sk-ambient-must-not-cross")
     captured = {}
@@ -1041,9 +1049,7 @@ def test_provider_auth_matrix_fails_closed(isolated_runtime, provider, auth_mode
                 model_id="model",
                 auth_mode=auth_mode,
                 protocol="openai" if provider == "custom" else None,
-                base_url=(
-                    "https://models.example.invalid/v1" if provider == "custom" else None
-                ),
+                base_url=("https://models.example.invalid/v1" if provider == "custom" else None),
             )
         )
 
@@ -1179,6 +1185,7 @@ def test_catalog_refresh_restores_enclosing_runtime_scope_after_failure(
     initial_scope = providers._RUNTIME_SCOPE.get()
     token = providers._RUNTIME_SCOPE.set(outer)
     try:
+
         def fail(_request):
             return httpx.Response(503, json={"error": "fixture failure"})
 
@@ -1234,14 +1241,16 @@ def test_catalog_refresh_rejects_unsaved_provider_before_creating_client(
 ):
     import pex_supervisor.providers as providers
 
-    configure_runtime(SupervisorRuntimeConfig(
-        provider="groq",
-        model_id="fixture-model",
-        auth_mode="api_key",
-        base_url="https://groq-override.example.test/v1",
-        credential_source="secret_store",
-        api_key="fixture-groq-key",
-    ))
+    configure_runtime(
+        SupervisorRuntimeConfig(
+            provider="groq",
+            model_id="fixture-model",
+            auth_mode="api_key",
+            base_url="https://groq-override.example.test/v1",
+            credential_source="secret_store",
+            api_key="fixture-groq-key",
+        )
+    )
 
     def forbidden_client(*_args, **_kwargs):
         raise AssertionError("mismatched provider must not construct any client")
@@ -1276,7 +1285,5 @@ def test_catalog_refresh_preserves_explicit_environment_provider_selection(
     assert result["provider"] == "openrouter"
     assert len(captured) == 1
     assert captured[0].url.host == "openrouter.ai"
-    correct_credential = (
-        captured[0].headers.get("authorization") == "Bearer fixture-openrouter-key"
-    )
+    correct_credential = captured[0].headers.get("authorization") == "Bearer fixture-openrouter-key"
     assert correct_credential, "catalog request must use only the fixture credential"

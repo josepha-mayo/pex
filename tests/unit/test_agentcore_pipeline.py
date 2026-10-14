@@ -129,7 +129,9 @@ class _CrashingSupervisor:
 @pytest.mark.parametrize("inference_status", ["completed", "failed", "timeout"])
 @pytest.mark.parametrize("crash_after_receipt", [False, True])
 async def test_exact_main_and_verifier_observations_survive_noop_and_replay(
-    tmp_path, inference_status, crash_after_receipt,
+    tmp_path,
+    inference_status,
+    crash_after_receipt,
 ):
     """Real file tools + Store, fake inference; this is not live model evidence."""
     observed = {}
@@ -143,16 +145,20 @@ async def test_exact_main_and_verifier_observations_survive_noop_and_replay(
             self.calls += 1
             main = EvidenceObservationCollector(request, stage="main", invocation_id="pexinv_main")
             main_file = next(
-                item for item in build_evidence_tools(request, [], collector=main)
+                item
+                for item in build_evidence_tools(request, [], collector=main)
                 if item.tool_name == "inspect_file"
             )
             first_output = main_file("report.txt")
             artifact.write_text("second observed file state", encoding="utf-8")
             verifier = EvidenceObservationCollector(
-                request, stage="verifier", invocation_id="pexver_independent",
+                request,
+                stage="verifier",
+                invocation_id="pexver_independent",
             )
             verifier_file = next(
-                item for item in build_evidence_tools(request, [], collector=verifier)
+                item
+                for item in build_evidence_tools(request, [], collector=verifier)
                 if item.tool_name == "inspect_file"
             )
             second_output = verifier_file("report.txt")
@@ -164,7 +170,9 @@ async def test_exact_main_and_verifier_observations_survive_noop_and_replay(
             result.evidence_observations = list(main.observations)
             result.evidence_refs = [main.observations[0].observation_id]
             result.independent_verifier = IndependentVerifierReceipt(
-                approved=False, status="rejected", invocation_id=verifier.invocation_id,
+                approved=False,
+                status="rejected",
+                invocation_id=verifier.invocation_id,
                 evidence_observations=list(verifier.observations),
                 evidence_refs=[verifier.observations[0].observation_id],
                 model_call_count=1,
@@ -186,17 +194,25 @@ async def test_exact_main_and_verifier_observations_survive_noop_and_replay(
         now = datetime.now(UTC)
         session = await _bound_session(store, tmp_path, vendor_session_id="observations", now=now)
         pipeline = Pipeline(
-            store, AdapterRegistry(), EventBus(),
+            store,
+            AdapterRegistry(),
+            EventBus(),
             Settings.for_test(require_auth=False, home=tmp_path, autonomy="manage"),
         )
         supervisor = ObservingSupervisor()
         pipeline.supervisor = supervisor
         event = HarnessEvent(
-            event_id="observations-event", ts=now, harness_type=HarnessType.CODEX,
-            session_id=session.id, project_id=session.project_id, goal_id=session.goal_id,
-            event_type=EventType.STOP, message_delta="Stopping for inspection.",
+            event_id="observations-event",
+            ts=now,
+            harness_type=HarnessType.CODEX,
+            session_id=session.id,
+            project_id=session.project_id,
+            goal_id=session.goal_id,
+            event_type=EventType.STOP,
+            message_delta="Stopping for inspection.",
         )
         if crash_after_receipt:
+
             class SimulatedCrash(BaseException):
                 pass
 
@@ -212,7 +228,9 @@ async def test_exact_main_and_verifier_observations_survive_noop_and_replay(
             store = Store(tmp_path / "pex.sqlite", process_boot_id="receipt-recovery-boot")
             await store.connect()
             pipeline = Pipeline(
-                store, AdapterRegistry(), EventBus(),
+                store,
+                AdapterRegistry(),
+                EventBus(),
                 Settings.for_test(require_auth=False, home=tmp_path, autonomy="manage"),
             )
             pipeline.supervisor = supervisor
@@ -294,14 +312,21 @@ async def test_independent_verifier_receipt_survives_pipeline_store_and_audit(tm
         now = datetime.now(UTC)
         session = await _bound_session(store, tmp_path, vendor_session_id="reviewed", now=now)
         pipeline = Pipeline(
-            store, AdapterRegistry(), EventBus(),
+            store,
+            AdapterRegistry(),
+            EventBus(),
             Settings.for_test(require_auth=False, home=tmp_path, autonomy="manage"),
         )
         pipeline.supervisor = ReviewedSupervisor()
         event = HarnessEvent(
-            event_id="reviewed-event", ts=now, harness_type=HarnessType.CODEX,
-            session_id=session.id, project_id=session.project_id, goal_id=session.goal_id,
-            event_type=EventType.STOP, message_delta="Stopping for review.",
+            event_id="reviewed-event",
+            ts=now,
+            harness_type=HarnessType.CODEX,
+            session_id=session.id,
+            project_id=session.project_id,
+            goal_id=session.goal_id,
+            event_type=EventType.STOP,
+            message_delta="Stopping for review.",
         )
         intervention = await pipeline.ingest_event(event, session)
         expected = receipt.model_dump(mode="json")

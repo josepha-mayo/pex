@@ -76,9 +76,7 @@ def test_live_contree_runs_public_pytest_in_a_disposable_vm(tmp_path: Path, _liv
     assert sandbox.get("image") == _live_contree.image
 
 
-def test_live_contree_reports_a_real_test_failure_not_infra_error(
-    tmp_path: Path, _live_contree
-):
+def test_live_contree_reports_a_real_test_failure_not_infra_error(tmp_path: Path, _live_contree):
     require_live_authorization("PEX_LIVE_CONTREE")
     manifest = _manifest(
         tmp_path,

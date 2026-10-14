@@ -26,7 +26,9 @@ from test_workspace_publication import publish
 
 def marker(correction, item, turn_id):
     entry = {
-        "turn_id": turn_id, "item_id": item["id"], "client_id": item["clientId"],
+        "turn_id": turn_id,
+        "item_id": item["id"],
+        "client_id": item["clientId"],
         "content": item["content"],
     }
     return {
@@ -40,17 +42,24 @@ def marker(correction, item, turn_id):
 
 def observation(session, correction, *, event_id="correction-echo", turn_id="echo-turn"):
     item = {
-        "type": "userMessage", "id": "echo-item",
+        "type": "userMessage",
+        "id": "echo-item",
         "clientId": correction["client_message_id"],
         "content": copy.deepcopy(correction["content"]),
     }
     receipt = session.metadata["subscription_receipt"]
     event = HarnessEvent(
-        event_id=event_id, ts=utcnow(), harness_type=session.harness_type,
-        session_id=session.id, project_id=session.project_id, event_type=EventType.STATUS,
+        event_id=event_id,
+        ts=utcnow(),
+        harness_type=session.harness_type,
+        session_id=session.id,
+        project_id=session.project_id,
+        event_type=EventType.STATUS,
         metadata={
-            "source": "codex_shared_live_notification", "raw_method": "item/completed",
-            "vendor_turn_id": turn_id, "subscription_id": receipt["authorization_id"],
+            "source": "codex_shared_live_notification",
+            "raw_method": "item/completed",
+            "vendor_turn_id": turn_id,
+            "subscription_id": receipt["authorization_id"],
             "endpoint_identity": receipt["endpoint_identity"],
             "connection_generation": receipt["connection_generation"],
             "ingress_sequence": 1,
@@ -70,8 +79,15 @@ async def echo(bound):
     correction = prepared[2]["codex_correction"]
     event, item, turn = observation(session, correction)
     return SimpleNamespace(
-        store=store, session=session, fixture=fixture, prepared=prepared,
-        effect=effect, correction=correction, event=event, item=item, turn=turn,
+        store=store,
+        session=session,
+        fixture=fixture,
+        prepared=prepared,
+        effect=effect,
+        correction=correction,
+        event=event,
+        item=item,
+        turn=turn,
     )
 
 
@@ -119,12 +135,18 @@ async def test_replay_preserves_original_event_timestamp_goal_and_publication(ec
     first = await record(echo)
     processing = await echo.store.get_event_processing(first.event_id)
     goal = Goal(
-        id="next-human-goal", project_id=echo.session.project_id, title="New goal",
-        objective="The next explicit human instruction", created_at=utcnow(), updated_at=utcnow(),
+        id="next-human-goal",
+        project_id=echo.session.project_id,
+        title="New goal",
+        objective="The next explicit human instruction",
+        created_at=utcnow(),
+        updated_at=utcnow(),
     )
     await echo.store.upsert_goal(goal)
     changed = await echo.store.attach_session_goal(
-        echo.session.id, goal.id, expected_goal_id=echo.session.goal_id,
+        echo.session.id,
+        goal.id,
+        expected_goal_id=echo.session.goal_id,
         replace_existing=True,
     )
     assert changed["changed"]
@@ -136,18 +158,34 @@ async def test_replay_preserves_original_event_timestamp_goal_and_publication(ec
     assert repeated == first
     assert await echo.store.get_event_processing(first.event_id) == processing
     cursor = await echo.store.db.execute(
-        "SELECT COUNT(*) AS total FROM event_publications WHERE event_id=?", (first.event_id,),
+        "SELECT COUNT(*) AS total FROM event_publications WHERE event_id=?",
+        (first.event_id,),
     )
     assert (await cursor.fetchone())["total"] == 1
     assert (await echo.store.get_session(echo.session.id)).goal_id == goal.id
 
 
-@pytest.mark.parametrize("change", [
-    "unknown_client", "spoofed_prefix", "changed_content", "truncated", "wrong_marker_id",
-    "wrong_marker_hash", "missing_marker", "wrong_subscription", "wrong_epoch", "wrong_turn",
-    "user_prompt", "message_body", "wrong_project", "wrong_sequence_scope",
-    "claims_delivery", "wrong_endpoint",
-])
+@pytest.mark.parametrize(
+    "change",
+    [
+        "unknown_client",
+        "spoofed_prefix",
+        "changed_content",
+        "truncated",
+        "wrong_marker_id",
+        "wrong_marker_hash",
+        "missing_marker",
+        "wrong_subscription",
+        "wrong_epoch",
+        "wrong_turn",
+        "user_prompt",
+        "message_body",
+        "wrong_project",
+        "wrong_sequence_scope",
+        "claims_delivery",
+        "wrong_endpoint",
+    ],
+)
 async def test_forged_or_incomplete_echo_cannot_enter_record_only_path(echo, change):
     event, item = echo.event.model_copy(deep=True), copy.deepcopy(echo.item)
     if change == "unknown_client":
@@ -197,7 +235,10 @@ async def test_workspace_loss_prevents_echo_recording(echo, change):
         path = echo.fixture[3]
         old = load_local_origin_choice(path)
         save_local_origin_choice(
-            path, old.origin, expected_revision=old.revision, expected_choice_id=old.choice_id,
+            path,
+            old.origin,
+            expected_revision=old.revision,
+            expected_choice_id=old.choice_id,
         )
     with pytest.raises(WorkspaceAuthorityError):
         await record(echo)
@@ -215,18 +256,28 @@ async def test_new_epoch_after_restart_can_attribute_old_attempt_but_not_dispatc
     await reopened.connect()
     try:
         saved = await record(
-            echo, store=reopened, session=current, event=event, item=item, turn=turn,
+            echo,
+            store=reopened,
+            session=current,
+            event=event,
+            item=item,
+            turn=turn,
         )
         assert saved.metadata["connection_generation"] == 2
         assert saved.metadata["pex_correction_observation"]["effect_id"] == echo.effect["effect_id"]
         historical = await reopened.get_event_effect(echo.prepared[0].event_id, "main")
-        assert historical["payload"]["codex_correction"]["subscription_receipt"][
-            "connection_generation"
-        ] == 1
+        assert (
+            historical["payload"]["codex_correction"]["subscription_receipt"][
+                "connection_generation"
+            ]
+            == 1
+        )
         assert historical == echo.effect
         grant = await reopened.validate_main_event_effect_dispatch(
-            event_id=echo.prepared[0].event_id, owner=OWNER,
-            effect_id=echo.effect["effect_id"], effect_version=echo.effect["version"],
+            event_id=echo.prepared[0].event_id,
+            owner=OWNER,
+            effect_id=echo.effect["effect_id"],
+            effect_version=echo.effect["version"],
             expected_action=echo.prepared[2]["action"],
         )
         assert not grant["granted"]
@@ -252,7 +303,9 @@ async def test_insert_failure_rolls_back_event_processing_and_publication(echo):
 
 @pytest.mark.parametrize("change", ["version", "state"])
 async def test_attempt_race_between_loader_and_transaction_does_not_record(
-    echo, monkeypatch, change,
+    echo,
+    monkeypatch,
+    change,
 ):
     original = echo.store.list_codex_correction_attributions
 
@@ -260,7 +313,8 @@ async def test_attempt_race_between_loader_and_transaction_does_not_record(
         records = await original(session)
         update = "version=version+1" if change == "version" else "state='delivery_uncertain'"
         await echo.store.db.execute(
-            f"UPDATE event_effects SET {update} WHERE effect_id=?", (echo.effect["effect_id"],),
+            f"UPDATE event_effects SET {update} WHERE effect_id=?",
+            (echo.effect["effect_id"],),
         )
         await echo.store.db.commit()
         return records
@@ -274,7 +328,8 @@ async def test_attempt_race_between_loader_and_transaction_does_not_record(
 
 
 async def test_workspace_revoked_after_initial_transaction_sample_is_not_committed(
-    echo, monkeypatch,
+    echo,
+    monkeypatch,
 ):
     original = store_module._load_bound_session
     changed = False
@@ -300,7 +355,9 @@ async def test_workspace_revoked_after_initial_transaction_sample_is_not_committ
 async def test_same_attempt_cannot_own_a_second_vendor_input(echo, change):
     first = await record(echo)
     event, item, turn = observation(
-        echo.session, echo.correction, event_id="second-observation",
+        echo.session,
+        echo.correction,
+        event_id="second-observation",
         turn_id="different-turn" if change == "turn" else echo.turn,
     )
     if change == "item":
@@ -343,7 +400,8 @@ async def test_competing_exact_echoes_commit_only_one_vendor_input(echo, monkeyp
     item["id"] = "competing-vendor-item"
     second.metadata["pex_correction_observation"] = marker(echo.correction, item, turn)
     results = await asyncio.gather(
-        record(echo), record(echo, event=second, item=item, turn=turn),
+        record(echo),
+        record(echo, event=second, item=item, turn=turn),
         return_exceptions=True,
     )
     assert loaded == 2

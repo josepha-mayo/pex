@@ -93,21 +93,30 @@ async def test_repeated_positive_validation_leaves_all_durable_markers_unchanged
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("override, reason", [
-    ({"owner": "other-owner"}, "processing_claim_not_owned"),
-    ({"effect_id": "different-effect"}, "dispatch_effect_id_mismatch"),
-    ({"effect_version": 9000}, "dispatch_effect_version_mismatch"),
-    ({"global_supervision_paused": True}, "global_supervision_paused"),
-])
+@pytest.mark.parametrize(
+    "override, reason",
+    [
+        ({"owner": "other-owner"}, "processing_claim_not_owned"),
+        ({"effect_id": "different-effect"}, "dispatch_effect_id_mismatch"),
+        ({"effect_version": 9000}, "dispatch_effect_version_mismatch"),
+        ({"global_supervision_paused": True}, "global_supervision_paused"),
+    ],
+)
 async def test_exact_owner_effect_version_and_global_pause(claimed, override, reason):
     await refused(claimed, reason, **override)
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("override", [
-    {"effect_version": True}, {"effect_version": -1}, {"effect_version": "1"},
-    {"expected_action": []}, {"global_supervision_paused": 0},
-])
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"effect_version": True},
+        {"effect_version": -1},
+        {"effect_version": "1"},
+        {"expected_action": []},
+        {"global_supervision_paused": 0},
+    ],
+)
 async def test_validator_does_not_loosen_argument_types(claimed, override):
     with pytest.raises(ValueError):
         await validate(claimed, **override)
@@ -172,10 +181,13 @@ async def test_goal_pause_and_resume_cannot_restore_an_old_action(claimed, resto
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("change, reason", [
-    ({"capabilities": {"send_message": False}}, "missing_capability:send_message"),
-    ({"status": SessionStatus.DETACHED}, "session_detached_before_dispatch"),
-])
+@pytest.mark.parametrize(
+    "change, reason",
+    [
+        ({"capabilities": {"send_message": False}}, "missing_capability:send_message"),
+        ({"status": SessionStatus.DETACHED}, "session_detached_before_dispatch"),
+    ],
+)
 async def test_lost_worker_capability_or_detachment_refuses_old_action(claimed, change, reason):
     store, _, session, _ = claimed
     await store.upsert_session(session.model_copy(update=change))
@@ -219,11 +231,13 @@ async def test_new_accepted_human_input_blocks_old_action_without_vendor_clock_o
     claimed, record_only
 ):
     store, event, session, _ = claimed
-    prompt = _event("new-human", goal_id=event.goal_id).model_copy(update={
-        "event_type": EventType.USER_PROMPT,
-        "message_delta": "Updated human instruction",
-        "ts": event.ts - timedelta(days=1),
-    })
+    prompt = _event("new-human", goal_id=event.goal_id).model_copy(
+        update={
+            "event_type": EventType.USER_PROMPT,
+            "message_delta": "Updated human instruction",
+            "ts": event.ts - timedelta(days=1),
+        }
+    )
     if record_only:
         await store.add_event(prompt)
     else:
@@ -232,9 +246,14 @@ async def test_new_accepted_human_input_blocks_old_action_without_vendor_clock_o
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("field, value", [
-    ("goal_id", "forged-goal"), ("session_id", "codex:forged"), ("reversible", 0),
-])
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("goal_id", "forged-goal"),
+        ("session_id", "codex:forged"),
+        ("reversible", 0),
+    ],
+)
 async def test_expected_action_exact_binding_including_json_boolean_types(claimed, field, value):
     action = arguments(claimed)["expected_action"]
     action[field] = value
@@ -367,8 +386,12 @@ async def test_actual_bound_workspace_loss_after_claim_refuses_without_marker_wr
     await publish(publication)
     now = utcnow()
     goal = Goal(
-        id="workspace-main-goal", project_id=session.project_id, title="Worker goal",
-        objective="Finish the real selected task.", created_at=now, updated_at=now,
+        id="workspace-main-goal",
+        project_id=session.project_id,
+        title="Worker goal",
+        objective="Finish the real selected task.",
+        created_at=now,
+        updated_at=now,
     )
     await store.upsert_goal(goal)
     await store.attach_session_goal(session.id, goal.id, expected_goal_id=None)
@@ -405,12 +428,15 @@ async def test_autonomous_action_without_canonical_goal_cannot_validate(tmp_path
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("change, reason", [
-    ({"mode": "record_only"}, "event_not_pipeline"),
-    ({"state": "complete"}, "event_already_terminal"),
-    ({"state": "planning"}, "event_plan_not_dispatchable"),
-    ({"lease_owner": "other"}, "processing_claim_not_owned"),
-])
+@pytest.mark.parametrize(
+    "change, reason",
+    [
+        ({"mode": "record_only"}, "event_not_pipeline"),
+        ({"state": "complete"}, "event_already_terminal"),
+        ({"state": "planning"}, "event_plan_not_dispatchable"),
+        ({"lease_owner": "other"}, "processing_claim_not_owned"),
+    ],
+)
 async def test_processing_authority_cannot_be_relabelled_after_claim(claimed, change, reason):
     store, event, _, _ = claimed
     column, value = next(iter(change.items()))

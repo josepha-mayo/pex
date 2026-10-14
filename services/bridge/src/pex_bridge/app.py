@@ -138,19 +138,21 @@ TRANSPORT_CLOSE_TIMEOUT_SECONDS = 3.0
 SOCKET_SEND_TIMEOUT_SECONDS = 2.0
 DESKTOP_REFRESH_TIMEOUT_SECONDS = 5.0
 ASK_MODEL_TIMEOUT_SECONDS = 25.0
-_ASK_WORKER_ACTIVITY_TYPES = frozenset({
-    EventType.MESSAGE_DELTA,
-    EventType.AGENT_THOUGHT,
-    EventType.AGENT_RESPONSE,
-    EventType.TOOL_CALL,
-    EventType.TOOL_RESULT,
-    EventType.TOOL_FAILURE,
-    EventType.FILE_EDIT,
-    EventType.FILE_READ,
-    EventType.SHELL,
-    EventType.COMPACTION,
-    EventType.TOKEN_USAGE,
-})
+_ASK_WORKER_ACTIVITY_TYPES = frozenset(
+    {
+        EventType.MESSAGE_DELTA,
+        EventType.AGENT_THOUGHT,
+        EventType.AGENT_RESPONSE,
+        EventType.TOOL_CALL,
+        EventType.TOOL_RESULT,
+        EventType.TOOL_FAILURE,
+        EventType.FILE_EDIT,
+        EventType.FILE_READ,
+        EventType.SHELL,
+        EventType.COMPACTION,
+        EventType.TOKEN_USAGE,
+    }
+)
 MAX_WEBSOCKET_MESSAGE_CHARS = 4096
 WEBSOCKET_TOKEN_PROTOCOL_PREFIX = "pex-token."
 MAX_EVENT_SOCKETS = 16
@@ -234,9 +236,7 @@ async def _verification_report_payload(goal_id: str) -> dict[str, Any]:
     session_ids: set[str] = set()
     for item in interventions:
         verification = (
-            item.metadata.get("verification")
-            if isinstance(item.metadata, dict)
-            else None
+            item.metadata.get("verification") if isinstance(item.metadata, dict) else None
         )
         if not isinstance(verification, dict):
             continue
@@ -277,9 +277,7 @@ async def _verification_report_payload(goal_id: str) -> dict[str, Any]:
         )
     baselines = []
     for session_id in sorted(session_ids):
-        baseline = await state.store.recall_acceptance_baseline(
-            session_id, goal_id
-        )
+        baseline = await state.store.recall_acceptance_baseline(session_id, goal_id)
         if isinstance(baseline, dict):
             baselines.append(
                 {
@@ -311,10 +309,7 @@ async def _verification_report_payload(goal_id: str) -> dict[str, Any]:
                 1
                 for claim in claims
                 if isinstance(claim["acceptance_surface"], dict)
-                and any(
-                    claim["acceptance_surface"].get(key)
-                    for key in integrity_flags
-                )
+                and any(claim["acceptance_surface"].get(key) for key in integrity_flags)
             ),
             "corrective_nudges": sum(
                 1 for claim in claims if claim["action_taken"] == "SEND_NUDGE"
@@ -350,17 +345,13 @@ async def _evidence_pack_payload(goal_id: str) -> dict[str, Any]:
     """
 
     report = await _verification_report_payload(goal_id)
-    interventions = await state.store.list_interventions_for_goal(
-        goal_id, limit=200, offset=0
-    )
+    interventions = await state.store.list_interventions_for_goal(goal_id, limit=200, offset=0)
 
     session_ids: set[str] = set()
     flagged: list[dict[str, Any]] = []
     for item in interventions:
         verification = (
-            item.metadata.get("verification")
-            if isinstance(item.metadata, dict)
-            else None
+            item.metadata.get("verification") if isinstance(item.metadata, dict) else None
         )
         if not isinstance(verification, dict):
             continue
@@ -384,9 +375,7 @@ async def _evidence_pack_payload(goal_id: str) -> dict[str, Any]:
                         for path, text in sorted(flagged_content.items())
                         if isinstance(text, str)
                     },
-                    "acceptance_surface": surface
-                    if isinstance(surface, dict)
-                    else None,
+                    "acceptance_surface": surface if isinstance(surface, dict) else None,
                 }
             )
 
@@ -407,9 +396,7 @@ async def _evidence_pack_payload(goal_id: str) -> dict[str, Any]:
 
     event_ledger: list[dict[str, Any]] = []
     for session_id in sorted(session_ids):
-        events = await state.store.recent_events(
-            session_id, limit=_EVIDENCE_PACK_EVENT_LIMIT
-        )
+        events = await state.store.recent_events(session_id, limit=_EVIDENCE_PACK_EVENT_LIMIT)
         chain = ""
         entries: list[dict[str, Any]] = []
         for event in events:
@@ -438,9 +425,7 @@ async def _evidence_pack_payload(goal_id: str) -> dict[str, Any]:
         "report": report,
         "acceptance_baselines": baselines,
         "flagged": flagged,
-        "interventions": [
-            item.model_dump(mode="json") for item in interventions
-        ],
+        "interventions": [item.model_dump(mode="json") for item in interventions],
         "event_ledger": event_ledger,
     }
     pack["manifest_sha256"] = _sha256_text(_canonical_json(pack))
@@ -628,8 +613,13 @@ async def _process_cursor_stop(event: HarnessEvent, session: HarnessSession) -> 
 
 async def _record_cursor_delivery_ack(payload: dict) -> dict[str, Any]:
     if (
-        set(payload) != {
-            "hook_event_name", "conversation_id", "workspace_roots", "receipt", "delivery_evidence",
+        set(payload)
+        != {
+            "hook_event_name",
+            "conversation_id",
+            "workspace_roots",
+            "receipt",
+            "delivery_evidence",
         }
         or payload.get("delivery_evidence") != "hook_stdout_flushed"
         or not isinstance(payload.get("receipt"), dict)
@@ -648,7 +638,8 @@ async def _record_cursor_delivery_ack(payload: dict) -> dict[str, Any]:
         raise HTTPException(422, "Cursor delivery observation requires a project identity")
     try:
         return await asyncio.wait_for(
-            state.store.record_cursor_hook_flush(packet, project_id=project_id), timeout=1.0,
+            state.store.record_cursor_hook_flush(packet, project_id=project_id),
+            timeout=1.0,
         )
     except (LookupError, PermissionError, ProjectIdentityBlockedError, ValueError, TypeError):
         raise HTTPException(409, "Cursor delivery observation rejected") from None
@@ -798,9 +789,7 @@ async def _revalidate_mcp_session_principal(
         return None
     try:
         goal = (
-            await state.store.get_goal_for_authority(session.goal_id)
-            if session.goal_id
-            else None
+            await state.store.get_goal_for_authority(session.goal_id) if session.goal_id else None
         )
     except ProjectIdentityBlockedError:
         return None
@@ -813,9 +802,7 @@ async def _revalidate_mcp_session_principal(
     ):
         return None
     try:
-        live_project_binding = await state.store.project_binding_for_authority(
-            principal.project_id
-        )
+        live_project_binding = await state.store.project_binding_for_authority(principal.project_id)
     except ProjectIdentityBlockedError:
         return None
     if live_project_binding != principal.project_binding:
@@ -827,9 +814,7 @@ def _atomic_write_text(path: Path, text: str) -> None:
     """Durably replace a small control-plane file without exposing partial JSON."""
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.parent / (
-        f".{path.name}.{os.getpid()}.{secrets.token_hex(8)}.tmp"
-    )
+    temporary = path.parent / (f".{path.name}.{os.getpid()}.{secrets.token_hex(8)}.tmp")
     try:
         with temporary.open("x", encoding="utf-8", newline="\n") as handle:
             handle.write(text)
@@ -1401,9 +1386,7 @@ def _start_event_pumps() -> None:
         # dormant adapters. Every supported attach path calls this function
         # again after publishing its verified transport.
         event_sources = [
-            getattr(adapter, source)
-            for source in ("transport", "acp")
-            if hasattr(adapter, source)
+            getattr(adapter, source) for source in ("transport", "acp") if hasattr(adapter, source)
         ]
         if event_sources and all(source is None for source in event_sources):
             continue
@@ -1455,9 +1438,7 @@ async def _shutdown_runtime_resources() -> None:
                 timeout=TRANSPORT_CLOSE_TIMEOUT_SECONDS,
             )
         except TimeoutError:
-            logger.warning(
-                "Supervisor configuration did not stop before the shutdown deadline"
-            )
+            logger.warning("Supervisor configuration did not stop before the shutdown deadline")
         except Exception as exc:
             logger.warning(
                 "Supervisor configuration shutdown failed (%s)",
@@ -1794,7 +1775,7 @@ def _overlay_expiry_delay(*, idle_passes: int, failures: int) -> float:
     """Keep TTL cleanup responsive without polling an empty Store every second."""
 
     if failures:
-        return min(30.0, 2.0**min(failures, 5))
+        return min(30.0, 2.0 ** min(failures, 5))
     return min(8.0, 2.0 ** max(0, min(idle_passes, 4) - 1))
 
 
@@ -1836,9 +1817,7 @@ def _public_supervisor_health() -> dict[str, Any]:
 
     info = _supervisor_health()
     return {
-        key: info[key]
-        for key in ("backend", "model_id", "model_loaded", "disabled")
-        if key in info
+        key: info[key] for key in ("backend", "model_id", "model_loaded", "disabled") if key in info
     }
 
 
@@ -1852,9 +1831,7 @@ async def _bounded_adapter_probe(adapter: Any) -> AdapterCapabilities:
     """Probe one adapter without letting a dead integration stall the control plane."""
 
     try:
-        return await asyncio.wait_for(
-            adapter.probe(), timeout=ADAPTER_PROBE_TIMEOUT_SECONDS
-        )
+        return await asyncio.wait_for(adapter.probe(), timeout=ADAPTER_PROBE_TIMEOUT_SECONDS)
     except TimeoutError:
         logger.warning("Adapter %s probe timed out", getattr(adapter, "name", "unknown"))
     except Exception as exc:
@@ -1919,9 +1896,7 @@ async def _bounded_adapter_probes(adapters: list[Any]) -> list[AdapterCapabiliti
 
     snapshot = await asyncio.to_thread(capture_running_image_snapshot)
     with scoped_running_image_snapshot(snapshot):
-        return list(
-            await asyncio.gather(*[_cached_adapter_probe(adapter) for adapter in adapters])
-        )
+        return list(await asyncio.gather(*[_cached_adapter_probe(adapter) for adapter in adapters]))
 
 
 async def _bounded_discover_sessions(adapter: Any) -> list[Any]:
@@ -1987,9 +1962,7 @@ def _windows_current_user_sid() -> str:
         size = wintypes.DWORD()
         advapi32.GetTokenInformation(token_handle, 1, None, 0, ctypes.byref(size))
         buf = ctypes.create_string_buffer(size.value)
-        if not advapi32.GetTokenInformation(
-            token_handle, 1, buf, size.value, ctypes.byref(size)
-        ):
+        if not advapi32.GetTokenInformation(token_handle, 1, buf, size.value, ctypes.byref(size)):
             raise ctypes.WinError(ctypes.get_last_error())
         token_user = ctypes.cast(buf, ctypes.POINTER(TOKEN_USER)).contents
         sid_string = wintypes.LPWSTR()
@@ -2438,9 +2411,10 @@ def _decode_websocket_token_protocol(protocol: str) -> str | None:
     if not protocol.startswith(WEBSOCKET_TOKEN_PROTOCOL_PREFIX):
         return None
     encoded = protocol.removeprefix(WEBSOCKET_TOKEN_PROTOCOL_PREFIX)
-    if not encoded or len(encoded) > 684 or any(
-        not (char.isascii() and (char.isalnum() or char in "-_"))
-        for char in encoded
+    if (
+        not encoded
+        or len(encoded) > 684
+        or any(not (char.isascii() and (char.isalnum() or char in "-_")) for char in encoded)
     ):
         return None
     try:
@@ -2508,9 +2482,7 @@ async def _authorize_hook_route(
         raise HTTPException(403, "hook credential vendor session binding mismatch")
     if principal.is_bound and project_id is not None:
         try:
-            live_project_binding = await state.store.project_binding_for_authority(
-                project_id
-            )
+            live_project_binding = await state.store.project_binding_for_authority(project_id)
         except (ProjectIdentityBlockedError, ValueError) as exc:
             raise HTTPException(403, "hook credential project binding mismatch") from exc
         if live_project_binding != principal.project_binding:
@@ -2524,9 +2496,7 @@ def _hook_payload_binding(harness_type: HarnessType, payload: dict) -> tuple[str
         project_value = roots[0] if isinstance(roots, list) and roots else payload.get("cwd")
     elif harness_type == HarnessType.CLAUDE_CODE:
         vendor_value = (
-            payload.get("session_id")
-            or payload.get("conversation_id")
-            or payload.get("sessionId")
+            payload.get("session_id") or payload.get("conversation_id") or payload.get("sessionId")
         )
         roots = payload.get("cwd") or payload.get("workspace_roots")
         project_value = roots[0] if isinstance(roots, list) and roots else roots
@@ -2706,25 +2676,17 @@ class GoalPatch(_StrictRequestModel):
     mode: Literal["update", "override"] = "update"
     expected_intent_revision: int | None = Field(default=None, ge=0)
     title: str | None = Field(default=None, min_length=1, max_length=512)
-    objective: str | None = Field(
-        default=None, min_length=1, max_length=MAX_CONTROL_TEXT_CHARS
-    )
+    objective: str | None = Field(default=None, min_length=1, max_length=MAX_CONTROL_TEXT_CHARS)
     observation_only: bool | None = None
     acceptance_criteria: list[GoalListItem] | None = Field(
         default=None, max_length=MAX_GOAL_LIST_ITEMS
     )
-    constraints: list[GoalListItem] | None = Field(
-        default=None, max_length=MAX_GOAL_LIST_ITEMS
-    )
-    preferences: list[GoalListItem] | None = Field(
-        default=None, max_length=MAX_GOAL_LIST_ITEMS
-    )
+    constraints: list[GoalListItem] | None = Field(default=None, max_length=MAX_GOAL_LIST_ITEMS)
+    preferences: list[GoalListItem] | None = Field(default=None, max_length=MAX_GOAL_LIST_ITEMS)
     forbidden_outcomes: list[GoalListItem] | None = Field(
         default=None, max_length=MAX_GOAL_LIST_ITEMS
     )
-    non_goals: list[GoalListItem] | None = Field(
-        default=None, max_length=MAX_GOAL_LIST_ITEMS
-    )
+    non_goals: list[GoalListItem] | None = Field(default=None, max_length=MAX_GOAL_LIST_ITEMS)
     evidence_requirements: list[GoalListItem] | None = Field(
         default=None, max_length=MAX_GOAL_LIST_ITEMS
     )
@@ -2787,9 +2749,7 @@ def _require_goal_control_idempotency(
             428,
             {
                 "code": "idempotency_key_required",
-                "message": (
-                    "idempotency_key is required for authenticated goal control mutation"
-                ),
+                "message": ("idempotency_key is required for authenticated goal control mutation"),
             },
         )
 
@@ -2934,17 +2894,14 @@ def _overlay_revert_response(
         status_code = missing_status
     elif operation_state == "delivery_uncertain" or "uncertain" in code:
         status_code = 502
-    elif (
-        operation_state in {"failed", "skipped", "refused", "conflict"}
-        or any(
-            marker in code
-            for marker in (
-                "conflict",
-                "invalid",
-                "mismatch",
-                "not_delivered",
-                "refused",
-            )
+    elif operation_state in {"failed", "skipped", "refused", "conflict"} or any(
+        marker in code
+        for marker in (
+            "conflict",
+            "invalid",
+            "mismatch",
+            "not_delivered",
+            "refused",
         )
     ):
         status_code = 409
@@ -2960,9 +2917,7 @@ class ProjectLocatorRegisterIn(_StrictRequestModel):
     @field_validator("legacy_project_id")
     @classmethod
     def validate_legacy_project_id(cls, value: str) -> str:
-        if value != value.rstrip("\r\n") or any(
-            category(char).startswith("C") for char in value
-        ):
+        if value != value.rstrip("\r\n") or any(category(char).startswith("C") for char in value):
             raise ValueError("legacy project id must contain no control characters")
         return value
 
@@ -2980,9 +2935,7 @@ class ProjectIdentityResolveIn(_StrictRequestModel):
     @field_validator("legacy_project_id")
     @classmethod
     def validate_legacy_project_id(cls, value: str) -> str:
-        if value != value.rstrip("\r\n") or any(
-            category(char).startswith("C") for char in value
-        ):
+        if value != value.rstrip("\r\n") or any(category(char).startswith("C") for char in value):
             raise ValueError("legacy project id must contain no control characters")
         return value
 
@@ -3069,9 +3022,7 @@ class HandoffIn(ContextHandoffRequest):
 
 
 class AskIn(_StrictRequestModel):
-    question: str = Field(
-        default="what needs me?", min_length=1, max_length=MAX_CONTROL_TEXT_CHARS
-    )
+    question: str = Field(default="what needs me?", min_length=1, max_length=MAX_CONTROL_TEXT_CHARS)
     session_id: BoundedId | None = None
 
 
@@ -3094,9 +3045,7 @@ class DemoEventIn(_StrictRequestModel):
     event_type: EventType
     message: str | None = Field(default=None, max_length=MAX_CONTROL_TEXT_CHARS)
     command: str | None = Field(default=None, max_length=MAX_CONTROL_TEXT_CHARS)
-    file_paths: list[BoundedPath] = Field(
-        default_factory=list, max_length=MAX_EVENT_FILE_PATHS
-    )
+    file_paths: list[BoundedPath] = Field(default_factory=list, max_length=MAX_EVENT_FILE_PATHS)
     process_state: dict | None = None
     tool_name: str | None = Field(default=None, max_length=128)
     error: str | None = Field(default=None, max_length=MAX_CONTROL_TEXT_CHARS)
@@ -3155,12 +3104,8 @@ class HatchIn(_StrictRequestModel):
     @field_validator("display_name", "description", "pet_notes")
     @classmethod
     def _validate_hatch_text(cls, value: str, info: Any) -> str:
-        if value != value.strip() or any(
-            category(char).startswith("C") for char in value
-        ):
-            raise ValueError(
-                f"{info.field_name} must be canonical text without control characters"
-            )
+        if value != value.strip() or any(category(char).startswith("C") for char in value):
+            raise ValueError(f"{info.field_name} must be canonical text without control characters")
         return value
 
 
@@ -3168,9 +3113,7 @@ class SupervisorIn(_StrictRequestModel):
     expected_revision: int | None = Field(default=None, ge=0, le=2_147_483_647)
     provider: str | None = Field(default=None, max_length=256)
     model_id: str | None = Field(default=None, max_length=512)
-    auth_mode: Literal[
-        "api_key", "login", "local", "custom", "bedrock", "agentcore"
-    ] | None = None
+    auth_mode: Literal["api_key", "login", "local", "custom", "bedrock", "agentcore"] | None = None
     protocol: Literal["openai", "anthropic"] | None = None
     base_url: str | None = Field(default=None, max_length=2048)
     api_key: SecretStr | None = Field(default=None, max_length=16_384, repr=False)
@@ -3213,9 +3156,7 @@ class SyntheticEventIn(_StrictRequestModel):
     message: str | None = Field(default=None, max_length=MAX_CONTROL_TEXT_CHARS)
     command: str | None = Field(default=None, max_length=MAX_CONTROL_TEXT_CHARS)
     tool_name: str | None = Field(default=None, max_length=512)
-    file_paths: list[BoundedPath] = Field(
-        default_factory=list, max_length=MAX_EVENT_FILE_PATHS
-    )
+    file_paths: list[BoundedPath] = Field(default_factory=list, max_length=MAX_EVENT_FILE_PATHS)
     phase: str | None = Field(default=None, max_length=64)
     process_state: dict | None = None
     error: str | None = Field(default=None, max_length=MAX_CONTROL_TEXT_CHARS)
@@ -3519,9 +3460,7 @@ def _prepare_saved_supervisor_choice(
         return None, model, bool(info.get("has_api_key"))
     api_key = _resolve_choice_secret(choice)
     if choice.credential_source == "secret_store" and not api_key:
-        raise _SavedSupervisorCredentialMissing(
-            "saved supervisor credential did not resolve"
-        )
+        raise _SavedSupervisorCredentialMissing("saved supervisor credential did not resolve")
     runtime = validate_runtime_config(_choice_runtime_config(choice, api_key))
     model = load_supervisor_model(runtime)
     return runtime, model, bool(api_key)
@@ -3567,8 +3506,7 @@ async def _activate_saved_supervisor_choice(
             )
             state.supervisor_error = "SupervisorActivationTimeout"
         logger.error(
-            "Saved supervisor configuration timed out; "
-            "deterministic supervision remains active"
+            "Saved supervisor configuration timed out; deterministic supervision remains active"
         )
         return
     except BaseException as exc:
@@ -3587,8 +3525,7 @@ async def _activate_saved_supervisor_choice(
                 and choice.credential_source == "secret_store"
                 else (
                     "configured_unverified"
-                    if choice is not None
-                    and choice.credential_source == "secret_store"
+                    if choice is not None and choice.credential_source == "secret_store"
                     else "not_configured"
                 )
             )
@@ -3601,10 +3538,7 @@ async def _activate_saved_supervisor_choice(
         return
 
     async with state.supervisor_config_lock:
-        if (
-            state.supervisor_config_generation != generation
-            or state.supervisor_choice != choice
-        ):
+        if state.supervisor_config_generation != generation or state.supervisor_choice != choice:
             return
         from pex_supervisor.providers import configure_runtime
 
@@ -3621,8 +3555,7 @@ async def _activate_saved_supervisor_choice(
             )
             else (
                 "not_required"
-                if model is not None
-                and (choice is None or choice.credential_source == "none")
+                if model is not None and (choice is None or choice.credential_source == "none")
                 else "not_configured"
             )
         )
@@ -3662,8 +3595,10 @@ def _supervisor_choice_from_patch(
     fields = body.model_fields_set
     previous = current or SupervisorChoice()
     provider = (
-        _clean_patch_text(body.provider).casefold() if body.provider else None
-    ) if "provider" in fields else previous.provider
+        (_clean_patch_text(body.provider).casefold() if body.provider else None)
+        if "provider" in fields
+        else previous.provider
+    )
     provider_changed = provider != previous.provider
     model_id = (
         _clean_patch_text(body.model_id)
@@ -3712,15 +3647,15 @@ def _supervisor_choice_from_patch(
         base_url=base_url,
         credential_source="none",
         dispatch_limit_override=(
-            body.dispatch_limit_override if "dispatch_limit_override" in fields
+            body.dispatch_limit_override
+            if "dispatch_limit_override" in fields
             else previous.dispatch_limit_override
         ),
     )
 
     supplied_secret = body.api_key.get_secret_value() if body.api_key is not None else None
     explicit_credential = any(
-        name in fields
-        for name in ("api_key", "clear_api_key", "use_environment_credentials")
+        name in fields for name in ("api_key", "clear_api_key", "use_environment_credentials")
     )
     staged_secret: str | None = None
     retire_previous = False
@@ -3793,9 +3728,7 @@ async def lifespan(app: FastAPI):
                 "Sealed %d prior-process operator dispatches as delivery-uncertain",
                 recovered_operator_effects,
             )
-        recovered_overlay_operations = (
-            await state.store.recover_interrupted_overlay_operations()
-        )
+        recovered_overlay_operations = await state.store.recover_interrupted_overlay_operations()
         if recovered_overlay_operations:
             logger.warning(
                 "Sealed %d prior-process overlay dispatches as delivery-uncertain",
@@ -3861,7 +3794,8 @@ async def lifespan(app: FastAPI):
             state.supervisor_choice = load_supervisor_choice(choice_file)
             state.pipeline.supervisor_dispatch_limit_override = (
                 state.supervisor_choice.dispatch_limit_override
-                if state.supervisor_choice is not None else None
+                if state.supervisor_choice is not None
+                else None
             )
             state.pipeline.model = None
             state.supervisor_api_key_present = False
@@ -3889,9 +3823,7 @@ async def lifespan(app: FastAPI):
             state.supervisor_api_key_present = False
             state.supervisor_credential_status = "unavailable"
             state.supervisor_error = type(exc).__name__
-            logger.error(
-                "Saved supervisor configuration failed closed (%s)", type(exc).__name__
-            )
+            logger.error("Saved supervisor configuration failed closed (%s)", type(exc).__name__)
         except Exception as exc:
             state.pipeline.model = None
             state.supervisor_error = type(exc).__name__
@@ -3913,9 +3845,7 @@ async def lifespan(app: FastAPI):
         await cleanup.enter_async_context(app.state.pex_mcp.session_manager.run())
 
         overlay_expiry_stop = asyncio.Event()
-        overlay_expiry_task = asyncio.create_task(
-            _overlay_expiry_loop(overlay_expiry_stop)
-        )
+        overlay_expiry_task = asyncio.create_task(_overlay_expiry_loop(overlay_expiry_stop))
         cleanup.push_async_callback(
             _stop_runtime_loop,
             overlay_expiry_stop,
@@ -3924,9 +3854,7 @@ async def lifespan(app: FastAPI):
         )
 
         cursor_observe_stop = asyncio.Event()
-        cursor_observe_task = asyncio.create_task(
-            _cursor_observe_loop(cursor_observe_stop)
-        )
+        cursor_observe_task = asyncio.create_task(_cursor_observe_loop(cursor_observe_stop))
         cleanup.push_async_callback(
             _stop_runtime_loop,
             cursor_observe_stop,
@@ -3957,11 +3885,7 @@ def create_app() -> FastAPI:
         errors = []
         for error in exc.errors():
             errors.append(
-                {
-                    key: value
-                    for key, value in error.items()
-                    if key not in {"input", "ctx", "url"}
-                }
+                {key: value for key, value in error.items() if key not in {"input", "ctx", "url"}}
             )
         return JSONResponse(status_code=422, content={"detail": errors})
 
@@ -4023,8 +3947,7 @@ def create_app() -> FastAPI:
         attached = [
             adapter.name
             for adapter, caps in zip(adapters, capabilities, strict=True)
-            if caps.support_label.value in {"deep", "strong", "basic"}
-            and caps.trust_level > 0
+            if caps.support_label.value in {"deep", "strong", "basic"} and caps.trust_level > 0
         ]
         return {
             "ok": True,
@@ -4035,9 +3958,7 @@ def create_app() -> FastAPI:
             "supervisor_backend": _public_supervisor_health(),
             # Only true on a test-scoped unauthenticated bridge (the demo);
             # production Settings refuse to combine it with require_auth.
-            "unauthenticated_operator": bool(
-                state.settings.allow_unauthenticated_operator
-            ),
+            "unauthenticated_operator": bool(state.settings.allow_unauthenticated_operator),
         }
 
     @app.get("/health")
@@ -4069,11 +3990,10 @@ def create_app() -> FastAPI:
         info["catalog"] = model_catalog()
         info["model_loaded"] = state.pipeline.model is not None
         info["activation_status"] = _supervisor_activation_status(
-            model_loaded=info["model_loaded"], disabled=info.get("disabled") is True,
+            model_loaded=info["model_loaded"],
+            disabled=info.get("disabled") is True,
         )
-        info["max_dispatches_per_session"] = (
-            state.pipeline.supervisor_dispatch_limit
-        )
+        info["max_dispatches_per_session"] = state.pipeline.supervisor_dispatch_limit
         info["dispatch_limit_override"] = state.pipeline.supervisor_dispatch_limit_override
         info["note"] = (
             "Credentials stay in the selected local source. This response never "
@@ -4096,10 +4016,7 @@ def create_app() -> FastAPI:
                 raise HTTPException(503, "a prior supervisor configuration is still stopping")
             current = state.supervisor_choice
             current_revision = current.revision if current is not None else 0
-            if (
-                body.expected_revision is not None
-                and body.expected_revision != current_revision
-            ):
+            if body.expected_revision is not None and body.expected_revision != current_revision:
                 raise HTTPException(409, "supervisor configuration revision changed")
             old_model = state.pipeline.model
             old_runtime = current_runtime_config()
@@ -4204,14 +4121,10 @@ def create_app() -> FastAPI:
             state.supervisor_credential_status = (
                 "available"
                 if prepared.api_key_present
-                or (
-                    candidate_model is not None
-                    and desired.credential_source == "environment"
-                )
+                or (candidate_model is not None and desired.credential_source == "environment")
                 else (
                     "not_required"
-                    if candidate_model is not None
-                    and desired.credential_source == "none"
+                    if candidate_model is not None and desired.credential_source == "none"
                     else "not_configured"
                 )
             )
@@ -4247,11 +4160,10 @@ def create_app() -> FastAPI:
             info["backend"] = desired.provider
             info["model_loaded"] = candidate_model is not None
             info["activation_status"] = _supervisor_activation_status(
-                model_loaded=info["model_loaded"], disabled=info.get("disabled") is True,
+                model_loaded=info["model_loaded"],
+                disabled=info.get("disabled") is True,
             )
-            info["max_dispatches_per_session"] = (
-                state.pipeline.supervisor_dispatch_limit
-            )
+            info["max_dispatches_per_session"] = state.pipeline.supervisor_dispatch_limit
             info["catalog"] = model_catalog()
             info["note"] = (
                 "Credentials stay in the selected local source. This response never "
@@ -4292,9 +4204,7 @@ def create_app() -> FastAPI:
         present = {item["name"] for item in found if item.get("kind") == "desktop"}
         from pex_bridge.adapters.desktop import DESKTOP_APPS
 
-        not_running = sorted(
-            app["name"] for app in DESKTOP_APPS if app["name"] not in present
-        )
+        not_running = sorted(app["name"] for app in DESKTOP_APPS if app["name"] not in present)
         return {"found": found, "not_running": not_running}
 
     @app.post("/v1/discover/attach")
@@ -4473,8 +4383,10 @@ def create_app() -> FastAPI:
         async with manager.lock:
             adapter = state.adapters.get("codex")
             if (
-                manager.closed or state.codex_shared_attachments is not manager
-                or manager.active is not None or not isinstance(adapter, CodexAdapter)
+                manager.closed
+                or state.codex_shared_attachments is not manager
+                or manager.active is not None
+                or not isinstance(adapter, CodexAdapter)
                 or adapter.transport is None
             ):
                 raise HTTPException(409, "connect the isolated Codex App Server first")
@@ -4495,10 +4407,12 @@ def create_app() -> FastAPI:
                 # No turn is requested here. A lost receipt can still leave an
                 # empty thread; do not retry creation automatically.
                 raise HTTPException(
-                    502, "worker creation was not confirmed; inspect Home before retrying",
+                    502,
+                    "worker creation was not confirmed; inspect Home before retrying",
                 ) from exc
         return {
-            "ok": True, "model_turn_started": False,
+            "ok": True,
+            "model_turn_started": False,
             "requested_workspace": body.workspace,
             "session": session.model_dump(mode="json"),
         }
@@ -4613,9 +4527,7 @@ def create_app() -> FastAPI:
                 "isolated": True,
                 "existing_worker": False,
             }
-        if name not in {"opencode", "qwen", "devin"} or not hasattr(
-            adapter, "attach_transport"
-        ):
+        if name not in {"opencode", "qwen", "devin"} or not hasattr(adapter, "attach_transport"):
             raise HTTPException(400, f"no verified HTTP attach path for {name}")
         try:
             if name == "opencode":
@@ -4860,10 +4772,13 @@ def create_app() -> FastAPI:
 
     @app.post("/v1/pets/hatch")
     async def start_hatch(body: HatchIn, _: None = Depends(_require_operator_token)):
-        raise HTTPException(409, {
-            "code": "hatch_disabled_for_mvp",
-            "message": "This MVP supports Pex and Von only; image generation is disabled.",
-        })
+        raise HTTPException(
+            409,
+            {
+                "code": "hatch_disabled_for_mvp",
+                "message": "This MVP supports Pex and Von only; image generation is disabled.",
+            },
+        )
 
     @app.get("/v1/sessions")
     async def sessions(
@@ -4995,9 +4910,7 @@ def create_app() -> FastAPI:
             ) from exc
 
     @app.get("/v1/goals/{goal_id}/verification-report")
-    async def get_goal_verification_report(
-        goal_id: str, _: None = Depends(_require_token)
-    ):
+    async def get_goal_verification_report(goal_id: str, _: None = Depends(_require_token)):
         """Self-contained receipt: every claim, its verdict, and the baseline.
 
         Judges and operators can diff the worker's narration against what PEX
@@ -5016,9 +4929,7 @@ def create_app() -> FastAPI:
             ) from exc
 
     @app.get("/v1/goals/{goal_id}/evidence-pack")
-    async def get_goal_evidence_pack(
-        goal_id: str, _: None = Depends(_require_token)
-    ):
+    async def get_goal_evidence_pack(goal_id: str, _: None = Depends(_require_token)):
         """Re-verifiable evidence bundle — digests a judge can check offline.
 
         Embeds the verification report, the sealed baseline digests *and* their
@@ -5068,9 +4979,7 @@ def create_app() -> FastAPI:
             or "/../" in f"/{normalized_path}/"
             or not is_acceptance_surface(normalized_path)
         ):
-            raise HTTPException(
-                422, "path must stay inside the declared acceptance surface"
-            )
+            raise HTTPException(422, "path must stay inside the declared acceptance surface")
         goal = await state.store.get_goal(goal_id)
         if goal is None:
             raise HTTPException(404, "goal not found")
@@ -5085,9 +4994,7 @@ def create_app() -> FastAPI:
         for candidate in sessions:
             if candidate.id is None:
                 continue
-            sealed = await state.store.recall_acceptance_baseline(
-                candidate.id, goal_id
-            )
+            sealed = await state.store.recall_acceptance_baseline(candidate.id, goal_id)
             if sealed is None:
                 continue
             if normalized_path in (sealed.get("files") or {}):
@@ -5108,9 +5015,7 @@ def create_app() -> FastAPI:
         }
         if baseline_block["text"] is None:
             baseline_block["state"] = (
-                "not_in_baseline"
-                if not baseline_block["present"]
-                else "digest_only"
+                "not_in_baseline" if not baseline_block["present"] else "digest_only"
             )
 
         current: dict[str, Any] = {"state": "unavailable", "text": None}
@@ -5122,9 +5027,7 @@ def create_app() -> FastAPI:
                 MAX_SEALED_ACCEPTANCE_FILE_BYTES,
             )
             if "error" in observed:
-                current["state"] = (
-                    "missing" if observed["error"] == "missing" else "unreadable"
-                )
+                current["state"] = "missing" if observed["error"] == "missing" else "unreadable"
             else:
                 current.update(
                     {
@@ -5135,27 +5038,18 @@ def create_app() -> FastAPI:
                 )
         identical = (
             baseline_block["text"] == current["text"]
-            if baseline_block["text"] is not None
-            and current["text"] is not None
+            if baseline_block["text"] is not None and current["text"] is not None
             else None
         )
         flagged: dict[str, Any] = {"text": None}
-        for item in await state.store.list_interventions_for_goal(
-            goal_id, limit=200
-        ):
+        for item in await state.store.list_interventions_for_goal(goal_id, limit=200):
             verification = (
-                item.metadata.get("verification")
-                if isinstance(item.metadata, dict)
-                else None
+                item.metadata.get("verification") if isinstance(item.metadata, dict) else None
             )
             captured = (
-                verification.get("flagged_content")
-                if isinstance(verification, dict)
-                else None
+                verification.get("flagged_content") if isinstance(verification, dict) else None
             )
-            if isinstance(captured, dict) and isinstance(
-                captured.get(normalized_path), str
-            ):
+            if isinstance(captured, dict) and isinstance(captured.get(normalized_path), str):
                 flagged = {
                     "text": captured[normalized_path],
                     "captured_at": item.created_at.isoformat(),
@@ -5199,9 +5093,7 @@ def create_app() -> FastAPI:
         request_body["mode"] = body.mode
         request_payload = {"goal_id": goal_id, "body": request_body}
         action_kind = (
-            GOAL_CONTROL_ACTION_OVERRIDE
-            if body.mode == "override"
-            else GOAL_CONTROL_ACTION_UPDATE
+            GOAL_CONTROL_ACTION_OVERRIDE if body.mode == "override" else GOAL_CONTROL_ACTION_UPDATE
         )
         try:
             replay = await _goal_control_replay(
@@ -5246,15 +5138,10 @@ def create_app() -> FastAPI:
         # A partial edit must not re-adopt requirements or decisions the human
         # already cleared from the structured ledger. Extract only new objective
         # text; otherwise preserve every omitted field exactly as stored.
-        objective_changed = (
-            "objective" in changes and changes["objective"] != current.objective
-        )
-        extraction_skip_ledger = (
-            skip_ledger if objective_changed else set(LEDGER_DECISION_FIELDS)
-        )
+        objective_changed = "objective" in changes and changes["objective"] != current.objective
+        extraction_skip_ledger = skip_ledger if objective_changed else set(LEDGER_DECISION_FIELDS)
         extraction_skip_lists = {
-            key for key in _GOAL_EXTRACT_LIST_FIELDS
-            if key in changes or not objective_changed
+            key for key in _GOAL_EXTRACT_LIST_FIELDS if key in changes or not objective_changed
         }
         if not changes and not skip_ledger:
             raise HTTPException(400, "goal patch must include an intent change")
@@ -5824,7 +5711,9 @@ def create_app() -> FastAPI:
     ):
         try:
             effect_id = stable_operator_effect_id(
-                actor.principal_id, OPERATOR_MESSAGE_ACTION, idempotency_key,
+                actor.principal_id,
+                OPERATOR_MESSAGE_ACTION,
+                idempotency_key,
             )
         except ValueError as exc:
             raise HTTPException(422, "invalid operator message idempotency key") from exc
@@ -5993,9 +5882,7 @@ def create_app() -> FastAPI:
             return _operator_effect_response(failed, replayed=False)
         result: dict[str, Any] = {"status": "delivered"}
         if message_resolution.worker_delivery_receipt is not None:
-            result["worker_delivery_receipt"] = (
-                message_resolution.worker_delivery_receipt
-            )
+            result["worker_delivery_receipt"] = message_resolution.worker_delivery_receipt
         delivered = await durable_finalize(
             "delivered",
             result,
@@ -6216,11 +6103,7 @@ def create_app() -> FastAPI:
             # This read classifies the request only. The decision subsystem's
             # bound reserve/start operation is the execution grant and retains
             # deliberate deny/STOP containment through quarantine.
-            pending = (
-                await state.store.get_intervention_for_resolution_classification(
-                    decision_id
-                )
-            )
+            pending = await state.store.get_intervention_for_resolution_classification(decision_id)
             lifecycle_types = {
                 InterventionType.START_AGENT,
                 InterventionType.STOP_AGENT,
@@ -6687,8 +6570,10 @@ def create_app() -> FastAPI:
                 }
             try:
                 for candidate in authority_sessions:
-                    if (candidate.goal_id in candidate_goal_ids
-                            and candidate.status != SessionStatus.DETACHED):
+                    if (
+                        candidate.goal_id in candidate_goal_ids
+                        and candidate.status != SessionStatus.DETACHED
+                    ):
                         await state.store.require_session_workspace_current(candidate)
             except WorkspaceAuthorityError:
                 return {
@@ -6702,8 +6587,10 @@ def create_app() -> FastAPI:
             )
             try:
                 for candidate in authority_sessions:
-                    if (candidate.goal_id in candidate_goal_ids
-                            and candidate.status != SessionStatus.DETACHED):
+                    if (
+                        candidate.goal_id in candidate_goal_ids
+                        and candidate.status != SessionStatus.DETACHED
+                    ):
                         await state.store.require_session_workspace_current(candidate)
             except WorkspaceAuthorityError:
                 return {"answer": "Completion is uncertain: workspace authority changed."}
@@ -6775,20 +6662,23 @@ def create_app() -> FastAPI:
         try:
             witness = (
                 await state.store.require_session_workspace_current(selected)
-                if selected is not None else None
+                if selected is not None
+                else None
             )
             scope = (
                 workspace_evidence_guard(
                     selected, workspace_read_check(state.store, selected, witness)
                 )
-                if witness is not None else nullcontext()
+                if witness is not None
+                else nullcontext()
             )
             invocation_active = threading.Event()
             invocation_active.set()
             review_model = state.pipeline.model
             check = (
                 workspace_read_check(state.store, selected, witness)
-                if witness is not None else None
+                if witness is not None
+                else None
             )
 
             def check_invocation():
@@ -6802,8 +6692,12 @@ def create_app() -> FastAPI:
             def invoke_answer():
                 check_invocation()
                 return answer_question(
-                    body.question, sessions, interventions, goals,
-                    review_model, context=items,
+                    body.question,
+                    sessions,
+                    interventions,
+                    goals,
+                    review_model,
+                    context=items,
                     observed_activity_at=observed_activity_at,
                 )
 
@@ -6879,9 +6773,7 @@ def create_app() -> FastAPI:
                 if goal_spec and body.goal_id is None
                 else None
             )
-            replay_events = [
-                DemoEventIn.model_validate(raw) for raw in data.get("events") or []
-            ]
+            replay_events = [DemoEventIn.model_validate(raw) for raw in data.get("events") or []]
         except (TypeError, ValueError, RecursionError) as exc:
             raise HTTPException(400, "demo fixture violates the replay schema") from exc
 
@@ -6901,9 +6793,7 @@ def create_app() -> FastAPI:
         except (ValueError, OSError) as exc:
             if workspace_holder is not None:
                 workspace_holder.cleanup()
-            raise HTTPException(
-                400, "demo fixture workspace could not be materialized"
-            ) from exc
+            raise HTTPException(400, "demo fixture workspace could not be materialized") from exc
 
         attached_goal: Goal | None = None
         goal_source = "fixture"
@@ -6975,13 +6865,8 @@ def create_app() -> FastAPI:
             async with _DEMO_REPLAY_LOCK:
                 for index, raw in enumerate(replay_events):
                     event_type = raw.event_type
-                    phase = (
-                        raw.phase
-                        or (
-                            EventPhase.BEFORE
-                            if event_type == EventType.SHELL
-                            else EventPhase.DURING
-                        )
+                    phase = raw.phase or (
+                        EventPhase.BEFORE if event_type == EventType.SHELL else EventPhase.DURING
                     )
                     if event_type == EventType.STOP:
                         phase = EventPhase.TERMINAL
@@ -7002,13 +6887,9 @@ def create_app() -> FastAPI:
                     if workspace_root is not None:
                         for mutation in mutations.get(index, ()):
                             if mutation["delete"]:
-                                remove_workspace_files(
-                                    workspace_root, mutation["delete"]
-                                )
+                                remove_workspace_files(workspace_root, mutation["delete"])
                             if mutation["files"]:
-                                materialize_workspace(
-                                    workspace_root, mutation["files"]
-                                )
+                                materialize_workspace(workspace_root, mutation["files"])
         except Exception:
             session.status = SessionStatus.STOPPED
             with suppress(Exception):
@@ -7025,9 +6906,7 @@ def create_app() -> FastAPI:
             try:
                 # The adjudicated verdict travels with the run so the UI can
                 # summarize the supervisor's arc without a second round trip.
-                projection = await state.store.goal_completion_projection(
-                    session.goal_id
-                )
+                projection = await state.store.goal_completion_projection(session.goal_id)
                 completion = {
                     "status": projection.get("status"),
                     "reason": projection.get("reason"),
@@ -7104,12 +6983,10 @@ def create_app() -> FastAPI:
                         )
                         or 0,
                         "verdicts": [
-                            str(claim.get("verification_status") or "")
-                            for claim in report_claims
+                            str(claim.get("verification_status") or "") for claim in report_claims
                         ],
                         "interventions": [
-                            str(i.get("action_taken") or i.get("type") or "")
-                            for i in interventions
+                            str(i.get("action_taken") or i.get("type") or "") for i in interventions
                         ],
                         "evidence_strings": sorted(report_evidence),
                     },
@@ -7179,9 +7056,7 @@ def create_app() -> FastAPI:
         if not adapter:
             raise HTTPException(404, "adapter not found")
         try:
-            return await asyncio.wait_for(
-                adapter.health(), timeout=ADAPTER_PROBE_TIMEOUT_SECONDS
-            )
+            return await asyncio.wait_for(adapter.health(), timeout=ADAPTER_PROBE_TIMEOUT_SECONDS)
         except TimeoutError as exc:
             raise HTTPException(504, "adapter health probe timed out") from exc
         except Exception as exc:
@@ -7429,9 +7304,7 @@ def create_app() -> FastAPI:
             await ws.close(code=1008, reason="invalid event cursor")
             return
         cursor = int(raw_after)
-        outbound: asyncio.Queue[dict[str, Any]] = asyncio.Queue(
-            maxsize=EVENT_SOCKET_QUEUE_SIZE
-        )
+        outbound: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=EVENT_SOCKET_QUEUE_SIZE)
         event_wake = asyncio.Event()
         selected_protocol = "pex-v1" if "pex-v1" in offered_protocols else None
         try:

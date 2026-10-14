@@ -77,9 +77,7 @@ def test_context_handoff_request_schema_exposes_exact_contract() -> None:
     assert set(schema["required"]) == {"idempotency_key", "target_session_id"}
     assert properties["idempotency_key"]["minLength"] == 8
     assert properties["idempotency_key"]["maxLength"] == 128
-    assert properties["idempotency_key"]["pattern"] == (
-        r"^[A-Za-z0-9][A-Za-z0-9._:-]*$"
-    )
+    assert properties["idempotency_key"]["pattern"] == (r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
     assert properties["target_session_id"]["minLength"] == 1
     assert properties["target_session_id"]["maxLength"] == 512
     assert properties["token_budget"]["minimum"] == 256

@@ -224,9 +224,7 @@ async def _accept_activity(
         project_id=goal.project_id,
         goal_id=goal.id,
         event_type=event_type,
-        phase=(
-            EventPhase.BEFORE if event_type == EventType.USER_PROMPT else EventPhase.AFTER
-        ),
+        phase=(EventPhase.BEFORE if event_type == EventType.USER_PROMPT else EventPhase.AFTER),
         message_delta="activity" if event_type == EventType.AGENT_RESPONSE else None,
         metadata={
             "hook_event_name": "afterAgentResponse",
@@ -283,10 +281,7 @@ async def test_cursor_flush_is_append_only_idempotent_and_stays_uncertain(tmp_pa
         first = await store.record_cursor_hook_flush(packet, project_id=session.project_id)
         assert first["delivery_evidence"] == "hook_stdout_flushed"
         assert first["vendor_acceptance_proven"] is False
-        assert (
-            await store.record_cursor_hook_flush(packet, project_id=session.project_id)
-            == first
-        )
+        assert await store.record_cursor_hook_flush(packet, project_id=session.project_id) == first
         stored_intervention = await store.get_intervention(final.id)
         assert stored_intervention is not None
         assert stored_intervention.result == CURSOR_HOOK_PREPARED_OUTCOME
@@ -295,12 +290,14 @@ async def test_cursor_flush_is_append_only_idempotent_and_stays_uncertain(tmp_pa
         assert stored_intervention.metadata["cursor_hook_delivery"]["state"] == (
             "hook_stdout_flushed"
         )
-        assert stored_intervention.metadata["cursor_hook_delivery"][
-            "prompt_coverage_complete"
-        ] is False
-        assert stored_intervention.metadata["cursor_hook_delivery"][
-            "causal_continuation_proven"
-        ] is False
+        assert (
+            stored_intervention.metadata["cursor_hook_delivery"]["prompt_coverage_complete"]
+            is False
+        )
+        assert (
+            stored_intervention.metadata["cursor_hook_delivery"]["causal_continuation_proven"]
+            is False
+        )
         assert "worker_delivery_receipt" not in stored_intervention.metadata
         with pytest.raises(sqlite3.IntegrityError, match="immutable"):
             await store.db.execute(
@@ -403,9 +400,9 @@ async def test_cursor_control_drift_blocks_continuation_but_not_historical_flush
         changed.last_activity = utcnow()
         await store.upsert_session(changed, allow_supervision_change=True)
         # The callback records the already-observed stdout flush despite later control drift.
-        assert (
-            await store.record_cursor_hook_flush(packet, project_id=session.project_id)
-        )["delivery_evidence"] == "hook_stdout_flushed"
+        assert (await store.record_cursor_hook_flush(packet, project_id=session.project_id))[
+            "delivery_evidence"
+        ] == "hook_stdout_flushed"
         event = await _accept_activity(
             store,
             changed,
@@ -464,8 +461,7 @@ async def test_cursor_exact_flush_replay_survives_later_boot_change(tmp_path):
     await reopened.connect()
     try:
         assert (
-            await reopened.record_cursor_hook_flush(packet, project_id=session.project_id)
-            == first
+            await reopened.record_cursor_hook_flush(packet, project_id=session.project_id) == first
         )
         with pytest.raises(PermissionError, match="project binding"):
             await reopened.record_cursor_hook_flush(packet, project_id="C:/other-project")
@@ -481,8 +477,7 @@ async def test_cursor_first_flush_rejects_delayed_ack(tmp_path, monkeypatch):
         packet, session, _, _ = await _prepared_cursor(store)
         row = (
             await store.db.execute_fetchall(
-                "SELECT prepared_at FROM cursor_hook_preparations "
-                "WHERE preparation_id = ?",
+                "SELECT prepared_at FROM cursor_hook_preparations WHERE preparation_id = ?",
                 (packet["preparation_id"],),
             )
         )[0]

@@ -24,7 +24,7 @@ def test_changed_temporary_file_cannot_overwrite_verified_configuration(
         measurements += 1
         measured = actual_measure(candidate)
         if measurements == 2:
-            temporary, = tmp_path.glob(".origin.json.*.tmp")
+            (temporary,) = tmp_path.glob(".origin.json.*.tmp")
             if change == "replace":
                 temporary.rename(preserved)
             temporary.write_bytes(b"unowned replacement bytes")
@@ -44,7 +44,7 @@ def test_changed_temporary_file_cannot_overwrite_verified_configuration(
     assert config.load_local_origin_choice(path) == previous
     if change == "replace":
         assert preserved.is_file()
-        replacement, = tmp_path.glob(".origin.json.*.tmp")
+        (replacement,) = tmp_path.glob(".origin.json.*.tmp")
         assert replacement.read_bytes() == b"unowned replacement bytes"
     else:
         assert list(tmp_path.iterdir()) == [path]

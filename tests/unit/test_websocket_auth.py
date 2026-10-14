@@ -20,6 +20,7 @@ def test_event_socket_recovery_poll_does_not_outpace_heartbeat():
 
 def test_catchup_waits_for_tiny_outbound_queue_instead_of_disconnect(tmp_path, monkeypatch):
     import importlib
+
     app_module = importlib.import_module("pex_bridge.app")
     monkeypatch.setattr(app_module, "EVENT_SOCKET_QUEUE_SIZE", 1)
     state.settings = Settings.for_test(require_auth=False, home=tmp_path, codex_attach=False)
@@ -29,9 +30,11 @@ def test_catchup_waits_for_tiny_outbound_queue_instead_of_disconnect(tmp_path, m
 
     async def event_page(*, after, **_kwargs):
         return {
-            "through": "20", "next": str(min(after + 1, 20)),
+            "through": "20",
+            "next": str(min(after + 1, 20)),
             "items": [{"sequence": after + 1}] if after < 20 else [],
-            "has_more": after + 1 < 20, "gap": {"detected": False},
+            "has_more": after + 1 < 20,
+            "gap": {"detected": False},
         }
 
     monkeypatch.setattr(state, "live_pet", live_pet)
@@ -40,7 +43,8 @@ def test_catchup_waits_for_tiny_outbound_queue_instead_of_disconnect(tmp_path, m
     client = TestClient(create_app(), base_url="http://127.0.0.1")
     try:
         with client.websocket_connect(
-            "/v1/events", headers={"origin": "tauri://localhost", "host": "127.0.0.1"},
+            "/v1/events",
+            headers={"origin": "tauri://localhost", "host": "127.0.0.1"},
         ) as socket:
             assert socket.receive_json()["topic"] == "pet"
             for sequence in range(1, 21):
@@ -254,14 +258,21 @@ def test_event_socket_sleeps_when_caught_up_and_wakes_from_committed_hint(tmp_pa
         if len(calls) == 1:
             first_call.set()
             return {
-                "through": "0", "next": "0", "watermark": "0", "items": [],
-                "has_more": False, "gap": {"detected": False},
+                "through": "0",
+                "next": "0",
+                "watermark": "0",
+                "items": [],
+                "has_more": False,
+                "gap": {"detected": False},
             }
         second_call.set()
         return {
-            "through": "1", "next": "1", "watermark": "1",
+            "through": "1",
+            "next": "1",
+            "watermark": "1",
             "items": [{"cursor": "1", "event": {"event_id": "evt-wake"}}],
-            "has_more": False, "gap": {"detected": False},
+            "has_more": False,
+            "gap": {"detected": False},
         }
 
     monkeypatch.setattr(state, "live_pet", live_pet)

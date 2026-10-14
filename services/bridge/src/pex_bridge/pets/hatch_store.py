@@ -39,9 +39,7 @@ MAX_BASE_PROMPT_BYTES = 32_768
 _SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
 _IDEMPOTENCY_KEY = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$")
 _PROCESS_BOOT_ID = secrets.token_hex(32)
-_TERMINAL_EFFECT_STATES = frozenset(
-    {"delivered", "failed", "delivery_uncertain", "skipped"}
-)
+_TERMINAL_EFFECT_STATES = frozenset({"delivered", "failed", "delivery_uncertain", "skipped"})
 
 
 def _is_link_or_junction(path: Path) -> bool:
@@ -91,15 +89,11 @@ def _assert_contained_without_links(root: Path, target: Path) -> Path:
             raise HatchAuthorizationError("hatch artifact path is invalid")
         current /= component
         if _is_link_or_junction(current):
-            raise HatchAuthorizationError(
-                "hatch artifact path cannot contain a link or junction"
-            )
+            raise HatchAuthorizationError("hatch artifact path cannot contain a link or junction")
     return target_absolute
 
 
-def prepare_hatch_artifact_dirs(
-    root: Path, job_id: str, *, require_empty: bool = False
-) -> Path:
+def prepare_hatch_artifact_dirs(root: Path, job_id: str, *, require_empty: bool = False) -> Path:
     """Create and verify the only directories/files used by a hatch dispatch."""
 
     if not _SAFE_COMPONENT.fullmatch(job_id):
@@ -202,10 +196,7 @@ def _safe_provider_binding(config: Mapping[str, Any]) -> dict[str, Any]:
         raw_provider = config["provider"]
         raw_model = config["model_id"]
         raw_endpoint = config["base_url"]
-        if not all(
-            isinstance(value, str)
-            for value in (raw_provider, raw_model, raw_endpoint)
-        ):
+        if not all(isinstance(value, str) for value in (raw_provider, raw_model, raw_endpoint)):
             raise ValueError("provider binding fields must be text")
         if any(
             unicodedata.normalize("NFKC", value.strip()) != value.strip()
@@ -214,9 +205,7 @@ def _safe_provider_binding(config: Mapping[str, Any]) -> dict[str, Any]:
             raise ValueError("provider binding fields must already be canonical")
         provider = _bounded_text(raw_provider, name="provider", maximum=256)
         model_id = _bounded_text(raw_model, name="model", maximum=256)
-        base_url_raw = _bounded_text(
-            raw_endpoint, name="provider endpoint", maximum=2_048
-        )
+        base_url_raw = _bounded_text(raw_endpoint, name="provider endpoint", maximum=2_048)
     except (KeyError, TypeError, ValueError) as exc:
         raise HatchAuthorizationError("image provider configuration is invalid") from exc
 
@@ -248,15 +237,11 @@ def _safe_provider_binding(config: Mapping[str, Any]) -> dict[str, Any]:
             raise ValueError("noncanonical IP address")
     except ValueError as ip_error:
         if "noncanonical" in str(ip_error):
-            raise HatchAuthorizationError(
-                "image provider configuration is invalid"
-            ) from ip_error
+            raise HatchAuthorizationError("image provider configuration is invalid") from ip_error
         try:
             raw_host.encode("ascii")
         except UnicodeEncodeError as exc:
-            raise HatchAuthorizationError(
-                "image provider configuration is invalid"
-            ) from exc
+            raise HatchAuthorizationError("image provider configuration is invalid") from exc
         host = raw_host.lower()
         labels = host.split(".")
         if (
@@ -266,13 +251,10 @@ def _safe_provider_binding(config: Mapping[str, Any]) -> dict[str, Any]:
             or bool(re.fullmatch(r"[0-9.]+", host))
             or bool(re.fullmatch(r"0x[0-9a-f]+", host))
             or not all(
-                re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label)
-                for label in labels
+                re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label) for label in labels
             )
         ):
-            raise HatchAuthorizationError(
-                "image provider configuration is invalid"
-            ) from ip_error
+            raise HatchAuthorizationError("image provider configuration is invalid") from ip_error
 
     if ":" in host and not parsed.netloc.startswith("["):
         raise HatchAuthorizationError("image provider configuration is invalid")
@@ -290,9 +272,7 @@ def _safe_provider_binding(config: Mapping[str, Any]) -> dict[str, Any]:
         not port_text.isascii() or not port_text.isdigit() or str(port) != port_text
     ):
         raise HatchAuthorizationError("image provider configuration is invalid")
-    if (parsed.scheme == "https" and port == 443) or (
-        parsed.scheme == "http" and port == 80
-    ):
+    if (parsed.scheme == "https" and port == 443) or (parsed.scheme == "http" and port == 80):
         raise HatchAuthorizationError("image provider configuration is invalid")
 
     path = parsed.path
@@ -306,14 +286,11 @@ def _safe_provider_binding(config: Mapping[str, Any]) -> dict[str, Any]:
         if not re.fullmatch(r"(?:/[A-Za-z0-9._~-]+)*", path):
             raise HatchAuthorizationError("image provider configuration is invalid")
         segments = path.split("/")[1:]
-        if (
-            any(segment in {"", ".", ".."} for segment in segments)
-            or path.lower().endswith(("/images/generations", "/images/edits"))
+        if any(segment in {"", ".", ".."} for segment in segments) or path.lower().endswith(
+            ("/images/generations", "/images/edits")
         ):
             raise HatchAuthorizationError("image provider configuration is invalid")
-    if host == "api.openai.com" and (
-        parsed.scheme != "https" or port is not None or path != "/v1"
-    ):
+    if host == "api.openai.com" and (parsed.scheme != "https" or port is not None or path != "/v1"):
         raise HatchAuthorizationError("image provider configuration is invalid")
     if parsed.scheme == "http" and host not in {"127.0.0.1", "::1"}:
         raise HatchAuthorizationError("image provider configuration is invalid")
@@ -388,24 +365,23 @@ class HatchJob(BaseModel):
     image_backend: str | None = Field(default=None, max_length=256)
     image_model: str | None = Field(default=None, max_length=256)
     paid_generation_acknowledged: bool = False
-    created_at: str = Field(
-        default_factory=lambda: _format_utc(_utcnow_datetime()), max_length=64
-    )
-    updated_at: str = Field(
-        default_factory=lambda: _format_utc(_utcnow_datetime()), max_length=64
-    )
+    created_at: str = Field(default_factory=lambda: _format_utc(_utcnow_datetime()), max_length=64)
+    updated_at: str = Field(default_factory=lambda: _format_utc(_utcnow_datetime()), max_length=64)
     request_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     provider_fingerprint: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     request_fingerprint: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     effect_id: str | None = Field(default=None, pattern=r"^effect_[0-9a-f]{64}$")
-    effect_status: Literal[
-        "reserved",
-        "dispatching",
-        "delivered",
-        "failed",
-        "delivery_uncertain",
-        "skipped",
-    ] | None = None
+    effect_status: (
+        Literal[
+            "reserved",
+            "dispatching",
+            "delivered",
+            "failed",
+            "delivery_uncertain",
+            "skipped",
+        ]
+        | None
+    ) = None
     candidate_asset: str | None = Field(default=None, max_length=4096)
     candidate_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     authorization_expires_at: str | None = Field(default=None, max_length=64)
@@ -444,12 +420,8 @@ class HatchAuthorization(BaseModel):
     issued_at: str = Field(max_length=64)
     expires_at: str = Field(max_length=64)
     acknowledge_possible_duplicate: bool = False
-    duplicate_risk_job_id: str | None = Field(
-        default=None, pattern=_SAFE_COMPONENT.pattern
-    )
-    duplicate_risk_effect_id: str | None = Field(
-        default=None, pattern=r"^effect_[0-9a-f]{64}$"
-    )
+    duplicate_risk_job_id: str | None = Field(default=None, pattern=_SAFE_COMPONENT.pattern)
+    duplicate_risk_effect_id: str | None = Field(default=None, pattern=r"^effect_[0-9a-f]{64}$")
 
     @field_validator("principal", "idempotency_key")
     @classmethod
@@ -471,9 +443,7 @@ class HatchAuthorization(BaseModel):
             "credential_present": self.credential_present,
             "credential_scope": self.credential_scope,
         }
-        expected_provider = _sha256(
-            _canonical_json(["pex.hatch.provider.v1", binding])
-        )
+        expected_provider = _sha256(_canonical_json(["pex.hatch.provider.v1", binding]))
         if self.provider_fingerprint != expected_provider:
             raise ValueError("provider fingerprint does not match authorization fields")
         if self.acknowledge_possible_duplicate:
@@ -585,12 +555,8 @@ class _LegacyHatchJob(BaseModel):
     image_backend: str | None = Field(default=None, max_length=256)
     image_model: str | None = Field(default=None, max_length=256)
     paid_generation_acknowledged: bool = False
-    created_at: str = Field(
-        default_factory=lambda: _format_utc(_utcnow_datetime()), max_length=64
-    )
-    updated_at: str = Field(
-        default_factory=lambda: _format_utc(_utcnow_datetime()), max_length=64
-    )
+    created_at: str = Field(default_factory=lambda: _format_utc(_utcnow_datetime()), max_length=64)
+    updated_at: str = Field(default_factory=lambda: _format_utc(_utcnow_datetime()), max_length=64)
 
 
 def hatch_request_hash(job: HatchJob) -> str:
@@ -686,9 +652,7 @@ def authorize_hatch(
         )
     except ValueError as exc:
         raise HatchAuthorizationError(str(exc)) from exc
-    if normalized_key != idempotency_key or not _IDEMPOTENCY_KEY.fullmatch(
-        normalized_key
-    ):
+    if normalized_key != idempotency_key or not _IDEMPOTENCY_KEY.fullmatch(normalized_key):
         raise HatchAuthorizationError("invalid idempotency_key")
     parts = [
         normalized_principal,
@@ -704,9 +668,7 @@ def authorize_hatch(
         duplicate_risk_effect_id,
     ]
     return HatchAuthorization(
-        authorization_id=_stable_id(
-            "hauth_", "pex.hatch.authorization.v1", parts
-        ),
+        authorization_id=_stable_id("hauth_", "pex.hatch.authorization.v1", parts),
         principal=normalized_principal,
         idempotency_key=normalized_key,
         request_hash=request_hash,
@@ -757,9 +719,7 @@ class HatchRegistry:
     ) -> None:
         root_absolute = _absolute_path(root)
         if root_absolute.exists() and _is_link_or_junction(root_absolute):
-            raise HatchAuthorizationError(
-                "hatch artifact root cannot be a link or junction"
-            )
+            raise HatchAuthorizationError("hatch artifact root cannot be a link or junction")
         root_absolute.mkdir(parents=True, exist_ok=True)
         _assert_contained_without_links(root_absolute, root_absolute)
         self.root = root_absolute
@@ -1133,9 +1093,7 @@ class HatchRegistry:
             candidate_asset=row["intended_asset"] if row["asset_sha256"] else None,
             candidate_sha256=row["asset_sha256"],
             authorization_expires_at=row["expires_at"],
-            possible_duplicate_acknowledged=bool(
-                row["acknowledge_possible_duplicate"] or 0
-            ),
+            possible_duplicate_acknowledged=bool(row["acknowledge_possible_duplicate"] or 0),
         )
 
     @staticmethod
@@ -1159,8 +1117,7 @@ class HatchRegistry:
     def list_jobs(self) -> list[HatchJob]:
         with self._connect() as connection:
             rows = connection.execute(
-                self._job_select()
-                + " ORDER BY j.created_at DESC, j.rowid DESC LIMIT ?",
+                self._job_select() + " ORDER BY j.created_at DESC, j.rowid DESC LIMIT ?",
                 (MAX_HATCH_JOBS,),
             ).fetchall()
         return [self._row_to_job(row) for row in rows]
@@ -1169,9 +1126,7 @@ class HatchRegistry:
         if not _SAFE_COMPONENT.fullmatch(job_id):
             raise ValueError("invalid hatch job id")
         with self._connect() as connection:
-            row = connection.execute(
-                self._job_select() + " WHERE j.id = ?", (job_id,)
-            ).fetchone()
+            row = connection.execute(self._job_select() + " WHERE j.id = ?", (job_id,)).fetchone()
         return self._row_to_job(row) if row is not None else None
 
     def get_effect(self, job_id: str) -> HatchEffect | None:
@@ -1217,9 +1172,7 @@ class HatchRegistry:
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             try:
-                count = connection.execute(
-                    "SELECT COUNT(*) FROM hatch_jobs"
-                ).fetchone()[0]
+                count = connection.execute("SELECT COUNT(*) FROM hatch_jobs").fetchone()[0]
                 if count >= MAX_HATCH_JOBS:
                     raise HatchAuthorizationError("hatch registry capacity is full")
                 self._insert_job(connection, safe_job)
@@ -1237,9 +1190,7 @@ class HatchRegistry:
 
         raise HatchAuthorizationError("bound hatch authorization is required")
 
-    def note_pre_dispatch_block(
-        self, job_id: str, *, step: str, error: str
-    ) -> HatchJob:
+    def note_pre_dispatch_block(self, job_id: str, *, step: str, error: str) -> HatchJob:
         """Persist a bounded local block while leaving the one-call reserve intact."""
 
         safe_step = _bounded_text(step, name="step", maximum=1024)
@@ -1256,17 +1207,13 @@ class HatchRegistry:
             )
         return self._require_job(job_id)
 
-    def create_or_replay(
-        self, job: HatchJob, authorization: HatchAuthorization
-    ) -> HatchJob:
+    def create_or_replay(self, job: HatchJob, authorization: HatchAuthorization) -> HatchJob:
         """Atomically create one authorized effect or replay its canonical job."""
 
         request_hash = hatch_request_hash(job)
         if request_hash != authorization.request_hash:
             raise HatchConflictError("authorization request does not match hatch request")
-        expected_request = _generate_request_fingerprint(
-            job, authorization.provider_fingerprint
-        )
+        expected_request = _generate_request_fingerprint(job, authorization.provider_fingerprint)
         if expected_request != authorization.request_fingerprint:
             raise HatchConflictError("authorization generate request does not match")
         now = _format_utc(self._now())
@@ -1345,12 +1292,8 @@ class HatchRegistry:
                 issued = _parse_utc(authorization.issued_at)
                 expires = _parse_utc(authorization.expires_at)
                 server_now = self._now()
-                if issued > server_now + timedelta(
-                    seconds=MAX_AUTHORIZATION_CLOCK_SKEW_SECONDS
-                ):
-                    raise HatchAuthorizationError(
-                        "hatch authorization is not yet valid"
-                    )
+                if issued > server_now + timedelta(seconds=MAX_AUTHORIZATION_CLOCK_SKEW_SECONDS):
+                    raise HatchAuthorizationError("hatch authorization is not yet valid")
                 if expires <= server_now:
                     raise HatchAuthorizationError("hatch authorization has expired")
 
@@ -1369,10 +1312,8 @@ class HatchRegistry:
                 if prior_uncertain is not None:
                     exact_ack = (
                         authorization.acknowledge_possible_duplicate
-                        and authorization.duplicate_risk_job_id
-                        == prior_uncertain["job_id"]
-                        and authorization.duplicate_risk_effect_id
-                        == prior_uncertain["effect_id"]
+                        and authorization.duplicate_risk_job_id == prior_uncertain["job_id"]
+                        and authorization.duplicate_risk_effect_id == prior_uncertain["effect_id"]
                     )
                     if not exact_ack:
                         raise HatchAuthorizationError(
@@ -1387,9 +1328,7 @@ class HatchRegistry:
                     "SELECT 1 FROM hatch_jobs WHERE id = ?", (canonical_job.id,)
                 ).fetchone():
                     raise HatchConflictError("hatch job id already exists")
-                count = connection.execute(
-                    "SELECT COUNT(*) FROM hatch_jobs"
-                ).fetchone()[0]
+                count = connection.execute("SELECT COUNT(*) FROM hatch_jobs").fetchone()[0]
                 if count >= MAX_HATCH_JOBS:
                     raise HatchAuthorizationError("hatch registry capacity is full")
 
@@ -1454,9 +1393,7 @@ class HatchRegistry:
             raise RuntimeError("created hatch job disappeared")
         return result
 
-    def claim_for_dispatch(
-        self, job_id: str, config: Mapping[str, Any]
-    ) -> DispatchClaim:
+    def claim_for_dispatch(self, job_id: str, config: Mapping[str, Any]) -> DispatchClaim:
         binding = _safe_provider_binding(config)
         provider_fingerprint = _provider_fingerprint(binding)
         now_dt = self._now()
@@ -1538,10 +1475,8 @@ class HatchRegistry:
                 if prior_uncertain is not None:
                     exact_duplicate_ack = (
                         bool(row["acknowledge_possible_duplicate"])
-                        and row["duplicate_risk_job_id"]
-                        == prior_uncertain["job_id"]
-                        and row["duplicate_risk_effect_id"]
-                        == prior_uncertain["effect_id"]
+                        and row["duplicate_risk_job_id"] == prior_uncertain["job_id"]
+                        and row["duplicate_risk_effect_id"] == prior_uncertain["effect_id"]
                     )
                     if not exact_duplicate_ack:
                         self._skip_reserved(
@@ -1550,8 +1485,7 @@ class HatchRegistry:
                             code="unacknowledged_duplicate_risk",
                             now=now,
                             step=(
-                                "A prior attempt became delivery-uncertain before "
-                                "this dispatch."
+                                "A prior attempt became delivery-uncertain before this dispatch."
                             ),
                         )
                         connection.commit()
@@ -1561,9 +1495,9 @@ class HatchRegistry:
                             job=self._require_job(job_id),
                             effect=self.get_effect(job_id),
                         )
-                authorization_not_yet_valid = _parse_utc(
-                    row["issued_at"]
-                ) > now_dt + timedelta(seconds=MAX_AUTHORIZATION_CLOCK_SKEW_SECONDS)
+                authorization_not_yet_valid = _parse_utc(row["issued_at"]) > now_dt + timedelta(
+                    seconds=MAX_AUTHORIZATION_CLOCK_SKEW_SECONDS
+                )
                 authorization_expired = _parse_utc(row["expires_at"]) <= now_dt
                 if authorization_not_yet_valid or authorization_expired:
                     code = (
@@ -1792,9 +1726,7 @@ class HatchRegistry:
                 raise
         return self._require_job(job_id)
 
-    def finalize_uncertain(
-        self, job_id: str, *, dispatch_token: str, error_code: str
-    ) -> HatchJob:
+    def finalize_uncertain(self, job_id: str, *, dispatch_token: str, error_code: str) -> HatchJob:
         safe_code = _bounded_text(error_code, name="error code", maximum=256)
         now = _format_utc(self._now())
         with self._connect() as connection:
@@ -1922,9 +1854,7 @@ class HatchRegistry:
                 ).fetchall()
                 count = 0
                 for row in rows:
-                    if self._reconcile_candidate_in_transaction(
-                        connection, row["job_id"], now=now
-                    ):
+                    if self._reconcile_candidate_in_transaction(connection, row["job_id"], now=now):
                         count += 1
                         continue
                     cursor = connection.execute(
@@ -1974,9 +1904,7 @@ class HatchRegistry:
                     """
                 ).fetchall()
                 count = sum(
-                    self._reconcile_candidate_in_transaction(
-                        connection, row["job_id"], now=now
-                    )
+                    self._reconcile_candidate_in_transaction(connection, row["job_id"], now=now)
                     for row in rows
                 )
                 connection.commit()
@@ -2061,9 +1989,7 @@ class HatchRegistry:
                 or ".." in relative.parts
             ):
                 return None
-            candidate = _assert_contained_without_links(
-                self.root, self.root / relative
-            )
+            candidate = _assert_contained_without_links(self.root, self.root / relative)
             reference = _assert_contained_without_links(
                 self.root,
                 self.root / row["job_id"] / "references" / "canonical-base.png",
@@ -2072,11 +1998,7 @@ class HatchRegistry:
                 self.root, self.root / row["job_id"] / "candidate-receipt.json"
             )
             for path in (candidate, reference, receipt_path):
-                if (
-                    not path.exists()
-                    or _is_link_or_junction(path)
-                    or not path.is_file()
-                ):
+                if not path.exists() or _is_link_or_junction(path) or not path.is_file():
                     return None
             size = candidate.stat().st_size
             if not 1 <= size <= 25 * 1024 * 1024:

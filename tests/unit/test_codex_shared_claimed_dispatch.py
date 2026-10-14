@@ -54,9 +54,7 @@ def thread_response(
         "status": {
             "type": "active" if any(turn["status"] == "inProgress" for turn in turns) else "idle",
             **(
-                {"activeFlags": []}
-                if any(turn["status"] == "inProgress" for turn in turns)
-                else {}
+                {"activeFlags": []} if any(turn["status"] == "inProgress" for turn in turns) else {}
             ),
         },
     }
@@ -64,10 +62,20 @@ def thread_response(
         thread["turns"] = deepcopy(turns)
     return {
         "thread": thread,
-        **{key: thread[key] for key in (
-            "sessionId", "projectId", "cwd", "source", "originator", "model",
-            "modelProvider", "canAcceptDirectInput", "status",
-        )},
+        **{
+            key: thread[key]
+            for key in (
+                "sessionId",
+                "projectId",
+                "cwd",
+                "source",
+                "originator",
+                "model",
+                "modelProvider",
+                "canAcceptDirectInput",
+                "status",
+            )
+        },
     }
 
 
@@ -77,12 +85,14 @@ class ClaimedDispatchChannel(MemoryAppServerChannel):
     def __init__(self, cwd: Path, *, active: bool = False) -> None:
         super().__init__(withhold={"thread/read", "thread/resume", "turn/start", "turn/steer"})
         self.cwd = cwd
-        self.turns = [{
-            "id": "turn-existing",
-            "status": "inProgress" if active else "completed",
-            "itemsView": "full",
-            "items": [user_item("human-1", "original human goal")],
-        }]
+        self.turns = [
+            {
+                "id": "turn-existing",
+                "status": "inProgress" if active else "completed",
+                "itemsView": "full",
+                "items": [user_item("human-1", "original human goal")],
+            }
+        ]
         self.dispatch_written = asyncio.Event()
         self.hold_dispatch_response = False
         self.hold_control_read = False
@@ -108,9 +118,7 @@ class ClaimedDispatchChannel(MemoryAppServerChannel):
                 if self.hold_dispatch_response:
                     continue
                 if method == "turn/start":
-                    result = {
-                        "turn": {"id": "turn-new", "status": "inProgress", "items": []}
-                    }
+                    result = {"turn": {"id": "turn-new", "status": "inProgress", "items": []}}
                 else:
                     result = {"turnId": message["params"]["expectedTurnId"]}
             else:
@@ -187,25 +195,34 @@ def correction_and_records(adapter: CodexSharedAdapter) -> tuple[str, tuple[str,
         "effect_id": "effect-exact",
         "intervention_id": "intervention-exact",
         "client_message_id": "pex-correction-exact",
-        "content": [{
-            "type": "text",
-            "text": "The artifact has 27 rows; criterion 3 requires 30. Complete it.",
-            "text_elements": [],
-        }],
+        "content": [
+            {
+                "type": "text",
+                "text": "The artifact has 27 rows; criterion 3 requires 30. Complete it.",
+                "text_elements": [],
+            }
+        ],
         "session_id": adapter.session.id,
         "thread_id": adapter.session.vendor_session_id,
         "root_session_id": adapter._selected.root_session_id,
         "vendor_project_id": adapter._selected.vendor_project_id,
         "project_binding": "identity:fixture-project",
         "workspace_binding": {
-            "project_id": "pex-project", "project_binding": "identity:fixture-project"
+            "project_id": "pex-project",
+            "project_binding": "identity:fixture-project",
         },
         "subscription_receipt": receipt,
     }
     encoded = canonical(correction)
-    return encoded, (canonical({
-        "correction": correction, "effect_state": "dispatching", "effect_version": 1,
-    }),)
+    return encoded, (
+        canonical(
+            {
+                "correction": correction,
+                "effect_state": "dispatching",
+                "effect_version": 1,
+            }
+        ),
+    )
 
 
 def dispatch_args(adapter: CodexSharedAdapter) -> dict[str, Any]:
@@ -220,7 +237,8 @@ def dispatch_args(adapter: CodexSharedAdapter) -> dict[str, Any]:
 
 def dispatch_writes(channel: ClaimedDispatchChannel) -> list[dict[str, Any]]:
     return [
-        message for message in channel.messages
+        message
+        for message in channel.messages
         if message.get("method") in {"turn/start", "turn/steer"}
     ]
 
@@ -228,7 +246,8 @@ def dispatch_writes(channel: ClaimedDispatchChannel) -> list[dict[str, Any]]:
 @pytest.mark.asyncio
 @pytest.mark.parametrize("active", [False, True])
 async def test_real_coordinator_transport_dispatches_idle_start_or_active_steer(
-    tmp_path: Path, active: bool,
+    tmp_path: Path,
+    active: bool,
 ) -> None:
     adapter, channel = await attached(tmp_path, active=active)
     before_revision = adapter._input_baseline.snapshot().revision
@@ -271,10 +290,14 @@ async def test_new_input_while_fresh_read_waits_refuses_without_dispatch(tmp_pat
             item=user_item("human-later", "new human direction"),
             completed=True,
         )
-        channel.turns.append({
-            "id": "turn-later", "status": "completed", "itemsView": "full",
-            "items": [user_item("human-later", "new human direction")],
-        })
+        channel.turns.append(
+            {
+                "id": "turn-later",
+                "status": "completed",
+                "itemsView": "full",
+                "items": [user_item("human-later", "new human direction")],
+            }
+        )
         channel.release_control_read.set()
         with pytest.raises(SharedCodexTextDispatchRejected):
             await task
@@ -308,7 +331,8 @@ async def test_final_authority_mutation_is_rechecked_before_enqueue(tmp_path: Pa
 
 @pytest.mark.asyncio
 async def test_new_input_while_transport_write_lock_waits_refuses_before_enqueue(
-    tmp_path: Path, monkeypatch,
+    tmp_path: Path,
+    monkeypatch,
 ) -> None:
     adapter, channel = await attached(tmp_path)
     transport = adapter.transport
@@ -403,7 +427,8 @@ async def test_noncanonical_correction_and_receipt_mutation_write_nothing(tmp_pa
     args = dispatch_args(adapter)
     decoded = strict_json_loads(args["correction_json"])
     decoded["subscription_receipt"] = {
-        **decoded["subscription_receipt"], "authorization_id": "other"
+        **decoded["subscription_receipt"],
+        "authorization_id": "other",
     }
     args["correction_json"] = strict_json_dumps(decoded)
     try:

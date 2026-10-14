@@ -272,14 +272,15 @@ async def test_terminal_apply_replay_bypasses_every_mutable_live_gate():
         start_overlay_operation=AsyncMock(side_effect=AssertionError("start replayed")),
     )
     adapters.synthetic.probe = AsyncMock(side_effect=AssertionError("probe replayed"))
-    adapters.synthetic.apply_overlay = AsyncMock(
-        side_effect=AssertionError("adapter replayed")
-    )
+    adapters.synthetic.apply_overlay = AsyncMock(side_effect=AssertionError("adapter replayed"))
 
-    assert await ActionExecutor(adapters, store).execute(
-        _action(overlay),
-        PolicyVerdict.ALLOW,
-    ) == "overlay_applied"
+    assert (
+        await ActionExecutor(adapters, store).execute(
+            _action(overlay),
+            PolicyVerdict.ALLOW,
+        )
+        == "overlay_applied"
+    )
     store.get_session.assert_not_awaited()
     store.start_overlay_operation.assert_not_awaited()
     adapters.synthetic.probe.assert_not_awaited()
@@ -308,9 +309,7 @@ async def test_apply_preflight_refusal_terminalizes_reserved_without_start_or_io
     adapters.synthetic.probe = AsyncMock(
         return_value=SimpleNamespace(modify_config=False, config_scope="session")
     )
-    adapters.synthetic.apply_overlay = AsyncMock(
-        side_effect=AssertionError("apply must not run")
-    )
+    adapters.synthetic.apply_overlay = AsyncMock(side_effect=AssertionError("apply must not run"))
 
     result = await ActionExecutor(adapters, store).execute(
         _action(overlay),
@@ -373,10 +372,13 @@ async def test_opencode_store_projection_never_calls_overlay_adapter():
         side_effect=AssertionError("Store projection called adapter apply")
     )
 
-    assert await ActionExecutor(adapters, store).execute(
-        _action(requested),
-        PolicyVerdict.ALLOW,
-    ) == "overlay_applied"
+    assert (
+        await ActionExecutor(adapters, store).execute(
+            _action(requested),
+            PolicyVerdict.ALLOW,
+        )
+        == "overlay_applied"
+    )
     adapters.opencode.apply_overlay.assert_not_awaited()
 
 
@@ -451,9 +453,7 @@ async def test_revert_pending_and_uncertain_receipts_require_zero_io():
         reserve_overlay_revert=AsyncMock(side_effect=[pending, uncertain]),
         start_overlay_operation=AsyncMock(side_effect=AssertionError("terminal started")),
     )
-    adapters.synthetic.revert_overlay = AsyncMock(
-        side_effect=AssertionError("terminal replayed")
-    )
+    adapters.synthetic.revert_overlay = AsyncMock(side_effect=AssertionError("terminal replayed"))
     executor = ActionExecutor(adapters, store)
 
     pending_result = await executor.revert_overlay_receipt(overlay.id)
@@ -662,8 +662,7 @@ async def test_expiry_keyset_drains_past_1000_failures_without_same_sweep_retry(
         for index in range(1001)
     ]
     operations = [
-        _operation(item, kind="revert", index=index)
-        for index, item in enumerate(overlays)
+        _operation(item, kind="revert", index=index) for index, item in enumerate(overlays)
     ]
     claim_calls: list[tuple[object, object]] = []
 
@@ -688,9 +687,7 @@ async def test_expiry_keyset_drains_past_1000_failures_without_same_sweep_retry(
 
     async def start(operation_id, *, store_projected):
         assert store_projected is False
-        operation = next(
-            item for item in operations if item["operation_id"] == operation_id
-        )
+        operation = next(item for item in operations if item["operation_id"] == operation_id)
         dispatching = {**operation, "state": "dispatching", "version": 2}
         overlay = overlay_by_operation[operation_id]
         return {
@@ -750,9 +747,7 @@ async def test_expiry_coalesced_failed_receipt_is_never_dispatched():
         ),
         start_overlay_operation=AsyncMock(side_effect=AssertionError("failed started")),
     )
-    adapters.synthetic.revert_overlay = AsyncMock(
-        side_effect=AssertionError("failed replayed")
-    )
+    adapters.synthetic.revert_overlay = AsyncMock(side_effect=AssertionError("failed replayed"))
 
     outcomes = await ActionExecutor(adapters, store).expire_overlays(utcnow())
 

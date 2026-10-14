@@ -97,7 +97,8 @@ def _checked_reader(path: Path) -> BinaryIO:
         opened = os.fstat(handle.fileno())
         current = path.lstat()
         if not (
-            _ordinary(opened) and _ordinary(current)
+            _ordinary(opened)
+            and _ordinary(current)
             and _identity(before) == _identity(opened) == _identity(current)
         ):
             raise ValueError("Cursor inbox file changed during open")
@@ -137,7 +138,7 @@ def _decode_checkpoint(raw: bytes) -> InboxCheckpoint:
     ):
         return InboxCheckpoint()
     for key, bits in (("offset", 63), ("dev", 128), ("ino", 128)):
-        if type(value[key]) is not int or not 0 <= value[key] < 2 ** bits:
+        if type(value[key]) is not int or not 0 <= value[key] < 2**bits:
             return InboxCheckpoint()
     anchor = value["anchor"]
     if not isinstance(anchor, str) or len(anchor) != 64 or set(anchor) - set("0123456789abcdef"):
@@ -224,20 +225,30 @@ def read_inbox(home: Path) -> InboxBatch | None:
                     # can never become admissible JSON. Persist discard mode so
                     # later reads advance to its newline without parsing a suffix.
                     discarding_line = True
-                    rejections.append(InboxRejection(
-                        file_identity=_identity(info), start=line_start, end=line_end,
-                        record_sha256=line_sha256, reason="oversized_record_prefix",
-                    ))
+                    rejections.append(
+                        InboxRejection(
+                            file_identity=_identity(info),
+                            start=line_start,
+                            end=line_end,
+                            record_sha256=line_sha256,
+                            reason="oversized_record_prefix",
+                        )
+                    )
                     continue
                 record_count += 1
                 content = line[:-1]
                 if not content.strip():
                     continue
                 if len(content) > MAX_RECORD_BYTES:
-                    rejections.append(InboxRejection(
-                        file_identity=_identity(info), start=line_start, end=line_end,
-                        record_sha256=line_sha256, reason="oversized_record",
-                    ))
+                    rejections.append(
+                        InboxRejection(
+                            file_identity=_identity(info),
+                            start=line_start,
+                            end=line_end,
+                            record_sha256=line_sha256,
+                            reason="oversized_record",
+                        )
+                    )
                     continue
                 try:
                     # Hook records are an authority boundary. Python's default
@@ -245,21 +256,35 @@ def read_inbox(home: Path) -> InboxBatch | None:
                     # Infinity, making the observed event ambiguous or non-RFC.
                     payload = strict_json_loads(content)
                 except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError):
-                    rejections.append(InboxRejection(
-                        file_identity=_identity(info), start=line_start, end=line_end,
-                        record_sha256=line_sha256, reason="malformed_json",
-                    ))
+                    rejections.append(
+                        InboxRejection(
+                            file_identity=_identity(info),
+                            start=line_start,
+                            end=line_end,
+                            record_sha256=line_sha256,
+                            reason="malformed_json",
+                        )
+                    )
                     continue
                 if isinstance(payload, dict):
                     records.append(payload)
-                    record_authorities.append(InboxRecordAuthority(
-                        start=line_start, end=line_end, record_sha256=line_sha256,
-                    ))
+                    record_authorities.append(
+                        InboxRecordAuthority(
+                            start=line_start,
+                            end=line_end,
+                            record_sha256=line_sha256,
+                        )
+                    )
                 else:
-                    rejections.append(InboxRejection(
-                        file_identity=_identity(info), start=line_start, end=line_end,
-                        record_sha256=line_sha256, reason="non_object_json",
-                    ))
+                    rejections.append(
+                        InboxRejection(
+                            file_identity=_identity(info),
+                            start=line_start,
+                            end=line_end,
+                            record_sha256=line_sha256,
+                            reason="non_object_json",
+                        )
+                    )
             current = path.lstat()
             if not _ordinary(current) or _identity(info) != _identity(current):
                 raise ValueError("Cursor inbox changed during read")
@@ -268,10 +293,16 @@ def read_inbox(home: Path) -> InboxBatch | None:
     if consumed == 0:
         return None
     return InboxBatch(
-        source=path, marker=marker, file_identity=_identity(info),
-        marker_state=marker_state, start=offset, end=offset + consumed,
-        digest=digest.hexdigest(), records=tuple(records),
-        record_authorities=tuple(record_authorities), rejections=tuple(rejections),
+        source=path,
+        marker=marker,
+        file_identity=_identity(info),
+        marker_state=marker_state,
+        start=offset,
+        end=offset + consumed,
+        digest=digest.hexdigest(),
+        records=tuple(records),
+        record_authorities=tuple(record_authorities),
+        rejections=tuple(rejections),
         discarding_line=discarding_line,
     )
 
@@ -295,19 +326,30 @@ def acknowledge_inbox(batch: InboxBatch) -> bool:
         if hashlib.sha256(consumed).hexdigest() != batch.digest:
             return False
         anchor = _checkpoint_anchor(handle, batch.end)
-    checkpoint_bytes = (json.dumps({
-        "v": 2, "offset": batch.end, "dev": batch.file_identity[0],
-        "ino": batch.file_identity[1], "anchor": anchor,
-        "discarding": batch.discarding_line,
-    }, separators=(",", ":"), sort_keys=True) + "\n").encode("ascii")
+    checkpoint_bytes = (
+        json.dumps(
+            {
+                "v": 2,
+                "offset": batch.end,
+                "dev": batch.file_identity[0],
+                "ino": batch.file_identity[1],
+                "anchor": anchor,
+                "discarding": batch.discarding_line,
+            },
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        + "\n"
+    ).encode("ascii")
     if len(checkpoint_bytes) > MAX_CHECKPOINT_BYTES:
         raise ValueError("Cursor checkpoint exceeds its format bound")
     # Replace a freshly created checkpoint, never follow/truncate an existing
     # marker target. Directory check/open boundaries are still not OS-atomic.
     temporary: Path | None = None
     try:
-        with tempfile.NamedTemporaryFile(mode="wb", dir=batch.marker.parent,
-                                         prefix=".cursor-offset-", delete=False) as handle:
+        with tempfile.NamedTemporaryFile(
+            mode="wb", dir=batch.marker.parent, prefix=".cursor-offset-", delete=False
+        ) as handle:
             temporary = Path(handle.name)
             handle.write(checkpoint_bytes)
             handle.flush()
@@ -358,13 +400,15 @@ async def process_inbox(
             # propagate and retain the complete at-least-once batch.
             if reject is None:
                 raise RuntimeError("Cursor inbox rejection sink is unavailable") from None
-            await reject(InboxRejection(
-                file_identity=batch.file_identity,
-                start=authority.start,
-                end=authority.end,
-                record_sha256=authority.record_sha256,
-                reason="invalid_hook_shape",
-            ))
+            await reject(
+                InboxRejection(
+                    file_identity=batch.file_identity,
+                    start=authority.start,
+                    end=authority.end,
+                    record_sha256=authority.record_sha256,
+                    reason="invalid_hook_shape",
+                )
+            )
     if stop is not None and stop.is_set():
         return 0
     if not await asyncio.to_thread(acknowledge_inbox, batch):

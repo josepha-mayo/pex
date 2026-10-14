@@ -113,8 +113,7 @@ def _intervention(
         authority_required=action.authority_required.value,
         action_taken=action_taken or kind.value,
         policy_verdict=verdict,
-        result=result
-        or ("escalated" if kind == InterventionType.ASK_HUMAN else "annotated"),
+        result=result or ("escalated" if kind == InterventionType.ASK_HUMAN else "annotated"),
         created_at=datetime.now(UTC),
         metadata={"trigger_event_id": trigger_event_id or event.event_id},
     )
@@ -225,9 +224,7 @@ def test_cursor_submit_response_rejects_stale_or_unbound_decisions(case: str):
     elif case == "wrong_intervention_goal":
         intervention = _intervention(session, event, goal_id="goal-other")
     elif case == "wrong_action_session":
-        action = intervention.proposed_action.model_copy(
-            update={"session_id": "cursor:other"}
-        )
+        action = intervention.proposed_action.model_copy(update={"session_id": "cursor:other"})
         intervention = intervention.model_copy(update={"proposed_action": action})
     elif case == "wrong_action_goal":
         action = intervention.proposed_action.model_copy(update={"goal_id": "goal-other"})
@@ -457,15 +454,18 @@ async def test_before_submit_authority_read_shares_hook_deadline(client, monkeyp
 
     monkeypatch.setattr(bridge_app, "_cursor_submit_authority", stalled_authority)
     monkeypatch.setattr(bridge_app, "CURSOR_SUBMIT_PIPELINE_TIMEOUT_SECONDS", 0.01)
-    response = await asyncio.wait_for(client.post(
-        "/v1/hooks/cursor",
-        json={
-            "hook_event_name": "beforeSubmitPrompt",
-            "conversation_id": conversation_id,
-            "workspace_roots": ["C:/proj"],
-            "prompt": "Continue the goal.",
-        },
-    ), timeout=5)
+    response = await asyncio.wait_for(
+        client.post(
+            "/v1/hooks/cursor",
+            json={
+                "hook_event_name": "beforeSubmitPrompt",
+                "conversation_id": conversation_id,
+                "workspace_roots": ["C:/proj"],
+                "prompt": "Continue the goal.",
+            },
+        ),
+        timeout=5,
+    )
     assert response.status_code == 200
     assert response.json() == {"continue": True}
     assert cancelled.is_set()

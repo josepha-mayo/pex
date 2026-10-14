@@ -91,9 +91,7 @@ async def test_bootstrap_binds_first_cursor_session_and_rejects_session_and_proj
             )
             assert accepted.status_code == 200, accepted.text
 
-            record = await store.get_hook_credential_by_digest(
-                digest_hook_token(token)
-            )
+            record = await store.get_hook_credential_by_digest(digest_hook_token(token))
             assert record is not None
             assert record["session_id"] == "cursor:conversation-one"
             assert record["vendor_session_id"] == "conversation-one"
@@ -168,9 +166,7 @@ async def test_each_named_worker_bootstrap_authenticates_its_first_hook(
                 },
             )
             assert accepted.status_code == 200, accepted.text
-        record = await store.get_hook_credential_by_digest(
-            digest_hook_token(receipt["token"])
-        )
+        record = await store.get_hook_credential_by_digest(digest_hook_token(receipt["token"]))
         assert record is not None
         assert record["session_id"] == f"{harness}:{vendor_id}"
     finally:
@@ -199,9 +195,7 @@ async def test_hook_token_cannot_escalate_to_operator_rest_mcp_or_another_harnes
             headers=_headers(receipt["token"]),
         ) as worker:
             assert (await worker.get("/v1/goals")).status_code == 401
-            assert (
-                await worker.post("/v1/hook-credentials/bootstrap", json={})
-            ).status_code == 401
+            assert (await worker.post("/v1/hook-credentials/bootstrap", json={})).status_code == 401
             assert (await worker.post("/mcp/", content=b"{}")).status_code == 401
             decision = await worker.post(
                 "/v1/decisions/nonexistent-decision/resolve",
@@ -264,13 +258,9 @@ async def test_hook_credential_expiry_revocation_rotation_and_terminal_issue_gat
             issued = await operator.post("/v1/sessions/cursor%3Alive/hook-credential")
             assert issued.status_code == 200, issued.text
             body = issued.json()
-            revoked = await operator.delete(
-                f"/v1/hook-credentials/{body['credential_id']}"
-            )
+            revoked = await operator.delete(f"/v1/hook-credentials/{body['credential_id']}")
             assert revoked.status_code == 200
-            terminal_issue = await operator.post(
-                "/v1/sessions/cursor%3Aterminal/hook-credential"
-            )
+            terminal_issue = await operator.post("/v1/sessions/cursor%3Aterminal/hook-credential")
             assert terminal_issue.status_code == 409
 
         async with AsyncClient(
@@ -333,12 +323,7 @@ async def test_hook_credential_expiry_revocation_rotation_and_terminal_issue_gat
             first = await _bootstrap(operator, harness="hermes", project=project)
             second = await _bootstrap(operator, harness="hermes", project=project)
         assert first["token"] != second["token"]
-        assert (
-            await store.get_hook_credential_by_digest(
-                digest_hook_token(first["token"])
-            )
-            is None
-        )
+        assert await store.get_hook_credential_by_digest(digest_hook_token(first["token"])) is None
     finally:
         await store.close()
 
@@ -373,9 +358,7 @@ async def test_opencode_bootstrap_binds_on_first_session_runtime_request(tmp_pat
             assert before is not None and before["session_id"] is None
 
             assert (
-                await plugin.get(
-                    "/v1/sessions/opencode%3Asession-one/overlay-runtime"
-                )
+                await plugin.get("/v1/sessions/opencode%3Asession-one/overlay-runtime")
             ).status_code == 403
             bound_heartbeat = await plugin.post(
                 "/v1/adapters/opencode/plugin-heartbeat",
@@ -388,9 +371,7 @@ async def test_opencode_bootstrap_binds_on_first_session_runtime_request(tmp_pat
             )
             assert bound_heartbeat.status_code == 200, bound_heartbeat.text
 
-            runtime = await plugin.get(
-                "/v1/sessions/opencode%3Asession-one/overlay-runtime"
-            )
+            runtime = await plugin.get("/v1/sessions/opencode%3Asession-one/overlay-runtime")
             assert runtime.status_code == 200, runtime.text
             after = await store.get_hook_credential_by_digest(digest_hook_token(token))
             assert after is not None
@@ -406,9 +387,7 @@ async def test_opencode_bootstrap_binds_on_first_session_runtime_request(tmp_pat
                 )
             ).status_code == 403
             assert (
-                await plugin.get(
-                    "/v1/sessions/opencode%3Asession-two/overlay-runtime"
-                )
+                await plugin.get("/v1/sessions/opencode%3Asession-two/overlay-runtime")
             ).status_code == 403
     finally:
         await store.close()

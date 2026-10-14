@@ -174,22 +174,25 @@ async def test_no_initialization_or_reconnect_for_dispatch(tmp_path, state):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("override", [
-    {"thread_id": "thr_other"},
-    {"thread_id": " thr_exact"},
-    {"text": ""},
-    {"text": " \n"},
-    {"text": "secret\x00"},
-    {"text": "x" * (MAX_DISPATCH_TEXT_BYTES + 1)},
-    {"text": "\ud800"},
-    {"client_user_message_id": "\x00"},
-    {"client_user_message_id": " leading"},
-    {"expected_turn_id": ""},
-    {"expected_turn_id": " trailing "},
-    {"expected_received_revision": True},
-    {"expected_connection_token": ("endpoint", True)},
-    {"final_authority_check": None},
-])
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"thread_id": "thr_other"},
+        {"thread_id": " thr_exact"},
+        {"text": ""},
+        {"text": " \n"},
+        {"text": "secret\x00"},
+        {"text": "x" * (MAX_DISPATCH_TEXT_BYTES + 1)},
+        {"text": "\ud800"},
+        {"client_user_message_id": "\x00"},
+        {"client_user_message_id": " leading"},
+        {"expected_turn_id": ""},
+        {"expected_turn_id": " trailing "},
+        {"expected_received_revision": True},
+        {"expected_connection_token": ("endpoint", True)},
+        {"final_authority_check": None},
+    ],
+)
 async def test_invalid_inputs_write_nothing(tmp_path, override):
     channel = TextChannel()
     transport = make_transport(tmp_path, channel)
@@ -300,17 +303,23 @@ async def test_revision_counts_complete_envelopes_responses_and_server_requests(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("response, turn_id", [
-    ({"result": {"turnId": "wrong"}}, "turn_active"),
-    ({"result": {"turnId": " turn_active "}}, "turn_active"),
-    ({"result": {"turnId": "turn_active", "unexpected": True}}, "turn_active"),
-    ({"result": {"turn": {"id": "", "status": "inProgress"}}}, None),
-    ({"result": {"turn": {"id": " turn_new ", "status": "inProgress"}}}, None),
-    ({"result": {"turn": {"id": "turn_new", "status": "completed"}}}, None),
-    ({"result": {"turn": {"id": "turn_new", "status": "inProgress", "threadId": "other"}}}, None),
-    ({"error": "not a JSON-RPC refusal"}, None),
-    ({"error": {"code": True, "message": "bad"}}, None),
-])
+@pytest.mark.parametrize(
+    "response, turn_id",
+    [
+        ({"result": {"turnId": "wrong"}}, "turn_active"),
+        ({"result": {"turnId": " turn_active "}}, "turn_active"),
+        ({"result": {"turnId": "turn_active", "unexpected": True}}, "turn_active"),
+        ({"result": {"turn": {"id": "", "status": "inProgress"}}}, None),
+        ({"result": {"turn": {"id": " turn_new ", "status": "inProgress"}}}, None),
+        ({"result": {"turn": {"id": "turn_new", "status": "completed"}}}, None),
+        (
+            {"result": {"turn": {"id": "turn_new", "status": "inProgress", "threadId": "other"}}},
+            None,
+        ),
+        ({"error": "not a JSON-RPC refusal"}, None),
+        ({"error": {"code": True, "message": "bad"}}, None),
+    ],
+)
 async def test_malformed_or_wrong_ack_is_uncertain_and_never_retried(tmp_path, response, turn_id):
     channel = TextChannel(response=response)
     transport = make_transport(tmp_path, channel)

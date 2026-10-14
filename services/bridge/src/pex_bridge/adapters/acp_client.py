@@ -92,8 +92,11 @@ class FakeAcpTransport:
     def __init__(self) -> None:
         self.prompts: list[dict[str, Any]] = []
         self.sessions: list[dict[str, Any]] = [
-            {"sessionId": "cursor-acp-demo", "title": "demo",
-             "cwd": "C:/proj" if os.name == "nt" else "/proj"}
+            {
+                "sessionId": "cursor-acp-demo",
+                "title": "demo",
+                "cwd": "C:/proj" if os.name == "nt" else "/proj",
+            }
         ]
         self.closed = False
         self.initialized = False
@@ -224,11 +227,14 @@ class StdioAcpTransport:
                             if isinstance(error, dict):
                                 raw_code = error.get("code")
                                 code = raw_code if isinstance(raw_code, int) else None
-                                message = bounded_observed_text(
-                                    error.get("message"),
-                                    field="ACP error message",
-                                    max_chars=4_096,
-                                ) or "ACP request failed"
+                                message = (
+                                    bounded_observed_text(
+                                        error.get("message"),
+                                        field="ACP error message",
+                                        max_chars=4_096,
+                                    )
+                                    or "ACP request failed"
+                                )
                                 fut.set_exception(AcpRpcError(code, message, error.get("data")))
                             else:
                                 fut.set_exception(AcpRpcError(None, "ACP request failed"))
@@ -238,9 +244,7 @@ class StdioAcpTransport:
                                 fut.set_result(result)
                             else:
                                 fut.set_exception(
-                                    _AcpMalformedResult(
-                                        "ACP server returned a malformed result"
-                                    )
+                                    _AcpMalformedResult("ACP server returned a malformed result")
                                 )
                     continue
                 if msg.get("method") == "session/request_permission" and "id" in msg:
@@ -270,16 +274,13 @@ class StdioAcpTransport:
                     }:
                         valid = False
                         decision = {"outcome": {"outcome": "cancelled"}}
-                    elif (
-                        outcome.get("outcome") == "selected"
-                        and not _valid_acp_option_id(outcome.get("optionId"))
+                    elif outcome.get("outcome") == "selected" and not _valid_acp_option_id(
+                        outcome.get("optionId")
                     ):
                         valid = False
                         decision = {"outcome": {"outcome": "cancelled"}}
                     try:
-                        await self._write(
-                            {"jsonrpc": "2.0", "id": request_id, "result": decision}
-                        )
+                        await self._write({"jsonrpc": "2.0", "id": request_id, "result": decision})
                     except BaseException as exc:
                         if delivery is not None and not delivery.done():
                             delivery.set_exception(exc)
@@ -310,9 +311,7 @@ class StdioAcpTransport:
             await self.start()
         if self._proc is None or self._proc.stdin is None:
             raise RuntimeError("ACP process stdin is unavailable")
-        encoded = (strict_json_dumps(payload, separators=(",", ":")) + "\n").encode(
-            "utf-8"
-        )
+        encoded = (strict_json_dumps(payload, separators=(",", ":")) + "\n").encode("utf-8")
         if len(encoded) > MAX_ACP_WRITE_BYTES:
             raise ValueError("ACP request exceeded the write safety bound")
         async with self._write_lock:
@@ -549,9 +548,7 @@ class AcpClient:
             for item in page:
                 if not isinstance(item, dict):
                     continue
-                session_id = bounded_adapter_id(
-                    item.get("sessionId") or "", field="ACP session id"
-                )
+                session_id = bounded_adapter_id(item.get("sessionId") or "", field="ACP session id")
                 record: dict[str, Any] = {"sessionId": session_id}
                 for field, limit in (("cwd", 4_096), ("title", 4_096)):
                     value = item.get(field)

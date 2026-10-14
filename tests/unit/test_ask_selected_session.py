@@ -113,7 +113,8 @@ async def test_ask_worker_activity_requires_latest_bound_worker_event(ask_client
 
     async def ask() -> str:
         response = await ask_client.post(
-            "/v1/ask", json={"question": "what needs me?", "session_id": session.id},
+            "/v1/ask",
+            json={"question": "what needs me?", "session_id": session.id},
         )
         assert response.status_code == 200
         return response.json()["answer"]
@@ -161,7 +162,10 @@ async def test_ask_worker_activity_requires_latest_bound_worker_event(ask_client
 async def test_ask_codex_turn_started_is_bound_activity_evidence(ask_client, tmp_path):
     goal = await _goal(ask_client, "Codex turn")
     session = await _harness_session(
-        goal, HarnessType.CODEX, "turn", SessionStatus.WORKING,
+        goal,
+        HarnessType.CODEX,
+        "turn",
+        SessionStatus.WORKING,
         metadata={"subscription_receipt": {"authorization_id": "first-subscription"}},
         cwd=str(tmp_path),
     )
@@ -190,7 +194,8 @@ async def test_ask_codex_turn_started_is_bound_activity_evidence(ask_client, tmp
     )
     assert await state.store.latest_observed_event(session.id) is not None
     response = await ask_client.post(
-        "/v1/ask", json={"question": "what is Codex doing?", "session_id": session.id},
+        "/v1/ask",
+        json={"question": "what is Codex doing?", "session_id": session.id},
     )
     assert response.status_code == 200
     answer = response.json()["answer"]
@@ -205,7 +210,8 @@ async def test_ask_codex_turn_started_is_bound_activity_evidence(ask_client, tmp
         expected_project_binding=control["project_binding"],
     )
     response = await ask_client.post(
-        "/v1/ask", json={"question": "what is Codex doing?", "session_id": session.id},
+        "/v1/ask",
+        json={"question": "what is Codex doing?", "session_id": session.id},
     )
     assert response.status_code == 200
     assert "no latest bound event establishing recent worker activity" in response.json()["answer"]
@@ -295,7 +301,8 @@ async def test_ask_selected_goal_less_session_is_truthful_and_completion_is_not_
 
 @pytest.mark.asyncio
 async def test_ask_selected_missing_or_revoked_session_fails_without_fallback(
-    ask_client, monkeypatch,
+    ask_client,
+    monkeypatch,
 ):
     goal = await _goal(ask_client, "available fallback goal")
     await _opencode_session(goal, "available", SessionStatus.WORKING)
@@ -349,32 +356,49 @@ async def test_ask_selected_completion_uses_only_selected_goal(ask_client, monke
     assert response.json()["answer"] == "Not yet. Newer work is active on this goal."
 
 
-@pytest.mark.parametrize("status,reason,fresh,acceptance,partial", [
-    ("uncertain", "no_current_supported_completion_evidence", True, "supported", True),
-    ("uncertain", "no_current_supported_completion_evidence", False, "supported", False),
-    ("uncertain", "no_current_supported_completion_evidence", True, "unsatisfied", False),
-    ("uncertain", "goal_not_currently_executable", True, "supported", False),
-    ("in_progress", "newer_active_session_work", True, "supported", False),
-])
+@pytest.mark.parametrize(
+    "status,reason,fresh,acceptance,partial",
+    [
+        ("uncertain", "no_current_supported_completion_evidence", True, "supported", True),
+        ("uncertain", "no_current_supported_completion_evidence", False, "supported", False),
+        ("uncertain", "no_current_supported_completion_evidence", True, "unsatisfied", False),
+        ("uncertain", "goal_not_currently_executable", True, "supported", False),
+        ("in_progress", "newer_active_session_work", True, "supported", False),
+    ],
+)
 @pytest.mark.asyncio
 async def test_ask_completion_explains_only_fresh_partial_file_acceptance(
-    ask_client, monkeypatch, status, reason, fresh, acceptance, partial,
+    ask_client,
+    monkeypatch,
+    status,
+    reason,
+    fresh,
+    acceptance,
+    partial,
 ):
     goal = await _goal(ask_client, "current goal")
     selected = await _opencode_session(goal, "partial", SessionStatus.STOPPED)
     projection = {
-        "status": status, "reason": reason,
+        "status": status,
+        "reason": reason,
         "latest_evidence": {
-            "fresh": fresh, "verification_status": "uncertain",
+            "fresh": fresh,
+            "verification_status": "uncertain",
             "acceptance_status": acceptance,
         },
     }
     monkeypatch.setattr(
-        state.store, "goal_completion_projection", AsyncMock(return_value=projection),
+        state.store,
+        "goal_completion_projection",
+        AsyncMock(return_value=projection),
     )
-    response = await ask_client.post("/v1/ask", json={
-        "question": "is the task complete?", "session_id": selected.id,
-    })
+    response = await ask_client.post(
+        "/v1/ask",
+        json={
+            "question": "is the task complete?",
+            "session_id": selected.id,
+        },
+    )
     assert response.status_code == 200
     assert response.json()["completion"] == projection
     answer = response.json()["answer"]
@@ -386,7 +410,8 @@ async def test_ask_completion_explains_only_fresh_partial_file_acceptance(
 
 @pytest.mark.asyncio
 async def test_ask_selected_bound_workspace_runs_guard_for_selected_session(
-    bound_pipeline, monkeypatch,
+    bound_pipeline,
+    monkeypatch,
 ):
     bound = bound_pipeline
     checked_session_ids = []
@@ -400,9 +425,7 @@ async def test_ask_selected_bound_workspace_runs_guard_for_selected_session(
         return None
 
     monkeypatch.setattr(bound.pipeline, "refresh_desktop_sessions", no_discovery)
-    monkeypatch.setattr(
-        bound.store, "require_session_workspace_current", record_workspace_guard
-    )
+    monkeypatch.setattr(bound.store, "require_session_workspace_current", record_workspace_guard)
     monkeypatch.setattr(app_module.state, "settings", bound.pipeline.settings)
     monkeypatch.setattr(app_module.state, "store", bound.store)
     monkeypatch.setattr(app_module.state, "pipeline", bound.pipeline)

@@ -186,7 +186,8 @@ async def test_attach_validates_goal_project_and_explicit_replacement(client: As
 @pytest.mark.asyncio
 @pytest.mark.parametrize("heading_prefix", ["", "## "])
 async def test_goal_create_keeps_fenced_examples_out_of_persistent_lists(
-    client: AsyncClient, heading_prefix: str,
+    client: AsyncClient,
+    heading_prefix: str,
 ):
     objective = (
         "Implement the real feature.\n\n```markdown\n"
@@ -195,9 +196,14 @@ async def test_goal_create_keeps_fenced_examples_out_of_persistent_lists(
         f"{heading_prefix}Acceptance criteria:\n- Real acceptance\n"
         f"{heading_prefix}Decisions:\n- Real decision\n"
     )
-    created = await client.post("/v1/goals", json={
-        "project_id": "demo", "title": "Fenced examples", "objective": objective,
-    })
+    created = await client.post(
+        "/v1/goals",
+        json={
+            "project_id": "demo",
+            "title": "Fenced examples",
+            "objective": objective,
+        },
+    )
     assert created.status_code == 200, created.text
     goal = created.json()
     assert goal["objective"] == objective
@@ -239,8 +245,7 @@ async def test_goal_create_persists_labeled_decision_ledger(client: AsyncClient)
     )
     assert "Which checkpoint format should survive the migration?" in statements
     assert (
-        statements["Which checkpoint format should survive the migration?"]["status"]
-        == "uncertain"
+        statements["Which checkpoint format should survive the migration?"]["status"] == "uncertain"
     )
     context = await client.get("/v1/context", params={"project_id": "demo"})
     assert context.status_code == 200, context.text
@@ -273,12 +278,8 @@ async def test_explicit_ledger_patch_replaces_only_its_kind_and_preserves_histor
         "decision",
         "rejected_approach",
     }
-    original_decision = next(
-        row for row in same_text if row["metadata"]["kind"] == "decision"
-    )
-    rejected = next(
-        row for row in same_text if row["metadata"]["kind"] == "rejected_approach"
-    )
+    original_decision = next(row for row in same_text if row["metadata"]["kind"] == "decision")
+    rejected = next(row for row in same_text if row["metadata"]["kind"] == "rejected_approach")
 
     replaced = await client.patch(
         f"/v1/goals/{goal_id}",
@@ -313,12 +314,10 @@ async def test_explicit_ledger_patch_replaces_only_its_kind_and_preserves_histor
     )
     assert cleared.status_code == 200, cleared.text
     after_clear = (await client.get(f"/v1/goals/{goal_id}/decisions")).json()
-    assert next(row for row in after_clear if row["id"] == replacement["id"])[
-        "status"
-    ] == "superseded"
-    assert next(row for row in after_clear if row["id"] == rejected["id"])[
-        "status"
-    ] == "active"
+    assert (
+        next(row for row in after_clear if row["id"] == replacement["id"])["status"] == "superseded"
+    )
+    assert next(row for row in after_clear if row["id"] == rejected["id"])["status"] == "active"
 
     readded = await client.patch(
         f"/v1/goals/{goal_id}",
@@ -327,9 +326,7 @@ async def test_explicit_ledger_patch_replaces_only_its_kind_and_preserves_histor
     assert readded.status_code == 200, readded.text
     final = (await client.get(f"/v1/goals/{goal_id}/decisions")).json()
     decision_rows = [
-        row
-        for row in final
-        if row["statement"] == shared and row["metadata"]["kind"] == "decision"
+        row for row in final if row["statement"] == shared and row["metadata"]["kind"] == "decision"
     ]
     assert {row["status"] for row in decision_rows} == {"active", "superseded"}
 
@@ -428,9 +425,7 @@ async def test_ledger_only_override_creates_successor_and_moves_attached_session
     assert rebound["goal_id"] == successor["id"]
     original_after = (await client.get(f"/v1/goals/{original['id']}")).json()
     assert original_after["id"] == original["id"]
-    decisions = (
-        await client.get(f"/v1/goals/{successor['id']}/decisions")
-    ).json()
+    decisions = (await client.get(f"/v1/goals/{successor['id']}/decisions")).json()
     assert any(
         row["statement"] == "Use the explicitly overridden ledger decision"
         and row["status"] == "active"
@@ -455,9 +450,7 @@ async def test_override_rejects_empty_change_and_inherits_unspecified_ledger(
     )
     assert created.status_code == 200, created.text
     original = created.json()
-    original_rows = (
-        await client.get(f"/v1/goals/{original['id']}/decisions")
-    ).json()
+    original_rows = (await client.get(f"/v1/goals/{original['id']}/decisions")).json()
 
     empty = await client.patch(
         f"/v1/goals/{original['id']}",
@@ -476,9 +469,7 @@ async def test_override_rejects_empty_change_and_inherits_unspecified_ledger(
     assert successor_response.status_code == 200, successor_response.text
     successor = successor_response.json()
     assert successor["intent_revision"] == original["intent_revision"] + 1
-    successor_rows = (
-        await client.get(f"/v1/goals/{successor['id']}/decisions")
-    ).json()
+    successor_rows = (await client.get(f"/v1/goals/{successor['id']}/decisions")).json()
     expected = {
         (row["metadata"]["kind"], row["statement"], row["status"])
         for row in original_rows
@@ -490,9 +481,7 @@ async def test_override_rejects_empty_change_and_inherits_unspecified_ledger(
         if row["status"] != "superseded"
     }
     assert inherited == expected
-    assert {row["id"] for row in successor_rows}.isdisjoint(
-        {row["id"] for row in original_rows}
-    )
+    assert {row["id"] for row in successor_rows}.isdisjoint({row["id"] for row in original_rows})
 
     no_ledger = await _goal(client, title="Empty override")
     empty_no_ledger = await client.patch(
@@ -539,9 +528,7 @@ async def test_plugin_heartbeat_claims_only_enforced_overlay_fields(client: Asyn
 
 
 @pytest.mark.asyncio
-async def test_plugin_heartbeat_upserts_isolated_opencode_session(
-    client: AsyncClient, tmp_path
-):
+async def test_plugin_heartbeat_upserts_isolated_opencode_session(client: AsyncClient, tmp_path):
     worker = tmp_path / "isolated-opencode"
     worker.mkdir()
     response = await client.post(
@@ -566,9 +553,7 @@ async def test_goal_patch_keeps_explicit_empty_lists_instead_of_reextracting(
     client: AsyncClient,
 ):
     labeled = (
-        "Create the release receipt.\n\n"
-        "Acceptance criteria:\n\n"
-        "- report.txt contains shipped\n"
+        "Create the release receipt.\n\nAcceptance criteria:\n\n- report.txt contains shipped\n"
     )
     created = await client.post(
         "/v1/goals",
@@ -635,48 +620,70 @@ async def test_observation_only_checkbox_patch_changes_canonical_goal_intent(cli
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("followup", [
-    {"title": "Renamed receipt"},
-    {"mode": "override", "title": "Replacement receipt"},
-    {"unresolved_questions": ["Who reviews the receipt?"]},
-    {"title": "Same objective", "objective":
-     "Ship receipt.\n\nAcceptance criteria:\n- Old criterion\n\nDecisions:\n- Old decision\n"},
-])
+@pytest.mark.parametrize(
+    "followup",
+    [
+        {"title": "Renamed receipt"},
+        {"mode": "override", "title": "Replacement receipt"},
+        {"unresolved_questions": ["Who reviews the receipt?"]},
+        {
+            "title": "Same objective",
+            "objective": "Ship receipt.\n\nAcceptance criteria:\n- Old criterion\n\nDecisions:\n- Old decision\n",  # noqa: E501
+        },
+    ],
+)
 async def test_unrelated_goal_edit_does_not_resurrect_cleared_intent(client, followup):
-    created = await client.post("/v1/goals", json={
-        "project_id": "demo", "title": "Receipt",
-        "objective": "Ship receipt.\n\nAcceptance criteria:\n- Old criterion\n"
-        "\nDecisions:\n- Old decision\n",
-    })
+    created = await client.post(
+        "/v1/goals",
+        json={
+            "project_id": "demo",
+            "title": "Receipt",
+            "objective": "Ship receipt.\n\nAcceptance criteria:\n- Old criterion\n"
+            "\nDecisions:\n- Old decision\n",
+        },
+    )
     assert created.status_code == 200
     goal = created.json()
-    cleared = await client.patch(f"/v1/goals/{goal['id']}", json={
-        "expected_intent_revision": goal["intent_revision"],
-        "acceptance_criteria": [], "decisions": [],
-    })
+    cleared = await client.patch(
+        f"/v1/goals/{goal['id']}",
+        json={
+            "expected_intent_revision": goal["intent_revision"],
+            "acceptance_criteria": [],
+            "decisions": [],
+        },
+    )
     assert cleared.status_code == 200
-    edited = await client.patch(f"/v1/goals/{goal['id']}", json={
-        **followup, "expected_intent_revision": cleared.json()["intent_revision"],
-    })
+    edited = await client.patch(
+        f"/v1/goals/{goal['id']}",
+        json={
+            **followup,
+            "expected_intent_revision": cleared.json()["intent_revision"],
+        },
+    )
     assert edited.status_code == 200, edited.text
     assert edited.json()["acceptance_criteria"] == []
     decisions = await client.get(f"/v1/goals/{edited.json()['id']}/decisions")
     assert decisions.status_code == 200
-    assert not any(row["statement"] == "Old decision" and row["status"] == "active"
-                   for row in decisions.json())
+    assert not any(
+        row["statement"] == "Old decision" and row["status"] == "active" for row in decisions.json()
+    )
 
     # A real objective change still imports its newly supplied labeled intent.
-    revised = await client.patch(f"/v1/goals/{edited.json()['id']}", json={
-        "expected_intent_revision": edited.json()["intent_revision"],
-        "objective": "Ship the new receipt.\n\nAcceptance criteria:\n- New criterion\n"
-        "\nDecisions:\n- New decision\n",
-    })
+    revised = await client.patch(
+        f"/v1/goals/{edited.json()['id']}",
+        json={
+            "expected_intent_revision": edited.json()["intent_revision"],
+            "objective": "Ship the new receipt.\n\nAcceptance criteria:\n- New criterion\n"
+            "\nDecisions:\n- New decision\n",
+        },
+    )
     assert revised.status_code == 200, revised.text
     assert revised.json()["acceptance_criteria"] == ["New criterion"]
     decisions = await client.get(f"/v1/goals/{revised.json()['id']}/decisions")
     assert decisions.status_code == 200
-    assert any(row["statement"] == "New decision" and row["status"] == "active"
-               for row in decisions.json())
+    assert any(
+        row["statement"] == "New decision" and row["status"] == "active" for row in decisions.json()
+    )
 
 
 @pytest.mark.asyncio

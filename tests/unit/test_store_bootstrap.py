@@ -28,9 +28,8 @@ async def test_failed_schema_setup_does_not_publish_partial_tables(tmp_path, mon
     assert store._db is None
     with sqlite3.connect(path) as connection:
         tables = {
-            row[0] for row in connection.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            )
+            row[0]
+            for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
         }
         assert tables == ({"prior_data"} if existing else set())
         if existing:

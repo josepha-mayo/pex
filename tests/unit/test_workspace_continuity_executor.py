@@ -280,7 +280,8 @@ async def test_final_sample_rejects_change_after_store_witness_return(runtime, m
 
     monkeypatch.setattr(runtime[0], "require_session_workspace_current", changed_after_validation)
     result = await runtime[5].execute(
-        action(runtime, InterventionType.SEND_NUDGE), PolicyVerdict.ALLOW,
+        action(runtime, InterventionType.SEND_NUDGE),
+        PolicyVerdict.ALLOW,
     )
     assert result == "workspace_authority_changed"
     assert len(calls) == 2
@@ -293,7 +294,8 @@ async def test_workspace_check_failure_cannot_become_uncertain_delivery(runtime,
 
     monkeypatch.setattr(runtime[0], "require_session_workspace_current", unavailable)
     result = await runtime[5].execute(
-        action(runtime, InterventionType.SEND_NUDGE), PolicyVerdict.ALLOW,
+        action(runtime, InterventionType.SEND_NUDGE),
+        PolicyVerdict.ALLOW,
     )
     assert result == "workspace_authority_changed"
     assert runtime[6] == []
@@ -309,10 +311,16 @@ async def test_overlay_queued_revocation_seals_dispatching_operation(publication
     session.capabilities = capabilities.model_dump(mode="json")
     await publish(publication)
     now = datetime.now(UTC)
-    await store.upsert_goal(Goal(
-        id="goal_overlay", project_id=session.project_id, title="Overlay",
-        objective="Bounded reversible overlay", created_at=now, updated_at=now,
-    ))
+    await store.upsert_goal(
+        Goal(
+            id="goal_overlay",
+            project_id=session.project_id,
+            title="Overlay",
+            objective="Bounded reversible overlay",
+            created_at=now,
+            updated_at=now,
+        )
+    )
     await store.attach_session_goal(session.id, "goal_overlay", expected_goal_id=None)
     adapters = AdapterRegistry()
     adapters.synthetic.probe = AsyncMock(return_value=capabilities)
@@ -330,14 +338,18 @@ async def test_overlay_queued_revocation_seals_dispatching_operation(publication
         grants.append(grant)
         choice = binding.origin_choice
         save_local_origin_choice(
-            origin_path, choice.origin,
-            expected_revision=choice.revision, expected_choice_id=choice.choice_id,
+            origin_path,
+            choice.origin,
+            expected_revision=choice.revision,
+            expected_choice_id=choice.choice_id,
         )
         return grant
 
     monkeypatch.setattr(store, "start_overlay_operation", revoke_after_dispatch)
     result = await ActionExecutor(adapters, store).execute(
-        _action(overlay), PolicyVerdict.ALLOW, operation_owner_id=owner_id,
+        _action(overlay),
+        PolicyVerdict.ALLOW,
+        operation_owner_id=owner_id,
     )
     assert result == "workspace_authority_changed"
     assert len(grants) == 1

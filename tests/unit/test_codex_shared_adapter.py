@@ -61,9 +61,7 @@ async def test_shared_completed_powershell_pytest_keeps_exact_target_scope(tmp_p
     try:
         events = [adapter._event(record) for record in (await coordinator.drain_live()).records]
         shells = [
-            event
-            for event in events
-            if event is not None and event.event_type == EventType.SHELL
+            event for event in events if event is not None and event.event_type == EventType.SHELL
         ]
         assert len(shells) == 2
         assert shells[0].process_state["pytest"]["ok"] is False
@@ -97,23 +95,34 @@ async def test_shared_completed_powershell_pytest_keeps_exact_target_scope(tmp_p
 
 @pytest.mark.parametrize("command_directory", ["missing", "other"])
 async def test_shared_full_suite_pass_outside_bound_cwd_is_not_pytest_evidence(
-    tmp_path, command_directory,
+    tmp_path,
+    command_directory,
 ):
     coordinator, transport = await _subscribed(tmp_path)
     adapter = CodexSharedAdapter(coordinator)
     item = {
-        "id": "pytest-unbound", "type": "commandExecution",
-        "command": "python -m pytest -q", "aggregatedOutput": "4 passed in 0.31s",
-        "exitCode": 0, "status": "completed",
+        "id": "pytest-unbound",
+        "type": "commandExecution",
+        "command": "python -m pytest -q",
+        "aggregatedOutput": "4 passed in 0.31s",
+        "exitCode": 0,
+        "status": "completed",
     }
     if command_directory == "other":
         item["cwd"] = str(tmp_path / "different-workspace")
-    transport.notifications.extend([
-        _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "turn-test"}}),
-        _notification("item/completed", {
-            "threadId": "thread-1", "turnId": "turn-test", "item": item,
-        }),
-    ])
+    transport.notifications.extend(
+        [
+            _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "turn-test"}}),
+            _notification(
+                "item/completed",
+                {
+                    "threadId": "thread-1",
+                    "turnId": "turn-test",
+                    "item": item,
+                },
+            ),
+        ]
+    )
     try:
         events = [adapter._event(record) for record in (await coordinator.drain_live()).records]
         shells = [event for event in events if event and event.event_type == EventType.SHELL]
@@ -133,13 +142,19 @@ async def test_shared_full_suite_pass_outside_bound_cwd_is_not_pytest_evidence(
 async def test_older_turn_completion_cannot_clear_newer_active_turn(tmp_path, terminal_status):
     coordinator, transport = await _subscribed(tmp_path)
     adapter = CodexSharedAdapter(coordinator)
-    transport.notifications.extend([
-        _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "old"}}),
-        _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "new"}}),
-        _notification("turn/completed", {
-            "threadId": "thread-1", "turn": {"id": "old", "status": terminal_status},
-        }),
-    ])
+    transport.notifications.extend(
+        [
+            _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "old"}}),
+            _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "new"}}),
+            _notification(
+                "turn/completed",
+                {
+                    "threadId": "thread-1",
+                    "turn": {"id": "old", "status": terminal_status},
+                },
+            ),
+        ]
+    )
     try:
         records = (await coordinator.drain_live()).records
         events = [adapter._event(record) for record in records]
@@ -148,9 +163,15 @@ async def test_older_turn_completion_cannot_clear_newer_active_turn(tmp_path, te
         # for the current turn or suppress useful historical evidence.
         assert events[-1].event_type == EventType.STOP
         assert events[-1].metadata["turn_status"] == terminal_status
-        transport.notifications.append(_notification("turn/completed", {
-            "threadId": "thread-1", "turn": {"id": "new", "status": "completed"},
-        }))
+        transport.notifications.append(
+            _notification(
+                "turn/completed",
+                {
+                    "threadId": "thread-1",
+                    "turn": {"id": "new", "status": "completed"},
+                },
+            )
+        )
         for record in (await coordinator.drain_live()).records:
             adapter._event(record)
         assert adapter.active_turn_id is None

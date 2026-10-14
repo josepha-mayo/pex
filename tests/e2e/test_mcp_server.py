@@ -108,11 +108,7 @@ def _structured(result) -> dict:
     assert result.isError is False
     payload = result.structuredContent
     if payload is None:
-        texts = [
-            block.text
-            for block in (result.content or [])
-            if getattr(block, "text", None)
-        ]
+        texts = [block.text for block in (result.content or []) if getattr(block, "text", None)]
         assert texts, "MCP tool returned neither structured content nor text"
         payload = json.loads(texts[0])
     if (
@@ -178,8 +174,7 @@ async def test_mcp_lists_and_calls_read_only_tools(tmp_path):
                         goal_id=goal_id,
                         kind=ContextKind.FACT,
                         content=(
-                            "The frontend pet atlas lives in "
-                            "apps/desktop/src/pets/atlas.tsx."
+                            "The frontend pet atlas lives in apps/desktop/src/pets/atlas.tsx."
                         ),
                         source_refs=["event:atlas"],
                         provenance=SourceKind.HARNESS,
@@ -239,9 +234,7 @@ async def test_mcp_lists_and_calls_read_only_tools(tmp_path):
                         names = {tool.name for tool in listed.tools}
                         assert names == MCP_TOOLS
 
-                        missing = await mcp.call_tool(
-                            "pex.get_goal", {"session_id": "missing"}
-                        )
+                        missing = await mcp.call_tool("pex.get_goal", {"session_id": "missing"})
                         assert missing.isError is True
 
                         no_goal = await mcp.call_tool(
@@ -251,9 +244,7 @@ async def test_mcp_lists_and_calls_read_only_tools(tmp_path):
                         assert no_goal.isError is True
 
                         goal = _structured(
-                            await mcp.call_tool(
-                                "pex.get_goal", {"session_id": session_id}
-                            )
+                            await mcp.call_tool("pex.get_goal", {"session_id": session_id})
                         )
                         assert goal["session_id"] == session_id
                         assert goal["goal"]["id"] == goal_id
@@ -285,10 +276,7 @@ async def test_mcp_lists_and_calls_read_only_tools(tmp_path):
                             )
                         )
                         assert found["query"] == "frontend pet atlas"
-                        assert any(
-                            agent["session_id"] == source.id
-                            for agent in found["agents"]
-                        )
+                        assert any(agent["session_id"] == source.id for agent in found["agents"])
                         for agent in found["agents"]:
                             for item in agent["context"]:
                                 assert "hunter2" not in item["content"]
@@ -375,8 +363,7 @@ async def test_mcp_mutation_tools_use_canonical_pipeline_paths(tmp_path):
                     project_id="demo",
                     event_type=EventType.AGENT_RESPONSE,
                     message_delta=(
-                        "Dataset is at artifacts/prepared_dataset.parquet. "
-                        "Do not regenerate it."
+                        "Dataset is at artifacts/prepared_dataset.parquet. Do not regenerate it."
                     ),
                 )
                 await state.store.accept_pipeline_event(
@@ -411,17 +398,13 @@ async def test_mcp_mutation_tools_use_canonical_pipeline_paths(tmp_path):
                     project_id="demo",
                     event_type=EventType.SHELL,
                     command="pytest -q",
-                    process_state={
-                        "pytest": {"ok": True, "exit_code": 0, "passed": 4}
-                    },
+                    process_state={"pytest": {"ok": True, "exit_code": 0, "passed": 4}},
                 )
                 await state.store.accept_pipeline_event(
                     pytest_event,
                     session_snapshot=source,
                 )
-                credential = await http.post(
-                    f"/v1/sessions/{source_id}/mcp-credential"
-                )
+                credential = await http.post(f"/v1/sessions/{source_id}/mcp-credential")
                 assert credential.status_code == 200
                 worker_token = credential.json()["token"]
 
@@ -456,8 +439,7 @@ async def test_mcp_mutation_tools_use_canonical_pipeline_paths(tmp_path):
                             "report": {
                                 "idempotency_key": "progress-atlas-wiring-0001",
                                 "summary": (
-                                    "Wired the frontend pet atlas to the "
-                                    "prepared dataset path."
+                                    "Wired the frontend pet atlas to the prepared dataset path."
                                 ),
                                 "evidence_refs": [
                                     {"type": "context", "id": evidence_context_id},
@@ -482,10 +464,7 @@ async def test_mcp_mutation_tools_use_canonical_pipeline_paths(tmp_path):
                         assert replayed["replayed"] is True
                         assert replayed["mutation_id"] == progress["mutation_id"]
                         assert replayed["item"]["id"] == progress["item"]["id"]
-                        assert (
-                            replayed["intervention"]["id"]
-                            == progress["intervention"]["id"]
-                        )
+                        assert replayed["intervention"]["id"] == progress["intervention"]["id"]
                         stored_progress = await state.store.list_context("demo")
                         assert any(
                             item.id == progress["item"]["id"]
@@ -511,9 +490,7 @@ async def test_mcp_mutation_tools_use_canonical_pipeline_paths(tmp_path):
                         assert decision["auto_resolved"] is False
                         assert decision["replayed"] is False
                         assert decision["session_status"] == "needs_decision"
-                        assert (
-                            decision["intervention"]["policy_verdict"] == "ask_human"
-                        )
+                        assert decision["intervention"]["policy_verdict"] == "ask_human"
                         decision_replay = _structured(
                             await mcp.call_tool(
                                 "pex.request_decision",
@@ -522,8 +499,7 @@ async def test_mcp_mutation_tools_use_canonical_pipeline_paths(tmp_path):
                         )
                         assert decision_replay["replayed"] is True
                         assert (
-                            decision_replay["intervention"]["id"]
-                            == decision["intervention"]["id"]
+                            decision_replay["intervention"]["id"] == decision["intervention"]["id"]
                         )
                         decision_conflict = await mcp.call_tool(
                             "pex.request_decision",
@@ -541,20 +517,17 @@ async def test_mcp_mutation_tools_use_canonical_pipeline_paths(tmp_path):
                         assert live.status.value == "needs_decision"
 
                         unauthenticated_resolution = await worker_http.post(
-                            "/v1/decisions/"
-                            f"{decision['intervention']['id']}/resolve",
+                            f"/v1/decisions/{decision['intervention']['id']}/resolve",
                             json={"decision": "iterate"},
                         )
                         assert unauthenticated_resolution.status_code == 401
                         unoffered = await http.post(
-                            "/v1/decisions/"
-                            f"{decision['intervention']['id']}/resolve",
+                            f"/v1/decisions/{decision['intervention']['id']}/resolve",
                             json={"decision": "Iterate"},
                         )
                         assert unoffered.status_code == 422
                         resolved = await http.post(
-                            "/v1/decisions/"
-                            f"{decision['intervention']['id']}/resolve",
+                            f"/v1/decisions/{decision['intervention']['id']}/resolve",
                             json={"decision": "iterate"},
                         )
                         assert resolved.status_code == 200
@@ -567,15 +540,13 @@ async def test_mcp_mutation_tools_use_canonical_pipeline_paths(tmp_path):
                         assert resolved_body["resolution"]["status"] == "delivered"
                         assert resolved_body["replayed"] is False
                         resolved_replay = await http.post(
-                            "/v1/decisions/"
-                            f"{decision['intervention']['id']}/resolve",
+                            f"/v1/decisions/{decision['intervention']['id']}/resolve",
                             json={"decision": "iterate"},
                         )
                         assert resolved_replay.status_code == 200
                         assert resolved_replay.json()["replayed"] is True
                         conflicting_resolution = await http.post(
-                            "/v1/decisions/"
-                            f"{decision['intervention']['id']}/resolve",
+                            f"/v1/decisions/{decision['intervention']['id']}/resolve",
                             json={"decision": "ship"},
                         )
                         assert conflicting_resolution.status_code == 409
@@ -606,9 +577,7 @@ async def test_mcp_mutation_tools_use_canonical_pipeline_paths(tmp_path):
                         assert handed["bundle_receipt"]["context_item_ids"]
                         assert "prepared_dataset" not in str(handed)
                         assert state.adapters.synthetic.inbox[target.id]
-                        assert "prepared_dataset" in state.adapters.synthetic.inbox[
-                            target.id
-                        ][0]
+                        assert "prepared_dataset" in state.adapters.synthetic.inbox[target.id][0]
                         self_target = await mcp.call_tool(
                             "pex.handoff",
                             {
@@ -1028,14 +997,10 @@ async def test_mcp_handoff_honors_pause_cooldown_and_exact_replay(
                         metadata={"source_session_id": source_id},
                     )
                 )
-                credential = await http.post(
-                    f"/v1/sessions/{source_id}/mcp-credential"
-                )
+                credential = await http.post(f"/v1/sessions/{source_id}/mcp-credential")
                 assert credential.status_code == 200
                 credential_body = credential.json()
-                http.headers["Authorization"] = (
-                    f"Bearer {credential_body['token']}"
-                )
+                http.headers["Authorization"] = f"Bearer {credential_body['token']}"
 
                 async with streamable_http_client(
                     "http://127.0.0.1/mcp/",
@@ -1097,9 +1062,7 @@ async def test_mcp_handoff_honors_pause_cooldown_and_exact_replay(
                             json={
                                 "idempotency_key": _goal_control_key("update"),
                                 "paused": False,
-                                "expected_intent_revision": paused_goal.json()[
-                                    "intent_revision"
-                                ],
+                                "expected_intent_revision": paused_goal.json()["intent_revision"],
                             },
                             headers=operator_headers,
                         )
@@ -1171,9 +1134,7 @@ async def test_mcp_handoff_honors_pause_cooldown_and_exact_replay(
                         )
                         assert attached.status_code == 200
                         source = await state.store.get_session(source_id)
-                        concurrent_target = await state.store.get_session(
-                            concurrent_target.id
-                        )
+                        concurrent_target = await state.store.get_session(concurrent_target.id)
                         assert source is not None
                         assert concurrent_target is not None
                         concurrent = await asyncio.gather(
@@ -1198,12 +1159,8 @@ async def test_mcp_handoff_honors_pause_cooldown_and_exact_replay(
                             False,
                             True,
                         ]
-                        assert len(
-                            state.adapters.synthetic.inbox[concurrent_target.id]
-                        ) == 1
-                        concurrent_rows = await state.store.list_interventions(
-                            concurrent_target.id
-                        )
+                        assert len(state.adapters.synthetic.inbox[concurrent_target.id]) == 1
+                        concurrent_rows = await state.store.list_interventions(concurrent_target.id)
                         assert len(concurrent_rows) == 1
 
                         terminal_replay = _structured(await call_handoff())

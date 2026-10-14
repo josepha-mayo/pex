@@ -17,8 +17,10 @@ def test_opened_thread_owner_is_checked_before_resume(monkeypatch, thread_owner)
     jobs = SimpleNamespace(
         CreateJobObject=Mock(return_value=job),
         QueryInformationJobObject=Mock(return_value={"BasicLimitInformation": {"LimitFlags": 0}}),
-        SetInformationJobObject=Mock(), AssignProcessToJobObject=Mock(),
-        JobObjectExtendedLimitInformation=9, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE=8192,
+        SetInformationJobObject=Mock(),
+        AssignProcessToJobObject=Mock(),
+        JobObjectExtendedLimitInformation=9,
+        JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE=8192,
     )
     processes = SimpleNamespace(ResumeThread=Mock(return_value=1))
 
@@ -33,7 +35,8 @@ def test_opened_thread_owner_is_checked_before_resume(monkeypatch, thread_owner)
 
     kernel = SimpleNamespace(
         CreateToolhelp32Snapshot=Mock(return_value=703),
-        Thread32First=Mock(side_effect=first), Thread32Next=Mock(return_value=False),
+        Thread32First=Mock(side_effect=first),
+        Thread32Next=Mock(return_value=False),
         CloseHandle=Mock(return_value=True),
         GetProcessIdOfThread=Mock(side_effect=query_owner),
     )

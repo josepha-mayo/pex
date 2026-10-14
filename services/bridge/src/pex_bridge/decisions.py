@@ -89,9 +89,7 @@ async def _intervention_for_resolution_classification(
     """Load one frozen target for replay or authority-reducing routing only."""
 
     try:
-        intervention = await store.get_intervention_for_resolution_classification(
-            intervention_id
-        )
+        intervention = await store.get_intervention_for_resolution_classification(intervention_id)
     except ProjectIdentityBlockedError as exc:
         raise DecisionResolutionError(409, exc.code, str(exc)) from exc
     except (PermissionError, RuntimeError, ValueError) as exc:
@@ -219,6 +217,8 @@ def _validate_binding(
             f"{kind}_goal_mismatch",
             f"The stored {kind} action is no longer bound to the session's active goal.",
         )
+
+
 def _existing_lifecycle_result(
     *,
     intervention: Intervention,
@@ -542,9 +542,7 @@ async def _finalize_delivery_then_propagate_cancellation(finalization: Any) -> N
             except asyncio.CancelledError:
                 if finalizer.done():
                     finalization_failure_observed = True
-                    logger.warning(
-                        "cancelled human decision finalization was itself cancelled"
-                    )
+                    logger.warning("cancelled human decision finalization was itself cancelled")
                     break
                 if current is None:
                     continue
@@ -563,9 +561,7 @@ async def _finalize_delivery_then_propagate_cancellation(finalization: Any) -> N
             try:
                 finalizer.result()
             except asyncio.CancelledError:
-                logger.warning(
-                    "cancelled human decision finalization was itself cancelled"
-                )
+                logger.warning("cancelled human decision finalization was itself cancelled")
             except Exception as exc:
                 logger.warning(
                     "cancelled human decision finalization failed error=%s",
@@ -836,9 +832,7 @@ async def resolve_permission_decision(
         intervention=intervention,
         session=session,
         resolution=(
-            {**resolution, "exception_type": exception_name}
-            if exception_name
-            else resolution
+            {**resolution, "exception_type": exception_name} if exception_name else resolution
         ),
         delivered=delivered,
     )
@@ -869,8 +863,7 @@ async def resolve_lifecycle_decision(
         kind="lifecycle",
     )
     containment = (
-        decision == "deny"
-        or classified.proposed_action.type == InterventionType.STOP_AGENT
+        decision == "deny" or classified.proposed_action.type == InterventionType.STOP_AGENT
     )
     if containment:
         intervention = classified

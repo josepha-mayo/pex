@@ -50,11 +50,7 @@ async def _configured_client(
     state.pet_settings = PetSettings()
     state.pet_path = root / "pet.json"
     await store.connect()
-    headers = (
-        {"Authorization": f"Bearer {_OPERATOR_TOKEN}"}
-        if require_auth
-        else None
-    )
+    headers = {"Authorization": f"Bearer {_OPERATOR_TOKEN}"} if require_auth else None
     transport = ASGITransport(app=create_app())
     async with AsyncClient(
         transport=transport,
@@ -90,28 +86,40 @@ def _goal_request(
 @pytest.mark.asyncio
 async def test_deadline_persists_through_authenticated_goal_edit_and_clear(operator_client):
     client, store = operator_client
-    created = await client.post("/v1/goals", json={
-        **_goal_request("route-deadline-create-0001"),
-        "deadline": "2026-10-30T17:00:12.123Z",
-    })
+    created = await client.post(
+        "/v1/goals",
+        json={
+            **_goal_request("route-deadline-create-0001"),
+            "deadline": "2026-10-30T17:00:12.123Z",
+        },
+    )
     assert created.status_code == 200
     goal = created.json()
     expected = datetime(2026, 10, 30, 17, 0, 12, 123000, tzinfo=UTC)
     assert (await store.get_goal(goal["id"])).deadline == expected
 
-    edited = await client.patch(f"/v1/goals/{goal['id']}", json={
-        "idempotency_key": "route-deadline-edit-0001", "mode": "update",
-        "expected_intent_revision": goal["intent_revision"],
-        "objective": "Continue the work while preserving its deadline",
-    })
+    edited = await client.patch(
+        f"/v1/goals/{goal['id']}",
+        json={
+            "idempotency_key": "route-deadline-edit-0001",
+            "mode": "update",
+            "expected_intent_revision": goal["intent_revision"],
+            "objective": "Continue the work while preserving its deadline",
+        },
+    )
     assert edited.status_code == 200
     goal = edited.json()
     assert (await store.get_goal(goal["id"])).deadline == expected
 
-    cleared = await client.patch(f"/v1/goals/{goal['id']}", json={
-        "idempotency_key": "route-deadline-clear-0001", "mode": "update",
-        "expected_intent_revision": goal["intent_revision"], "deadline": None,
-    })
+    cleared = await client.patch(
+        f"/v1/goals/{goal['id']}",
+        json={
+            "idempotency_key": "route-deadline-clear-0001",
+            "mode": "update",
+            "expected_intent_revision": goal["intent_revision"],
+            "deadline": None,
+        },
+    )
     assert cleared.status_code == 200
     assert cleared.json()["deadline"] is None
     assert (await store.get_goal(goal["id"])).deadline is None
@@ -192,9 +200,7 @@ async def test_keyed_create_same_key_different_request_is_typed_conflict(
         json=_goal_request(key, objective="Different logical request content"),
     )
     assert conflict.status_code == 409
-    assert conflict.json()["detail"]["code"] == (
-        "operator_intent_idempotency_conflict"
-    )
+    assert conflict.json()["detail"]["code"] == ("operator_intent_idempotency_conflict")
     assert await _operation_count(store) == 1
     goals = await client.get("/v1/goals")
     assert goals.status_code == 200
@@ -290,9 +296,7 @@ async def test_keyed_attach_replays_exact_receipt_after_later_replacement(
     first_body = first_attach.json()
     first_operation_id = _assert_operation_headers(first_attach, replayed=False)
     assert first_body["session_goal_attachment_receipt"]["changed"] is True
-    assert first_body["session_goal_attachment_receipt"]["reason"] == (
-        "session_goal_attached"
-    )
+    assert first_body["session_goal_attachment_receipt"]["reason"] == ("session_goal_attached")
 
     replacement = await client.post(
         f"/v1/sessions/{session['id']}/attach",

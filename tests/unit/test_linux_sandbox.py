@@ -20,15 +20,24 @@ def test_worker_runtime_mount_is_read_only(tmp_path: Path, monkeypatch) -> None:
     worker.mkdir()
     runtime.mkdir()
     monkeypatch.setattr(
-        linux_sandbox, "worker_relay_command",
+        linux_sandbox,
+        "worker_relay_command",
         lambda *args: ["bwrap", "--unshare-all", "--", "/usr/bin/true"],
     )
     command = linux_sandbox.worker_runtime_relay_command(
-        worker, ["/usr/bin/true"], tmp_path / "relay.sock", runtime,
+        worker,
+        ["/usr/bin/true"],
+        tmp_path / "relay.sock",
+        runtime,
     )
     assert command == [
-        "bwrap", "--unshare-all", "--ro-bind", str(runtime),
-        "/worker-runtime", "--", "/usr/bin/true",
+        "bwrap",
+        "--unshare-all",
+        "--ro-bind",
+        str(runtime),
+        "/worker-runtime",
+        "--",
+        "/usr/bin/true",
     ]
 
 
@@ -40,7 +49,10 @@ def test_worker_runtime_must_be_disjoint(tmp_path: Path, nested: str) -> None:
     worker, runtime = (outer, inner) if nested == "runtime" else (inner, outer)
     with pytest.raises(ValueError, match="disjoint"):
         linux_sandbox.worker_runtime_relay_command(
-            worker, ["/usr/bin/true"], tmp_path / "relay.sock", runtime,
+            worker,
+            ["/usr/bin/true"],
+            tmp_path / "relay.sock",
+            runtime,
         )
 
 
@@ -66,8 +78,14 @@ def test_worker_runtime_cannot_be_modified_but_task_can(tmp_path: Path) -> None:
         )
         result = subprocess.run(
             linux_sandbox.worker_runtime_relay_command(
-                worker, ["/usr/bin/python3", "-I", "-c", script], endpoint, runtime,
-            ), capture_output=True, text=True, timeout=10,
+                worker,
+                ["/usr/bin/python3", "-I", "-c", script],
+                endpoint,
+                runtime,
+            ),
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
     assert result.returncode == 0, result.stderr
     assert (runtime / "runtime.txt").read_text() == "original"
@@ -103,21 +121,34 @@ def test_supervisor_relay_mount_keeps_public_workspace_readonly(tmp_path):
             listener.listen()
             listener.settimeout(5)
             received = []
+
             def respond():
                 connection, _ = listener.accept()
                 with connection:
                     received.append(connection.recv(5))
                     connection.sendall(b"reply")
+
             thread = threading.Thread(target=respond)
             thread.start()
-            subprocess.run(linux_sandbox.supervisor_relay_command(
-                workspace, runtime, control, path, "pinned",
-            ), capture_output=True, timeout=10, check=True)
+            subprocess.run(
+                linux_sandbox.supervisor_relay_command(
+                    workspace,
+                    runtime,
+                    control,
+                    path,
+                    "pinned",
+                ),
+                capture_output=True,
+                timeout=10,
+                check=True,
+            )
             thread.join(timeout=5)
             assert not thread.is_alive()
             assert received == [b"probe"]
     assert json.loads((control / "response.json").read_text()) == {
-        "writable": False, "disabled": "0", "model": "pinned",
+        "writable": False,
+        "disabled": "0",
+        "model": "pinned",
     }
     assert (workspace / "TASK.md").read_text() == "public task"
 
@@ -168,15 +199,23 @@ def test_worker_relay_socket_preserves_host_files_and_network_boundary(tmp_path)
             try:
                 completed = subprocess.run(
                     linux_sandbox.worker_relay_command(
-                        workspace, ["/usr/bin/python3", "-I", "-c", script], endpoint,
-                    ), capture_output=True, text=True, timeout=10, check=True,
+                        workspace,
+                        ["/usr/bin/python3", "-I", "-c", script],
+                        endpoint,
+                    ),
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    check=True,
                 )
             finally:
                 server.join(timeout=6)
             assert not server.is_alive()
             assert received == [b"bounded probe"]
             assert json.loads(completed.stdout) == {
-                "reply": "echo", "network": False, "private_visible": False,
+                "reply": "echo",
+                "network": False,
+                "private_visible": False,
             }
             assert (workspace / "result.txt").read_text() == "echo"
             endpoint.chmod(0o644)
@@ -217,7 +256,9 @@ def test_public_pytest_disables_external_plugin_autoload(tmp_path: Path) -> None
     )
     completed = subprocess.run(
         linux_sandbox.public_pytest_command(workspace, ["test_public.py"]),
-        capture_output=True, text=True, timeout=20,
+        capture_output=True,
+        text=True,
+        timeout=20,
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
 
@@ -230,11 +271,14 @@ def test_public_pytest_failure_names_the_actual_workspace_test(tmp_path: Path) -
     workspace = tmp_path / "worker"
     workspace.mkdir()
     (workspace / "test_public.py").write_text(
-        "def test_failure():\n    assert False\n", encoding="utf-8",
+        "def test_failure():\n    assert False\n",
+        encoding="utf-8",
     )
     completed = subprocess.run(
         linux_sandbox.public_pytest_command(workspace, ["test_public.py"]),
-        capture_output=True, text=True, timeout=20,
+        capture_output=True,
+        text=True,
+        timeout=20,
     )
     assert completed.returncode == 1
     assert "FAILED test_public.py::test_failure" in completed.stdout
@@ -318,7 +362,8 @@ def test_sandbox_refuses_fifo_in_workspace(tmp_path: Path) -> None:
     reason="Linux bwrap required",
 )
 def test_supervisor_boundary_excludes_controller_and_protects_public_inputs(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     workspace, runtime, control = [tmp_path / name for name in ("worker", "runtime", "control")]
     for directory in (workspace, runtime, control):
@@ -366,12 +411,20 @@ def test_supervisor_boundary_excludes_controller_and_protects_public_inputs(
         original_entry = entry.read_bytes()
         subprocess.run(
             linux_sandbox.supervisor_command(workspace, runtime, control),
-            capture_output=True, text=True, timeout=10, check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=True,
         )
     assert json.loads((control / "response.json").read_text()) == {
-        "private_exists": False, "private_env": False, "network": False,
-        "public_task": "Public task", "workspace_write": False, "runtime_write": False,
-        "request_write": False, "model_disabled": True,
+        "private_exists": False,
+        "private_env": False,
+        "network": False,
+        "public_task": "Public task",
+        "workspace_write": False,
+        "runtime_write": False,
+        "request_write": False,
+        "model_disabled": True,
     }
     assert request.read_bytes() == original_request
     assert entry.read_bytes() == original_entry

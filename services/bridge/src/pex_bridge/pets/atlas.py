@@ -212,9 +212,7 @@ def render_atlas(pet: PetDefinition, hue_shift: int = 0) -> Image.Image:
             look = looks[col] if looks else None
             _draw_cell(atlas, pet, col, row, name if looks is None else "idle", look, hue_shift)
     neutral_row, neutral_column = CODEX_NEUTRAL_LOOK_FRAME
-    neutral = atlas.crop(
-        (0, 0, CODEX_CELL_W, CODEX_CELL_H)
-    )
+    neutral = atlas.crop((0, 0, CODEX_CELL_W, CODEX_CELL_H))
     atlas.paste(
         neutral,
         (neutral_column * CODEX_CELL_W, neutral_row * CODEX_CELL_H),

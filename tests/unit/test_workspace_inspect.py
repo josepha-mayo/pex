@@ -78,7 +78,8 @@ def test_snapshot_prunes_dependency_trees_before_inventory_cap(tmp_path: Path):
 
 
 def test_snapshot_bounds_directory_entries_before_building_an_unbounded_list(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ):
     import pex_supervisor.workspace as workspace_module
 
@@ -93,7 +94,8 @@ def test_snapshot_bounds_directory_entries_before_building_an_unbounded_list(
 
 
 def test_snapshot_marks_directory_mutation_incomplete(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ):
     import pex_supervisor.workspace as workspace_module
 
@@ -143,7 +145,8 @@ def test_snapshot_marks_directory_mutation_incomplete(
 
 
 def test_snapshot_binds_file_metadata_to_the_scanned_entry(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ):
     import pex_supervisor.workspace as workspace_module
 
@@ -232,12 +235,18 @@ def test_malformed_jsonl_does_not_produce_a_complete_row_receipt(tmp_path: Path)
     assert artifact["row_count_complete"] is False
 
 
-@pytest.mark.parametrize("suffix,payload", [
-    (".json", b"[" + b"0," * 100 + b"0]"),
-    (".jsonl", b"{}\n" * 100),
-])
+@pytest.mark.parametrize(
+    "suffix,payload",
+    [
+        (".json", b"[" + b"0," * 100 + b"0]"),
+        (".jsonl", b"{}\n" * 100),
+    ],
+)
 def test_artifact_count_bounds_read_when_size_observation_is_stale(
-    tmp_path, monkeypatch, suffix, payload,
+    tmp_path,
+    monkeypatch,
+    suffix,
+    payload,
 ):
     import os
 
@@ -263,9 +272,13 @@ def test_artifact_count_bounds_read_when_size_observation_is_stale(
     assert artifact_row_count(path, json_limit=32) == (None, False)
 
 
-@pytest.mark.parametrize("suffix,payload", [
-    (".json", b"[{},{}]"), (".jsonl", b"{}\n{}\n"),
-])
+@pytest.mark.parametrize(
+    "suffix,payload",
+    [
+        (".json", b"[{},{}]"),
+        (".jsonl", b"{}\n{}\n"),
+    ],
+)
 def test_artifact_count_accepts_exact_byte_limit(tmp_path, suffix, payload):
     path = tmp_path / ("results" + suffix)
     path.write_bytes(payload)
@@ -455,9 +468,7 @@ def test_sealed_acceptance_contents_keeps_only_digest_matching_bytes(tmp_path: P
         },
     )
     assert sealed["test_csv_utils.py"] == target.read_bytes().decode("utf-8")
-    assert sealed["tests/test_b.py"] == (other / "test_b.py").read_bytes().decode(
-        "utf-8"
-    )
+    assert sealed["tests/test_b.py"] == (other / "test_b.py").read_bytes().decode("utf-8")
     assert len(sealed) == 2
 
 
@@ -498,7 +509,5 @@ def test_sealed_acceptance_contents_skips_binary_and_missing(tmp_path: Path):
     binary = tmp_path / "test_bin.py"
     binary.write_bytes(b"\xff\xfe\x00\x01")
     digest = hashlib.sha256(binary.read_bytes()).hexdigest()
-    sealed = sealed_acceptance_contents(
-        tmp_path, {"test_bin.py": digest, "test_gone.py": "0" * 64}
-    )
+    sealed = sealed_acceptance_contents(tmp_path, {"test_bin.py": digest, "test_gone.py": "0" * 64})
     assert sealed == {}

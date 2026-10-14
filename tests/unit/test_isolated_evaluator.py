@@ -18,8 +18,9 @@ def test_required_boundary_failure_never_runs_candidate(tmp_path, monkeypatch):
     monkeypatch.setattr(evaluator, "_pytest", forbidden)
     monkeypatch.setattr(evaluator, "_hidden_check", forbidden)
     with pytest.raises(RuntimeError, match="boundary unavailable"):
-        evaluator.evaluate("pexbench_001_premature_stop", tmp_path, seed,
-                           require_linux_sandbox=True)
+        evaluator.evaluate(
+            "pexbench_001_premature_stop", tmp_path, seed, require_linux_sandbox=True
+        )
 
 
 def test_required_evaluation_routes_both_checks_to_boundary(tmp_path, monkeypatch):
@@ -34,8 +35,7 @@ def test_required_evaluation_routes_both_checks_to_boundary(tmp_path, monkeypatc
 
     monkeypatch.setattr(evaluator, "_pytest", check)
     monkeypatch.setattr(evaluator, "_hidden_check", check)
-    evaluator.evaluate("pexbench_001_premature_stop", tmp_path, seed,
-                       require_linux_sandbox=True)
+    evaluator.evaluate("pexbench_001_premature_stop", tmp_path, seed, require_linux_sandbox=True)
     assert calls == ["preflight", "check", "check"]
 
 
@@ -46,10 +46,12 @@ def test_required_commands_ignore_optional_environment_switch(tmp_path, monkeypa
         pytest.fail("explicit requirement consulted optional environment switch")
 
     monkeypatch.setattr(evaluator.linux_sandbox, "enabled", forbidden)
-    monkeypatch.setattr(evaluator.linux_sandbox, "public_pytest_command",
-                        lambda *args: ["isolated-public"])
-    monkeypatch.setattr(evaluator.linux_sandbox, "hidden_command",
-                        lambda *args: ["isolated-hidden"])
+    monkeypatch.setattr(
+        evaluator.linux_sandbox, "public_pytest_command", lambda *args: ["isolated-public"]
+    )
+    monkeypatch.setattr(
+        evaluator.linux_sandbox, "hidden_command", lambda *args: ["isolated-hidden"]
+    )
 
     def run(command, **kwargs):
         calls.append(command)
@@ -57,12 +59,16 @@ def test_required_commands_ignore_optional_environment_switch(tmp_path, monkeypa
         return 0, "PEX_HIDDEN_RESULT=" + response, False, False
 
     monkeypatch.setattr(evaluator, "_run_bounded", run)
-    assert evaluator._run_pytest(tmp_path, ["test_public.py"],
-                                 require_linux_sandbox=True)[0]
-    assert evaluator._hidden_check(tmp_path, {
-        "module": "candidate", "function": "candidate",
-        "hidden_cases": [{"args": [], "expected": "expected"}],
-    }, require_linux_sandbox=True)[0]
+    assert evaluator._run_pytest(tmp_path, ["test_public.py"], require_linux_sandbox=True)[0]
+    assert evaluator._hidden_check(
+        tmp_path,
+        {
+            "module": "candidate",
+            "function": "candidate",
+            "hidden_cases": [{"args": [], "expected": "expected"}],
+        },
+        require_linux_sandbox=True,
+    )[0]
     assert calls == [["isolated-public"], ["isolated-hidden"]]
 
 

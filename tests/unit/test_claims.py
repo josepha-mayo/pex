@@ -74,18 +74,10 @@ def test_user_prompt_and_shell_output_are_not_worker_claims():
 
 
 def test_failed_tests_are_denied_and_contrast_clause_is_still_extracted():
-    claims = extract_claims(
-        [_event("Some tests failed, but implemented the parser.")]
-    )
+    claims = extract_claims([_event("Some tests failed, but implemented the parser.")])
 
-    assert any(
-        item["kind"] == "tests_pass" and item["polarity"] == "denied"
-        for item in claims
-    )
-    assert any(
-        item["kind"] == "implemented" and item["polarity"] == "asserted"
-        for item in claims
-    )
+    assert any(item["kind"] == "tests_pass" and item["polarity"] == "denied" for item in claims)
+    assert any(item["kind"] == "implemented" and item["polarity"] == "asserted" for item in claims)
 
 
 def test_not_all_tests_passed_is_never_an_asserted_pass_claim():
