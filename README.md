@@ -14,6 +14,9 @@ worker, give it a persistent goal, and inspect the evidence behind PEX's
 decisions from a compact workspace. OpenCode and Codex are the primary paths;
 the supervisor model is configured separately with your own key.
 
+> **Judging the hackathon?** [`docs/HACKATHON.md`](docs/HACKATHON.md) is the
+> five-minute path — no keys or agent install needed.
+
 The workspace prioritizes the goal, worker list and supervision state, with the
 companion and advanced settings behind optional disclosures. Nebius Token Factory
 is one named BYOK provider with NVIDIA Nemotron model suggestions. Refresh the

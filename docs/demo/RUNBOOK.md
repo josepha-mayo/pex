@@ -321,7 +321,10 @@ card still records the ruling durably on the goal ledger and reports
 — the human's answer is durable intent whether or not that worker can still
 hear it (the pack's ASK_HUMAN record carries
 `human_decision_delivery_failed` and the hash-chained ledger retains all
-three worker PEX calls).
+three worker PEX calls). The resolved ruling renders under the goal's
+**Recorded rulings** — journaled human intent, never re-adopted into the
+editor's managed decision text
+([screenshot](./assets/pex-escalation-ruling-58d8c3a.png)).
 
 And the ruling *propagates*: resolving writes a HUMAN-provenance DECISION
 context item that supersedes the pending question, so the next worker on
