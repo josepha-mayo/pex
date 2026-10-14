@@ -233,6 +233,7 @@ def main(argv: list[str] | None = None) -> int:
         ),
     ]
     bridge, vite = children[-2], children[-1]
+    live_receipt: tuple[Path, str] | None = None
     try:
         checks = [
             (f"http://127.0.0.1:{BRIDGE_PORT}/health", bridge, "demo bridge"),
@@ -243,7 +244,13 @@ def main(argv: list[str] | None = None) -> int:
                 0,
                 (f"http://127.0.0.1:{OPENCODE_PORT}/global/health", children[0], "opencode serve"),
             )
-        failed = [name for url, child, name in checks if not _wait_http(url, child=child)]
+        failed = []
+        for url, child, name in checks:
+            # A cold `opencode serve` (node startup + model catalog fetch) can
+            # exceed the default readiness window on this machine.
+            budget = 120.0 if name == "opencode serve" else 45.0
+            if not _wait_http(url, timeout=budget, child=child):
+                failed.append(name)
         for name in failed:
             print(f"{name} never became ready", flush=True)
         if failed:
@@ -257,7 +264,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  bridge API:      http://127.0.0.1:{BRIDGE_PORT}/v1", flush=True)
         if "PEX_DEMO_HOME" in bridge_env:
             print(f"  demo home:       {bridge_env['PEX_DEMO_HOME']}", flush=True)
-        live_receipt: tuple[Path, str] | None = None
         if live:
             from scripts import demo_live
 
