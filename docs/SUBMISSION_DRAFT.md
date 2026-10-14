@@ -46,7 +46,9 @@ workspaces, not a mock.
 - The worker's turn ends before the human answers. PEX records the ruling
   durably anyway (delivery honestly reported as `session_terminal`) — and a
   sibling session, created *before* the ruling, receives it in its next
-  context bundle. Human intent outlives the worker that asked.
+  context bundle. Human intent outlives the worker that asked. That exact
+  session replays deterministically as the `worker_escalation_eval` fixture —
+  judges can watch the escalation, not just read about it.
 - A worker claims "all tests pass" after modifying the test file. PEX inspects
   the workspace itself, hashes the touched files, and disputes the claim with
   named evidence — the audit trail a judge can verify event-by-event.
