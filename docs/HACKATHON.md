@@ -67,7 +67,9 @@ intervenes only inside bounded policy.
    independent of the bridge). Then `python scripts/verify_pack.py
    pex-evidence-pack-*.json` runs the authoritative offline check (sealed
    bytes ↔ digests, flagged bytes ↔ incident digests, the hash-chained event
-   ledger, the manifest). The demo does not ask you to trust it.
+   ledger, the manifest) — or drop the file into the demo panel's
+   **Verify an evidence pack** block to re-run the same checks in-browser,
+   no install needed. The demo does not ask you to trust it.
 4. Open the Inspector on the replay session: the **Independent claim
    verification** block shows the adjudicated-claim timeline, verdicts,
    flagged files, and adjudication evidence — click a flagged file to expand

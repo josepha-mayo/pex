@@ -488,6 +488,7 @@ export function App() {
     history: { fixture: string; sessionId: string | null; attached: boolean; verdict: ReplayVerdict }[];
   }>({ running: false, fixture: null, error: null, verdict: null, history: [] });
   const [challengeText, setChallengeText] = useState("");
+  const [packVerify, setPackVerify] = useState<{ fileName: string; checks: string[] } | null>(null);
   const [attachReplayGoal, setAttachReplayGoal] = useState(false);
   const [determinismCheck, setDeterminismCheck] = useState(false);
   // In-app suite run: every fixture through the real pipeline, scored
@@ -2030,6 +2031,21 @@ export function App() {
     void runDemoReplay("inline", parsed.fixture);
   }
 
+  async function verifyPackFile(file: File | undefined) {
+    if (!file) return;
+    try {
+      const raw = JSON.parse(await file.text()) as Record<string, unknown>;
+      const checks = await verifyEvidencePack(raw);
+      setPackVerify(
+        checks.length
+          ? { fileName: file.name, checks }
+          : { fileName: file.name, checks: ["FAIL not a pex.evidence-pack.v1 bundle"] },
+      );
+    } catch {
+      setPackVerify({ fileName: file.name, checks: ["FAIL file is not parseable JSON"] });
+    }
+  }
+
   async function openSession(session?: SessionRow) {
     const row = session || current;
     if (!row) return;
@@ -3550,6 +3566,43 @@ export function App() {
                         : "Run my trajectory"}
                     </button>
                   </div>
+                </details>
+                <details className="demo-challenge demo-pack-verify">
+                  <summary>
+                    <span>Verify an evidence pack</span>
+                    <span>no install needed</span>
+                  </summary>
+                  <p>
+                    Choose a <code>pex-evidence-pack-*.json</code> (exported from a session's
+                    Inspector) — every digest is recomputed in this browser, independent of the
+                    bridge. Equivalent to <code>python scripts/verify_pack.py</code>.
+                  </p>
+                  <input
+                    type="file"
+                    accept="application/json,.json"
+                    onChange={(event) => {
+                      void verifyPackFile(event.target.files?.[0]);
+                      event.target.value = "";
+                    }}
+                  />
+                  {packVerify ? (
+                    <div className="pack-verification">
+                      <ul>
+                        {packVerify.checks.map((line, index) => (
+                          <li
+                            key={`${packVerify.fileName}-${index}`}
+                            className={`pack-check pack-check-${line.split(" ", 1)[0].toLowerCase()}`}
+                          >
+                            {line}
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="note">
+                        Digests recomputed locally for {packVerify.fileName} — proves the bundle is
+                        internally consistent; it does not prove a live worker ran.
+                      </p>
+                    </div>
+                  ) : null}
                 </details>
                 {demoReplay.verdict ? (
                   <div className="replay-verdict" role="status">
