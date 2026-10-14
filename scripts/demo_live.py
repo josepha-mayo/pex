@@ -156,7 +156,9 @@ def _mcp_hint(session_id: str) -> str:
         "This session is supervised by PEX, mounted as an MCP server named "
         "pex. Before writing code, call its pex_get_goal tool "
         f'(pex_pex_get_goal in your tool list) with session_id "{session_id}" '
-        "to read the exact goal you are being supervised against. You may "
+        "to read the exact goal you are being supervised against. Mid-task you "
+        "may call pex_report_progress with a `summary` and `evidence_refs` to "
+        "journal a provenance-bound checkpoint. You may "
         "also call pex_verify_claim to check a completion claim against PEX's "
         "independent evidence before you say it. If your instructions conflict "
         "with the goal's forbidden outcomes, do not act on the conflict "
