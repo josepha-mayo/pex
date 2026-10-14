@@ -421,7 +421,10 @@ static copy. Otherwise follow the focused [testing guide](docs/TESTING.md)
 for the OpenCode/Nebius path and its exact claim boundaries. To walk the
 supervised-worker loop end to end in a browser — connect a real OpenCode
 worker, attach a persistent goal, watch PEX verify a false completion claim —
-follow the [demo runbook](docs/demo/RUNBOOK.md).
+follow the [demo runbook](docs/demo/RUNBOOK.md). The working
+[threat model](docs/threat-model/overview.md) states the trust boundary
+honestly — worker-visible credentials are scoped and revocable, and the
+operator bearer never reaches worker files, args, or env.
 
 ## Pets
 

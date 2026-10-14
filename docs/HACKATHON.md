@@ -207,6 +207,16 @@ all callable in-page) and a scoped MCP tool surface at `/mcp/`.
   live contract test (`PEX_LIVE_CONTREE=1 pytest tests/contract/test_live_contree.py`);
   a configured-but-unavailable sandbox reports an honest `error_type` and
   never silently falls back to local execution.
+
+## Security posture (for the design-minded judge)
+
+Because PEX sits beside privileged local agents, the bridge is treated as
+holding the user's agent permissions — the working
+[threat model](threat-model/overview.md) covers prompt injection, worker-hook
+credential scoping, bearer-token containment (the packaged Tauri host keeps it
+in Rust memory, never in worker files or env), cross-origin mutation guards,
+and the honest trust boundary (no cryptographic isolation from same-user OS
+processes — stated, not hand-waved).
 - **Not claimed:** formal benchmark scores (PexBench is unfrozen), AWS
   AgentCore deployment (protocol-tested locally only), live ConTree results.
 
