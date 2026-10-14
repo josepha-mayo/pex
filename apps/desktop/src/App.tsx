@@ -954,6 +954,8 @@ export function App() {
         setSurface(surfaceFromHash());
         const linkedSession = sessionFromHash();
         if (linkedSession) setSelectedId(linkedSession);
+        const linkedView = deckViewFromHash();
+        if (linkedView) setActiveView(linkedView);
       }
     };
     route();
@@ -2989,10 +2991,14 @@ export function App() {
       : "inspector";
   }
 
-  function openDecisions() {
-    setActiveView("decisions");
+  function openDeckView(view: DeckView) {
+    setActiveView(view);
     setSurface("deck");
-    window.location.hash = "deck";
+    window.location.hash = view === "now" ? "deck" : `deck/${view}`;
+  }
+
+  function openDecisions() {
+    openDeckView("decisions");
   }
 
   function directWorker(session: SessionRow, text: string) {
@@ -3905,7 +3911,7 @@ export function App() {
           question={question}
           answer={answer}
           asking={asking}
-          onView={setActiveView}
+          onView={openDeckView}
           onSelectSession={(sessionId) => openInspector(sessionId)}
           onOpenSession={(session) => void openSession(session)}
           onPauseSession={(session) => void pauseOrResume(session)}
@@ -4071,6 +4077,25 @@ function surfaceFromHash(): Surface {
   const surface = hash.split("/")[0];
   if (surface === "inspector" || surface === "deck") return surface;
   return "compact";
+}
+
+const DECK_VIEWS: DeckView[] = [
+  "now",
+  "decisions",
+  "goals",
+  "context",
+  "interventions",
+  "agents",
+  "bench",
+];
+
+// `#deck/<view>` deep-links a specific deck tab (e.g. `#deck/goals`) —
+// same refresh-safe shareability as `#inspector/<id>`.
+function deckViewFromHash(): DeckView | null {
+  const hash = window.location.hash.replace(/^#\/?/, "");
+  const [surface, view] = hash.split("/");
+  if (surface !== "deck" || !view) return null;
+  return DECK_VIEWS.includes(view as DeckView) ? (view as DeckView) : null;
 }
 
 // `#inspector/<encoded session id>` deep-links a specific session's evidence —
