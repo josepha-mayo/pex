@@ -370,6 +370,11 @@ The durability is then exercised three ways, all from the replay grid:
    it escalates `ASK_HUMAN` — keep the ledger rule or explicitly override —
    instead of silently obeying.
 
+All of this is browsable in **Deck → Goals**: every persistent goal with
+its amendment lineage, ruling count, and each session it has governed —
+including sessions bound to superseded revisions — with that session's
+adjudicated verdict and a deep link into its evidence.
+
 ## Supported harnesses
 
 | Harness | Current label | Surface |

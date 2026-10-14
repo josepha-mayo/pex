@@ -1166,7 +1166,16 @@ function GoalsView({
   sourceFresh: boolean;
   onSelect: (sessionId: string) => void;
 }) {
-  const active = currentGoals(goals);
+  const active = currentGoals(goals)
+    .map((goal) => ({
+      goal,
+      governed: governedSessionsForGoal(goal, goals, sessions),
+    }))
+    .sort((a, b) => {
+      const pending = (rows: SessionRow[]) =>
+        rows.filter((row) => row.status === "needs_decision").length;
+      return pending(b.governed) - pending(a.governed);
+    });
   if (!sourceFresh) {
     return (
       <EmptyState
@@ -1185,9 +1194,8 @@ function GoalsView({
   }
   return (
     <div className="goals-view">
-      {active.map((goal) => {
+      {active.map(({ goal, governed }) => {
         const lineage = goalLineageChain(goal.id, goals);
-        const governed = governedSessionsForGoal(goal, goals, sessions);
         const pendingCount = governed.filter((session) => session.status === "needs_decision").length;
         return (
           <article className="goal-card" key={goal.id}>
