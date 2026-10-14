@@ -504,6 +504,10 @@ export function App() {
   const suiteCancelRef = useRef(false);
   const [suiteReceiptCopied, setSuiteReceiptCopied] = useState(false);
   const [verdictReceiptCopied, setVerdictReceiptCopied] = useState(false);
+  // In-session flag for the judge checklist: a dispute escalation resolved
+  // through this UI records a ruling even when the session row is collapsed
+  // out of the compact rail's promptable set.
+  const [journeyRulingRecorded, setJourneyRulingRecorded] = useState(false);
   const [scale, setScale] = useState(1);
   const [nickname, setNickname] = useState("");
   const [clickThrough, setClickThrough] = useState(false);
@@ -1629,6 +1633,63 @@ export function App() {
     contextProjectId,
     projectId,
   ) && contextGoalId === contextScopeGoalId;
+  // Judge journey checklist — each step derives from real state so the
+  // five-minute path checks itself off as the judge walks it. Where the
+  // server persists the evidence (replay sessions, their verdict stamps and
+  // attach provenance), steps stay checked across a reload.
+  const startFixture = demoFixtures?.find((fixture) => isRecommendedStart(fixture))
+    ?? demoFixtures?.[0];
+  const replaySessionsRan = sessions.filter((session) => isReplaySession(session));
+  const journeySteps = demoFixtures?.length ? [
+    {
+      key: "first-run",
+      done: Boolean(
+        startFixture && (
+          demoReplay.history.some((run) => run.fixture === startFixture.id)
+          || replaySessionsRan.some((session) => replayFixtureLabel(session) === startFixture.id)
+        ),
+      ),
+      body: <>Click <strong>False completion without tests</strong> (tagged <em>start here</em>) — the worker claims done with no test run; PEX adjudicates the claim unsupported and ends <code>uncertain</code>.</>,
+    },
+    {
+      key: "verdict",
+      done: Boolean(
+        demoReplay.verdict || demoReplay.history.length
+        || replaySessionsRan.some((session) => typeof session.metadata?.replay_verdict === "string"),
+      ),
+      body: <>Read the verdict card: the arc, the worker's own claim vs. its verdict, the verbatim deciding evidence, and the fixture's declared arc scored live.</>,
+    },
+    {
+      key: "evidence",
+      done: surface === "inspector" && Boolean(current && isReplaySession(current)),
+      body: <>Click <strong>Open the session evidence</strong> — the Inspector shows the claim timeline and the sealed-baseline diff.</>,
+    },
+    {
+      key: "ruling",
+      done: journeyRulingRecorded || replaySessionsRan.some(
+        (session) => replayFixtureLabel(session) === "nudge_dispute_eval" && session.status !== "needs_decision",
+      ),
+      body: <>Make a ruling of your own: run <strong>Worker disputes the nudge</strong>, open <strong>Decisions</strong>, and record your answer — it journals onto the goal ledger. Then tick <strong>Attach replays</strong> and run <em>Second-act replay</em> — <em>your</em> ruling now governs the new run. The <em>complies</em> fixture proves it isn't a trap.</>,
+    },
+    {
+      key: "attach",
+      done: demoReplay.history.some((run) => run.attached)
+        || replaySessionsRan.some((session) => session.metadata?.replay_goal_source === "attached"),
+      body: <>Attach a replay to the ruled goal — the goal's Inspector then lists every session it governs, with each verdict.</>,
+    },
+    {
+      key: "suite",
+      done: Boolean(suiteRun && !suiteRun.running && suiteRun.results.length),
+      body: <><strong>Run the whole suite</strong> — every fixture self-scored, same contract as <code>eval_replays.py</code> in CI.</>,
+    },
+    {
+      key: "capabilities",
+      done: false,
+      body: <>Skeptical about what is real? <button type="button" className="text-button" onClick={() => openSettings("capabilities")}>Settings → Capabilities</button> lists what this build actually does, derived from live probes — what is key-gated, unfrozen, or not deployed is labelled, not implied.</>,
+    },
+  ] : [];
+  const journeyTotal = journeySteps.filter((step) => step.key !== "capabilities").length;
+  const journeyDoneCount = journeySteps.filter((step) => step.done && step.key !== "capabilities").length;
   const inspectorCanonicalStateAvailable = sessionStateFresh
     && goalStateFresh
     && goalEvidenceFresh
@@ -2514,6 +2575,7 @@ export function App() {
         ? resolved.recorded === true
         : resolved.delivered === true;
       if (!confirmed) throw new Error("The bridge did not confirm this exact human decision.");
+      if (escalation) setJourneyRulingRecorded(true);
       const requestedPresentation = requested
         ? humanDecisionPresentation("delivered", resolved.replayed)
         : null;
@@ -3287,14 +3349,16 @@ export function App() {
                 <p className="eyebrow">See the loop without a worker</p>
                 <p>Replay a recorded supervision trajectory through the real pipeline — labeled as a replay, never live worker control.</p>
                 <details className="judge-quickstart">
-                  <summary>Five-minute judge path</summary>
-                  <ol>
-                    <li>Click <strong>False completion without tests</strong> (tagged <em>start here</em>) — the worker claims done with no test run; PEX adjudicates the claim unsupported and ends <code>uncertain</code>.</li>
-                    <li>Read the verdict card: the arc, the worker's own claim vs. its verdict, the verbatim deciding evidence, and the fixture's declared arc scored live.</li>
-                    <li>Click <strong>Open the session evidence</strong> — the Inspector shows the claim timeline and the sealed-baseline diff.</li>
-                    <li>Make a ruling of your own: run <strong>Worker disputes the nudge</strong>, open <strong>Decisions</strong>, and record your answer — it journals onto the goal ledger. Then tick <strong>Attach replays</strong> and run <em>Second-act replay</em> — <em>your</em> ruling now governs the new run. The <em>complies</em> fixture proves it isn't a trap.</li>
-                    <li><strong>Run the whole suite</strong> — every fixture self-scored, same contract as <code>eval_replays.py</code> in CI.</li>
-                    <li>Skeptical about what is real? <button type="button" className="text-button" onClick={() => openSettings("capabilities")}>Settings → Capabilities</button> lists what this build actually does, derived from live probes — what is key-gated, unfrozen, or not deployed is labelled, not implied.</li>
+                  <summary>Five-minute judge path
+                    {journeyDoneCount > 0 ? <span className="journey-progress"> · {journeyDoneCount}/{journeyTotal} done</span> : null}
+                  </summary>
+                  <ol className="journey-list">
+                    {journeySteps.map((step) => (
+                      <li key={step.key} className={step.done ? "journey-step done" : "journey-step"}>
+                        <span className="journey-check" aria-hidden="true">{step.done ? "✓" : ""}</span>
+                        <span>{step.body}</span>
+                      </li>
+                    ))}
                   </ol>
                 </details>
                 <div className="button-row">

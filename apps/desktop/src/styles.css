@@ -898,6 +898,25 @@ p {
   padding-left: 20px;
 }
 .judge-quickstart li { margin-bottom: 4px; line-height: 1.45; }
+.judge-quickstart .journey-progress { color: var(--mint); font-weight: 600; }
+.judge-quickstart .journey-list { list-style: none; padding-left: 0; }
+.judge-quickstart .journey-step {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.judge-quickstart .journey-check {
+  flex: 0 0 14px;
+  color: var(--mint);
+  font-weight: 700;
+}
+.judge-quickstart .journey-step:not(.done) .journey-check::before {
+  content: "○";
+  color: var(--faint);
+}
+.judge-quickstart .journey-step.done > span:last-child {
+  color: var(--faint);
+}
 .judge-quickstart code {
   font-size: 11px;
   padding: 0 3px;
