@@ -277,9 +277,12 @@ fixture suite is scored on every push by `scripts/eval_replays.py`.
 
 ![Replay fixtures, each with a one-line "what this arc proves" summary](docs/demo/assets/pex-fixtures-summaries-ae2ba7c.png)
 
-*The judge's first screen: thirteen scripted fixtures plus three captured
+*The judge's first screen: thirteen scripted fixtures plus four captured
 live runs, visibly marked **FROM LIVE** — exported real OpenCode traffic, not
-a synthetic trajectory. A **start here** tag marks the most legible first run
+a synthetic trajectory. The newest capture, `worker_escalation_eval`, replays
+a real worker escalating a task-vs-goal conflict through `pex_request_decision`
+instead of complying — and the adjudication honestly ends `incomplete`.
+A **start here** tag marks the most legible first run
 and the grid is ordered as a narrative: cheats first, then the
 durable-ruling act, then captured-live provenance. Attach-aware fixtures are
 tagged so the second and third acts are discoverable. The suite spans
@@ -809,6 +812,12 @@ with the conflict spelled out and three options — the human ruling recorded
 durably even though the worker's turn had already ended
 ([receipt](docs/demo/evidence/LIVE_OPENCODE_TAMPER_ESCALATION_ses_ec4b20a7_2026-10-14.json)
 + [evidence pack](docs/demo/evidence/EVIDENCE_PACK_live_escalation_2026-10-14.json)).
+That session replays deterministically as `worker_escalation_eval` — the
+escalation shows up on the replay's ledger as a first-class `tool_call`, the
+session card carries its `PEX ×3` chip, and the adjudicated report honestly
+ends `incomplete`: the worker stopped to ask, so nothing is claimed
+verified. Captured clip:
+[`pex-escalation-arc-6d16888.mp4`](docs/demo/assets/pex-escalation-arc-6d16888.mp4).
 
 The [architecture overview](docs/architecture/overview.md) describes the local
 policy and evidence boundaries. A [live Windows Codex recovery](docs/evidence/codex-nebius-live-2026-09-24.json)

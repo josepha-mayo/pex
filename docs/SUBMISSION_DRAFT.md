@@ -90,8 +90,12 @@ falling back.
 
 ## Links to wire up at submission time
 
-- Demo video: `assets/pcx-demo.mp4` (post to YouTube, link in form)
-- Live escalation clip: `assets/pcx-mcp-worker-loop.mp4`
+- Demo video: `docs/demo/assets/pex-replay-walkthrough-b28d999.mp4` (full
+  judge path) — post to YouTube, link in form
+- Live escalation clip: `docs/demo/assets/pex-escalation-arc-6d16888.mp4`
+  (worker-initiated `pex_request_decision` → durable ruling, real live data)
+- Supporting: `docs/demo/assets/pex-live-tamper-demo.mp4`,
+  `docs/demo/assets/pex-judge-arc-597ce13.mp4`
 - Repo: https://github.com/josepha-mayo/pex (public, MIT)
 - Judge path: `docs/HACKATHON.md` — five-minute replay path, no keys needed
 

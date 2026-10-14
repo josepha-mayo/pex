@@ -119,7 +119,7 @@ Then point at the recorded-replay fixtures:
 > "And note what doesn't appear here: the replay sessions are sealed
 > evidence. You can't re-attach them or hand a bundle to a recording — the
 > control only exists for live workers, because PEX refuses to pretend a
-> replay is steerable. Three of these fixtures aren't scripted at all — they're
+> replay is steerable. Four of these fixtures aren't scripted at all — they're
 > tagged FROM LIVE because they were exported from recorded OpenCode runs,
 > and this one" — open `captured_handoff_eval` — "is the sibling's own
 > trajectory: it starts with the injected bundle, and PEX still demanded an
@@ -146,14 +146,18 @@ Click **Worker reads its goal, then asks PEX to verify its claim** —
 > signed ledger contains both calls. The supervision isn't a channel the
 > worker can't see — it's a tool it chose to check itself against."
 
-*If asked whether the worker can escalate itself — the live tamper run did
-exactly that: the task ordered a test edit the goal forbids, so the worker
+*If asked whether the worker can escalate itself — that run is a fixture
+too: open `worker_escalation_eval` (FROM LIVE, the same 2026-10-14 tamper
+session). The task ordered a test edit the goal forbids, so the worker
 called `pex_pex_request_decision` with the conflict spelled out and three
-options. The ruling lands on the goal ledger whether or not that worker is
-still around to hear it — durable intent, honest delivery status. And it
-propagates: the idle sibling session now gets that ruling in its own
-`pex.get_relevant_context` bundle — the human's answer reached a worker
-that never asked (`scripts/probe_ruling_continuity.py` replays the check).*
+options — visible on the replay's ledger as a first-class call, `PEX ×3`
+chip on the session row — and the adjudicated report ends `incomplete`
+because the worker stopped to ask rather than claim. The ruling lands on
+the goal ledger whether or not that worker is still around to hear it —
+durable intent, honest delivery status. And it propagates: the idle sibling
+session now gets that ruling in its own `pex.get_relevant_context` bundle —
+the human's answer reached a worker that never asked
+(`scripts/probe_ruling_continuity.py` replays the check).*
 
 ## Optional replay cut — drift and bounded intervention
 

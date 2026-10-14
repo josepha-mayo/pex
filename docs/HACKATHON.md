@@ -37,7 +37,12 @@ in [`docs/SUBMISSION_DRAFT.md`](SUBMISSION_DRAFT.md).
    bundle itself. `captured_mcp_eval` is the worker-MCP run: the real
    OpenCode worker calls `pex_pex_get_goal` before editing and
    `pex_pex_verify_claim` before claiming done, and both calls replay as
-   first-class events — supervision as a tool the worker actually used. Three more arcs worth a look: `drift_loop_eval` (repeated
+   first-class events — supervision as a tool the worker actually used.
+   `worker_escalation_eval` is the 2026-10-14 tamper run's other half: the
+   same worker calls `pex_pex_request_decision` to escalate the
+   task-vs-goal conflict instead of complying, and the adjudicated report
+   honestly ends `incomplete` — intent conflicts route to humans, not to
+   silent overrides. Three more arcs worth a look: `drift_loop_eval` (repeated
    identical failures → bounded overlay proposal, honestly refused on a
    recorded session), `constraint_violation_eval` (the worker narrates
    intent to violate a recorded `forbidden_outcome` → the ledger catches the
@@ -186,7 +191,7 @@ all callable in-page) and a scoped MCP tool surface at `/mcp/`.
   acceptance-surface sealing and tamper detection, the replay demo, local
   subprocess public-test verification, 5,530 backend tests collected
   (latest full run 2026-10-13, 0 failures). `python scripts/eval_replays.py` scores the
-  shipped fixture suite against its declared supervision arcs — 16/16,
+  shipped fixture suite against its declared supervision arcs — 17/17,
   re-verified 2026-10-14
   ([receipt](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-14.json) —
   [readable form](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-14.html) with the

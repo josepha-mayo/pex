@@ -210,7 +210,7 @@ Replays every fixture through the real pipeline and scores each verification
 report against the arc it exists to demonstrate — nonzero exit if a tamper
 scenario ends verified without its integrity incident, or a no-evidence
 scenario ends supported. Latest receipt: `docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-14.json`
-(16/16 arcs) — also as a self-contained readable page,
+(17/17 arcs) — also as a self-contained readable page,
 `FIXTURE_SUITE_EVAL_2026-10-14.html`, with the same JSON embedded.
 `--repeat N` replays every fixture N times and fails on any
 verdict, completion, or normalized-evidence drift — adjudication is
@@ -261,14 +261,18 @@ uv run python scripts/capture_replay.py `
   --tamper --out fixtures/demo/captured_live_eval.json
 ```
 
-Three captures ship in the suite: `captured_live_eval` (the tamper run),
+Four captures ship in the suite: `captured_live_eval` (the tamper run),
 `captured_handoff_eval` (the handoff *target* session — it opens with the
 real injected context bundle and preserves PEX's `REQUEST_VERIFICATION`
-demand for an attributable run), and `captured_mcp_eval` (the worker-MCP
+demand for an attributable run), `captured_mcp_eval` (the worker-MCP
 run — the OpenCode worker's `pex_pex_get_goal` and `pex_pex_verify_claim`
 calls replay as first-class `tool_call` events, so a judge watches a real
 worker read its goal and check its own claim against PEX's independent
-evidence, deterministically).
+evidence, deterministically), and `worker_escalation_eval` (the 2026-10-14
+tamper run's other half — the same worker's `pex_pex_request_decision` call
+escalating the task-vs-goal conflict instead of complying; it stops
+unresolved and the adjudicated report honestly ends `incomplete`, matching
+the live receipt `LIVE_OPENCODE_TAMPER_ESCALATION_ses_ec4b20a7_2026-10-14.json`).
 
 Reads the demo home's stored event ledger (no running bridge needed), dedups
 OpenCode's SSE re-deliveries, reconstructs workspace mutations from the
