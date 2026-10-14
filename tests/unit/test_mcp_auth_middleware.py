@@ -149,7 +149,7 @@ async def test_middleware_distinguishes_read_only_operator_and_bound_session_pri
 
 
 @pytest.mark.asyncio
-async def test_middleware_no_auth_mode_is_always_anonymous_read_only(mcp_auth_state):
+async def test_middleware_no_auth_mode_anonymous_unless_session_bearer(mcp_auth_state):
     store, session, goal = mcp_auth_state
     session_token, _ = await _issue(store, session, goal)
     state.settings = Settings.for_test(require_auth=False, home=store.path.parent)
@@ -160,15 +160,28 @@ async def test_middleware_no_auth_mode_is_always_anonymous_read_only(mcp_auth_st
         transport=ASGITransport(app=app),
         base_url="http://127.0.0.1",
     ) as client:
-        response = await client.get(
+        absent = await client.get("/")
+        worker = await client.get(
             "/",
             headers={"Authorization": f"Bearer {session_token}"},
         )
+        garbage = await client.get(
+            "/",
+            headers={"Authorization": "Bearer pex_mcp_short"},
+        )
 
-    assert response.status_code == 200
-    assert response.json()["kind"] == "anonymous"
-    assert response.json()["scopes"] == ["mcp:read"]
-    assert response.json()["session_id"] is None
+    assert absent.status_code == 200
+    assert absent.json()["kind"] == "anonymous"
+    assert absent.json()["scopes"] == ["mcp:read"]
+    # A valid session credential is honored even on the unauthenticated demo
+    # bridge — the worker's scoped write tools stay meaningful there.
+    assert worker.status_code == 200
+    assert worker.json()["kind"] == "session"
+    assert worker.json()["session_id"] == session.id
+    assert set(worker.json()["scopes"]) == MCP_SESSION_SCOPES
+    # An invalid bearer downgrades to anonymous rather than 401ing.
+    assert garbage.status_code == 200
+    assert garbage.json()["kind"] == "anonymous"
 
 
 @pytest.mark.asyncio

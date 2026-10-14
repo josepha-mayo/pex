@@ -117,8 +117,13 @@ async def test_mcp_list_tools_bounds_every_caller_controlled_value():
             f"{tool_name} is missing declared inputs: {sorted(expected_fields - actual_fields)}"
         )
     verify_schema = schemas["pex.verify_claim"]
-    assert set(verify_schema.get("properties", {})) == {"session_id", "request"}
-    assert set(verify_schema.get("required", [])) == {"session_id", "request"}
+    assert set(verify_schema.get("properties", {})) == {
+        "session_id",
+        "request",
+        "claim",
+        "idempotency_key",
+    }
+    assert set(verify_schema.get("required", [])) == {"session_id"}
     handoff_schema = schemas["pex.handoff"]
     assert set(handoff_schema.get("properties", {})) == {"session_id", "request"}
     assert set(handoff_schema.get("required", [])) == {"session_id", "request"}
@@ -216,9 +221,7 @@ def _install_tracked_startup_tasks(monkeypatch) -> dict[str, asyncio.Task[None]]
 
     def start_tasks() -> None:
         pump = asyncio.create_task(_never_finishes(), name="test-mcp-safety-pump")
-        background = asyncio.create_task(
-            _never_finishes(), name="test-mcp-safety-background"
-        )
+        background = asyncio.create_task(_never_finishes(), name="test-mcp-safety-background")
         bridge_app.state.adapters.synthetic._pump_task = pump
         bridge_app.state.track_background(background)
         tasks.update(pump=pump, background=background)

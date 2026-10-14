@@ -777,6 +777,16 @@ server's own `instructions` tell connecting agents to treat returned worker
 text as untrusted evidence — the honesty contract holds inside the protocol
 too.
 
+Verified live (2026-10-14, OpenCode 1.18.32 serve mode): `demo.py --live`
+mounts `/mcp/` into the seeded worker via a bundled stdio shim
+(`scripts/pex_mcp_stdio.py` — serve-mode OpenCode registers local MCP tools
+but not remote ones), and the worker's *first* action was a real
+`pex_pex_get_goal` call that returned its own attached goal with the exact
+session id. A worker can read what it is being supervised against mid-run.
+Reproduce the round trip with `python scripts/probe_worker_mcp.py` while a
+demo bridge is up (the probe's `opencode run` needs a signed-in OpenCode
+profile; the Zen free tier only serves app-mode traffic).
+
 The [architecture overview](docs/architecture/overview.md) describes the local
 policy and evidence boundaries. A [live Windows Codex recovery](docs/evidence/codex-nebius-live-2026-09-24.json)
 showed Nemotron 3 Super correcting one incomplete stop on the same thread and

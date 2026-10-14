@@ -272,6 +272,32 @@ exported this way from the recorded tamper run — a judge replays the exact
 events the live pipeline saw, labeled `replay` + `not_live_control` like every
 fixture.
 
+### Watch a worker inspect its own supervision (MCP)
+
+The bridge mounts a scoped MCP server at `/mcp/` (README §"PEX is also an
+MCP server"). With any demo bridge running and at least one goal-bound
+session (any replay fixture, or a `--live` run):
+
+```powershell
+uv run python scripts/probe_worker_mcp.py
+```
+
+The probe finds a goal-bound session, writes a throwaway `opencode.json`
+mounting `/mcp/` (anonymous read-only — no credential is written), runs a
+real `opencode run` worker, and prints PASS only when the worker invoked
+`pex_pex_get_goal` for that exact session and got the goal title back —
+verified live on OpenCode 1.18.32. `opencode run` is headless CLI traffic,
+so the worker model needs a signed-in OpenCode profile or provider key (the
+Zen free tier only serves app-mode connections).
+
+`demo.py --live` mounts the same surface into the seeded worker through the
+bundled stdio shim (`scripts/pex_mcp_stdio.py`): serve-mode OpenCode
+connects remote MCP servers but never registers their tools into sessions
+(verified 1.18.32 + 1.19.0), while local stdio servers register fine — the
+shim forwards the HTTP endpoint unchanged. Verified live 2026-10-14: the
+live worker's first action was a real `pex_pex_get_goal` call carrying its
+own PEX session id, which the task text seeds.
+
 ## 1. Start the demo bridge
 
 ```powershell
@@ -497,3 +523,10 @@ narration keyed to the same on-screen flow.
 - One run shows mechanism, not general worker-quality improvement.
 - Semantic reviews require a valid provider key; deterministic supervision
   remains the fallback and never claims a model ran when it did not.
+- The `--live` worker reads PEX state through the read-only anonymous scope;
+  write-scoped tools (`pex.verify_claim`, `pex.handoff`, …) still refuse
+  without a session-bound credential, so a worker cannot self-sign
+  completion through MCP.
+- The MCP mount reaches the worker through a stdio shim because serve-mode
+  OpenCode does not register remote MCP tools (1.18.32 + 1.19.0) — an
+  upstream quirk, documented rather than hidden.

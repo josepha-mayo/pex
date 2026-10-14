@@ -193,7 +193,9 @@ def main(argv: list[str] | None = None) -> int:
         run_root = ROOT / "build" / "demo" / f"live-{stamp}"
         model = args.worker_model or demo_live.DEFAULT_WORKER_MODEL
         try:
-            workspace, worker_env = demo_live.prepare_run(run_root, model, args.scenario)
+            workspace, worker_env = demo_live.prepare_run(
+                run_root, model, args.scenario, bridge_port=BRIDGE_PORT
+            )
         except (ValueError, OSError, subprocess.CalledProcessError) as exc:
             sys.exit(f"could not prepare the live workspace: {exc}")
         live = (workspace, model)

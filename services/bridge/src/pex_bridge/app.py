@@ -665,6 +665,10 @@ TRUSTED_UI_ORIGINS = {
 }
 
 
+class _MCPAuthUnavailable(Exception):
+    """Session-principal resolution failed infrastructurally (store down)."""
+
+
 class MCPTokenMiddleware:
     """Authenticate MCP callers and bind session credentials to live state."""
 
@@ -675,11 +679,6 @@ class MCPTokenMiddleware:
         if scope.get("type") != "http":
             await self.app(scope, receive, send)
             return
-        if not state.settings.require_auth:
-            scope[MCP_PRINCIPAL_SCOPE_KEY] = MCPPrincipal.anonymous()
-            await self.app(scope, receive, send)
-            return
-        expected = state.token or ""
         authorization = next(
             (
                 value.decode("latin-1")
@@ -688,6 +687,19 @@ class MCPTokenMiddleware:
             ),
             "",
         )
+        if not state.settings.require_auth:
+            # Unauthenticated demo mode: an absent bearer is anonymous
+            # read-only, but a valid session credential still resolves to its
+            # scoped principal so write tools stay meaningful on the demo
+            # bridge. An invalid bearer downgrades to anonymous honestly.
+            try:
+                principal = await self._session_principal(authorization)
+            except _MCPAuthUnavailable:
+                principal = None
+            scope[MCP_PRINCIPAL_SCOPE_KEY] = principal or MCPPrincipal.anonymous()
+            await self.app(scope, receive, send)
+            return
+        expected = state.token or ""
         scheme, separator, supplied = authorization.partition(" ")
         if not separator or scheme.casefold() != "bearer":
             response = Response(
@@ -702,6 +714,40 @@ class MCPTokenMiddleware:
             await self.app(scope, receive, send)
             return
         try:
+            principal = await self._session_principal(authorization)
+        except _MCPAuthUnavailable:
+            response = Response(
+                content='{"detail":"bridge authentication is unavailable"}',
+                status_code=503,
+                media_type="application/json",
+            )
+            await response(scope, receive, send)
+            return
+        if principal is None:
+            response = Response(
+                content=json.dumps({"detail": "invalid token"}, separators=(",", ":")),
+                status_code=401,
+                media_type="application/json",
+            )
+            await response(scope, receive, send)
+            return
+        scope[MCP_PRINCIPAL_SCOPE_KEY] = principal
+        await self.app(scope, receive, send)
+
+    async def _session_principal(self, authorization: str) -> MCPPrincipal | None:
+        """Resolve a Bearer value to a session principal, or None.
+
+        Returns None for malformed headers, non-bearer schemes, unknown or
+        expired tokens, and store failures that fall outside the fatal
+        authentication-unavailable case.
+        """
+        scheme, separator, supplied = authorization.partition(" ")
+        if not separator or scheme.casefold() != "bearer" or not supplied:
+            return None
+        expected = state.token or ""
+        if expected and secrets.compare_digest(supplied, expected):
+            return MCPPrincipal.operator()
+        try:
             checked_at = utcnow()
             digest = digest_mcp_session_token(supplied)
             record = await state.store.get_mcp_principal_by_digest(
@@ -715,29 +761,12 @@ class MCPTokenMiddleware:
             )
             if principal is not None:
                 principal = await _revalidate_mcp_session_principal(principal)
+            return principal
         except (TypeError, ValueError):
-            principal = None
-        except Exception:
+            return None
+        except Exception as exc:
             logger.exception("MCP session authentication is unavailable")
-            response = Response(
-                content='{"detail":"bridge authentication is unavailable"}',
-                status_code=503,
-                media_type="application/json",
-            )
-            await response(scope, receive, send)
-            return
-        if principal is None:
-            status_code = 401 if expected else 503
-            detail = "invalid token" if expected else "bridge authentication is unavailable"
-            response = Response(
-                content=json.dumps({"detail": detail}, separators=(",", ":")),
-                status_code=status_code,
-                media_type="application/json",
-            )
-            await response(scope, receive, send)
-            return
-        scope[MCP_PRINCIPAL_SCOPE_KEY] = principal
-        await self.app(scope, receive, send)
+            raise _MCPAuthUnavailable from exc
 
 
 async def _revalidate_mcp_session_principal(

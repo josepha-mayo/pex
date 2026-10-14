@@ -134,6 +134,32 @@ def test_live_prepare_run_seeds_an_isolated_free_worker(tmp_path, monkeypatch) -
     assert env["HOME"].startswith(str(tmp_path))
 
 
+def test_live_prepare_run_mounts_the_bridge_mcp_server(tmp_path) -> None:
+    import json
+
+    from scripts import demo_live
+
+    demo_live.prepare_run(tmp_path / "run", "nemotron-3-ultra-free", bridge_port=7440)
+    config = json.loads((tmp_path / "run" / "opencode.json").read_text(encoding="utf-8"))
+    pex = config["mcp"]["pex"]
+    assert pex["type"] == "local"
+    assert pex["enabled"] is True
+    assert "http://127.0.0.1:7440/mcp/" in pex["command"]
+    assert any(part.endswith("pex_mcp_stdio.py") for part in pex["command"])
+    assert "--token-file" in pex["command"]
+    # Session-directory copy: serve-mode MCP registration resolves from the
+    # session's project config chain, and workspace/ is its own git root.
+    ws_config = json.loads(
+        (tmp_path / "run" / "workspace" / "opencode.json").read_text(encoding="utf-8")
+    )
+    assert ws_config["mcp"]["pex"] == pex
+    # The task names the tool and the session it belongs to; a bare task is
+    # still available when no session id is supplied.
+    task = demo_live.task_text(session_id="opencode:ses_x")
+    assert "opencode:ses_x" in task and "pex_get_goal" in task
+    assert demo_live.task_text() == demo_live.task_text()
+
+
 def test_live_prepare_run_rejects_paid_models(tmp_path) -> None:
     import pytest
 

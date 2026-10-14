@@ -89,11 +89,7 @@ async def _bound_state(
     )
     if session is None:
         raise ValueError("session not found")
-    goal = (
-        await state.store.get_goal_for_authority(session.goal_id)
-        if session.goal_id
-        else None
-    )
+    goal = await state.store.get_goal_for_authority(session.goal_id) if session.goal_id else None
     if goal is None:
         raise ValueError("session has no attached persistent goal")
     if principal.kind == "session":
@@ -107,9 +103,7 @@ async def _bound_state(
             or not principal.project_id
         ):
             raise PermissionError("MCP principal is not bound to the requested session")
-        live_project_binding = await state.store.project_binding_for_authority(
-            principal.project_id
-        )
+        live_project_binding = await state.store.project_binding_for_authority(principal.project_id)
         if live_project_binding != principal.project_binding:
             raise PermissionError("MCP principal project binding changed")
         if await state.store.has_goal_successor_for_authority(goal.id):
@@ -353,16 +347,41 @@ def build_mcp_server() -> tuple[FastMCP, Any]:
     @mcp.tool(name="pex.verify_claim", structured_output=True)
     async def verify_claim(
         session_id: _BoundedSessionId,
-        request: ClaimVerificationRequest,
-        ctx: Context,
+        request: ClaimVerificationRequest | None = None,
+        ctx: Context = None,
+        claim: Annotated[str | None, Field(min_length=1, max_length=4_000)] = None,
+        idempotency_key: Annotated[
+            str | None,
+            Field(
+                min_length=8,
+                max_length=128,
+                pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            ),
+        ] = None,
     ) -> dict[str, Any]:
-        """Verify a worker claim against observed events. Uncertain is not completion."""
+        """Verify a worker claim against observed events. Uncertain is not completion.
+
+        Pass the claim as `request: {claim, idempotency_key}` or flattened as
+        top-level `claim` (+ optional `idempotency_key`; a stable key is
+        derived from session + claim when omitted).
+        """
 
         state, session, _goal, principal = await _bound_state(
             ctx,
             session_id,
             required_scope=MCP_VERIFY_CLAIM_SCOPE,
         )
+        if request is None:
+            if not claim:
+                raise ValueError("verify_claim needs request.claim or a top-level claim")
+            request = ClaimVerificationRequest(
+                claim=claim,
+                idempotency_key=(
+                    idempotency_key
+                    or "mcp-flat-"
+                    + hashlib.sha256(f"{session.id}\n{claim}".encode()).hexdigest()[:32]
+                ),
+            )
         return await state.pipeline.verify_reported_claim(
             session,
             principal=principal,

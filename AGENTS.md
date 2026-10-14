@@ -120,3 +120,19 @@ preflight test, which now has a 300 s budget).
   logic stays node-testable: e.g. `governedSessionsForGoal` (goal + ancestor
   lineage → governed sessions) is shared by the Inspector strip and the
   deck's Goals registry.
+- Worker-facing MCP wiring (hard-won, verified live 2026-10-14): OpenCode
+  `serve` connects remote MCP servers but never registers their tools into
+  sessions (1.18.32 + 1.19.0); `type: "local"` stdio servers DO register.
+  `demo.py --live` therefore mounts `/mcp/` via `scripts/pex_mcp_stdio.py`,
+  and the mcp block must live in `<workspace>/opencode.json` — session MCP
+  registration resolves from the session directory's config chain, not the
+  server's cwd config. The stdio shim reads `--token-file` lazily per call:
+  mint via `POST /v1/sessions/{id}/mcp-credential` after goal attach, drop
+  the file at run root, and write-scoped tools unlock without respawning
+  the MCP subprocess. On the demo bridge (`require_auth` off) a valid
+  session bearer resolves to its scoped principal; absent/invalid →
+  anonymous read-only. `pex.verify_claim` accepts both `request:{...}` and
+  flat `claim`/`idempotency_key` args — workers fumble nested schemas.
+- `opencode run` (headless) hits Zen's free-tier gate without a signed-in
+  OpenCode profile — `serve` mode does not. `scripts/probe_worker_mcp.py`
+  exercises the run-mode path and needs real worker credentials.
