@@ -708,6 +708,21 @@ async def test_pet_needs_you_survives_observation_staleness(client: AsyncClient)
 
 
 @pytest.mark.asyncio
+async def test_pet_needs_you_outlives_the_promptable_horizon(client: AsyncClient):
+    """An unresolved decision days old is still an obligation — not idle noise."""
+    now = datetime.now(UTC)
+    _, old_pending, _ = await _seed_projection_row(
+        suffix="ancient-decision",
+        status=SessionStatus.NEEDS_DECISION,
+        action_type=InterventionType.ASK_HUMAN,
+        created_at=now - timedelta(days=3),
+    )
+    pet = (await client.get("/v1/pet")).json()
+    assert pet["needs_you"] == 1
+    assert old_pending.id in [row["id"] for row in pet["sessions"]]
+
+
+@pytest.mark.asyncio
 async def test_command_deck_fingerprints_use_stop_verification_counts(client: AsyncClient):
     from datetime import UTC, datetime
 

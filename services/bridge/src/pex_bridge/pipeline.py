@@ -7404,11 +7404,20 @@ def collapse_promptable_agents(
             continue
         if ts.tzinfo is None:
             ts = ts.replace(tzinfo=UTC)
-        if now - ts > _PROMPTABLE_STALE:
+        # A pending human decision is a durable obligation, not an idle
+        # worker recency hint — it never ages out of the rail while the
+        # decision itself is unresolved (matching the pet's needs_you count).
+        if session.status.value != "needs_decision" and now - ts > _PROMPTABLE_STALE:
             continue
         extras.append(session)
         seen.add(key)
-    extras.sort(key=lambda item: item.last_activity or now, reverse=True)
+    extras.sort(
+        key=lambda item: (
+            item.status.value == "needs_decision",
+            item.last_activity or now,
+        ),
+        reverse=True,
+    )
     ordered.extend(extras[:12])
     return ordered
 
