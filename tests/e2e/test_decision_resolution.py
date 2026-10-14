@@ -593,6 +593,14 @@ async def test_terminal_worker_decision_resolution_is_recorded_not_delivered(
     live.status = SessionStatus.STOPPED
     await state.store.upsert_session(live)
 
+    # The unanswered question outlives the session's live status: the pending
+    # intervention still rides the attention surface on a stopped session.
+    metrics = (await client.get("/v1/attention/metrics")).json()
+    pending_ids = {
+        item["id"] for item in metrics["current_pending"]["items"]
+    }
+    assert opened["intervention"]["id"] in pending_ids
+
     response = await client.post(
         f"/v1/decisions/{opened['intervention']['id']}/resolve",
         json={"decision": "deny"},

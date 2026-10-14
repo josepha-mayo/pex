@@ -128,7 +128,12 @@ preflight test, which now has a 300 s budget).
   reserved delivery effect as `failed`/`session_terminal` — the answer is
   durable intent even when no live worker can receive it. Liveness gates
   (paused, live project binding, goal supersession) protect delivery only;
-  identity checks (session/goal/pending-context binding) still apply.
+  identity checks (session/goal/pending-context binding) still apply. The
+  pending question also outlives the session's live status on the attention
+  surfaces: `attention_metrics` keeps an unresolved `mcp_human_request`
+  intervention in `current_pending` after the session stops, and the pet's
+  `needs_you` counts it — session-bound permission requests still die with
+  their session.
 - Deep links: `#inspector/<encodeURIComponent(sessionId)>` restores the
   selected session on load/reload; `openInspector` writes it. Keep
   `surfaceFromHash`/`sessionFromHash` parsing tolerant of stale ids (the

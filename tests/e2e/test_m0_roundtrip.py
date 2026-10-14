@@ -790,6 +790,60 @@ async def test_pet_needs_you_outlives_the_promptable_horizon(client: AsyncClient
 
 
 @pytest.mark.asyncio
+async def test_pet_counts_a_worker_question_after_the_worker_session_ended(
+    client: AsyncClient,
+):
+    """A worker-asked question is durable: the session may stop after asking.
+
+    needs_decision session status gates the attention surface, but a pending
+    mcp_human_request intervention is the obligation itself — a stopped
+    worker that escalated before ending must still count against needs_you
+    and stay surfaced as pending.
+    """
+    now = datetime.now(UTC)
+    goal, session, _ = await _seed_projection_row(
+        suffix="asked-then-stopped",
+        status=SessionStatus.STOPPED,
+        action_type=InterventionType.SEND_NUDGE,
+        created_at=now - timedelta(minutes=3),
+    )
+    action = ProposedAction(
+        type=InterventionType.ASK_HUMAN,
+        session_id=session.id,
+        goal_id=goal.id,
+        rationale="Worker escalated a goal conflict before ending its turn.",
+        evidence=["event:asked-then-stopped"],
+        risk=RiskLevel.MEDIUM,
+        authority_required=Authority.HUMAN,
+    )
+    pending = Intervention(
+        id="intervention-asked-then-stopped-question",
+        session_id=session.id,
+        goal_id=goal.id,
+        trigger=EventType.USER_PROMPT.value,
+        evidence=action.evidence,
+        diagnosis="mcp_request_decision",
+        proposed_action=action,
+        risk=action.risk.value,
+        authority_required=action.authority_required.value,
+        action_taken=InterventionType.ASK_HUMAN.value,
+        policy_verdict=PolicyVerdict.ASK_HUMAN,
+        result="awaiting_human",
+        created_at=now - timedelta(minutes=2),
+        metadata={"decision_kind": "mcp_human_request"},
+    )
+    await state.store.add_intervention(pending)
+
+    pet = (await client.get("/v1/pet")).json()
+    assert pet["needs_you"] == 1
+    assert session.id in [row["id"] for row in pet["sessions"]]
+    metrics = (await client.get("/v1/attention/metrics")).json()
+    assert pending.id in {
+        item["id"] for item in metrics["current_pending"]["items"]
+    }
+
+
+@pytest.mark.asyncio
 async def test_command_deck_fingerprints_use_stop_verification_counts(client: AsyncClient):
     from datetime import UTC, datetime
 

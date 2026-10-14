@@ -7170,8 +7170,23 @@ class Pipeline:
         paused = sum(1 for s in live if s.supervision_paused)
         # A pending human decision is durable state — it must not age out of
         # the attention surface the way a quiet live session does. Count it
-        # across every projected session, not only the 10-minute live window.
-        needs = [s for s in sessions if s.status == SessionStatus.NEEDS_DECISION]
+        # across every projected session, not only the 10-minute live window —
+        # and past a terminal session: a worker's unanswered question survives
+        # the worker's turn ending (the ruling is durable intent; the pending
+        # intervention is the obligation, not the live status).
+        open_question_sessions = {
+            i.session_id
+            for i in interventions
+            if i.action_taken == InterventionType.ASK_HUMAN.value
+            and i.metadata.get("decision_kind") == "mcp_human_request"
+            and i.result == "awaiting_human"
+        }
+        needs = [
+            s
+            for s in sessions
+            if s.status == SessionStatus.NEEDS_DECISION
+            or s.id in open_question_sessions
+        ]
         last = interventions[0] if interventions else None
         status_detail = (
             needs

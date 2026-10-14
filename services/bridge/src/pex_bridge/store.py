@@ -26952,7 +26952,17 @@ class Store:
                         )
                     except (LookupError, ProjectIdentityBlockedError):
                         continue
-                    if session.status != SessionStatus.NEEDS_DECISION:
+                    # A worker-asked question is a durable obligation: the
+                    # session may have ended after asking (the answer is
+                    # still recorded, delivered or not), so pending
+                    # mcp_human_request interventions stay visible past a
+                    # stopped/error session — unlike session-bound
+                    # permission requests, which die with the session.
+                    if (
+                        session.status != SessionStatus.NEEDS_DECISION
+                        and intervention.metadata.get("decision_kind")
+                        != "mcp_human_request"
+                    ):
                         continue
                     if await _has_authoritative_goal_successor(
                         transaction,
