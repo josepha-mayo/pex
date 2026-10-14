@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { canonicalJson, sha256Hex, verifyEvidencePack } from "./evidencePack.ts";
+import { canonicalJson, extractPackJson, sha256Hex, verifyEvidencePack } from "./evidencePack.ts";
 
 async function makePack(): Promise<Record<string, unknown>> {
   const sealed = "def test_core():\n    assert add(1, 1) == 2\n";
@@ -96,4 +96,23 @@ test("verifyEvidencePack re-verifies the committed drift pack", async () => {
   const failures = checks.filter((line) => line.startsWith("FAIL"));
   assert.deepEqual(failures, []);
   assert.ok(checks.some((line) => line.includes("hash chain reaches recorded head")));
+});
+
+test("extractPackJson unwraps a rendered HTML receipt like the CLI", async () => {
+  const url = new URL(
+    "../../../docs/demo/evidence/EVIDENCE_PACK_drift_loop_2026-10-05.html",
+    import.meta.url,
+  );
+  const pack = extractPackJson(await readFile(url, "utf-8")) as Record<string, unknown>;
+  assert.equal(pack.schema, "pex.evidence-pack.v1");
+  const checks = await verifyEvidencePack(pack);
+  assert.deepEqual(
+    checks.filter((line) => line.startsWith("FAIL")),
+    [],
+  );
+
+  // Raw JSON passes through untouched; HTML without the embed marker refuses.
+  const raw = extractPackJson(JSON.stringify({ schema: "pex.evidence-pack.v1" }));
+  assert.equal((raw as Record<string, unknown>).schema, "pex.evidence-pack.v1");
+  assert.throws(() => extractPackJson("<html><body>no pack</body></html>"));
 });

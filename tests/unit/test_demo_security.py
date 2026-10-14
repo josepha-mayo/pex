@@ -56,6 +56,25 @@ def test_demo_listing_skips_malformed_files(tmp_path, monkeypatch) -> None:
     ]
 
 
+def test_demo_fixture_ids_match_the_desktop_parse_contract(tmp_path, monkeypatch) -> None:
+    """Ids the bridge accepted but the UI refuses must never be listed.
+
+    The desktop parser (`demoReplay.ts`) accepts only
+    ``[a-z0-9][a-z0-9_-]{0,62}``; a looser bridge regex used to advertise ids
+    the UI then dropped, blanking a judge's replay surface behind one stray
+    filename. Bridge and UI share the stricter contract.
+    """
+    monkeypatch.setattr("pex_bridge.demo.fixture_dir", lambda: tmp_path)
+    for stem in ("MyAttack_eval", "v2.attack", "UPPER"):
+        (tmp_path / f"{stem}.json").write_text(
+            json.dumps({"events": [{"event_type": "status"}]}),
+            encoding="utf-8",
+        )
+    with pytest.raises(ValueError, match="invalid demo fixture id"):
+        load_fixture("v2.attack")
+    assert list_fixtures() == []
+
+
 def test_demo_listing_surfaces_bounded_summary(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr("pex_bridge.demo.fixture_dir", lambda: tmp_path)
     (tmp_path / "arc.json").write_text(

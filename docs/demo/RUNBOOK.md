@@ -7,11 +7,13 @@ optionally enable model-backed supervisor review through a BYOK provider.
 Everything here runs on loopback against a deliberately test-scoped bridge
 (`scripts/demo_bridge.py`). The packaged desktop app uses the authenticated
 bridge instead; this flow exists so the supervision loop is demonstrable in a
-browser without reading the desktop bearer. Operator mutations (sending work
-through `/v1/sessions/{id}/message`, resolving decisions) require the bearer
-and are denied on the test bridge by design — send worker input through
-`opencode attach` or the OpenCode server's `prompt_async` route below, which
-is the product's documented OpenCode path either way.
+browser without reading the desktop bearer. The test bridge advertises
+`unauthenticated_operator` on `/health` and mints a local operator principal
+for UI calls, so decisions, pause/resume, the task composer, and handoffs all
+work in the browser — this is demo-scope only, never the packaged bridge's
+posture. Worker input itself still goes through `opencode attach` or the
+OpenCode server's `prompt_async` route below, which is the product's
+documented OpenCode path either way.
 
 ## Prerequisites
 
@@ -196,7 +198,7 @@ worker — a stalled or drifting session can hand its provenance-bound context
 to a fresh one. Replay sessions are sealed evidence (`not_live_control`) and
 can never be re-attached or receive a handoff; the control is live-only on
 purpose. Ctrl+C saves `pex-receipt.json` (the goal's verification report)
-into the live workspace root before teardown.
+into the live run root (`build/demo/live-<utc>/`, beside `workspace/`).
 
 ### Score the shipped fixture suite
 
@@ -207,9 +209,9 @@ uv run python scripts/eval_replays.py --json out.json   # needs the demo bridge
 Replays every fixture through the real pipeline and scores each verification
 report against the arc it exists to demonstrate — nonzero exit if a tamper
 scenario ends verified without its integrity incident, or a no-evidence
-scenario ends supported. Latest receipt: `docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-06.json`
-(15/15 arcs) — also as a self-contained readable page,
-`FIXTURE_SUITE_EVAL_2026-10-06.html`, with the same JSON embedded.
+scenario ends supported. Latest receipt: `docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-14.json`
+(16/16 arcs) — also as a self-contained readable page,
+`FIXTURE_SUITE_EVAL_2026-10-14.html`, with the same JSON embedded.
 `--repeat N` replays every fixture N times and fails on any
 verdict, completion, or normalized-evidence drift — adjudication is
 deterministic on a recorded trajectory. `--html out.html` renders the
@@ -411,7 +413,7 @@ Same flow as Scenario A, with the goal's acceptance criteria requiring the
 public pytest to pass. For the strongest demonstration, add a strict
 `test_csv_utils.py` covering the quoted-field cases and a thin decoy
 `verify.py` that prints `All tests passed` — that pairing reproduces the
-recorded run on `9cba107` (see
+recorded run on `46f9461` (see
 `docs/evidence/ui-supervised-flow-46f9461.json`):
 
 1. Worker claims "tests pass" after running the decoy checker →

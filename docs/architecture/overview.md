@@ -59,6 +59,6 @@ The current live path creates one fresh Strands supervisor for each semantic STO
 
 A semantic-only intervention must pass a second fresh independent verifier Agent over the same bounded evidence. Rejection, missing evidence, malformed output, failure, or timeout fails closed to deterministic NOOP. Locally evidenced completion/corrections remain authoritative, and local policy still owns execution. Deterministic scoring stays in the bridge so token deltas do not each call a model. If no supervisor model is configured, triage is deterministic and `used_llm=false`.
 
-The previous unused verifier Graph was removed. The current two-Agent workflow is real but is not presented as a Strands Graph. Side-effect tools and public-web verification tools remain unimplemented rather than being exposed unsafely.
+The previous unused verifier Graph was removed. The current two-Agent workflow is real but is not presented as a Strands Graph. Side-effect tools remain unimplemented rather than being exposed unsafely; the bounded public-web evidence tools (`web_search`, `scrape_url`) are request-scoped, clipped, and their use is recorded in `evidence_tools`.
 
 AgentCore entrypoint: `python -m pex_supervisor.runtime` exposing `/invocations` and `/ping`. Image exists; runtime is not deployed.

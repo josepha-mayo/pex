@@ -70,6 +70,29 @@ function str(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
+// The shipped .html receipts embed the pack as
+// `<script type="application/json" id="pex-pack">…</script>` — the same
+// self-verifying shape verify_pack.py's load_pack accepts. Extract it so the
+// browser path accepts either a raw .json pack or its rendered receipt.
+const PACK_EMBED_OPEN = '<script type="application/json" id="pex-pack">';
+
+export function extractPackJson(text: string): unknown {
+  const trimmed = text.trimStart();
+  if (!trimmed.startsWith("<")) {
+    return JSON.parse(text);
+  }
+  const start = text.indexOf(PACK_EMBED_OPEN);
+  if (start === -1) {
+    throw new Error("no embedded pex-pack JSON found in HTML");
+  }
+  const begin = start + PACK_EMBED_OPEN.length;
+  const end = text.indexOf("</script>", begin);
+  if (end === -1) {
+    throw new Error("no embedded pex-pack JSON found in HTML");
+  }
+  return JSON.parse(text.slice(begin, end));
+}
+
 export async function verifyEvidencePack(pack: Record<string, unknown>): Promise<string[]> {
   const checks: string[] = [];
   const check = (ok: boolean, label: string) => {

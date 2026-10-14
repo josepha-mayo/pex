@@ -48,8 +48,9 @@ function parseFixture(raw: unknown): DemoFixture | null {
 }
 
 // The replay surface exists only while the bridge honestly advertises it: a
-// missing route, an unlabeled payload, or a single malformed fixture removes
-// the control entirely rather than offering a partial demo.
+// missing route or an unlabeled payload removes the control entirely rather
+// than offering an unmarked demo. Individual malformed fixtures are dropped —
+// one stray file in the fixtures dir must not blank the whole surface.
 export function parseTrajectoriesResponse(payload: unknown): DemoFixture[] | null {
   if (!isRecord(payload)) return null;
   if (payload.replay !== true || payload.not_live_control !== true) return null;
@@ -57,8 +58,7 @@ export function parseTrajectoriesResponse(payload: unknown): DemoFixture[] | nul
   const fixtures: DemoFixture[] = [];
   for (const raw of payload.fixtures) {
     const fixture = parseFixture(raw);
-    if (!fixture) return null;
-    fixtures.push(fixture);
+    if (fixture) fixtures.push(fixture);
   }
   return fixtures.length ? fixtures : null;
 }
@@ -84,6 +84,7 @@ const FIXTURE_ORDER = [
   "ruling_compliance_eval",
   "captured_live_eval",
   "captured_handoff_eval",
+  "captured_mcp_eval",
 ];
 
 export function orderFixtures(fixtures: DemoFixture[]): DemoFixture[] {

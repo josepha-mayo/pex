@@ -28,7 +28,7 @@ import { OpenCodeConnectionPanel } from "./components/OpenCodeConnectionPanel";
 import { CodexConnectionPanel } from "./components/CodexConnectionPanel";
 import { OperatorTaskComposer } from "./components/OperatorTaskComposer";
 import { createOperatorRequest } from "./operatorRequest";
-import { verifyEvidencePack } from "./evidencePack";
+import { extractPackJson, verifyEvidencePack } from "./evidencePack";
 import { canEditGoalLedger, goalLedgerKey, readGoalDecisions } from "./goalLedger";
 import { usePageVisibility } from "./pageVisibility";
 import {
@@ -2040,7 +2040,7 @@ export function App() {
   async function verifyPackFile(file: File | undefined) {
     if (!file) return;
     try {
-      const raw = JSON.parse(await file.text()) as Record<string, unknown>;
+      const raw = extractPackJson(await file.text()) as Record<string, unknown>;
       const checks = await verifyEvidencePack(raw);
       setPackVerify(
         checks.length
@@ -2048,7 +2048,7 @@ export function App() {
           : { fileName: file.name, checks: ["FAIL not a pex.evidence-pack.v1 bundle"] },
       );
     } catch {
-      setPackVerify({ fileName: file.name, checks: ["FAIL file is not parseable JSON"] });
+      setPackVerify({ fileName: file.name, checks: ["FAIL file is not a parseable pack (JSON or rendered HTML receipt)"] });
     }
   }
 
@@ -3222,6 +3222,13 @@ export function App() {
         <button type="button" className="ghost topbar-settings" onClick={() => openSettings()}>Settings</button>
       </header>
 
+      {/* Inspector and Settings render `note` in-context; the compact Home
+          and Command Deck surfaces need their own or action failures land
+          silently. */}
+      {note && surface !== "inspector" ? (
+        <p className="note surface-note" role="status" aria-live="polite">{note}</p>
+      ) : null}
+
       {surface === "compact" ? (
         <section
           className="compact-surface surface-focus-target"
@@ -3586,12 +3593,13 @@ export function App() {
                   </summary>
                   <p>
                     Choose a <code>pex-evidence-pack-*.json</code> (exported from a session's
-                    Inspector) — every digest is recomputed in this browser, independent of the
+                    Inspector) or a shipped <code>EVIDENCE_PACK_*.html</code> receipt — every
+                    digest is recomputed in this browser, independent of the
                     bridge. Equivalent to <code>python scripts/verify_pack.py</code>.
                   </p>
                   <input
                     type="file"
-                    accept="application/json,.json"
+                    accept="application/json,.json,.html,text/html"
                     onChange={(event) => {
                       void verifyPackFile(event.target.files?.[0]);
                       event.target.value = "";

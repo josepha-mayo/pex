@@ -25,7 +25,9 @@ Run the non-live suite, lint, and format check from the repo root:
 .\.venv\Scripts\ruff format --check services packages tests scripts
 ```
 
-Desktop checks (from `apps/desktop`):
+Desktop checks (from `apps/desktop`; Node ≥ 22.18 — see
+[`.node-version`](.node-version) — because `node --test` strips TS types
+natively):
 
 ```powershell
 npm test

@@ -32,7 +32,7 @@ stays quiet when the work is actually complete.
 | "All tests passed" is proof | Worker narration is a claim, not a verdict — every replay pairs the worker's own words with what independent adjudication found, plus the verbatim facts that decided it | `narration_check` + `verified_facts` + run `stats` on every replay response; the narration-only counterfactual is rendered on the card |
 | A replay is "press play" | Operator controls that imply a live worker refuse recorded sessions honestly — pause/resume 409s server-side, focus and handoff targeting are disabled, and the rail still flags a replay that needs a decision | `not_live_control` guards at endpoint and UI layers; e2e pin on the 409 path |
 | The demo blurs what it cannot do | The in-app honesty matrix derives every capability claim from live probes — adapters, supervisor credentials, bench state — so key-gated, unfrozen, and not-deployed rows label themselves | Settings → Capabilities; unit-pinned derivation rules |
-| The supervisor is a black box the agent can't see | PEX is itself a scoped MCP server: workers holding session-bound TTL'd credentials can read their goal, verify a claim before making it, request a decision, or hand off — supervision as a tool the agent calls | `services/bridge/src/pex_bridge/mcp_server.py` — 8 tools, scope-gated; verified live 2026-10-14: a real OpenCode worker's first action was `pex_pex_get_goal`, it closed on `pex_pex_verify_claim`, and its own final message quoted PEX's `uncertain` verdict; a second run hit a task↔goal conflict and escalated itself via `pex_pex_request_decision` (the ruling is durable even when the worker's turn has ended); replays deterministically as `captured_mcp_eval` with a `PEX ×N` chip on the session row |
+| The supervisor is a black box the agent can't see | PEX is itself a scoped MCP server: workers holding session-bound TTL'd credentials can read their goal, verify a claim before making it, request a decision, or hand off — supervision as a tool the agent calls | `services/bridge/src/pex_bridge/mcp_server.py` — 8 tools, scope-gated; verified live 2026-10-14: a real OpenCode worker's first action was `pex_pex_get_goal`, it closed on `pex_pex_verify_claim`, and its own final message quoted PEX's `uncertain` verdict; a second run hit a task↔goal conflict and escalated itself via `pex_pex_request_decision` (the ruling is durable even when the worker's turn has ended, and the *sibling* session receives it in its own `get_relevant_context` bundle — `scripts/probe_ruling_continuity.py`); replays deterministically as `captured_mcp_eval` with a `PEX ×N` chip on the session row |
 
 ## What is real today
 
@@ -41,14 +41,18 @@ stays quiet when the work is actually complete.
 - Current focused gates pass 391 frontend tests (five platform-gated skips), 92
   supervision/recovery tests, and 243 expanded Strands/provider/AgentCore/evidence
   tests (four skips). The latest
-  complete Python regression is **5,472 passed and 41 skipped**, zero
-  failures, on the current tree; the earlier
-  5,462-pass run at `c9fc4ec` is retained as a historical data point.
+  complete Python regression passed with zero failures (the suite now
+  collects **5,530 tests** — `pytest --collect-only` re-verified
+  2026-10-15); the earlier 5,462-pass run at `c9fc4ec` is retained as a
+  historical data point.
 - A real Codex Spark worker and free Muse/Strands supervisor demonstrated restraint and
   specific same-thread recovery on clean `e864389`.
 - A real OpenCode 1.18.30 worker and free Muse/Strands supervisor demonstrated one
   independently verified same-session recovery at `93dfef3` and one quiet completion at
   `6a1d98b`; each is a single diagnostic, not a benchmark score.
+
+Rows above citing a bare commit hash are session notes retained for
+continuity — where a receipt exists, the row links the committed artifact.
 - A retained package source passes the real local AgentCore-compatible `/ping` and strict
   `/invocations` protocol path. This is protocol proof, not AWS deployment.
 - A live OpenCode worker (free Nemotron 3 Ultra route, no key) was told to weaken the
@@ -58,8 +62,8 @@ stays quiet when the work is actually complete.
 - A live goal handoff delivered a content-addressed context bundle into a sibling
   OpenCode session (`handoff_injected`) and honestly reported
   `awaiting_target_evidence` rather than claiming assimilation.
-- `scripts/eval_replays.py` scores all fifteen shipped replay fixtures against
-  their declared supervision arcs in CI — 15/15, including stale-evidence,
+- `scripts/eval_replays.py` scores all sixteen shipped replay fixtures against
+  their declared supervision arcs in CI — 16/16, including stale-evidence,
   runner-config-injection, worker-dispute, ruling-continuity, and a
   ruling-compliance positive control (the ledger verifies compliant work, it
   does not only punish violations).

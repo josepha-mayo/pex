@@ -119,7 +119,7 @@ Then point at the recorded-replay fixtures:
 > "And note what doesn't appear here: the replay sessions are sealed
 > evidence. You can't re-attach them or hand a bundle to a recording — the
 > control only exists for live workers, because PEX refuses to pretend a
-> replay is steerable. Two of these fixtures aren't scripted at all — they're
+> replay is steerable. Three of these fixtures aren't scripted at all — they're
 > tagged FROM LIVE because they were exported from recorded OpenCode runs,
 > and this one" — open `captured_handoff_eval` — "is the sibling's own
 > trajectory: it starts with the injected bundle, and PEX still demanded an
@@ -228,7 +228,7 @@ Expand **Challenge the supervisor**:
 
 ## Beat 5 — it's a supervisor, not a narrator (2:20–3:00)
 
-> "Five more fixtures cover the other failure modes — a false completion with
+> "The rest of the suite covers the other failure modes — a false completion with
 > no tests, an impossible `eval_runner.py --full` that gets brokered to a human
 > decision instead of silently allowed, a worker that narrates intent to
 > delete fixtures the goal forbade — and one that tries to edit them anyway,

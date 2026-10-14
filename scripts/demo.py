@@ -102,7 +102,12 @@ def _ensure_port_free(port: int, label: str, env_name: str) -> None:
         return
     pid = _pid_on_port(port)
     owner = f" (pid {pid})" if pid else ""
-    kill_hint = f"stop it (e.g. `taskkill /PID {pid} /F`)" if pid else "stop it"
+    if pid and os.name == "nt":
+        kill_hint = f"stop it (e.g. `taskkill /PID {pid} /F`)"
+    elif pid:
+        kill_hint = f"stop it (e.g. `kill {pid}`)"
+    else:
+        kill_hint = "stop it"
     sys.exit(
         f"{label} port 127.0.0.1:{port} is already in use{owner} — likely a stale "
         f"service from an earlier run; {kill_hint} first, or set {env_name}."
@@ -167,6 +172,22 @@ def main(argv: list[str] | None = None) -> int:
     args = _parse(argv)
     if not (ROOT / "apps" / "desktop" / "node_modules").is_dir():
         sys.exit("apps/desktop dependencies are missing — run `npm install` there first.")
+    try:
+        import importlib.util
+
+        missing = [
+            name
+            for name in ("uvicorn", "pex_bridge")
+            if importlib.util.find_spec(name) is None
+        ]
+    except ImportError:
+        missing = ["uvicorn", "pex_bridge"]
+    if missing:
+        sys.exit(
+            f"this interpreter is missing {', '.join(missing)} - the bridge spawns "
+            "on the same Python. Use the workspace env: `uv run python scripts/demo.py` "
+            "(auto-syncs dependencies) or activate `.venv` first."
+        )
 
     live = None
     bridge_env = os.environ.copy()
@@ -255,6 +276,7 @@ def main(argv: list[str] | None = None) -> int:
             # A cold `opencode serve` (node startup + model catalog fetch) can
             # exceed the default readiness window on this machine.
             budget = 120.0 if name == "opencode serve" else 45.0
+            print(f"waiting for {name} at {url} …", flush=True)
             if not _wait_http(url, timeout=budget, child=child):
                 failed.append(name)
         for name in failed:

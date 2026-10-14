@@ -6,14 +6,18 @@ sealed-baseline checks → verdicts → policy → interventions), always labele
 `replay: true` + `not_live_control: true`. No worker install needed — the
 setup card in `python scripts/demo.py` lists them as buttons.
 
-`captured_live_eval` and `captured_handoff_eval` are different in
-provenance, not privilege: both were exported from recorded live OpenCode
-runs by `scripts/capture_replay.py` and are tagged **from live** in the UI.
-`captured_handoff_eval` is the *handoff target's* trajectory — it opens with
-the actual injected PEX context bundle and preserves the supervisor's
-`REQUEST_VERIFICATION` demand for an attributable pytest run (the worker had
-piped output through `Select-Object`, which doesn't count). It ends honestly
-`uncertain` because the capture precedes any terminal claim.
+`captured_live_eval`, `captured_handoff_eval`, and `captured_mcp_eval` are
+different in provenance, not privilege: all were exported from recorded live
+OpenCode runs by `scripts/capture_replay.py` and are tagged **from live** in
+the UI. `captured_handoff_eval` is the *handoff target's* trajectory — it
+opens with the actual injected PEX context bundle and preserves the
+supervisor's `REQUEST_VERIFICATION` demand for an attributable pytest run
+(the worker had piped output through `Select-Object`, which doesn't count).
+It ends honestly `uncertain` because the capture precedes any terminal
+claim. `captured_mcp_eval` is the worker-side MCP arc: the run's real
+`pex.get_goal` → `pex.request_decision` → `pex.verify_claim` tool calls ride
+the ledger as first-class events, so the replay proves the worker consulted
+the supervisor rather than just being watched by it.
 
 `drift_loop_eval` covers a different stressor: five identical failing probes
 push the drift score over threshold, the planner proposes a reversible

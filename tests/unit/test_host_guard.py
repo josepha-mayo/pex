@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from pex_bridge.origin_guard import TrustedLoopbackHostMiddleware
+from pex_bridge.origin_guard import (
+    TrustedLoopbackHostMiddleware,
+    TrustedMutationOriginMiddleware,
+)
 from starlette.responses import PlainTextResponse
 
 
@@ -106,3 +109,57 @@ async def test_test_hosts_require_an_explicit_process_local_allowance() -> None:
         assert (await client.get("/")).status_code == 400
     async with AsyncClient(transport=ASGITransport(app=allowed), base_url="http://test") as client:
         assert (await client.get("/")).status_code == 200
+
+
+_TRUSTED_ORIGINS = {"http://localhost:1420", "tauri://localhost"}
+
+
+@pytest.mark.parametrize("method", ["POST", "PUT", "PATCH", "DELETE"])
+async def test_mutation_origin_guard_rejects_untrusted_browser_origins(method: str) -> None:
+    guarded = TrustedMutationOriginMiddleware(_ok_app, allowed_origins=_TRUSTED_ORIGINS)
+    async with AsyncClient(
+        transport=ASGITransport(app=guarded), base_url="http://127.0.0.1"
+    ) as client:
+        response = await client.request(
+            method, "/", headers={"Origin": "https://evil.example"}
+        )
+    assert response.status_code == 403
+    assert response.json() == {"detail": "untrusted mutation origin"}
+
+
+async def test_mutation_origin_guard_accepts_allowlisted_and_native_callers() -> None:
+    guarded = TrustedMutationOriginMiddleware(_ok_app, allowed_origins=_TRUSTED_ORIGINS)
+    async with AsyncClient(
+        transport=ASGITransport(app=guarded), base_url="http://127.0.0.1"
+    ) as client:
+        # A packaged/dev UI origin mutates fine.
+        assert (
+            await client.post("/", headers={"Origin": "http://localhost:1420"})
+        ).status_code == 200
+        assert (
+            await client.post("/", headers={"Origin": "tauri://localhost"})
+        ).status_code == 200
+        # Native hook/CLI clients send no Origin — the bearer check downstream
+        # authenticates them, so the guard must not block the header's absence.
+        assert (await client.post("/")).status_code == 200
+        # Reads are never origin-gated.
+        assert (
+            await client.get("/", headers={"Origin": "https://evil.example"})
+        ).status_code == 200
+
+
+async def test_mutation_origin_guard_rejects_duplicate_and_non_ascii_origins() -> None:
+    guarded = TrustedMutationOriginMiddleware(_ok_app, allowed_origins=_TRUSTED_ORIGINS)
+    async with AsyncClient(
+        transport=ASGITransport(app=guarded), base_url="http://127.0.0.1"
+    ) as client:
+        duplicate = await client.post(
+            "/",
+            headers=[
+                ("Origin", "http://localhost:1420"),
+                ("Origin", "https://evil.example"),
+            ],
+        )
+        non_ascii = await client.post("/", headers=[(b"origin", b"\xff")])
+    assert duplicate.status_code == 403
+    assert non_ascii.status_code == 403

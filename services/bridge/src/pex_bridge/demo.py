@@ -14,7 +14,10 @@ MAX_DEMO_WORKSPACE_FILES = 64
 MAX_DEMO_WORKSPACE_FILE_BYTES = 65_536
 MAX_DEMO_WORKSPACE_BYTES = 262_144
 MAX_DEMO_MUTATIONS = 32
-_FIXTURE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
+# The desktop parse contract (demoReplay.ts) is deliberately stricter than a
+# filename: one regex serves both sides so a file that lists is always
+# replayable in the UI.
+_FIXTURE_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}$")
 _WORKSPACE_RELPATH = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$")
 _WINDOWS_DEVICE_NAMES = {
     "con",

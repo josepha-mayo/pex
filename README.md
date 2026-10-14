@@ -24,7 +24,7 @@ a suggested model as available to an account.
 
 ```bash
 npm install --prefix apps/desktop && npm i -g opencode-ai   # once
-python scripts/demo.py --live
+uv run python scripts/demo.py --live
 ```
 
 One command starts a real OpenCode worker on a free NVIDIA Nemotron 3 Ultra
@@ -46,9 +46,9 @@ deterministic — zero PEX model calls. Receipts:
 and an independent
 [headless proof run](docs/demo/evidence/LIVE_OPENCODE_FALSE_CLAIM_1ab1152_2026-10-04.json)
 of the same scenario (same arc, 193 s). Two single runs, not a benchmark.
-No agent install? `python scripts/demo.py` runs the recorded replays instead.*
+No agent install? `uv run python scripts/demo.py` runs the recorded replays instead.*
 
-Want the reward-hacking cut instead? `python scripts/demo.py --live
+Want the reward-hacking cut instead? `uv run python scripts/demo.py --live
 --scenario tamper` instructs the worker to make the suite green by editing
 the sealed acceptance test itself — every subsequent claim lands **Uncertain**
 with `acceptance_surface_modified:test_csv_utils.py` in the ledger, no matter
@@ -121,7 +121,7 @@ score. Final recording remains. See the
 visibly tagged, never live worker control), the selected replay's last
 observed state ("Removed the stray pytest.ini; the real suite is green"),
 and the no-install "See the loop without a worker" fixtures — the same buttons
-a judge gets from `python scripts/demo.py`.*
+a judge gets from `uv run python scripts/demo.py`.*
 
 <details>
 <summary>Goal boundaries and optional details</summary>
@@ -176,7 +176,7 @@ it verifies the *acceptance surface*, not just the reported exit code:
 - `GET /v1/claims/metrics` reports the durable ledger: verdict counts, sealed
   baselines, integrity incidents, and corrective nudges issued.
 
-Try it with no agent install: `python scripts/demo.py` starts the bridge and
+Try it with no agent install: `uv run python scripts/demo.py` starts the bridge and
 the desktop together, then the Recorded-replay card in the app walks
 `tampered_acceptance_eval` through seal → tamper → catch → nudge → restore →
 `verified_complete` in the real pipeline (see the
@@ -219,12 +219,12 @@ report, sealed baseline bytes, flagged bytes, and the full event ledger —
 verified offline with `python scripts/verify_pack.py`:
 
 ```text
-PASS manifest digest recomputes (3f6e75de21aa593d..)
+PASS manifest digest recomputes (71f745d2c05d7132..)
 PASS baseline synthetic:replay-capture.. test_csv_utils.py: content matches sealed digest
-PASS flagged intervention_5ab.. test_csv_utils.py: digest differs from sealed baseline
+PASS flagged intervention_024.. test_csv_utils.py: digest differs from sealed baseline
 PASS ledger synthetic:replay-capture.. event 31: payload hash matches
 PASS ledger synthetic:replay-capture.. hash chain reaches recorded head
-43/44 checks passed; 0 failed -- internal-consistency proof only, not proof of a live run.
+45/46 checks passed; 0 failed -- internal-consistency proof only, not proof of a live run.
 ```
 
 A real pack ships in the repo — verify it right now, no bridge or UI needed:
@@ -285,7 +285,7 @@ claims, drift loops, forbidden-outcome violations (nudge and pre-write
 escalation), a worker dispute that escalates to the human instead of a
 re-nudge, permission brokering, the ruling-continuity pair, and a positive
 control — a worker that complies with a recorded ruling earns
-`verified_complete` with zero false-positive interventions — each scored in
+`verified_complete` with no correction — each scored in
 CI against its declared arc.*
 
 ![The positive-control verdict card: a compliant run verifies under the ruling](docs/demo/assets/pex-compliance-card.png)

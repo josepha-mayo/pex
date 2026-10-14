@@ -10,7 +10,7 @@ intervenes only inside bounded policy.
 
 | Requirement | Where |
 | --- | --- |
-| Nebius Token Factory (or Nebius AI Cloud) | `nebius` is a named BYOK supervisor provider; the Settings provider picker and `PEX_SUPERVISOR_PROVIDER=nebius` target `https://api.tokenfactory.nebius.com/v1` ([README](../README.md#nebius-token-factory--nvidia-nemotron)) |
+| Nebius Token Factory (or Nebius AI Cloud) | `nebius` is a named BYOK supervisor provider; the Settings provider picker and `PEX_SUPERVISOR_PROVIDER=nebius` target `https://api.tokenfactory.nebius.com/v1` ([README](../README.md#nebius-token-factory--nvidia-nemotron)). Verify the wiring in seconds: `NEBIUS_API_KEY=… uv run python scripts/check_token_factory.py --infer` (prints catalog + one real Nemotron completion; exits 2 honestly with no key). Live supervised run: `PEX_CLOUD_REASONING=true NEBIUS_API_KEY=… uv run python scripts/demo.py --live`. A real Token Factory call already ran: [`codex-nebius-live-2026-09-24.json`](evidence/codex-nebius-live-2026-09-24.json) — Nemotron-3-Super corrected a live Codex worker's incomplete stop to verified completion |
 | At least one NVIDIA open model | Nemotron is the suggested default: `nvidia/nemotron-3-super-120b-a12b` ([`providers.py`](../services/supervisor/src/pex_supervisor/providers.py)) |
 | Agents/tools that write, run, and test code | PEX supervises real OpenCode and Codex sessions that write and test code in their own workspaces ([supported harnesses](../README.md#supported-harnesses)) |
 | Token Factory Sandboxes | `PEX_PUBLIC_PYTEST_BACKEND=contree` dispatches the bounded public pytest verification set into a disposable, network-isolated Nebius ConTree VM ([`contree.py`](../services/bridge/src/pex_bridge/contree.py), [README](../README.md#nebius-contree-sandboxed-verification)) |
@@ -18,7 +18,7 @@ intervenes only inside bounded policy.
 
 ## The five-minute judge path
 
-1. `python scripts/demo.py` (after `npm install` under `apps/desktop`) boots the
+1. `uv run python scripts/demo.py` (after `npm install` under `apps/desktop`) boots the
    demo bridge and dev UI in one step — the setup card offers **Recorded
    replay** fixtures with no agent install, and an empty workers rail offers
    **Or run a recorded replay** that starts the recommended fixture in one
@@ -69,11 +69,11 @@ intervenes only inside bounded policy.
    trajectory runs the same strict loader, same pipeline, same labels.
    Every evidence surface is deep-linkable — `#inspector/<session-id>`
    and `#deck/<view>` (`goals`, `decisions`, …) survive refresh, and the
-   Inspector header's **Copy link** hands a judge a shareable URL.
+   Inspector header's **Copy evidence link** hands a judge a shareable URL.
 3. Click **Evidence pack** in the Inspector — the app recomputes every digest
    *in your browser* while it downloads (a TypeScript port of the verifier,
-   independent of the bridge). Then `python scripts/verify_pack.py
-   pex-evidence-pack-*.json` runs the authoritative offline check (sealed
+   independent of the bridge). Then `uv run python scripts/verify_pack.py
+   <downloaded-pack>.json` runs the authoritative offline check (sealed
    bytes ↔ digests, flagged bytes ↔ incident digests, the hash-chained event
    ledger, the manifest) — or drop the file into the demo panel's
    **Verify an evidence pack** block to re-run the same checks in-browser,
@@ -114,7 +114,7 @@ intervenes only inside bounded policy.
    to manufacture a green suite rather than claim done. The goal stayed
    `in_progress` because the worker couldn't quietly reward-hack its way out
    ([receipt](demo/evidence/LIVE_OPENCODE_TAMPER_PUSHBACK_ses_ef18550c_2026-10-05.json),
-   [326-event forensic pack](demo/evidence/EVIDENCE_PACK_live_tamper_2026-10-05.html)).
+   [327-event forensic pack](demo/evidence/EVIDENCE_PACK_live_tamper_2026-10-05.html)).
    That live dispute also sharpened the product: an answered-but-unresolved
    nudge now escalates to the human once — `nudge_dispute_eval` pins the arc,
    and the Decisions inbox carries the worker's verbatim justification
@@ -163,9 +163,9 @@ intervenes only inside bounded policy.
    ([video](demo/assets/pex-judge-arc-597ce13.mp4)).
    And the ruling ledger isn't a trap: `ruling_compliance_eval` attaches a
    worker that *complies* with the recorded ruling — PEX verifies the work
-   and ends `verified_complete` with zero false-positive interventions
-   (the declared arc pins `interventions_never` on the contradiction
-   path).
+   and ends `verified_complete` with no correction (the ledger records only
+   a permission broker and a NOOP; the declared arc pins
+   `interventions_never` on the contradiction path).
    `--live` also seeds an idle sibling session on the same goal — the
    Inspector's **Hand off →** control mints a content-addressed
    `ContextBundle`, injects it into the sibling, and monitors assimilation:
@@ -176,16 +176,16 @@ intervenes only inside bounded policy.
 The same scenario as raw API calls is [Scenario D in the demo
 runbook](demo/RUNBOOK.md). Supervising a live OpenCode worker with real
 Nemotron inference follows the same runbook's main path. The bridge also
-serves interactive OpenAPI docs at `http://127.0.0.1:7420/docs` (75 routes,
+serves interactive OpenAPI docs at `http://127.0.0.1:7420/docs` (81 routes,
 all callable in-page) and a scoped MCP tool surface at `/mcp/`.
 
 ## What is real vs gated
 
 - **Runs today offline:** the full supervision pipeline, deterministic triage,
   acceptance-surface sealing and tamper detection, the replay demo, local
-  subprocess public-test verification, 5,472 backend tests (latest full run
-  2026-10-13, 0 failures). `python scripts/eval_replays.py` scores the
-  shipped fixture suite against its declared supervision arcs — 15/15,
+  subprocess public-test verification, 5,530 backend tests collected
+  (latest full run 2026-10-13, 0 failures). `python scripts/eval_replays.py` scores the
+  shipped fixture suite against its declared supervision arcs — 16/16,
   re-verified 2026-10-14
   ([receipt](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-14.json) —
   [readable form](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-14.html) with the

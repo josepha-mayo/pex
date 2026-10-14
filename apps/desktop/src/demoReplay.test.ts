@@ -67,7 +67,7 @@ test("the replay control only appears for an honestly labeled fixture list", () 
   }
 });
 
-test("one malformed fixture removes the entire replay control", () => {
+test("malformed fixtures drop individually instead of blanking the surface", () => {
   for (const bad of [
     { title: "No id" },
     { id: "ok", title: "" },
@@ -83,8 +83,17 @@ test("one malformed fixture removes the entire replay control", () => {
       not_live_control: true,
       fixtures: [...listed.fixtures, bad],
     };
-    assert.equal(parseTrajectoriesResponse(payload), null);
+    assert.equal(parseTrajectoriesResponse(payload)?.length, listed.fixtures.length);
   }
+  // ...but a listing with no parseable fixture still removes the control.
+  assert.equal(
+    parseTrajectoriesResponse({
+      replay: true,
+      not_live_control: true,
+      fixtures: [{ title: "No id" }],
+    }),
+    null,
+  );
 });
 
 test("a replay result must return a labeled session id", () => {

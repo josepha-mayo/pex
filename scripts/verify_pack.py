@@ -422,7 +422,9 @@ def main() -> int:
         f"{failures} failed -- internal-consistency proof only, not proof of a live run."
     )
     if ns.html:
-        Path(ns.html).write_text(render_html(pack, checks), encoding="utf-8")
+        out = Path(ns.html)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(render_html(pack, checks), encoding="utf-8")
         print(f"wrote forensic report: {ns.html}")
     return 1 if failures else 0
 
