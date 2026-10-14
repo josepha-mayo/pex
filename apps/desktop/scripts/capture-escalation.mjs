@@ -7,7 +7,7 @@
 //   node apps/desktop/scripts/capture-escalation.mjs
 import { launchBrowser } from "./browser.mjs";
 
-const UI = process.env.PEX_UI_URL ?? "http://127.0.0.1:1420";
+const UI = process.env.PEX_UI_URL ?? "http://[::1]:1420";
 const SESSION = "opencode:ses_ec4b20a7effe7JIN0SWxV87kc1";
 
 const browser = await launchBrowser();
