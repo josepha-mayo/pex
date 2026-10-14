@@ -1250,6 +1250,14 @@ function GoalsView({
                       {isReplaySession(session) ? (
                         <span className="replay-badge">Recorded replay</span>
                       ) : null}
+                      {workerPexCalls(session) > 0 ? (
+                        <span
+                          className="replay-badge pex-calls-badge"
+                          title={`worker called PEX supervision tools ${workerPexCalls(session)}× — evidence, not verdicts`}
+                        >
+                          PEX ×{workerPexCalls(session)}
+                        </span>
+                      ) : null}
                       {verdict ? (
                         <span className={`verdict-chip verdict-${verdict}`}>
                           {verdict.replace(/_/g, " ")}
