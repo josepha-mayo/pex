@@ -153,8 +153,14 @@ preflight test, which now has a 300 s budget).
   the file at run root, and write-scoped tools unlock without respawning
   the MCP subprocess. On the demo bridge (`require_auth` off) a valid
   session bearer resolves to its scoped principal; absent/invalid →
-  anonymous read-only. `pex.verify_claim` accepts both `request:{...}` and
-  flat `claim`/`idempotency_key` args — workers fumble nested schemas.
+  anonymous read-only. All four worker-facing write tools accept both the
+  nested model (`request:`/`report:`) and flat top-level args — workers
+  fumble nested schemas (a live worker failed `verify_claim` three times
+  on the wrapper). Flat calls that omit `idempotency_key` derive
+  `mcp-flat-<sha256(session + payload)[:32]>`, so retries replay exactly;
+  keep every flat field bounded identically to the protocol model (the
+  safety-contract test audits bounds). New write tools must follow the
+  same dual-shape contract.
 - `opencode run` (headless) hits Zen's free-tier gate without a signed-in
   OpenCode profile — `serve` mode does not. `scripts/probe_worker_mcp.py`
   exercises the run-mode path and needs real worker credentials.

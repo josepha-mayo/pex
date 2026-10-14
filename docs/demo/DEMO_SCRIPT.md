@@ -150,7 +150,10 @@ Click **Worker reads its goal, then asks PEX to verify its claim** —
 exactly that: the task ordered a test edit the goal forbids, so the worker
 called `pex_pex_request_decision` with the conflict spelled out and three
 options. The ruling lands on the goal ledger whether or not that worker is
-still around to hear it — durable intent, honest delivery status.*
+still around to hear it — durable intent, honest delivery status. And it
+propagates: the idle sibling session now gets that ruling in its own
+`pex.get_relevant_context` bundle — the human's answer reached a worker
+that never asked (`scripts/probe_ruling_continuity.py` replays the check).*
 
 ## Optional replay cut — drift and bounded intervention
 
