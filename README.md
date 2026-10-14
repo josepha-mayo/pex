@@ -375,6 +375,13 @@ its amendment lineage, ruling count, and each session it has governed —
 including sessions bound to superseded revisions — with that session's
 adjudicated verdict and a deep link into its evidence.
 
+The whole arc as a 67-second recording — dispute replay → *"a ruling is
+waiting — open Decisions"* → typed ruling → an attached compliant second
+act → the goal card reading `ruled ×1 · 2 sessions governed`:
+[`pex-judge-arc-597ce13.mp4`](docs/demo/assets/pex-judge-arc-597ce13.mp4)
+(recorded via `apps/desktop/scripts/capture-judge-arc.mjs` against the real
+dev UI — no mocked frames).
+
 ![Deck → Goals registry: the ruled goal governing the dispute and compliance replays](docs/demo/assets/pex-goals-registry.png)
 
 *One card carries the whole arc: `ruled ×1 · 2 sessions governed` — the

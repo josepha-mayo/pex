@@ -481,7 +481,11 @@ keep README imagery honest — it only photographs the real UI, never mocks it.
 "Load a worked example" fill (no session replay needed), and
 `capture-walkthrough.mjs` records the whole judge path as a video
 (`pex-replay-walkthrough-*.mp4` — fixture click through in-browser pack
-verification, real UI only).
+verification, real UI only); `capture-ruling-arc.mjs` records the
+dispute → typed ruling → attached-second-run arc
+(`pex-ruling-arc-*.mp4`), and `capture-judge-arc.mjs` records the newer
+telling of the same arc through the verdict-card Decisions CTA and the
+Deck → Goals registry payoff (`pex-judge-arc-*.mp4`).
 
 For the submission video, [DEMO_SCRIPT.md](DEMO_SCRIPT.md) is a ~3-minute
 narration keyed to the same on-screen flow.
