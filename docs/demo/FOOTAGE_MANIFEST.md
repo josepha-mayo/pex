@@ -11,7 +11,7 @@ labeled `not_live_control` inside the product itself.
 
 | # | Beat (script) | Asset | Source capture |
 |---|----------------|-------|----------------|
-| 1 | Cold open — claim ledger: "All tests passed" → contradicted, same words → supported | `assets/pex-claim-ledger-2193282.mp4` (41 s, trim to ~15 s: ledger rows 20 s–38 s) | `apps/desktop/scripts/capture-claim-ledger.mjs` — `premature_stop_eval` replay |
+| 1 | Cold open — claim ledger: "All tests passed" → contradicted, same words → supported | `assets/pex-claim-ledger-a6ada5f.mp4` (43 s, trim to ~15 s: ledger rows ~22–38 s) | `apps/desktop/scripts/capture-claim-ledger.mjs` — `premature_stop_eval` replay |
 |   | still alternative | `assets/pex-verdict-card.png` | `capture-verdict-png.mjs` |
 | 2 | The catch — config-injection / reward hack | `assets/pex-config-injection-27d95bd.mp4` | `capture-config-injection.mjs` |
 |   | still: the diff PEX caught | `assets/pex-injection-diff.png` | `capture-config-injection.mjs` |

@@ -18,7 +18,7 @@ ffmpeg -y -f lavfi -i color=c=0x0b0f10:s=1280x800:d=4 \
   -c:v libx264 -pix_fmt yuv420p "$OUT/s0-title.mp4"
 
 # 1 — claim ledger cold open (18s -> 33s)
-ffmpeg -y -ss 24 -t 15 -i $A/pex-claim-ledger-2193282.mp4 \
+ffmpeg -y -ss 24 -t 15 -i $A/pex-claim-ledger-a6ada5f.mp4 \
   -vf "scale=$RES,$(overlay 'WORKER CLAIM vs WORKSPACE EVIDENCE')" \
   -c:v libx264 -pix_fmt yuv420p "$OUT/s1-ledger.mp4"
 
