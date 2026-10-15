@@ -233,11 +233,11 @@ new since it opened:
 
 - Demo video: **<3:00, public on YouTube specifically** (rules: ≤3 min,
   public — not unlisted; no third-party music/trademarks; must be public
-  *at submission time*). A ready-made rough cut exists:
-  `docs/demo/assemble-roughcut.sh` builds `build/pex-demo-roughcut.mp4`
-  (96s, all beats + title/end cards) and a captioned variant
-  (`build/pex-demo-roughcut-captioned.mp4`, storyboard narration burned in —
-  watchable before VO). Beat→asset map: `docs/demo/FOOTAGE_MANIFEST.md`;
+  *at submission time*). A ready-made captioned rough cut is committed at
+  `docs/demo/assets/pex-demo-roughcut.mp4` (96s, all beats, narration burned
+  in as captions — uploadable as-is, or record VO over the silent cut).
+  Regenerate via `docs/demo/assemble-roughcut.sh` → `build/pex-demo-roughcut*.mp4`.
+  Beat→asset map: `docs/demo/FOOTAGE_MANIFEST.md`;
   narration: `docs/demo/DEMO_SCRIPT.md`.
 - Supporting clips: `docs/demo/assets/pex-live-tamper-demo.mp4`,
   `docs/demo/assets/pex-judge-arc-597ce13.mp4`,
