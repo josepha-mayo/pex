@@ -260,5 +260,42 @@
       ],
       "integrity_incidents": 1
     }
+  ],
+  "live_verified": [
+    {
+      "receipt": "evidence/codex-nebius-live-2026-09-24.json",
+      "date": "2026-09-24",
+      "provider": "nebius",
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "worker": "codex"
+    },
+    {
+      "receipt": "evidence/opencode-stop-nemotron-2026-10-15.json",
+      "date": "2026-10-15",
+      "provider": "nebius",
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "worker": "opencode (in-memory transport, real OpenCode event shapes)"
+    },
+    {
+      "receipt": "evidence/opencode-tamper-escalation-2026-10-15.json",
+      "date": "2026-10-15",
+      "provider": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "worker": "opencode"
+    },
+    {
+      "receipt": "evidence/tavily-evidence-path-2026-10-15.json",
+      "date": "2026-10-15",
+      "provider": "tavily",
+      "model": null,
+      "worker": null
+    },
+    {
+      "receipt": "evidence/token-factory-inference-2026-10-15.json",
+      "date": "2026-10-15",
+      "provider": "nebius",
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "worker": null
+    }
   ]
 }

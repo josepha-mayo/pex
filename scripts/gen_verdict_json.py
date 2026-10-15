@@ -17,7 +17,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SUITE = ROOT / "docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.json"
 DETERMINISM = ROOT / "docs/demo/evidence/FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-15.json"
+EVIDENCE = ROOT / "docs/evidence"
 OUT = ROOT / "docs/demo/verdict.json"
+
+# Receipt files named <slug>-YYYY-MM-DD.json with schema_version + a live
+# provider call are surfaced so the scraped page reports live verification
+# machine-readably — names and dates derive from the files, not copy.
+_LIVE_RECEIPTS = (
+    "token-factory-inference",
+    "opencode-stop-nemotron",
+    "opencode-tamper-escalation",
+    "tavily-evidence-path",
+    "codex-nebius-live",
+)
 
 
 def main() -> int:
@@ -89,10 +101,33 @@ def main() -> int:
             ),
         }
 
+    live = []
+    for receipt in sorted(EVIDENCE.glob("*.json")):
+        try:
+            body = json.loads(receipt.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        slug = receipt.stem.rsplit("-", 3)[0]
+        if slug not in _LIVE_RECEIPTS:
+            continue
+        live.append(
+            {
+                "receipt": f"evidence/{receipt.name}",
+                "date": body.get("observed_date"),
+                "provider": body.get("provider"),
+                "model": body.get("supervisor_model")
+                or (body.get("supervisor") or {}).get("model"),
+                "worker": body.get("worker_harness")
+                or (body.get("worker") or {}).get("harness"),
+            }
+        )
+    if live:
+        out["live_verified"] = live
+
     OUT.write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
     print(
         f"wrote {OUT.relative_to(ROOT)}: {met}/{len(fixtures)} arcs met, "
-        f"{claims} claims, {incidents} incidents"
+        f"{claims} claims, {incidents} incidents, {len(live)} live receipts"
     )
     return 0
 

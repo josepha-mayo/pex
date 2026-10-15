@@ -265,7 +265,7 @@ export function supervisorReviewAllowanceCopy(
   }
   if (!Number.isSafeInteger(allowance.limit) || allowance.limit < 1 || allowance.limit > 100_000
     || allowance.remaining !== Math.max(0, allowance.limit - allowance.reserved)) return unknown;
-  return `${allowance.remaining} of ${allowance.limit} review dispatches remaining at last refresh · ${allowance.reserved} reserved. Failed or uncertain attempts count. This is not a token or dollar balance.`;
+  return `${allowance.remaining} of ${allowance.limit} review dispatches remaining at last refresh · ${allowance.reserved} reserved. Failed or uncertain attempts count; deterministic reviews release their slot. This is not a token or dollar balance.`;
 }
 
 export const BUILT_IN_PET_IDS = [
