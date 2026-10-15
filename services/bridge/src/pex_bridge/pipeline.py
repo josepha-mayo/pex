@@ -18,6 +18,7 @@ from weakref import WeakValueDictionary
 from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
 from pex_protocol.capabilities import AdapterCapabilities
 from pex_protocol.context import (
+    ActionCheckRequest,
     ClaimVerificationRequest,
     ContextBundle,
     ContextHandoffRequest,
@@ -114,6 +115,7 @@ from pex_bridge.fingerprints import fingerprint_score_features
 from pex_bridge.handoff_views import handoff_bundle_receipt, public_intervention
 from pex_bridge.intent import PromptClass, lint_prompt
 from pex_bridge.mcp_auth import (
+    MCP_CHECK_ACTION_SCOPE,
     MCP_REPORT_PROGRESS_SCOPE,
     MCP_REQUEST_DECISION_SCOPE,
     MCP_VERIFY_CLAIM_SCOPE,
@@ -134,11 +136,13 @@ from pex_bridge.store import (
     EVENT_EFFECT_TERMINAL_STATES,
     EVENT_PROCESSING_TERMINAL_STATES,
     MAX_LIST_QUERY_LIMIT,
+    MCP_CHECK_ACTION_TOOL,
     MCP_REPORT_PROGRESS_TOOL,
     MCP_REQUEST_DECISION_TOOL,
     MCP_VERIFY_CLAIM_TOOL,
     ProjectIdentityBlockedError,
     Store,
+    action_check_request_fingerprint,
     claim_verification_request_fingerprint,
     event_semantic_hash,
     event_semantic_payload,
@@ -5661,6 +5665,206 @@ class Pipeline:
                 )
             else:
                 await self.bus.publish_committed("pet", pet)
+        return stored_response
+
+    async def check_intended_action(
+        self,
+        session: HarnessSession,
+        *,
+        principal: MCPPrincipal,
+        request: ActionCheckRequest,
+    ) -> dict:
+        """Lint one stated worker intent against the sealed goal ledger.
+
+        Deterministic and advisory: `clear` means the ledger scan found no
+        conflict — it is never authorization to proceed. The consultation is
+        journaled so "asked, was warned, proceeded anyway" is evidence.
+        """
+
+        if principal.kind != "session" or not principal.has_scope(MCP_CHECK_ACTION_SCOPE):
+            raise PermissionError("a session-scoped MCP principal is required")
+        live = await self.store.get_session_for_authority(
+            session.id,
+            require_goal_binding=True,
+        )
+        if live is None:
+            raise ValueError("session not found")
+        session = live
+        if not session.goal_id:
+            raise ValueError("session has no attached persistent goal")
+        goal = await self.store.get_goal_for_authority(session.goal_id)
+        if goal is None:
+            raise ValueError("session goal not found")
+        project_id = session.project_id or session.cwd
+        if not project_id:
+            raise ValueError("session has no project")
+        if (
+            principal.session_id != session.id
+            or principal.goal_id != goal.id
+            or principal.vendor_session_id != session.vendor_session_id
+            or principal.harness_type != session.harness_type
+            or not principal.project_id
+        ):
+            raise PermissionError("MCP principal does not match the live worker binding")
+        live_project_binding = await self.store.project_binding_for_authority(principal.project_id)
+        if live_project_binding != principal.project_binding:
+            raise PermissionError("MCP principal project binding changed")
+        if await self.store.has_goal_successor_for_authority(goal.id):
+            raise PermissionError("MCP principal goal has been superseded")
+
+        cleaned, _ = redact_text(request.intended_action)
+        statement = (cleaned or "").strip()
+        if not statement:
+            raise ValueError("intended action must not be empty")
+        if len(statement) > 4_000:
+            raise ValueError("redacted intended action exceeds its safety bound")
+        request_fingerprint = action_check_request_fingerprint(
+            principal_id=principal.principal_id,
+            tool=MCP_CHECK_ACTION_TOOL,
+            session_id=session.id,
+            goal_id=goal.id,
+            project_id=project_id,
+            intended_action=statement,
+        )
+        artifact_key = hashlib.sha256(
+            (
+                f"pex.mcp.check_action.v1\0{principal.principal_id}\0{request.idempotency_key}"
+            ).encode()
+        ).hexdigest()[:40]
+        observed_at = utcnow()
+        trigger = HarnessEvent(
+            event_id=f"mcp_check_action_event_{artifact_key}",
+            ts=observed_at,
+            harness_type=session.harness_type,
+            session_id=session.id,
+            project_id=project_id,
+            goal_id=goal.id,
+            event_type=EventType.USER_PROMPT,
+            phase=EventPhase.AFTER,
+            message_delta=statement,
+            metadata={
+                "source": "mcp_check_action",
+                "source_session_id": session.id,
+                "mcp_principal_id": principal.principal_id,
+            },
+        )
+
+        stored_decisions = await self.store.list_decisions_for_authority(
+            goal.id,
+            prioritize_active_human=True,
+        )
+        lint = lint_prompt(goal, statement, decisions=stored_decisions)
+        matched = list(lint.matched_constraints)[:24]
+        if lint.classification in {PromptClass.CONTRADICTION, PromptClass.OVERRIDE}:
+            verdict_label = "conflict"
+        elif lint.classification == PromptClass.AMBIGUOUS:
+            verdict_label = "uncertain"
+        else:
+            verdict_label = "clear"
+        suggest_decision = verdict_label != "clear"
+        if matched:
+            summary = (
+                f"Action check verdict: {verdict_label}. Intended action conflicts with "
+                f"the sealed goal ledger: {'; '.join(matched[:4])}."
+            )
+        elif verdict_label == "uncertain":
+            summary = (
+                "Action check verdict: uncertain. The stated intent is dangerously "
+                "ambiguous against the goal ledger; route it through a human decision."
+            )
+        else:
+            summary = (
+                "Action check verdict: clear. The deterministic ledger scan found no "
+                "conflict; absence of conflict is not authorization."
+            )
+        item = ContextItem(
+            id=f"action_check_{artifact_key}",
+            project_id=project_id,
+            goal_id=goal.id,
+            kind=ContextKind.RESULT,
+            content=summary[:4_000],
+            source_refs=[trigger.event_id],
+            provenance=SourceKind.PEX,
+            confidence=0.9 if verdict_label == "conflict" else 0.6,
+            relevance_tags=["action_check", verdict_label],
+            valid_from=observed_at,
+            sensitivity=Sensitivity.INTERNAL,
+            metadata={
+                "receipt_type": "mcp_action_check",
+                "source_session_id": session.id,
+                "status": "advisory",
+                "verified": False,
+                "verdict": verdict_label,
+                "classification": lint.classification.value,
+                "matched_constraints": matched,
+                "intended_action": statement[:1_000],
+            },
+        )
+        action = ProposedAction(
+            type=InterventionType.ANNOTATE,
+            session_id=session.id,
+            goal_id=goal.id,
+            payload={"context_id": item.id, "channel": "mcp"},
+            rationale="Persist a journaled worker action-preflight consultation.",
+            evidence=[f"event:{trigger.event_id}"],
+            confidence=item.confidence,
+            risk=RiskLevel.LOW,
+            reversible=True,
+        )
+        result = SupervisorResult(
+            action=action,
+            used_llm=False,
+            diagnosis="mcp_action_check",
+        )
+        policy_verdict = self.policy.decide(action)
+        if policy_verdict != PolicyVerdict.ALLOW:
+            raise PermissionError("local policy does not allow MCP action-check annotation")
+        intervention = self._intervention(
+            event=trigger,
+            session=session,
+            result=result,
+            verdict=policy_verdict,
+            outcome="annotated",
+            action_taken=action.type.value,
+        )
+        intervention.id = f"int_action_check_{artifact_key}"
+        intervention.created_at = observed_at
+        intervention.outcome = f"action_check_{verdict_label}"
+        intervention.metadata["mcp_principal_id"] = principal.principal_id
+        response = {
+            "ok": True,
+            "verified": False,
+            "status": verdict_label,
+            "classification": lint.classification.value,
+            "matched_constraints": matched,
+            "advisory": True,
+            "suggest_request_decision": suggest_decision,
+            "note": (
+                "Deterministic scan of the sealed goal ledger. 'clear' means no "
+                "conflict was detected — it is not authorization. Journal this "
+                "consultation is durable evidence either way."
+            ),
+            "item": item.model_dump(mode="json"),
+            "intervention": intervention.model_dump(mode="json"),
+        }
+        committed = await self.store.commit_action_check(
+            principal_id=principal.principal_id,
+            tool=MCP_CHECK_ACTION_TOOL,
+            request_id=request.idempotency_key,
+            request_fingerprint=request_fingerprint,
+            intended_action=statement,
+            verdict=verdict_label,
+            matched_constraints=matched,
+            event=trigger,
+            context_item=item,
+            intervention=intervention,
+            response=response,
+        )
+        stored_response = dict(committed["response"])
+        stored_response["mutation_id"] = committed["mutation_id"]
+        stored_response["replayed"] = not committed["created"]
+        if committed["created"]:
+            await self.bus.publish("intervention", stored_response["intervention"])
         return stored_response
 
     async def _annotate_speculative_stop(

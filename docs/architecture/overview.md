@@ -61,7 +61,7 @@ flowchart TB
 - Bounded intervention: a delivered correction the worker engages but does not
   resolve is a human decision (`ASK_HUMAN`, once), never an unbounded nudge loop.
 - AgentCore Runtime / Memory / CloudWatch are optional deployment integrations. They are not claimed as live until deployed.
-- The mounted MCP server is a scoped surface, not a backdoor: session-bound credentials carry `mcp:read` plus four write scopes (`pex.verify_claim`, `pex.report_progress`, `pex.request_decision`, `pex.handoff`), are bound to one session+goal+vendor triple, expire, and a superseded goal invalidates them; anonymous local callers are read-only.
+- The mounted MCP server is a scoped surface, not a backdoor: session-bound credentials carry `mcp:read` plus five write scopes (`pex.verify_claim`, `pex.report_progress`, `pex.request_decision`, `pex.handoff`, `pex.check_action`), are bound to one session+goal+vendor triple, expire, and a superseded goal invalidates them; anonymous local callers are read-only.
 - Recorded replays re-enter the same claim/verification path but are sealed: `replay: true` + `not_live_control: true` are immutable once set, and every live-worker mutation surface (messages, focus, synthetic events, credential issuance, handoff targeting, re-seeding) refuses them server-side with 409. Escalation rulings on replay sessions are still recorded durably — the human's answer is intent, not worker delivery.
 
 ## Strands usage

@@ -6,6 +6,7 @@ from typing import Annotated, Any, Literal
 from mcp.server.fastmcp import Context, FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 from pex_protocol.context import (
+    ActionCheckRequest,
     ClaimVerificationRequest,
     ContextHandoffRequest,
     HumanDecisionRequest,
@@ -16,6 +17,7 @@ from pydantic import Field
 
 from pex_bridge.context.mesh import build_bundle
 from pex_bridge.mcp_auth import (
+    MCP_CHECK_ACTION_SCOPE,
     MCP_HANDOFF_SCOPE,
     MCP_READ_SCOPE,
     MCP_REPORT_PROGRESS_SCOPE,
@@ -485,6 +487,55 @@ def build_mcp_server() -> tuple[FastMCP, Any]:
                 ),
             )
         return await state.pipeline.verify_reported_claim(
+            session,
+            principal=principal,
+            request=request,
+        )
+
+    @mcp.tool(name="pex.check_action", structured_output=True)
+    async def check_action(
+        session_id: _BoundedSessionId,
+        request: ActionCheckRequest | None = None,
+        ctx: Context = None,
+        action: Annotated[str | None, Field(min_length=1, max_length=4_000)] = None,
+        idempotency_key: Annotated[
+            str | None,
+            Field(
+                min_length=8,
+                max_length=128,
+                pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            ),
+        ] = None,
+    ) -> dict[str, Any]:
+        """Preflight an intended action against the sealed goal ledger before acting.
+
+        Deterministic advisory: 'clear' means no conflict was detected — not
+        authorization. A conflict lists the matched constraints and suggests
+        routing through pex.request_decision. The consultation is journaled as
+        durable evidence either way.
+
+        Pass the check as `request: {intended_action, idempotency_key}` or
+        flattened as top-level `action` (+ optional `idempotency_key`; a
+        stable key is derived from session + action when omitted).
+        """
+
+        state, session, _goal, principal = await _bound_state(
+            ctx,
+            session_id,
+            required_scope=MCP_CHECK_ACTION_SCOPE,
+        )
+        if request is None:
+            if not action:
+                raise ValueError("check_action needs request.intended_action or a top-level action")
+            request = ActionCheckRequest(
+                intended_action=action,
+                idempotency_key=(
+                    idempotency_key
+                    or "mcp-flat-"
+                    + hashlib.sha256(f"{session.id}\n{action}".encode()).hexdigest()[:32]
+                ),
+            )
+        return await state.pipeline.check_intended_action(
             session,
             principal=principal,
             request=request,

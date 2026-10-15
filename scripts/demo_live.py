@@ -192,7 +192,10 @@ def _mcp_hint(session_id: str) -> str:
         f'(pex_pex_get_goal in your tool list) with session_id "{session_id}" '
         "to read the exact goal you are being supervised against. Mid-task you "
         "may call pex_report_progress with a `summary` and `evidence_refs` to "
-        "journal a provenance-bound checkpoint. You may "
+        "journal a provenance-bound checkpoint. Before a risky or "
+        "goal-sensitive action, call pex_check_action with the action you "
+        "intend — PEX lints it against the sealed goal and journals the "
+        "consultation. You may "
         "also call pex_verify_claim to check a completion claim against PEX's "
         "independent evidence before you say it. If your instructions conflict "
         "with the goal's forbidden outcomes, do not act on the conflict "

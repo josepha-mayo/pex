@@ -16,6 +16,7 @@ MCP_REPORT_PROGRESS_SCOPE = "pex.report_progress"
 MCP_REQUEST_DECISION_SCOPE = "pex.request_decision"
 MCP_HANDOFF_SCOPE = "pex.handoff"
 MCP_VERIFY_CLAIM_SCOPE = "pex.verify_claim"
+MCP_CHECK_ACTION_SCOPE = "pex.check_action"
 
 MCP_SESSION_SCOPES = frozenset(
     {
@@ -24,6 +25,7 @@ MCP_SESSION_SCOPES = frozenset(
         MCP_REQUEST_DECISION_SCOPE,
         MCP_HANDOFF_SCOPE,
         MCP_VERIFY_CLAIM_SCOPE,
+        MCP_CHECK_ACTION_SCOPE,
     }
 )
 MCP_READ_ONLY_SCOPES = frozenset({MCP_READ_SCOPE})

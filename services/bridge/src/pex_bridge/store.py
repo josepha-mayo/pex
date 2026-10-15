@@ -1338,6 +1338,8 @@ MAX_CREATED_HUMAN_DECISIONS_PER_SESSION = 128
 MAX_FINGERPRINT_COHORT_EVENTS = 500
 MCP_VERIFY_CLAIM_TOOL = "pex.verify_claim"
 MCP_CLAIM_VERIFY_FINGERPRINT_SCHEMA = "pex.mcp.verify_claim.v1"
+MCP_CHECK_ACTION_TOOL = "pex.check_action"
+MCP_ACTION_CHECK_FINGERPRINT_SCHEMA = "pex.mcp.check_action.v1"
 _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 _ACCEPTANCE_BASELINE_SCHEMA = "pex.acceptance-baseline.v1"
 MAX_ACCEPTANCE_BASELINE_FILES = 1024
@@ -4496,6 +4498,46 @@ def claim_verification_request_fingerprint(
         "goal_id": goal_id,
         "project": _project_key(project_id),
         "claim": claim,
+    }
+    return hashlib.sha256(_canonical_json(payload).encode("utf-8")).hexdigest()
+
+
+def action_check_request_fingerprint(
+    *,
+    principal_id: str,
+    tool: str,
+    session_id: str,
+    goal_id: str,
+    project_id: str,
+    intended_action: str,
+) -> str:
+    """Hash one principal- and goal-bound action preflight request."""
+
+    if tool != MCP_CHECK_ACTION_TOOL:
+        raise ValueError("unsupported MCP mutation tool")
+    _validate_store_id(principal_id, label="MCP principal id")
+    _validate_store_id(session_id, label="action check session id")
+    _validate_store_id(goal_id, label="action check goal id")
+    if (
+        not isinstance(project_id, str)
+        or not project_id.strip()
+        or len(project_id) > MAX_PROJECT_ID_LENGTH
+    ):
+        raise ValueError("action check project id is invalid")
+    if (
+        not isinstance(intended_action, str)
+        or not intended_action.strip()
+        or len(intended_action) > 4_000
+    ):
+        raise ValueError("intended action statement is invalid")
+    payload = {
+        "schema": MCP_ACTION_CHECK_FINGERPRINT_SCHEMA,
+        "principal_id": principal_id,
+        "tool": tool,
+        "session_id": session_id,
+        "goal_id": goal_id,
+        "project": _project_key(project_id),
+        "intended_action": intended_action,
     }
     return hashlib.sha256(_canonical_json(payload).encode("utf-8")).hexdigest()
 
@@ -15187,6 +15229,268 @@ class Store:
             except aiosqlite.IntegrityError as exc:
                 await transaction.rollback()
                 raise ValueError("MCP progress artifact id collision") from exc
+            except Exception:
+                await transaction.rollback()
+                raise
+        await self._try_sync_intervention_audit()
+        return {
+            "created": True,
+            "mutation_id": mutation_id,
+            "event_id": event.event_id,
+            "context_id": context_item.id,
+            "intervention_id": intervention.id,
+            "response": stored_response,
+        }
+
+    async def commit_action_check(
+        self,
+        *,
+        principal_id: str,
+        tool: str,
+        request_id: str,
+        request_fingerprint: str,
+        intended_action: str,
+        verdict: str,
+        matched_constraints: list[str] | tuple[str, ...],
+        event: HarnessEvent,
+        context_item: ContextItem,
+        intervention: Intervention,
+        response: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Commit one worker action-preflight consultation and its replay receipt.
+
+        The consultation is journaled deliberately: a worker that asked, was
+        told the action conflicts with the sealed ledger, and proceeded anyway
+        is materially different evidence from one that never checked.
+        """
+
+        _validate_store_id(principal_id, label="MCP principal id")
+        _validate_store_id(event.event_id, label="action check event id")
+        _validate_store_id(context_item.id, label="action check context id")
+        if tool != MCP_CHECK_ACTION_TOOL:
+            raise ValueError("unsupported MCP mutation tool")
+        if not isinstance(request_id, str) or _MCP_REQUEST_ID_PATTERN.fullmatch(request_id) is None:
+            raise ValueError("MCP mutation request id is invalid")
+        if (
+            not isinstance(request_fingerprint, str)
+            or _SHA256_PATTERN.fullmatch(request_fingerprint) is None
+        ):
+            raise ValueError("MCP mutation request fingerprint is invalid")
+        if (
+            not isinstance(intended_action, str)
+            or not intended_action.strip()
+            or len(intended_action) > 4_000
+        ):
+            raise ValueError("intended action statement is invalid")
+        if verdict not in {"clear", "conflict", "uncertain"}:
+            raise ValueError("action check verdict is invalid")
+        matched = [str(item)[:1_000] for item in list(matched_constraints)[:24]]
+        if verdict == "conflict" and not matched:
+            raise ValueError("conflict verdict requires matched constraints")
+        if verdict == "clear" and matched:
+            raise ValueError("clear verdict cannot carry matched constraints")
+        if not isinstance(response, dict):
+            raise ValueError("MCP mutation response must be an object")
+        if event.message_delta != intended_action:
+            raise ValueError("action check event and intended action differ")
+        if context_item.kind != ContextKind.RESULT:
+            raise ValueError("action check context must be a result")
+        if context_item.provenance != SourceKind.PEX:
+            raise ValueError("action check receipt must have PEX provenance")
+        if context_item.sensitivity != Sensitivity.INTERNAL:
+            raise ValueError("action check context must have internal sensitivity")
+        if context_item.metadata.get("verified") is not False:
+            raise ValueError("action check receipt must not claim verification")
+        if context_item.metadata.get("verdict") != verdict:
+            raise ValueError("action check context verdict mismatch")
+        if context_item.metadata.get("source_session_id") != event.session_id:
+            raise ValueError("action check context reporter identity mismatch")
+        if _time_key(event.ts) != _time_key(context_item.valid_from):
+            raise ValueError("action check event and context timestamps differ")
+        if intervention.session_id != event.session_id:
+            raise ValueError("action check intervention reporter identity mismatch")
+        if intervention.goal_id != event.goal_id:
+            raise ValueError("action check intervention goal identity mismatch")
+        if intervention.proposed_action.type != InterventionType.ANNOTATE:
+            raise ValueError("action check intervention must annotate")
+        if intervention.proposed_action.payload.get("context_id") != context_item.id:
+            raise ValueError("action check intervention context identity mismatch")
+
+        mutation_key = {
+            "principal_id": principal_id,
+            "tool": tool,
+            "request_id": request_id,
+        }
+        mutation_id = (
+            "mcpmut_"
+            + hashlib.sha256(_canonical_json(mutation_key).encode("utf-8")).hexdigest()[:40]
+        )
+        supplied_metadata = intervention.metadata or {}
+        for key, expected in (
+            ("mcp_principal_id", principal_id),
+            ("mcp_mutation_id", mutation_id),
+            ("action_check_context_id", context_item.id),
+            ("trigger_event_id", event.event_id),
+        ):
+            supplied = supplied_metadata.get(key)
+            if supplied is not None and supplied != expected:
+                raise ValueError(f"action check intervention {key} mismatch")
+
+        if response.get("ok") is not True or response.get("verified") is not False:
+            raise ValueError("action check response honesty labels are invalid")
+        if _canonical_json(response.get("item")) != _canonical_json(
+            context_item.model_dump(mode="json")
+        ):
+            raise ValueError("action check response does not carry the committed receipt")
+        if _canonical_json(response.get("intervention")) != _canonical_json(
+            intervention.model_dump(mode="json")
+        ):
+            raise ValueError("action check response does not carry the committed intervention")
+
+        now = utcnow()
+        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
+            await _configure_connection(transaction)
+            await transaction.execute("BEGIN IMMEDIATE")
+            try:
+                principal, session, goal, goal_binding = await _load_active_mcp_principal_authority(
+                    transaction,
+                    principal_id,
+                    checked_at=now,
+                    required_scope=tool,
+                )
+                project_id = _session_project(session)
+                if event.session_id != session.id or event.harness_type != session.harness_type:
+                    raise ValueError("action check event reporter identity mismatch")
+                if event.goal_id != goal.id:
+                    raise ValueError("action check event lacks the current goal binding")
+                if event.project_id is None or not await _same_live_project_binding(
+                    transaction,
+                    event.project_id,
+                    project_id,
+                ):
+                    raise ValueError("action check event project binding mismatch")
+                if context_item.goal_id != goal.id:
+                    raise ValueError("action check context goal binding mismatch")
+                if not await _same_live_project_binding(
+                    transaction,
+                    context_item.project_id,
+                    project_id,
+                ):
+                    raise ValueError("action check context project binding mismatch")
+
+                expected_fingerprint = action_check_request_fingerprint(
+                    principal_id=principal_id,
+                    tool=tool,
+                    session_id=session.id,
+                    goal_id=goal.id,
+                    project_id=project_id,
+                    intended_action=intended_action,
+                )
+                if not hmac.compare_digest(request_fingerprint, expected_fingerprint):
+                    raise ValueError("MCP mutation request fingerprint mismatch")
+
+                mutation_cursor = await transaction.execute(
+                    "SELECT request_fingerprint, response_json, event_id, context_id, "
+                    "intervention_id, mutation_id FROM mcp_mutations "
+                    "WHERE principal_id = ? AND tool = ? AND request_id = ?",
+                    (principal_id, tool, request_id),
+                )
+                mutation_row = await mutation_cursor.fetchone()
+                if mutation_row is not None:
+                    if not hmac.compare_digest(
+                        str(mutation_row["request_fingerprint"]),
+                        request_fingerprint,
+                    ):
+                        raise ValueError("MCP mutation request id was reused with new content")
+                    stored_response = _strict_json_loads(str(mutation_row["response_json"]))
+                    if not isinstance(stored_response, dict):
+                        raise RuntimeError("stored MCP mutation response is not an object")
+                    await transaction.commit()
+                    return {
+                        "created": False,
+                        "mutation_id": str(mutation_row["mutation_id"]),
+                        "event_id": str(mutation_row["event_id"]),
+                        "context_id": str(mutation_row["context_id"]),
+                        "intervention_id": str(mutation_row["intervention_id"]),
+                        "response": stored_response,
+                    }
+
+                intervention.metadata.update(
+                    {
+                        "mcp_principal_id": principal_id,
+                        "mcp_mutation_id": mutation_id,
+                        "action_check_context_id": context_item.id,
+                        "trigger_event_id": event.event_id,
+                    }
+                )
+                stored_response = dict(response)
+                response_json = _canonical_json(stored_response)
+                if len(response_json.encode("utf-8")) > 1_000_000:
+                    raise ValueError("MCP mutation response is too large")
+                audit_json = _canonical_json(
+                    self._intervention_audit_record(
+                        intervention,
+                        "mcp_action_check",
+                    )
+                )
+                created_at = _utc_iso(now)
+                receipt = {
+                    "mutation_id": mutation_id,
+                    "principal_id": principal_id,
+                    "tool": tool,
+                    "request_id": request_id,
+                    "request_fingerprint": request_fingerprint,
+                    "event_id": event.event_id,
+                    "context_id": context_item.id,
+                    "intervention_id": intervention.id,
+                    "created_at": created_at,
+                    "response": stored_response,
+                }
+                await transaction.execute(
+                    "INSERT INTO events(event_id, session_id, ts, json) VALUES (?, ?, ?, ?)",
+                    (event.event_id, event.session_id, event.ts.isoformat(), _dump(event)),
+                )
+                context_binding = await _binding_for_context_item(transaction, context_item)
+                await transaction.execute(
+                    "INSERT INTO context_items(id, project_id, project_binding, goal_id, json) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (
+                        context_item.id,
+                        context_item.project_id,
+                        context_binding.project_binding,
+                        context_item.goal_id,
+                        _dump(context_item),
+                    ),
+                )
+                await _insert_bound_intervention(transaction, intervention)
+                await transaction.execute(
+                    "INSERT INTO intervention_audit(intervention_id, record_type, json) "
+                    "VALUES (?, ?, ?)",
+                    (intervention.id, "mcp_action_check", audit_json),
+                )
+                await transaction.execute(
+                    "INSERT INTO mcp_mutations("
+                    "mutation_id, principal_id, tool, request_id, request_fingerprint, "
+                    "event_id, context_id, intervention_id, response_json, created_at, json"
+                    ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        mutation_id,
+                        principal_id,
+                        tool,
+                        request_id,
+                        request_fingerprint,
+                        event.event_id,
+                        context_item.id,
+                        intervention.id,
+                        response_json,
+                        created_at,
+                        _canonical_json(receipt),
+                    ),
+                )
+                await transaction.commit()
+            except aiosqlite.IntegrityError as exc:
+                await transaction.rollback()
+                raise ValueError("MCP action check artifact id collision") from exc
             except Exception:
                 await transaction.rollback()
                 raise

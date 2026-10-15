@@ -39,6 +39,7 @@ MCP_TOOLS = {
     "pex.request_decision",
     "pex.handoff",
     "pex.verify_claim",
+    "pex.check_action",
 }
 _GOAL_CONTROL_SEQUENCE = count(1)
 

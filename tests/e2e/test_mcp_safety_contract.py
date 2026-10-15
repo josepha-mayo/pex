@@ -20,6 +20,7 @@ EXPECTED_TOOL_FIELDS = {
     "pex.request_decision": {"session_id", "request"},
     "pex.handoff": {"session_id", "request"},
     "pex.verify_claim": {"session_id", "request"},
+    "pex.check_action": {"session_id", "request"},
 }
 
 

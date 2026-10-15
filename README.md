@@ -793,11 +793,17 @@ server at `/mcp/` — the supervision state is itself an agent tool surface:
 
 `pex.get_goal` · `pex.get_relevant_context` · `pex.get_project_state` ·
 `pex.find_agent_with_context` · `pex.report_progress` · `pex.request_decision` ·
-`pex.handoff` · `pex.verify_claim`
+`pex.handoff` · `pex.verify_claim` · `pex.check_action`
 
 A worker (or any MCP client) holding a session credential can read its own
-goal, request a human decision, verify a claim before making it, or hand the
-goal context to a sibling — supervision as a tool the agent calls, not a
+goal, request a human decision, verify a claim before making it, hand the
+goal context to a sibling, or **preflight an intended action** — `pex.check_action`
+lints what the worker is about to do against the sealed goal ledger
+(constraints, forbidden outcomes, non-goals, active rulings) and journals the
+consultation as durable evidence: "asked, was warned, proceeded anyway" reads
+very differently from "never asked". The verdict is deterministic and
+advisory — `clear` means no ledger conflict was detected, never
+authorization — supervision as a tool the agent calls, not a
 channel it can't see. Credentials are minted per session via
 `POST /v1/sessions/{id}/mcp-credential` (operator-gated, TTL'd,
 scope-limited: a worker's token can reach only its own session's surfaces;

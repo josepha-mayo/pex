@@ -62,6 +62,26 @@ class ClaimVerificationRequest(BaseModel):
     claim: str = Field(min_length=1, max_length=4_000)
 
 
+class ActionCheckRequest(BaseModel):
+    """Idempotent, bounded preflight check of one intended worker action.
+
+    The worker describes what it is about to do; PEX lints the intent against
+    the sealed goal ledger (constraints, forbidden outcomes, non-goals, and
+    active human rulings) and journals the consultation. The verdict is
+    deterministic and advisory — `clear` means no ledger conflict was
+    detected, never authorization.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    idempotency_key: str = Field(
+        min_length=8,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+    )
+    intended_action: str = Field(min_length=1, max_length=4_000)
+
+
 class HumanDecisionRequest(BaseModel):
     """Idempotent, bounded request to route one judgment to the human."""
 
