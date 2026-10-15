@@ -198,7 +198,10 @@ all callable in-page) and a scoped MCP tool surface at `/mcp/`.
   re-verified 2026-10-15
   ([receipt](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.json) —
   [readable form](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.html) with the
-  same JSON embedded).
+  same JSON embedded). Every committed artifact is catalogued with its
+  re-verify command in [docs/demo/evidence/INDEX.md](demo/evidence/INDEX.md);
+  `uv run python scripts/verify_pack.py docs/demo/evidence` re-checks all
+  eleven committed evidence packs in one sweep.
 - **Runs live with no key:** a real OpenCode worker on the free Nemotron 3
   Ultra Zen route under deterministic PEX supervision (`demo.py --live`);
   verified locally on 2026-10-04 with OpenCode 1.18.32. Free routes are

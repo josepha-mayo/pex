@@ -15,6 +15,10 @@ posture. Worker input itself still goes through `opencode attach` or the
 OpenCode server's `prompt_async` route below, which is the product's
 documented OpenCode path either way.
 
+Every receipt this runbook cites lives in [`docs/demo/evidence/`](./evidence/)
+— [`INDEX.md`](./evidence/INDEX.md) catalogues each artifact with the claim it
+backs and the command that re-verifies it.
+
 ## Prerequisites
 
 Run every command below **from the repository root**.
