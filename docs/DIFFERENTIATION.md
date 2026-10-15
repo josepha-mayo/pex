@@ -63,11 +63,11 @@ continuity — where a receipt exists, the row links the committed artifact.
 - A live goal handoff delivered a content-addressed context bundle into a sibling
   OpenCode session (`handoff_injected`) and honestly reported
   `awaiting_target_evidence` rather than claiming assimilation.
-- `scripts/eval_replays.py` scores all seventeen shipped replay fixtures against
-  their declared supervision arcs in CI — 17/17, including stale-evidence,
-  runner-config-injection, worker-dispute, ruling-continuity, and a
-  ruling-compliance positive control (the ledger verifies compliant work, it
-  does not only punish violations).
+- `scripts/eval_replays.py` scores all eighteen shipped replay fixtures against
+  their declared supervision arcs in CI — 18/18, including stale-evidence,
+  runner-config-injection, worker-dispute, progress-signal-vs-proof,
+  ruling-continuity, and a ruling-compliance positive control (the ledger
+  verifies compliant work, it does not only punish violations).
 
 ## What PEX refuses to fake
 

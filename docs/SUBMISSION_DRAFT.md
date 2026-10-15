@@ -131,11 +131,11 @@ git clone https://github.com/josepha-mayo/pex && cd pex
 npm install --prefix apps/desktop    # once — the UI bundle
 uv run python scripts/demo.py        # bridge + UI, no keys needed
 # open http://127.0.0.1:1420 → "Recorded replays" → run worker_escalation_eval
-# or any of the 17 fixtures; each replays a recorded trajectory through the
+# or any of the 18 fixtures; each replays a recorded trajectory through the
 # real adjudication pipeline — four were exported from real live worker
 # sessions — and shows its verdict.
 uv run python scripts/eval_replays.py   # second terminal, while demo.py runs;
-#                                        scores all 17 (prints a table;
+#                                        scores all 18 (prints a table;
 #                                        --json/--html write a receipt file)
 # With a Token Factory key:
 NEBIUS_API_KEY=... uv run python scripts/check_token_factory.py --infer
@@ -153,7 +153,7 @@ here was built during it. Substantially new since the window opened:
   escalation captured live into `worker_escalation_eval`.
 - Durable human rulings: journaled rulings distinct from editable goal
   text, surviving worker termination, propagating to sibling workers.
-- The deterministic replay system: 17-fixture suite, evaluator, replay
+- The deterministic replay system: 18-fixture suite, evaluator, replay
   isolation (`replay: true` + `not_live_control: true` enforced server-side).
 - Evidence packs + offline verification (`scripts/verify_pack.py`).
 - The desktop supervision surface (fixtures rail, capabilities panel,

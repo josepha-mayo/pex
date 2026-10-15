@@ -194,10 +194,10 @@ all callable in-page) and a scoped MCP tool surface at `/mcp/`.
   (latest full run 2026-10-13, 0 failures; collection re-verified
   2026-10-15 — [receipt](../evidence/pytest-collect-2026-10-15.json)).
   `uv run python scripts/eval_replays.py` scores the
-  shipped fixture suite against its declared supervision arcs — 17/17,
-  re-verified 2026-10-14
-  ([receipt](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-14.json) —
-  [readable form](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-14.html) with the
+  shipped fixture suite against its declared supervision arcs — 18/18,
+  re-verified 2026-10-15
+  ([receipt](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.json) —
+  [readable form](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.html) with the
   same JSON embedded).
 - **Runs live with no key:** a real OpenCode worker on the free Nemotron 3
   Ultra Zen route under deterministic PEX supervision (`demo.py --live`);

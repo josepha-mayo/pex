@@ -209,9 +209,9 @@ uv run python scripts/eval_replays.py --json out.json   # needs the demo bridge
 Replays every fixture through the real pipeline and scores each verification
 report against the arc it exists to demonstrate — nonzero exit if a tamper
 scenario ends verified without its integrity incident, or a no-evidence
-scenario ends supported. Latest receipt: `docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-14.json`
-(17/17 arcs) — also as a self-contained readable page,
-`FIXTURE_SUITE_EVAL_2026-10-14.html`, with the same JSON embedded.
+scenario ends supported. Latest receipt: `docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.json`
+(18/18 arcs) — also as a self-contained readable page,
+`FIXTURE_SUITE_EVAL_2026-10-15.html`, with the same JSON embedded.
 `--repeat N` replays every fixture N times and fails on any
 verdict, completion, or normalized-evidence drift — adjudication is
 deterministic on a recorded trajectory. `--html out.html` renders the

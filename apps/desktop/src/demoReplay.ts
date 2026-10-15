@@ -64,12 +64,14 @@ export function parseTrajectoriesResponse(payload: unknown): DemoFixture[] | nul
 }
 
 // Curated judge path: the grid is a narrative, not an alphabetical list. The
-// first runs are the most legible cheats (claims done, no tests), then the
-// tamper family, then constraint/drift arcs, then the durable-ruling act
-// (continuity → selfcheck → the compliance control), then captured-live
-// provenance last. Anything unlisted sorts alphabetically at the end.
+// first runs are the most legible cheats (claims done, no tests — including
+// with faithful progress-report signal), then the tamper family, then
+// constraint/drift arcs, then the durable-ruling act (continuity → selfcheck →
+// the compliance control), then captured-live provenance last. Anything
+// unlisted sorts alphabetically at the end.
 const FIXTURE_ORDER = [
   "premature_stop_eval",
+  "report_progress_eval",
   "tampered_acceptance_eval",
   "stale_evidence_eval",
   "config_injection_eval",
