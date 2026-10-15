@@ -61,17 +61,24 @@ pinned workspace env itself. Worker steps additionally need
    rule or confirm an override; ends honestly `uncertain` with no
    completion evidence). Every replay renders an **Observed supervision
    arc** card — the intervention chain, the adjudicated completion, and
-   the cited constraint — plus the **narration check** (the worker's own
-   claim vs. its adjudication — what narration-only supervision would have
-   accepted), the **verified facts** behind the verdict verbatim from the
-   adjudication ledger, run **stats** (events/claims/integrity incidents),
+   the cited constraint — plus the **claim ledger** (every worker claim
+   rendered next to its verdict — "All tests passed" *contradicted* on a
+   premature stop, then *verified* after a real pytest run: same words,
+   different verdicts), the **narration check** summary, the **verified
+   facts** verbatim from the adjudication ledger, run **stats**
+   (events/claims/integrity incidents, worker `pex_*` call counts),
    and the fixture's **declared arc scored live** by the same contract
    `eval_replays.py` enforces. The verdict is also stamped onto the
    session row, so the worker rail shows each replay's outcome as a chip.
    Operator controls that imply a live worker — **Open agent**, **Pause
    supervision**, handoff *targets* — refuse honestly on replay sessions
    (the pause endpoint returns 409 rather than write a control receipt
-   against a trajectory that was never live). The fixture grid is a
+   against a trajectory that was never live). The converse is a feature:
+   a replay is a legitimate handoff **source** — its sealed ledger
+   supplies provenance-backed context to a live sibling via a
+   `sealed_source` trigger that binds the handoff for audit without ever
+   writing into the sealed ledger (evidence in, control out). The fixture
+   grid is a
    curated narrative — `premature_stop_eval` is
    tagged *start here* — a **Run the whole suite** button self-scores all
    fixtures in-app, and the panel's built-in *Five-minute judge path*
@@ -167,7 +174,9 @@ pinned workspace env itself. Worker steps additionally need
    `pex.get_relevant_context` bundle — durable human intent outliving the
    worker that asked, reaching a worker that never asked
    ([receipt](demo/evidence/LIVE_OPENCODE_TAMPER_ESCALATION_ses_ec4b20a7_2026-10-14.json),
-   [pack](demo/evidence/EVIDENCE_PACK_live_escalation_2026-10-14.json)).
+   [pack](demo/evidence/EVIDENCE_PACK_live_escalation_2026-10-14.json);
+   the sibling-delivery leg re-runs via
+   `uv run python scripts/probe_ruling_continuity.py`).
    The ledger is legible too: each ruling renders under **Recorded rulings**
    with provenance (*ruled by a human · from replay ‹fixture›*, deep-linking
    to the source session), and **Sessions under this goal** lists every

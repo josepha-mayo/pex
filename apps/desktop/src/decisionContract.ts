@@ -119,7 +119,24 @@ export function humanDecisionPresentation(
   };
 }
 
+function conflictedDecisionMessage(error: unknown): string | null {
+  if (!(error instanceof BridgeRequestError) || !error.detail) return null;
+  const detail = error.detail;
+  const text = [
+    typeof detail.message === "string" ? detail.message : "",
+    typeof detail.detail === "string" ? detail.detail : "",
+  ].join(" ");
+  if (/already (answered|resolved|recorded)/i.test(text)) {
+    return "A different answer was already recorded for this decision — PEX will not apply a second one. Refresh to see the recorded ruling.";
+  }
+  return null;
+}
+
 export function humanDecisionFailurePresentation(error: unknown) {
+  const conflicted = conflictedDecisionMessage(error);
+  if (conflicted) {
+    return { state: "error" as const, deliveryStatus: "failed" as const, message: conflicted };
+  }
   const status = decisionDeliveryStatus(error) ?? "failed";
   if (status === "failed" && decisionDeliveryCode(error) === "session_terminal") {
     return {
@@ -145,6 +162,7 @@ export function prepareFreeformDecision(
   value: string,
   blocked: boolean,
 ): { decision: string; nextValue: "" } | null {
-  if (blocked || !value || value !== value.trim()) return null;
-  return { decision: value, nextValue: "" };
+  const decision = value.trim();
+  if (blocked || !decision) return null;
+  return { decision, nextValue: "" };
 }

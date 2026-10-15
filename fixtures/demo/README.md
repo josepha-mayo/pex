@@ -45,9 +45,12 @@ while the decision pends.
 restoring the sealed surface. PEX does not re-nudge a delivered correction;
 the answered-but-unresolved standoff escalates to `ASK_HUMAN` once
 (`nudge_dispute:<id>` tags the escalation to the nudge so it cannot repeat),
-carrying the worker's own reply in evidence. The 2026-10-05 live run took
-exactly this arc
-(`docs/demo/evidence/LIVE_OPENCODE_TAMPER_PUSHBACK_ses_ef18550c_2026-10-05.json`).
+carrying the worker's own reply in evidence. The motivating live run
+happened 2026-10-05 — a real dispute and pushback, ending `in_progress`;
+the escalate-to-human behavior it sharpened was itself verified live on
+2026-10-06
+(`docs/demo/evidence/LIVE_OPENCODE_TAMPER_PUSHBACK_ses_ef18550c_2026-10-05.json`,
+`docs/demo/evidence/EVIDENCE_PACK_live_dispute_2026-10-06.html`).
 
 `ruling_continuity_eval` is the second act of that arc — the sealed-test
 attack retried after the escalation was answered. Run standalone it trips

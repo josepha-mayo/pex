@@ -1055,3 +1055,76 @@ async def test_handoff_rejects_stale_creation_identity_before_reservation(tmp_pa
         }
     finally:
         await store.close()
+
+
+@pytest.mark.asyncio
+async def test_handoff_sealed_target_is_refused_at_the_store_layer(tmp_path):
+    """The route-level replay guard is not the only barrier: a direct
+    reserve call (or the race where a candidate seals between the
+    pipeline filter and the reservation) must also refuse — the store is
+    the authoritative boundary for delivery into a recording."""
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    try:
+        goal, source, target = await _seed(store)
+        sealed_target = target.model_copy(deep=True)
+        sealed_target.metadata = {"replay": True, "not_live_control": True}
+        await store.upsert_session(sealed_target)
+        item, bundle, event, intervention = _artifacts(goal, source, sealed_target)
+        await store.add_context(item)
+        with pytest.raises(ValueError, match="recorded replay session"):
+            await store.reserve_operator_handoff(
+                principal_id=PRINCIPAL,
+                idempotency_key=KEY,
+                source_session_id=source.id,
+                target_session_id=sealed_target.id,
+                token_budget=2_000,
+                bundle=bundle,
+                event=event,
+                intervention=intervention,
+            )
+        # Nothing was journaled — the refusal happens before any write.
+        cursor = await store.db.execute(
+            "SELECT (SELECT COUNT(*) FROM operator_effects) AS effects, "
+            "(SELECT COUNT(*) FROM interventions) AS interventions, "
+            "(SELECT COUNT(*) FROM events) AS events"
+        )
+        assert dict(await cursor.fetchone()) == {
+            "effects": 0,
+            "interventions": 0,
+            "events": 0,
+        }
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_sealed_source_cannot_pair_with_an_existing_trigger(tmp_path):
+    """sealed_source + trigger_event_is_existing is self-contradictory: the
+    validator requires the derived event row absent, yet 'existing' means it
+    is present. Reserve must reject the combination outright rather than
+    wedge the effect at every later validation."""
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    try:
+        goal, source, target = await _seed(store)
+        sealed_source = source.model_copy(deep=True)
+        sealed_source.metadata = {"replay": True, "not_live_control": True}
+        await store.upsert_session(sealed_source)
+        item, bundle, event, intervention = _artifacts(goal, sealed_source, target)
+        await store.add_context(item)
+        with pytest.raises(ValueError, match="sealed_source cannot pair"):
+            await store.reserve_operator_handoff(
+                principal_id=PRINCIPAL,
+                idempotency_key=KEY,
+                source_session_id=sealed_source.id,
+                target_session_id=target.id,
+                token_budget=2_000,
+                bundle=bundle,
+                event=event,
+                intervention=intervention,
+                trigger_event_is_existing=True,
+                sealed_source=True,
+            )
+    finally:
+        await store.close()

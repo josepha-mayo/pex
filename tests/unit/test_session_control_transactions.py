@@ -928,6 +928,95 @@ async def test_replay_sessions_refuse_delivery_bearing_decisions(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_observe_only_sessions_refuse_the_same_live_control_surfaces(tmp_path):
+    """observe_only is a first-class non-live seal on its own — a session
+    flagged observe_only without not_live_control must still refuse
+    messages, focus, synthetic events, and detach rewrites, and no upsert
+    may silently strip the flag."""
+    settings = Settings(require_auth=True, home=tmp_path, autonomy="manage")
+    store = Store(tmp_path / "pex.sqlite")
+    adapters = AdapterRegistry()
+    bus = EventBus()
+    state.settings = settings
+    state.store = store
+    state.adapters = adapters
+    state.bus = bus
+    state.pipeline = Pipeline(store, adapters, bus, settings)
+    state.token = "observe-only-operator-token-001"
+    state.pet_settings = PetSettings()
+    state.pet_path = tmp_path / "pet.json"
+    await store.connect()
+    try:
+        await _register_identity(store, "/work/session-control-observe")
+        observed = adapters.synthetic.seed_session(
+            vendor_id="observe-only-run",
+            project_id=PROJECT_ID,
+            goal_id="goal-a",
+        )
+        observed.metadata["observe_only"] = True
+        await _seed(store, session=observed)
+
+        transport = ASGITransport(app=create_app())
+        headers = {"Authorization": f"Bearer {state.token}"}
+        async with AsyncClient(transport=transport, base_url="http://127.0.0.1") as client:
+            message = await client.post(
+                f"/v1/sessions/{observed.id}/message",
+                headers=headers,
+                json={"idempotency_key": "observe-message-0001", "text": "ping"},
+            )
+            assert message.status_code == 409, message.text
+
+            focus = await client.post(
+                f"/v1/sessions/{observed.id}/focus",
+                headers=headers,
+            )
+            assert focus.status_code == 409, focus.text
+
+            event = await client.post(
+                "/v1/synthetic/events",
+                headers=headers,
+                json={
+                    "session_id": observed.id,
+                    "event_type": "message_delta",
+                    "message": "fabricated narration",
+                },
+            )
+            assert event.status_code == 409, event.text
+
+            reseed = await client.post(
+                "/v1/synthetic/sessions",
+                headers=headers,
+                json={"vendor_id": "observe-only-run"},
+            )
+            assert reseed.status_code == 409, reseed.text
+
+        # Store-level backstops: no upsert may drop observe_only, and the
+        # detach path refuses to rewrite the sealed row's status.
+        stored = await store.get_session_for_authority(observed.id)
+        assert stored is not None
+        stripped = stored.model_copy(deep=True)
+        stripped.metadata = {}
+        stripped.last_activity = utcnow() + timedelta(seconds=1)
+        with pytest.raises(ValueError, match="cannot unseal"):
+            await store.upsert_session(stripped)
+
+        revision_cursor = await store.db.execute(
+            "SELECT revision, discovery_generation FROM sessions WHERE id = ?",
+            (observed.id,),
+        )
+        row = await revision_cursor.fetchone()
+        detached = await store.mark_session_detached(
+            observed.id,
+            expected_revision=int(row["revision"]),
+            expected_discovery_generation=row["discovery_generation"],
+        )
+        assert detached["granted"] is False
+        assert detached["reason"] == "session_not_live_control"
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
 async def test_attach_cannot_cross_typed_project_rebinding(tmp_path):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()

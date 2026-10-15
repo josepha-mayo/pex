@@ -201,6 +201,14 @@ export function cursorRejectionReasonCopy(reason: string): string {
 export function mergeSessionObservation(previous: SessionRow | undefined, incoming: SessionRow): SessionRow {
   if (!previous || previous.id !== incoming.id) return incoming;
   const merged = { ...previous, ...incoming };
+  // Projections like worker_pex_calls are minted on the /v1/sessions read
+  // path only — a /v1/pet row never carries them, so wholesale metadata
+  // replace would flicker the badge off between polls. Preserve exactly
+  // those derived keys; everything else still replaces wholesale so keys
+  // the server deliberately stripped (e.g. human_decision_attention) clear.
+  if (previous.metadata?.worker_pex_calls != null && incoming.metadata?.worker_pex_calls == null) {
+    merged.metadata = { ...(incoming.metadata ?? {}), worker_pex_calls: previous.metadata.worker_pex_calls };
+  }
   // The observation gap is a point-in-time server reading: a row that no
   // longer carries it has left the live-observed state, so the stale block
   // must not linger on the merged row.

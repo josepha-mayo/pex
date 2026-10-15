@@ -79,7 +79,8 @@ judged by our thesis.
 - The worker's turn ends before the human answers. PEX records the ruling
   durably anyway (delivery honestly reported as `session_terminal`) — and a
   sibling session, created *before* the ruling, receives it in its next
-  context bundle. Human intent outlives the worker that asked. That exact
+  context bundle — re-runnable via `scripts/probe_ruling_continuity.py`.
+  Human intent outlives the worker that asked. That exact
   session replays deterministically as the `worker_escalation_eval` fixture —
   judges can watch the escalation, not just read about it.
 - A worker claims "all tests pass" after modifying the test file. PEX inspects
@@ -167,9 +168,10 @@ NEBIUS_API_KEY=... uv run python scripts/check_token_factory.py --infer
 ## Built during the submission period (pre-existing-project note)
 
 This repository predates the submission window in part — the window opened
-August 26, 2026, and 1,380 of the project's 1,386 commits land on or after
-it; the work submitted here was built during it. Substantially new since
-the window opened:
+August 26, 2026, and 1,386 of the project's 1,387 commits land inside it;
+the single earlier commit (`d138f4a`, the initial tree publish) predates it
+by hours. The work submitted here was built during the window. Substantially
+new since it opened:
 
 - The entire worker↔PEX MCP supervision loop (session-bound credentials,
   eight session-bound tools behind five scopes — one read, four write —
@@ -178,7 +180,12 @@ the window opened:
 - Durable human rulings: journaled rulings distinct from editable goal
   text, surviving worker termination, propagating to sibling workers.
 - The deterministic replay system: 18-fixture suite, evaluator, replay
-  isolation (`replay: true` + `not_live_control: true` enforced server-side).
+  isolation (`replay: true` + `not_live_control: true` enforced server-side —
+  sealed ledgers refuse control mutations yet remain legitimate handoff
+  *sources* via `sealed_source` triggers: evidence in, control out).
+- The verdict-card claim ledger: every worker claim rendered beside its
+  adjudicated verdict — "All tests passed" shown *contradicted* on a
+  premature stop, then *verified* after a real pytest run.
 - Evidence packs + offline verification (`scripts/verify_pack.py`).
 - The desktop supervision surface (fixtures rail, capabilities panel,
   inspector, escalation affordances).

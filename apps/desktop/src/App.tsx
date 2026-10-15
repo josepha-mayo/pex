@@ -488,6 +488,7 @@ export function App() {
     history: { fixture: string; sessionId: string | null; attached: boolean; verdict: ReplayVerdict }[];
   }>({ running: false, fixture: null, error: null, verdict: null, history: [] });
   const [challengeText, setChallengeText] = useState("");
+  const [challengeError, setChallengeError] = useState<string | null>(null);
   const [packVerify, setPackVerify] = useState<{ fileName: string; checks: string[] } | null>(null);
   const [attachReplayGoal, setAttachReplayGoal] = useState(false);
   const [determinismCheck, setDeterminismCheck] = useState(false);
@@ -1680,14 +1681,14 @@ export function App() {
   // The verdict card routes a run that escalated to ASK_HUMAN straight to the
   // Decisions view. The session row may be outside the compact rail's
   // promptable set, so "not visible" still counts as waiting.
-  const latestReplaySessionId = demoReplay.history[0]?.sessionId;
-  const latestReplaySession = latestReplaySessionId
-    ? sessions.find((session) => session.id === latestReplaySessionId)
-    : undefined;
-  const replayRunAwaitingDecision = Boolean(
-    demoReplay.verdict?.actions.includes("ASK_HUMAN")
-      && (!latestReplaySession || latestReplaySession.status === "needs_decision"),
-  );
+  // Any run that escalated keeps its ruling pending until answered — a
+  // later non-escalation run must not hide it by taking history[0].
+  const replayRunAwaitingDecision = demoReplay.history.some((run) => {
+    if (!run.verdict.actions.includes("ASK_HUMAN")) return false;
+    if (!run.sessionId) return true;
+    const session = sessions.find((entry) => entry.id === run.sessionId);
+    return !session || session.status === "needs_decision";
+  });
   const journeySteps = demoFixtures?.length ? [
     {
       key: "first-run",
@@ -1697,7 +1698,7 @@ export function App() {
           || replaySessionsRan.some((session) => replayFixtureLabel(session) === startFixture.id)
         ),
       ),
-      body: <>Click <strong>False completion without tests</strong> (tagged <em>start here</em>) — the worker claims done with no test run; PEX adjudicates the claim unsupported, and only the real suite run earns <code>verified_complete</code>.</>,
+      body: <>Click <strong>{startFixture?.title ?? "False completion without tests"}</strong> (tagged <em>start here</em>) — the worker claims done with no test run; PEX adjudicates the claim contradicted, and only the real suite run earns <code>verified_complete</code>.</>,
     },
     {
       key: "verdict",
@@ -1710,7 +1711,7 @@ export function App() {
     {
       key: "evidence",
       done: inspectorReplayVisited,
-      body: <>Click <strong>Open the session evidence</strong> — the Inspector shows the claim timeline and the sealed-baseline diff.</>,
+      body: <>Click <strong>Open the session evidence</strong> — the Inspector shows the claim timeline and the sealed-baseline diff, and its <strong>Evidence pack</strong> exports a hash-chained bundle that re-verifies in this browser.</>,
     },
     {
       key: "ruling",
@@ -1868,7 +1869,13 @@ export function App() {
   );
   const demoFixtureTried = useRef(false);
   useEffect(() => {
-    if (!demoReplayAvailable || demoFixtureTried.current || bridgeError) return;
+    // Probe for fixtures whenever the bridge is reachable — not only when
+    // guidance asks for a worker. A judge whose environment already has a
+    // live worker connected must still get the replay panel, or the whole
+    // journey is invisible to exactly the audience it was built for.
+    if ((!demoReplayAvailable && !bridgeAvailable) || demoFixtureTried.current || bridgeError) {
+      return;
+    }
     demoFixtureTried.current = true;
     const controller = new AbortController();
     bridgeJson<unknown>("/v1/demo/trajectories", { signal: controller.signal })
@@ -1881,11 +1888,22 @@ export function App() {
         demoFixtureTried.current = false;
       });
     return () => controller.abort();
-  }, [demoReplayAvailable, bridgeError]);
+  }, [demoReplayAvailable, bridgeAvailable, bridgeError]);
+
+  // Judges read titles, not ids — resolve a fixture id to its declared
+  // title (fall back to the id itself if the list hasn't loaded yet).
+  const demoFixtureTitle = (id: string | null | undefined) =>
+    !id
+      ? "a recorded trajectory"
+      : id === "inline"
+        ? "custom trajectory"
+        : (demoFixtures?.find((fixture) => fixture.id === id)?.title ?? id);
 
   async function runDemoReplay(fixtureId: string, inline?: Record<string, unknown>) {
     if (demoReplay.running) return;
     setVerdictReceiptCopied(false);
+    const priorVerdict = demoReplay.verdict;
+    const priorFixture = demoReplay.fixture;
     setDemoReplay((previous) => ({
       ...previous, running: true, fixture: fixtureId, error: null, verdict: null,
     }));
@@ -1950,11 +1968,14 @@ export function App() {
       // so attachedGoal resolves instead of hanging on "checking the goal".
       void refreshPetGoals();
     } catch (error) {
+      // A failed attempt must not erase the verdict the judge just read:
+      // restore the previous card under its own fixture so the screen keeps
+      // its evidence while the alert says which run failed.
       setDemoReplay((previous) => ({
         ...previous,
-        running: false, fixture: fixtureId,
+        running: false, fixture: priorVerdict ? priorFixture : fixtureId,
         error: `Replay could not run: ${operationError(error, "bridge rejected the request")}`,
-        verdict: null,
+        verdict: priorVerdict,
       }));
     }
   }
@@ -1989,15 +2010,18 @@ export function App() {
         });
         if (metFlag === true) {
           met += 1;
-        } else {
+        } else if (metFlag === false) {
           misses.push({
             fixture: fixture.id,
             failure: verdict?.declared?.failures[0] ?? "declared arc not met",
           });
         }
+        // met === null is left out of `misses`: it means the run could not be
+        // scored at all (request failed, verdict unparseable) — a transport
+        // failure, not an adjudication outcome, and the summary must not
+        // conflate the two.
       } catch {
         results.push({ fixture: fixture.id, met: null, completion: null, failures: ["replay request failed"] });
-        misses.push({ fixture: fixture.id, failure: "replay request failed" });
       }
     }
     setSuiteRun({ running: false, done: results.length, total: demoFixtures.length, current: null, met, misses, results });
@@ -2070,11 +2094,12 @@ export function App() {
   function runChallenge() {
     const parsed = parseChallengeFixture(challengeText);
     if (!parsed.ok) {
-      setDemoReplay((previous) => ({
-        ...previous, running: false, fixture: "inline", error: parsed.error, verdict: null,
-      }));
+      // Client-side validation failure — nothing ran, so this is not a
+      // replay failure; render it beside the input, not as a verdict error.
+      setChallengeError(parsed.error);
       return;
     }
+    setChallengeError(null);
     void runDemoReplay("inline", parsed.fixture);
   }
 
@@ -2696,10 +2721,13 @@ export function App() {
       setNote(message);
       await Promise.all([refreshPet(), loadDetails()]);
     } catch (error) {
-      const requestedPresentation = requestedDecision
+      // Structured bridge failures (conflict codes, delivery status) get the
+      // honest presentation; a plain transport error must not be relabeled
+      // "recorded" — nothing may have reached the ledger.
+      const presentation = error instanceof BridgeRequestError && error.detail
         ? humanDecisionFailurePresentation(error)
         : null;
-      const message = requestedPresentation?.message ?? (error instanceof Error
+      const message = presentation?.message ?? (error instanceof Error
         ? error.message
         : "The bridge could not resolve this permission request.");
       setDecisionFeedback({
@@ -2707,7 +2735,7 @@ export function App() {
         state: "error",
         decision: feedbackDecision,
         message,
-        deliveryStatus: requestedPresentation?.deliveryStatus,
+        deliveryStatus: presentation?.deliveryStatus,
       });
       setNote(message);
       await Promise.allSettled([refreshPet(), loadDetails()]);
@@ -3054,6 +3082,7 @@ export function App() {
   }
 
   function openSettings(section?: SettingsSection) {
+    if (section === "capabilities") setCapabilitiesVisited(true);
     setSettingsDestination(section);
     window.location.hash = "settings";
   }
@@ -3460,6 +3489,7 @@ export function App() {
                   {setup.cta ? (
                     <button type="button" className={setup.state === "connect_worker" && startFixture ? "ghost" : "solid"} onClick={() => {
                       if (setup.cta?.intent === "goal") openGoalSetup();
+                      else if (setup.cta?.intent === "decisions") openDecisions();
                       else openSettings("connections");
                     }}>{setup.cta.label}</button>
                   ) : null}
@@ -3485,25 +3515,25 @@ export function App() {
                     {journeySteps.map((step) => (
                       <li key={step.key} className={step.done ? "journey-step done" : "journey-step"}>
                         <span className="journey-check" aria-hidden="true">
-                          {step.done ? "✓" : step.key === "capabilities" ? "→" : ""}
+                          {step.done ? "✓" : ""}
                         </span>
                         <span>{step.body}</span>
                       </li>
                     ))}
                   </ol>
-                  {journeyAllDone ? (
-                    <p className="journey-complete" role="status">
-                      Every step verified against real bridge state — you checked each claim yourself.
-                    </p>
-                  ) : null}
                 </details>
+                {journeyAllDone ? (
+                  <p className="journey-complete" role="status">
+                    Every step verified against real bridge state — you checked each claim yourself.
+                  </p>
+                ) : null}
                 <div className="button-row">
                   {demoFixtures.map((fixture) => (
                     <button
                       key={fixture.id}
                       type="button"
                       className="ghost"
-                      disabled={demoReplay.running}
+                      disabled={demoReplay.running || Boolean(suiteRun?.running)}
                       onClick={() => void runDemoReplay(fixture.id)}
                     >
                       {demoReplay.running && demoReplay.fixture === fixture.id
@@ -3543,7 +3573,7 @@ export function App() {
                     onChange={(event) => setDeterminismCheck(event.target.checked)}
                   />
                   <span>
-                    Run each replay twice — identical arcs prove the supervision is
+                    Run the next replay twice — identical arcs prove the supervision is
                     deterministic, not a lucky path.
                   </span>
                 </label>
@@ -3595,6 +3625,9 @@ export function App() {
                         : suiteRun.done === suiteRun.total
                           ? " — the demo verifies itself, the same way eval_replays.py does in CI."
                           : ""}
+                      {suiteRun.results.some((row) => row.met === null)
+                        ? ` — unscored (could not adjudicate): ${suiteRun.results.filter((row) => row.met === null).map((row) => row.fixture).join(", ")}`
+                        : ""}
                     </p>
                   ) : null}
                   {suiteRun && !suiteRun.running && suiteRun.results.length ? (
@@ -3648,6 +3681,11 @@ export function App() {
                         : "Run my trajectory"}
                     </button>
                   </div>
+                  {challengeError ? (
+                    <p className="demo-replay-error" role="alert">
+                      {challengeError}
+                    </p>
+                  ) : null}
                 </details>
                 <details className="demo-challenge demo-pack-verify">
                   <summary>
@@ -3692,7 +3730,7 @@ export function App() {
                 {demoReplay.running ? (
                   <div className="replay-verdict replay-verdict-pending" role="status" aria-busy="true">
                     <p className="eyebrow">
-                      Replaying {demoReplay.fixture === "inline" ? "custom trajectory" : demoReplay.fixture}…
+                      Replaying {demoFixtureTitle(demoReplay.fixture)}…
                     </p>
                     <p className="replay-verdict-arc">
                       The recorded trajectory is running through the real adjudication pipeline —
@@ -3700,11 +3738,17 @@ export function App() {
                     </p>
                   </div>
                 ) : null}
+                {demoReplay.error ? (
+                  <p className="demo-replay-error" role="alert">
+                    <strong>Replay failed:</strong> {demoReplay.error}
+                    {demoReplay.verdict ? " — the card below is the previous completed run." : ""}
+                  </p>
+                ) : null}
                 {demoReplay.verdict ? (
                   <div className="replay-verdict" role="status">
                     <p className="eyebrow">
                       Observed supervision arc ·{" "}
-                      {demoReplay.fixture === "inline" ? "custom trajectory" : demoReplay.fixture}
+                      {demoFixtureTitle(demoReplay.fixture)}
                     </p>
                     <p className="replay-verdict-arc">
                       {demoReplay.verdict.actions.length
@@ -3729,6 +3773,7 @@ export function App() {
                                 ? "replay-verdict-claim replay-verdict-claim-ok"
                                 : "replay-verdict-claim replay-verdict-claim-bad"
                             }
+                            title={entry.claim}
                           >
                             <span className="replay-verdict-claim-text">“{entry.claim}”</span>
                             <span className="replay-verdict-claim-status">
@@ -3844,37 +3889,32 @@ export function App() {
                         {verdictReceiptCopied ? "Receipt copied" : "Copy verdict receipt (JSON)"}
                       </button>
                     </div>
-                    {demoReplay.history.length > 1 ? (
-                      <ul className="replay-verdict-history">
-                        {demoReplay.history.slice(1).map((run, index) => (
-                          <li key={`${run.fixture}-${index}`}>
-                            {run.sessionId ? (
-                              <button
-                                type="button"
-                                className="text-button"
-                                title="Open this run's session evidence"
-                                onClick={() => openInspector(run.sessionId ?? undefined)}
-                              >
-                                {run.fixture === "inline" ? "custom trajectory" : run.fixture}
-                              </button>
-                            ) : (
-                              run.fixture === "inline" ? "custom trajectory" : run.fixture
-                            )}
-                            {run.attached ? " · attached" : ""} →{" "}
-                            {run.verdict.actions.length
-                              ? run.verdict.actions.map(humanize).join(" → ")
-                              : "no interventions"}
-                            {run.verdict.status ? ` · ${run.verdict.status}` : ""}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
                   </div>
                 ) : null}
-                {demoReplay.error ? (
-                  <p className="demo-replay-error" role="alert">
-                    <strong>Replay failed:</strong> {demoReplay.error}
-                  </p>
+                {demoReplay.history.length > (demoReplay.verdict ? 1 : 0) ? (
+                  <ul className="replay-verdict-history">
+                    {demoReplay.history.slice(demoReplay.verdict ? 1 : 0).map((run, index) => (
+                      <li key={`${run.fixture}-${index}`}>
+                        {run.sessionId ? (
+                          <button
+                            type="button"
+                            className="text-button"
+                            title="Open this run's session evidence"
+                            onClick={() => openInspector(run.sessionId ?? undefined)}
+                          >
+                            {demoFixtureTitle(run.fixture)}
+                          </button>
+                        ) : (
+                          demoFixtureTitle(run.fixture)
+                        )}
+                        {run.attached ? " · attached" : ""} →{" "}
+                        {run.verdict.actions.length
+                          ? run.verdict.actions.map(humanize).join(" → ")
+                          : "no interventions"}
+                        {run.verdict.status ? ` · ${run.verdict.status}` : ""}
+                      </li>
+                    ))}
+                  </ul>
                 ) : null}
               </div>
             ) : null}

@@ -1572,7 +1572,13 @@ test("freeform decision submission is exact-once, cleared, and masked from feedb
   assert.deepEqual(prepared, { decision: raw, nextValue: "" });
   assert.equal(prepareFreeformDecision(prepared?.nextValue ?? "", false), null);
   assert.equal(prepareFreeformDecision(raw, true), null);
-  assert.equal(prepareFreeformDecision(` ${raw}`, false), null);
+  // Untrimmed input trims rather than silently disabling the submit — the
+  // ruling text is freeform; surrounding whitespace is not intent.
+  assert.deepEqual(prepareFreeformDecision(` ${raw} `, false), {
+    decision: raw,
+    nextValue: "",
+  });
+  assert.equal(prepareFreeformDecision("   ", false), null);
   for (const status of [
     "delivered",
     "unsupported",

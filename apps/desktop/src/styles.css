@@ -1860,6 +1860,14 @@ p {
   font-weight: 600;
 }
 
+.pack-check-note {
+  color: var(--amber, #d9a441);
+}
+
+.pack-check-info {
+  color: var(--blue);
+}
+
 .pack-verification .note {
   margin: 8px 0 0;
   color: var(--faint);

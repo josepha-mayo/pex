@@ -205,7 +205,7 @@ Click **Drift loop: the same failing probe, over and over**.
 Click **Worker disputes the nudge, stops unresolved**, then open **Deck →
 Decisions**.
 
-> "This is the run a real worker took on 2026-10-05. PEX flagged the modified
+> "This arc is modeled on a real run from 2026-10-05. PEX flagged the modified
 > acceptance test and nudged 'restore or justify.' The worker answered — it
 > argued the baseline can't pass and stood by the weakened test — then
 > stopped. PEX does not re-nudge a correction the worker already engaged;

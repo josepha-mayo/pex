@@ -1,0 +1,14 @@
+# Clean-clone install for environments without uv (e.g. CI sandboxes).
+# Equivalent to `uv sync` for the judge path: installs the three workspace
+# members editable plus the dev/test deps pyproject.toml declares.
+#   pip install -r requirements.txt
+#   python -m pytest -q -m "not live_llm and not live_codex and not live_opencode and not live_agentcore and not live_contree"
+-e ./packages/protocol
+-e ./services/supervisor
+-e ./services/bridge
+# mcp 2.x removed mcp.server.fastmcp — the bridge's MCP server needs v1.
+mcp>=1.29.1,<2
+pytest>=8.3
+pytest-asyncio>=0.24
+httpx>=0.27
+ruff>=0.9

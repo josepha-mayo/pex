@@ -5764,7 +5764,10 @@ def create_app() -> FastAPI:
         session = await state.store.get_session(session_id)
         if session is None:
             raise HTTPException(404, "session not found")
-        if session.metadata.get("not_live_control") is True:
+        if (
+            session.metadata.get("not_live_control") is True
+            or session.metadata.get("observe_only") is True
+        ):
             raise HTTPException(
                 409,
                 "recorded replay session: there is no live worker to receive a message",
@@ -5919,7 +5922,10 @@ def create_app() -> FastAPI:
         adapter = state.adapters.for_session(session_id)
         if not session or not adapter:
             raise HTTPException(404, "session not found")
-        if session.metadata.get("not_live_control") is True:
+        if (
+            session.metadata.get("not_live_control") is True
+            or session.metadata.get("observe_only") is True
+        ):
             raise HTTPException(
                 409,
                 "recorded replay session: there is no live window to focus",
@@ -6195,9 +6201,9 @@ def create_app() -> FastAPI:
                 # replays, and the finalize paths already keep replay sessions
                 # stopped rather than pretending a worker resumed.
                 pending_session = await state.store.get_session_for_authority(pending.session_id)
-                if (
-                    pending_session is not None
-                    and (pending_session.metadata or {}).get("not_live_control") is True
+                if pending_session is not None and (
+                    (pending_session.metadata or {}).get("not_live_control") is True
+                    or (pending_session.metadata or {}).get("observe_only") is True
                 ):
                     raise HTTPException(
                         409,
@@ -7157,7 +7163,11 @@ def create_app() -> FastAPI:
         session = await state.store.get_session_for_authority(body.session_id)
         if not session:
             raise HTTPException(404, "session not found")
-        if session.metadata.get("not_live_control") is True:
+        if (
+            session.metadata.get("not_live_control") is True
+            or session.metadata.get("replay") is True
+            or session.metadata.get("observe_only") is True
+        ):
             raise HTTPException(
                 409,
                 "recorded replay session: its event ledger is sealed evidence, "

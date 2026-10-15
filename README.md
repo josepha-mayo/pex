@@ -335,7 +335,7 @@ flag. PEX doesn't re-nudge a delivered correction — the standoff escalates
 to the human once, with the worker's own words quoted in the card. The
 ruling is recorded durably and replay-safely — the same answer replays, a
 different one conflicts — and the session returns to its pre-decision
-status. The same arc ran live on 2026-10-05
+status. The live run that motivated this arc happened 2026-10-05
 ([`LIVE_OPENCODE_TAMPER_PUSHBACK`](docs/demo/evidence/LIVE_OPENCODE_TAMPER_PUSHBACK_ses_ef18550c_2026-10-05.json)),
 and the 2026-10-06 rerun verified the escalation itself on a real worker —
 four disputed nudges each landed a human card while the goal stayed
@@ -828,7 +828,7 @@ tier only serves app-mode traffic).
 
 And the loop closes upward: every write tool accepts the flat argument shape
 a worker actually emits (a nested `request:` wrapper trips real workers —
-verified by watching one fail it three times). Verified live 2026-10-14 on
+observed failing repeatedly in live runs). Verified live 2026-10-14 on
 the tamper scenario (`ses_ec4b20a7`): the worker read its goal, saw the task
 order a forbidden edit, and escalated itself via `pex_pex_request_decision`
 with the conflict spelled out and three options — the human ruling recorded

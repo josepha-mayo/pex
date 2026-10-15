@@ -12120,7 +12120,7 @@ class Store:
                         raise ValueError("a session update cannot change vendor identity")
                     existing_metadata = existing.metadata or {}
                     incoming_metadata = session.metadata or {}
-                    for seal_key in ("replay", "not_live_control"):
+                    for seal_key in ("replay", "not_live_control", "observe_only"):
                         if (
                             existing_metadata.get(seal_key) is True
                             and incoming_metadata.get(seal_key) is not True
@@ -13974,6 +13974,18 @@ class Store:
                         "granted": False,
                         "changed": False,
                         "reason": "discovery_generation_changed",
+                    }
+                if session.metadata.get("not_live_control") is True or bool(
+                    session.metadata.get("observe_only")
+                ):
+                    # A recorded replay is already detached-from-live by
+                    # definition; rewriting its status rewrites evidence.
+                    await transaction.rollback()
+                    return {
+                        **receipt,
+                        "granted": False,
+                        "changed": False,
+                        "reason": "session_not_live_control",
                     }
                 if session.status == SessionStatus.DETACHED:
                     await transaction.commit()
@@ -19109,6 +19121,10 @@ class Store:
                     or session.id.endswith(":desktop")
                 ):
                     raise PermissionError("operator message session is observe-only")
+                if (session.metadata or {}).get("not_live_control") is True or bool(
+                    (session.metadata or {}).get("observe_only")
+                ):
+                    raise PermissionError("operator message session is observe-only")
                 project_id = _session_project(session)
                 await _reject_quarantined_project_binding(transaction, project_id)
                 if project_binding is None:  # pragma: no cover - goal-bound invariant
@@ -19268,6 +19284,10 @@ class Store:
                     session.vendor_session_id == "desktop"
                     or (session.metadata or {}).get("source") == "desktop"
                     or session.id.endswith(":desktop")
+                ):
+                    raise PermissionError("operator message session is observe-only")
+                if (session.metadata or {}).get("not_live_control") is True or bool(
+                    (session.metadata or {}).get("observe_only")
                 ):
                     raise PermissionError("operator message session is observe-only")
                 project_id = _session_project(session)
@@ -19858,6 +19878,12 @@ class Store:
         )
         expected_event_id = stable_operator_artifact_id(effect_id, "event")
         expected_intervention_id = stable_operator_artifact_id(effect_id, "intervention")
+        if sealed_source and trigger_event_is_existing:
+            # A sealed source cannot claim an existing trigger — that event
+            # lives in the sealed ledger by definition, and the sealed_source
+            # validator requires its row to be absent. The combination is
+            # self-contradictory and would wedge the effect at validation.
+            raise ValueError("sealed_source cannot pair with an existing trigger event")
         if not trigger_event_is_existing and event.event_id != expected_event_id:
             raise ValueError("handoff trigger event id is not stable")
         if intervention.id != expected_intervention_id:
@@ -19985,6 +20011,12 @@ class Store:
                     for row in (source, target)
                 ):
                     raise PermissionError("handoff observe-only desktop is forbidden")
+                if (target.metadata or {}).get("not_live_control") is True or bool(
+                    (target.metadata or {}).get("observe_only")
+                ):
+                    raise ValueError(
+                        "recorded replay session: there is no live worker to receive a handoff"
+                    )
                 if not source.goal_id or target.goal_id != source.goal_id:
                     raise PermissionError("handoff goal binding mismatch")
                 source_sealed = (source.metadata or {}).get("not_live_control") is True or bool(
@@ -20402,6 +20434,12 @@ class Store:
                     for row in (source, target)
                 ):
                     raise PermissionError("handoff observe-only desktop is forbidden")
+                if (target.metadata or {}).get("not_live_control") is True or bool(
+                    (target.metadata or {}).get("observe_only")
+                ):
+                    raise ValueError(
+                        "recorded replay session: there is no live worker to receive a handoff"
+                    )
                 goal_id = str(effect["goal_id"])
                 if source.goal_id != goal_id or target.goal_id != goal_id:
                     raise PermissionError("handoff goal binding changed")
@@ -27592,12 +27630,19 @@ class Store:
                 # A terminal worker cannot receive the answer, but the human's
                 # ruling is still durable intent: record it, then finalize the
                 # reserved effect as failed/session_terminal instead of leaving
-                # the pending question unresolvable forever.
-                session_terminal = session.status in {
-                    SessionStatus.STOPPED,
-                    SessionStatus.ERROR,
-                    SessionStatus.DETACHED,
-                }
+                # the pending question unresolvable forever. Sealed and
+                # observe-only rows are terminal for delivery purposes — a
+                # recording has no worker to answer.
+                session_terminal = (
+                    session.status
+                    in {
+                        SessionStatus.STOPPED,
+                        SessionStatus.ERROR,
+                        SessionStatus.DETACHED,
+                    }
+                    or (session.metadata or {}).get("not_live_control") is True
+                    or bool((session.metadata or {}).get("observe_only"))
+                )
                 try:
                     goal, goal_binding = await _load_bound_goal(
                         transaction,
@@ -27888,11 +27933,16 @@ class Store:
                     project_id,
                 ):
                     raise ValueError("human decision project binding changed before delivery")
-                if session.status in {
-                    SessionStatus.STOPPED,
-                    SessionStatus.ERROR,
-                    SessionStatus.DETACHED,
-                }:
+                if (
+                    session.status
+                    in {
+                        SessionStatus.STOPPED,
+                        SessionStatus.ERROR,
+                        SessionStatus.DETACHED,
+                    }
+                    or (session.metadata or {}).get("not_live_control") is True
+                    or bool((session.metadata or {}).get("observe_only"))
+                ):
                     raise ValueError("human decision session became terminal before delivery")
                 if session.supervision_paused:
                     raise ValueError("human decision session was paused before delivery")
@@ -28378,11 +28428,16 @@ class Store:
                 ):
                     raise ValueError("permission reservation target is not the pending action")
 
-                if session.status in {
-                    SessionStatus.STOPPED,
-                    SessionStatus.ERROR,
-                    SessionStatus.DETACHED,
-                }:
+                if (
+                    session.status
+                    in {
+                        SessionStatus.STOPPED,
+                        SessionStatus.ERROR,
+                        SessionStatus.DETACHED,
+                    }
+                    or (session.metadata or {}).get("not_live_control") is True
+                    or bool((session.metadata or {}).get("observe_only"))
+                ):
                     raise PermissionError("permission session is not live")
                 project_id = _session_project(session)
                 containment = decision == "deny"
@@ -28729,7 +28784,11 @@ class Store:
                 ):
                     raise ValueError("lifecycle reservation target is not the pending action")
 
-                if session.status in {SessionStatus.ERROR, SessionStatus.DETACHED}:
+                if (
+                    session.status in {SessionStatus.ERROR, SessionStatus.DETACHED}
+                    or (session.metadata or {}).get("not_live_control") is True
+                    or bool((session.metadata or {}).get("observe_only"))
+                ):
                     raise PermissionError("lifecycle session is not controllable")
                 if action.type == InterventionType.CLEANUP:
                     if session.status != SessionStatus.STOPPED:
@@ -28847,7 +28906,11 @@ class Store:
                     return {"granted": False, "resolution": resolution}
                 if resolution.get("session_binding") != _decision_session_binding(session):
                     raise PermissionError("lifecycle vendor session binding changed")
-                if session.status in {SessionStatus.ERROR, SessionStatus.DETACHED}:
+                if (
+                    session.status in {SessionStatus.ERROR, SessionStatus.DETACHED}
+                    or (session.metadata or {}).get("not_live_control") is True
+                    or bool((session.metadata or {}).get("observe_only"))
+                ):
                     raise PermissionError("lifecycle session is not controllable")
                 action = intervention.proposed_action
                 if action.type == InterventionType.CLEANUP:
@@ -28983,7 +29046,11 @@ class Store:
                     }
                 if resolution.get("session_binding") != _decision_session_binding(session):
                     raise PermissionError("lifecycle vendor session binding changed")
-                if session.status in {SessionStatus.ERROR, SessionStatus.DETACHED}:
+                if (
+                    session.status in {SessionStatus.ERROR, SessionStatus.DETACHED}
+                    or (session.metadata or {}).get("not_live_control") is True
+                    or bool((session.metadata or {}).get("observe_only"))
+                ):
                     raise PermissionError("lifecycle session is not controllable")
                 if action.type == InterventionType.CLEANUP:
                     if session.status != SessionStatus.STOPPED:

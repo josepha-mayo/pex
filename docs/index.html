@@ -88,6 +88,10 @@
       Same words, different verdicts — because evidence, not narration, decides.
       A real adjudication from the recorded replay suite; run it yourself below.
     </p>
+    <img src="demo/assets/pex-verdict-card.png" alt="The PEX verdict card — every worker claim beside its adjudicated verdict: 'All tests passed' contradicted on a premature stop, then supported after a real pytest run" style="width:100%;border-radius:10px;margin-top:14px;border:1px solid var(--line)" />
+    <p style="margin:8px 0 0;color:var(--muted);font-size:11.5px">
+      The verdict card as rendered — the claim ledger is this adjudication, verbatim.
+    </p>
   </div>
 
   <h2>Verify it yourself — no install needed</h2>
@@ -122,13 +126,13 @@
   <h2>Platform</h2>
   <ul>
     <li>Semantic supervision runs <strong>NVIDIA nemotron-3-super-120b-a12b</strong> on
-      <strong>Nebius Token Factory</strong> (OpenAI-compatible chat completions) — receipts
-      in the repo under <code>docs/evidence/</code> (live inference, corrected live-worker
-      premature stops).</li>
+      <strong>Nebius Token Factory</strong> (OpenAI-compatible chat completions) —
+      <a href="evidence/codex-nebius-live-2026-09-24.json">live inference receipt</a>
+      (corrected a live worker's premature stop).</li>
     <li>Isolated public-pytest execution targets <strong>Nebius ConTree Sandboxes</strong>
       — implemented, currently key-gated (beta access pending).</li>
     <li>Bounded public-claim checks route <strong>Tavily web evidence</strong> — wired and
-      scope-limited to classified public claims.</li>
+      scope-limited to classified public claims; key-gated (<code>TAVILY_API_KEY</code>).</li>
   </ul>
 
   <h2>Run it</h2>

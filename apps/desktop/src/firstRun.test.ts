@@ -86,6 +86,27 @@ test("first-run guidance treats a selected replay as sealed evidence, not a work
   assert.equal(guidance?.detail.includes("Connect a running OpenCode"), false);
 });
 
+test("first-run guidance surfaces a pending ruling on a selected replay", () => {
+  const replay: SessionRow = {
+    ...worker,
+    id: "synthetic:replay-nudge_dispute_eval-abcd1234",
+    harness_type: "synthetic" as SessionRow["harness_type"],
+    status: "needs_decision",
+    metadata: { replay: true, not_live_control: true },
+  };
+  const guidance = firstRunGuidance({
+    current: replay,
+    sessionFresh: true,
+    goalFresh: true,
+  });
+  // A sealed recording can still carry a durable obligation — the guidance
+  // must route the judge to Decisions instead of hiding it behind the
+  // replay state.
+  assert.equal(guidance?.title, "Recorded replay selected — a ruling is waiting");
+  assert.deepEqual(guidance?.cta, { intent: "decisions", label: "Open Decisions" });
+  assert.equal(guidance?.detail.includes("still unresolved"), true);
+});
+
 test("first-run guidance distinguishes no usable worker from an attachable unbound worker", () => {
   const noWorker = firstRunGuidance({ sessionFresh: true, goalFresh: true });
   assert.deepEqual(noWorker?.cta, { intent: "connect", label: "How to connect a worker" });
@@ -220,6 +241,25 @@ test("first-run guidance distinguishes no usable worker from an attachable unbou
     });
     assert.equal(pausedOpenCode, null);
   }
+
+  // A listed-but-unbound OpenCode session while the goal state is still
+  // refreshing must not offer "Set a goal" — it says the refresh is running.
+  const listedGoalRefreshing = firstRunGuidance({
+    current: {
+      ...worker,
+      id: "opencode:listed-refresh",
+      harness_type: "opencode",
+      status: "discovered",
+      capabilities: {},
+      metadata: { discovery_observation_only: true },
+    },
+    sessionFresh: true,
+    currentInPetSnapshot: true,
+    goalFresh: false,
+  });
+  assert.equal(listedGoalRefreshing?.state, "unavailable");
+  assert.equal(listedGoalRefreshing?.title, "Checking the OpenCode goal");
+  assert.equal(listedGoalRefreshing?.cta, null);
 
   for (const current of [
     { ...worker, status: "detached" },

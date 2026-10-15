@@ -362,7 +362,9 @@ export function Inspector({
           {current && handoffTargets.length > 0 ? (
             <div className="handoff-row">
               <label className="handoff-label">
-                Hand the durable goal context to
+                {current.metadata?.not_live_control === true
+                  ? "Hand this recording's sealed context to"
+                  : "Hand the durable goal context to"}
                 <select
                   value={activeHandoffTarget}
                   onChange={(event) => setHandoffTarget(event.target.value)}

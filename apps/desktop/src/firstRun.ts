@@ -2,7 +2,7 @@ import type { Goal, SessionRow, StatusCopy, SupervisorInfo } from "./types.ts";
 import { isReplaySession } from "./demoReplay.ts";
 import { canAttachPersistentGoal, supervisorActivationCopy, titleCase } from "./viewModel.ts";
 
-export type FirstRunCtaIntent = "connect" | "goal";
+export type FirstRunCtaIntent = "connect" | "goal" | "decisions";
 
 export type FirstRunGuidance = {
   state: "connect_worker" | "set_goal" | "waiting_event" | "unavailable";
@@ -105,12 +105,20 @@ export function firstRunGuidance({
   // A selected replay is sealed evidence, not a worker that needs connecting —
   // the guidance must point at the recording, not Connections. Keep the
   // connect_worker state so the replay panel's availability gate stays open.
-  if (isReplaySession(current)) {
+  if (current && isReplaySession(current)) {
+    // A sealed recording can still carry a durable obligation: an escalation
+    // the recorded worker raised stays pending until a human rules on it —
+    // surface that instead of letting the replay state hide it.
+    const pendingRuling = current.status === "needs_decision";
     return {
       state: "connect_worker",
-      title: "Recorded replay selected",
-      detail: "This is a sealed supervision recording, not a live worker — open the Inspector for its claim timeline and evidence, or run another replay below.",
-      cta: null,
+      title: pendingRuling
+        ? "Recorded replay selected — a ruling is waiting"
+        : "Recorded replay selected",
+      detail: pendingRuling
+        ? "This is a sealed supervision recording, not a live worker — but the escalation it captured is still unresolved. Open Decisions and record your answer; it journals onto the goal ledger."
+        : "This is a sealed supervision recording, not a live worker — open the Inspector for its claim timeline and evidence, or run another replay below.",
+      cta: pendingRuling ? { intent: "decisions", label: "Open Decisions" } : null,
     };
   }
   // A paused worker needs an explicit resume path on Home, not setup guidance.
