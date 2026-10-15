@@ -57,6 +57,14 @@ ffmpeg -y -ss 60 -t 10 -i $A/pex-live-tamper-demo.mp4 \
   -vf "scale=$RES,$(overlay 'LIVE WORKER — TAMPER CAUGHT')" \
   -c:v libx264 -pix_fmt yuv420p "$OUT/s8-live.mp4"
 
+# 8b — live Token Factory terminal (real `check_token_factory --infer` output;
+# generate build/token-factory-live-render.txt fresh, committed shape below)
+if [ -f build/token-factory-live-render.txt ]; then
+ffmpeg -y -f lavfi -i color=c=0x0b0f10:s=1280x800:d=9 \
+  -vf "drawtext=fontfile=$FONT:text='REAL PROVIDER CALL — NOT A MOCK':fontsize=28:fontcolor=0x7ee0b8:x=48:y=48,drawtext=fontfile='C\:/Windows/Fonts/consola.ttf':textfile=build/token-factory-live-render.txt:fontsize=22:fontcolor=0xd7e0dd:x=60:y=130:line_spacing=10" \
+  -c:v libx264 -pix_fmt yuv420p "$OUT/s8b-tokenfactory.mp4"
+fi
+
 # 9 — end card (6s)
 ffmpeg -y -f lavfi -i color=c=0x0b0f10:s=1280x800:d=6 \
   -vf "drawtext=fontfile=$FONT:text='NVIDIA Nemotron on Nebius Token Factory':fontsize=40:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2-40,drawtext=fontfile=$FONT:text='nvidia/nemotron-3-super-120b-a12b':fontsize=26:fontcolor=0x7ee0b8:x=(w-text_w)/2:y=(h-text_h)/2+20,drawtext=fontfile=$FONT:text='github.com/josepha-mayo/pex':fontsize=26:fontcolor=0x9fb4ad:x=(w-text_w)/2:y=(h-text_h)/2+70" \
@@ -72,6 +80,9 @@ file 's5-escalation.mp4'
 file 's6-verified.mp4'
 file 's7-pack.mp4'
 file 's8-live.mp4'
+EOF
+[ -f "$OUT/s8b-tokenfactory.mp4" ] && echo "file 's8b-tokenfactory.mp4'" >> "$OUT/concat.txt"
+cat >> "$OUT/concat.txt" <<EOF
 file 's9-end.mp4'
 EOF
 

@@ -23,7 +23,8 @@ labeled `not_live_control` inside the product itself.
 | 5 | Positive control — verified complete | `assets/pex-replay-walkthrough-b28d999.mp4` (tail) | `capture-walkthrough.mjs` |
 | 6 | Offline pack verification | `assets/pex-pack-verify-browser.png` (still) or a fresh terminal capture of `uv run python scripts/verify_pack.py` | `capture-pack-verify.mjs` |
 | 7 | Judge arc overview / suite | `assets/pex-judge-arc-597ce13.mp4` | `capture-judge-arc.mjs` |
-| 8 | Close — Nebius Token Factory × NVIDIA Nemotron card | title card over `pex-mark.svg`; URLs: `api.tokenfactory.nebius.com/v1`, model `nvidia/nemotron-3-super-120b-a12b` | static — script end-card |
+| 8 | Live Token Factory proof (terminal beat) | rendered terminal card from `build/token-factory-live-render.txt` — real `check_token_factory.py --infer` output: catalog 200, `POST /chat/completions 200`, `PEX-TOKEN-FACTORY-OK` | `assemble-roughcut.sh` `s8b` (regenerate text with `uv run python scripts/check_token_factory.py --infer`) |
+| 9 | Close — Nebius Token Factory × NVIDIA Nemotron card | title card over `pex-mark.svg`; URLs: `api.tokenfactory.nebius.com/v1`, model `nvidia/nemotron-3-super-120b-a12b` | static — script end-card |
 | 9 | Live worker self-escalation (2026-10-15 run) | `assets/pex-live-escalation-2026-10-15.mp4` | `capture-live-escalation.mjs` — real OpenCode worker read the tamper task, escalated via `pex.request_decision` quoting the sealed forbidden outcome; ruling recorded durably (`session_terminal` delivery, honest) |
 
 ## Supporting stills (cutaways / thumbnails)

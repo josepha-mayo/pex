@@ -40,6 +40,11 @@ And it catches real workers on real runs — this OpenCode session
 claimed done on a decoy checker.
 
 9
-00:01:30,500 --> 00:01:36,000
+00:01:30,500 --> 00:01:38,500
+Not a mock — a real Nemotron completion on Token Factory,
+catalog discovery to 200 OK, receipt committed.
+
+10
+00:01:39,000 --> 00:01:44,500
 Deterministic where correctness demands it,
 Nemotron where judgment is needed.
