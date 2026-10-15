@@ -235,6 +235,7 @@ A real pack ships in the repo — verify it right now, no bridge or UI needed:
 
 ```powershell
 uv run python scripts/verify_pack.py docs/demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.json --html build/pack.html
+uv run python scripts/verify_pack.py docs/demo/evidence   # or sweep every committed pack at once
 ```
 
 or just open [`docs/demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.html`](docs/demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.html)

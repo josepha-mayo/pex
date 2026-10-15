@@ -1,6 +1,7 @@
 """Verify a PEX evidence pack offline -- no bridge, no trust required.
 
     uv run python scripts/verify_pack.py pex-evidence-pack.json
+    uv run python scripts/verify_pack.py docs/demo/evidence   # sweep every committed pack
 
 Recomputes every digest the pack asserts:
 
@@ -392,41 +393,109 @@ def load_pack(path: Path) -> dict:
     return pack
 
 
-def main() -> int:
-    import argparse
+def _is_pack(doc: object) -> bool:
+    return isinstance(doc, dict) and doc.get("schema") == "pex.evidence-pack.v1"
 
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("pack", help="evidence-pack JSON file")
-    parser.add_argument(
-        "--html",
-        metavar="OUT",
-        help="also write a self-contained forensic HTML report to OUT",
-    )
-    ns = parser.parse_args()
+
+def _candidate_paths(arg: str) -> list[Path]:
+    path = Path(arg)
+    if not path.is_dir():
+        return [path]
+    return sorted(path.glob("*.json")) + sorted(path.glob("*.html"))
+
+
+def _load_pack_file(path: Path) -> dict | None:
     try:
-        pack = load_pack(Path(ns.pack))
-    except (OSError, json.JSONDecodeError, ValueError) as exc:
-        print(f"cannot read pack: {exc}", file=sys.stderr)
-        return 2
+        return load_pack(path)
+    except (OSError, json.JSONDecodeError, ValueError):
+        return None
 
-    checks = verify(pack)
+
+def _print_checks(checks: list[str]) -> int:
     width = max(len(line.split(" ", 1)[0]) for line in checks) if checks else 4
     failures = 0
     for line in checks:
         tag, _, rest = line.partition(" ")
         failures += tag == "FAIL"
         print(f"{tag:<{width}} {rest}")
+    return failures
+
+
+def main() -> int:
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "pack",
+        nargs="+",
+        help="evidence-pack file(s) -- JSON or rendered HTML -- or directories to scan",
+    )
+    parser.add_argument(
+        "--html",
+        metavar="OUT",
+        help="also write a self-contained forensic HTML report to OUT (single pack only)",
+    )
+    ns = parser.parse_args()
+
+    paths = [p for arg in ns.pack for p in _candidate_paths(arg)]
+    if not paths:
+        print(f"no .json/.html files found under {ns.pack}", file=sys.stderr)
+        return 2
+    if ns.html and len(paths) != 1:
+        print("--html requires exactly one pack file", file=sys.stderr)
+        return 2
+
+    total_failures = 0
+    total_checks = 0
+    verified = 0
+    skipped = 0
+    last_pack: dict | None = None
+    last_checks: list[str] = []
+    for path in paths:
+        pack = _load_pack_file(path)
+        multi = len(paths) > 1
+        if pack is None:
+            # In a directory sweep, non-pack-named files that do not parse are
+            # simply other receipts; a file that *claims* to be a pack and does
+            # not parse is a corrupted candidate and fails honestly.
+            if multi and "pack" not in path.name.lower():
+                skipped += 1
+            else:
+                print(f"{path.name}: cannot read pack", file=sys.stderr)
+                total_failures += 1
+            continue
+        if not _is_pack(pack):
+            if multi and "pack" not in path.name.lower():
+                skipped += 1
+            else:
+                print(f"{path.name}: not a pex.evidence-pack.v1 document", file=sys.stderr)
+                total_failures += 1
+            continue
+        if len(paths) > 1:
+            print(f"== {path.name}")
+        checks = verify(pack)
+        total_failures += _print_checks(checks)
+        total_checks += len(checks)
+        verified += 1
+        last_pack, last_checks = pack, checks
+
     print("-" * 72)
     print(
-        f"{sum(1 for c in checks if c.startswith('PASS'))}/{len(checks)} checks passed; "
-        f"{failures} failed -- internal-consistency proof only, not proof of a live run."
+        f"{total_checks - total_failures}/{total_checks} checks passed"
+        + (
+            f" across {verified} pack(s) ({skipped} non-pack file(s) skipped)"
+            if len(paths) > 1
+            else ""
+        )
+        + f"; {total_failures} failed -- internal-consistency proof only, "
+        "not proof of a live run."
     )
-    if ns.html:
+    if ns.html and last_pack is not None:
         out = Path(ns.html)
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(render_html(pack, checks), encoding="utf-8")
+        out.write_text(render_html(last_pack, last_checks), encoding="utf-8")
         print(f"wrote forensic report: {ns.html}")
-    return 1 if failures else 0
+    return 0 if verified and not total_failures else (2 if not verified else 1)
 
 
 if __name__ == "__main__":

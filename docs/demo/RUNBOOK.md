@@ -247,7 +247,17 @@ reviewer just read. A captured-run pack and its rendered report ship in the repo
 open the HTML directly or re-verify the JSON with one command. A second
 committed pack records the drift arc (`apply overlay` proposed → honestly
 refused on a replay session → bounded cooldown suppressions):
-`docs/demo/evidence/EVIDENCE_PACK_drift_loop_2026-10-05.{json,html}`. A PASS proves
+`docs/demo/evidence/EVIDENCE_PACK_drift_loop_2026-10-05.{json,html}`. To sweep
+every committed pack in one command, point the verifier at the directory — it
+verifies each `pex.evidence-pack.v1` document it finds and skips unrelated
+receipts:
+
+```powershell
+uv run python scripts/verify_pack.py docs/demo/evidence
+```
+
+(2,920 checks across 11 packs, re-verified 2026-10-15 — and CI pins this via
+`tests/unit/test_evidence_pack.py`.) A PASS proves
 the bundle is internally consistent (these verdicts rest on exactly these
 bytes); it does not claim a live worker ran — that evidence is the receipts
 and recordings.
