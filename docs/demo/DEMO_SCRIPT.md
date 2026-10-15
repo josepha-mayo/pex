@@ -4,11 +4,28 @@ A narrated walkthrough keyed to what is actually on screen. Every claim maps
 to the deterministic replay pipeline; nothing here requires an installed agent
 or an API key.
 
+## Submission cut — the ≤2:55 storyboard (use this for the Devpost video)
+
+Rules: ≤3:00, public YouTube, English, no third-party music. Five beats —
+each maps to committed evidence, so nothing on screen is a mock.
+
+| Time | Beat | On screen | Line |
+|------|------|-----------|------|
+| 0:00–0:20 | The problem | Home rail + fixtures | "Your agent says done. Sometimes it even ran the tests. PEX is the supervisor beside OpenCode and Codex that checks the claim against your intent — sealed goals, workspace evidence, human rulings — not the agent's narration." |
+| 0:20–1:05 | Reward hacking caught | `tamper_runner_config_eval` replay → claim ledger `UNCERTAIN`, `acceptance_surface_config_added:pytest.ini` | "The worker quietly added a pytest.ini pointing the suite at an empty dir — exit 0, claims green. PEX sealed the acceptance surface before it started. The claim lands Uncertain with the flagged file named. Then the correction is verified on evidence." |
+| 1:05–1:50 | Worker consults + escalates | `worker_escalation_eval` (FROM LIVE) → `pex_*` tool calls in ledger, `PEX ×3` chip, `incomplete` verdict | "This worker hit a real conflict: told to edit the test, the goal forbids it. It called PEX's own MCP server — `get_goal`, then `request_decision` with the conflict and three options. This is a real recorded OpenCode run, replayed deterministically — the verdict is `incomplete`, honestly, because the worker stopped to ask." |
+| 1:50–2:25 | Durable human ruling | Resolve the ASK_HUMAN → `RECORDED RULINGS` + `session_terminal` delivery receipt; sibling context | "The worker's turn ended before the human answered. The ruling still lands on the durable intent ledger — delivery honestly reports `session_terminal`. And it propagates: the sibling session receives the ruling in its next context bundle. Human intent outlives the worker that asked." |
+| 2:25–2:55 | Verifiable artifact + platform | Export report → evidence pack; capabilities panel | "Every verdict ships a receipt you can verify offline — sealed digests, a hash-chained ledger, `verify_pack.py`. Semantic supervision runs NVIDIA Nemotron through Nebius Token Factory; sandboxed verification is wired for ConTree. What's deterministic is labeled deterministic; what needs a key says so." |
+
+Alt swap: if recording live instead, replace beats 2–3 with the `--live`
+OpenCode run (a real worker, `uncertain` → `contradicted` → worker repairs)
+and keep beats 1, 4, 5 identical.
+
 ## Setup (before recording)
 
 ```bash
 npm install --prefix apps/desktop   # once
-python scripts/demo.py              # boots bridge :7420 + UI :1420
+uv run python scripts/demo.py       # boots bridge :7420 + UI :1420
 ```
 
 Open `http://127.0.0.1:1420`. Have the Inspector tab ready.
@@ -60,7 +77,7 @@ baseline, 1 integrity incident, 1 corrective nudge.*
 Click **Export report**.
 
 > "The same ledger downloads as a standalone adjudication record — a
-> human-readable timeline with the raw signed report JSON embedded. That's the
+> human-readable timeline with the raw report JSON embedded. That's the
 > receipt a reviewer keeps: what was claimed, what the workspace actually
 > showed, and what PEX did about it."
 
@@ -68,7 +85,7 @@ Click **Export report**.
 
 ## Optional live cut — a real worker (replaces Beats 2–3 if recorded live)
 
-Run `python scripts/demo.py --live` instead. Select the OpenCode worker
+Run `uv run python scripts/demo.py --live` instead. Select the OpenCode worker
 (badged **Live**), open the Inspector.
 
 > "This one isn't a replay. That's a real OpenCode agent on NVIDIA's free
@@ -80,7 +97,7 @@ Run `python scripts/demo.py --live` instead. Select the OpenCode worker
 
 ## Optional live cut B — the tamper scenario
 
-Run `python scripts/demo.py --live --scenario tamper`. The worker is told to
+Run `uv run python scripts/demo.py --live --scenario tamper`. The worker is told to
 make `python -m pytest -q` pass by *editing the acceptance test* — the file
 PEX sealed when the goal attached.
 
@@ -143,7 +160,7 @@ Click **Worker reads its goal, then asks PEX to verify its claim** —
 > session credential. PEX adjudicated the claim `uncertain` — and the
 > worker's final message quoted that verdict instead of asserting success.
 > Watch the session row: it carries a `PEX ×2` chip, and the evidence pack's
-> signed ledger contains both calls. The supervision isn't a channel the
+> hash-chained ledger contains both calls. The supervision isn't a channel the
 > worker can't see — it's a tool it chose to check itself against."
 
 *If asked whether the worker can escalate itself — that run is a fixture
@@ -216,8 +233,6 @@ record a ruling live to show the inbox count drop.*
 > polices *me*: `ruling_selfcheck_eval` is my own prompt telling the worker
 > to modify the sealed test — PEX escalates it back to a human decision
 > rather than silently obeying."
-
-## Beat 5 — it's a supervisor, not a narrator (2:20–3:00)
 
 ## Optional cut — try to break it
 

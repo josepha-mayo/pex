@@ -4,7 +4,7 @@ Each `*_eval.json` here is a **recorded replay**: a deterministic event
 trajectory pushed through the real supervision pipeline (claim extraction →
 sealed-baseline checks → verdicts → policy → interventions), always labeled
 `replay: true` + `not_live_control: true`. No worker install needed — the
-setup card in `python scripts/demo.py` lists them as buttons.
+setup card in `uv run python scripts/demo.py` lists them as buttons.
 
 `captured_live_eval`, `captured_handoff_eval`, and `captured_mcp_eval` are
 different in provenance, not privilege: all were exported from recorded live

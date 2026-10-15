@@ -31,7 +31,7 @@ the saved free Muse/Strands supervisor: observed completion stayed NOOP; incompl
 a specific nudge, produced the required artifact, recorded a helped outcome, and returned to
 NOOP. This is source-bound semantic proof, not packaged native-app proof. See
 [the architecture overview](docs/architecture/overview.md)
-and [package receipt](docs/PACKAGE_RECEIPT_B0438BD.json).
+and [package receipt](docs/evidence/PACKAGE_RECEIPT_B0438BD.json).
 
 </details>
 
@@ -95,3 +95,8 @@ cross-session, cross-project, expired, rotated, and revoked credentials fail
 closed; the worker never receives the desktop operator bearer.
 
 Loopback: `GET /v1/discover` lists running desktops first, then HTTP daemons, then CLIs. Each item includes `connect`. `POST /v1/discover/attach` uses that method. Cursor attach installs hooks only.
+
+---
+
+*Bare commit SHAs in this document refer to local session history (verifiable
+via `git log`); where a receipt artifact is committed, the row links it.*

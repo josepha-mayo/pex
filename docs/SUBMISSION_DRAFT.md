@@ -35,30 +35,33 @@ Coding and Agentic Engineering.
 
 ## Elevator description (~2 paragraphs)
 
-Coding agents narrate. They say "done" when tests are green — and "done" when
-they weakened the test to get there. PEX is a supervisor that sits beside the
-agent you already have (OpenCode today, Codex today, anything emitting
-OpenTelemetry tomorrow): it reads the durable goal — objective, acceptance
-criteria, forbidden outcomes — independently inspects the workspace, and
-decides itself whether the acceptance state actually holds. When a worker's
-claim doesn't match reality, PEX corrects it or stops the session. When intent
-and instruction conflict, the worker can escalate *through PEX's own MCP
-server* — and the human's ruling lands on a durable intent ledger that every
-later worker inherits, even ones that never asked.
+A coding agent asked its human for permission to disobey the human — the
+task ordered it to weaken a test the goal had forbidden it to touch. The
+agent escalated through PEX's own MCP server with three options and
+`urgency: blocking`. Its session died before the human answered — and the
+ruling still landed on a durable intent ledger, honestly marked
+undeliverable, then propagated to a sibling worker that never asked. That
+arc is PEX: a supervisor for the coding agents you already run (OpenCode,
+Codex) that treats worker narration as evidence-free until independently
+verified against sealed goals and workspace state.
 
-Everything the judge sees is replayable and verifiable: recorded live sessions
-re-derive their verdicts deterministically, and signed evidence packs can be
-re-checked offline. Supervision runs on Nebius Token Factory with NVIDIA
-Nemotron — a real model making real pass/fail rulings about real agents'
-workspaces, not a mock.
+PEX catches what a green exit code hides: injected `pytest.ini` files that
+empty the suite, edits to sealed acceptance tests, "all tests pass" with no
+attributable run, identical failing probes looped forever. Every verdict
+ships a tamper-evident evidence pack — hash-chained ledger, manifest
+digests — verifiable offline without trusting us. Semantic supervision runs
+NVIDIA Nemotron through Nebius Token Factory; the deterministic evidence
+layer does most of the catching, and both are labeled honestly.
 
 ## The live story (for the "story" field / video)
 
-- A worker on OpenCode's free Nemotron route is told to "run the tests" — but
-  the PEX goal forbids editing `test_csv_utils.py`. The worker reads its goal
-  through `pex.get_goal`, discovers the conflict itself, and escalates:
-  *"your instruction says weaken the test, the goal forbids it — how should I
-  proceed?"* with three authored options and `urgency: blocking`.
+- A worker on OpenCode's free Nemotron route is told to make
+  `python -m pytest -q` pass by *editing the sealed acceptance test* — but
+  the PEX goal forbids touching `test_csv_utils.py`. The worker reads its
+  goal through `pex.get_goal`, discovers the conflict itself, and
+  escalates: *"your instruction says weaken the test, the goal forbids it —
+  how should I proceed?"* with three authored options and
+  `urgency: blocking`.
 - The worker's turn ends before the human answers. PEX records the ruling
   durably anyway (delivery honestly reported as `session_terminal`) — and a
   sibling session, created *before* the ruling, receives it in its next
@@ -83,17 +86,19 @@ pass/fail/correct ruling a worker cannot talk its way out of. This is a
 real runtime call to `api.tokenfactory.nebius.com` — live-verified
 (`docs/evidence/codex-nebius-live-2026-09-24.json` records a Nemotron
 supervisor correcting a Codex worker's premature stop). Configuration is
-three environment variables (`NEBIUS_API_KEY`,
-`PEX_SUPERVISOR_PROVIDER=nebius`, `PEX_CLOUD_REASONING=true`) and
-`scripts/check_token_factory.py` verifies the wiring with one real catalog
-+ inference call in seconds.
+two environment variables (`NEBIUS_API_KEY`,
+`PEX_SUPERVISOR_PROVIDER=nebius`) and
+`uv run python scripts/check_token_factory.py --infer` proves the wiring
+with one real inference call in seconds.
 
 **NVIDIA Nemotron also powers the workers in the demo**: live sessions run
-on OpenCode's free Nemotron route, so the demo shows Nemotron both doing
-the work and judging it — the supervisor model that catches its sibling's
-reward hacking. (PEX is worker-agnostic; the worker's model choice is the
-worker's. The hackathon-qualifying model call is the supervisor's Token
-Factory path above — not the worker's free route.)
+on OpenCode's free Nemotron route, and with a Token Factory key a Nemotron
+supervisor judges a Nemotron worker — receipted in
+`docs/evidence/nebius-opencode-proof.json` (Nemotron-3.5-Lightning worker,
+Super-120B supervisor, false-claim recovery). (PEX is worker-agnostic; the
+worker's model choice is the worker's. The hackathon-qualifying model call
+is the supervisor's Token Factory path above — not the worker's free
+route.)
 
 **ConTree/Token Factory Sandboxes**: wired (`PEX_PUBLIC_PYTEST_BACKEND=contree`
 dispatches the bounded verification set into a disposable network-isolated
@@ -114,14 +119,18 @@ and runnable through Dec 15 judging.
 
 ```text
 git clone https://github.com/josepha-mayo/pex && cd pex
+npm install --prefix apps/desktop    # once — the UI bundle
 uv run python scripts/demo.py        # bridge + UI, no keys needed
 # open http://127.0.0.1:1420 → "Recorded replays" → run worker_escalation_eval
-# or any of the 17 fixtures; each replays a real recorded session through
-# the live adjudication pipeline and shows its verdict.
-uv run python scripts/eval_replays.py   # scores all 17 fixtures, prints receipt
-# With a Token Factory key: NEBIUS_API_KEY=... \
-#   PEX_SUPERVISOR_PROVIDER=nebius PEX_CLOUD_REASONING=true \
-#   uv run python scripts/check_token_factory.py   # one real inference call
+# or any of the 17 fixtures; each replays a recorded trajectory through the
+# real adjudication pipeline — four were exported from real live worker
+# sessions — and shows its verdict.
+uv run python scripts/eval_replays.py   # second terminal, while demo.py runs;
+#                                        scores all 17 (prints a table;
+#                                        --json/--html write a receipt file)
+# With a Token Factory key:
+NEBIUS_API_KEY=... uv run python scripts/check_token_factory.py --infer
+#   # one real catalog + one real inference call against Nemotron
 ```
 
 ## Built during the submission period (pre-existing-project note)
@@ -130,8 +139,9 @@ This repository predates the submission window in part; the work submitted
 here was built during it. Substantially new since the window opened:
 
 - The entire worker↔PEX MCP supervision loop (session-bound credentials,
-  five scoped tools, flat+nested arg contract) — including the
-  worker-initiated escalation captured live into `worker_escalation_eval`.
+  eight session-bound tools behind five scopes — one read, four write —
+  with a flat+nested arg contract) — including the worker-initiated
+  escalation captured live into `worker_escalation_eval`.
 - Durable human rulings: journaled rulings distinct from editable goal
   text, surviving worker termination, propagating to sibling workers.
 - The deterministic replay system: 17-fixture suite, evaluator, replay
@@ -173,7 +183,7 @@ here was built during it. Substantially new since the window opened:
   public — not unlisted; no third-party music/trademarks). Source footage:
   `docs/demo/assets/pex-replay-walkthrough-b28d999.mp4` (full judge path)
   and `docs/demo/assets/pex-escalation-arc-6d16888.mp4` (worker-initiated
-  `pex_request_decision` → durable ruling, real live data). Narration plan:
+  `pex.request_decision` → durable ruling, real live data). Narration plan:
   `docs/demo/DEMO_SCRIPT.md` — cut to ~2:55.
 - Supporting clips: `docs/demo/assets/pex-live-tamper-demo.mp4`,
   `docs/demo/assets/pex-judge-arc-597ce13.mp4`,

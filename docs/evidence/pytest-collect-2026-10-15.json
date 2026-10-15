@@ -1,0 +1,10 @@
+{
+  "kind": "pex.pytest-collect-receipt.v1",
+  "recorded_at": "2026-10-15",
+  "commit": "96b6128",
+  "command": "python -m pytest --collect-only -q -m \"not live_llm and not live_codex and not live_opencode and not live_agentcore and not live_contree\"",
+  "collected": 5531,
+  "deselected_by_marker": 18,
+  "collection_seconds": 6.31,
+  "note": "Collection count only — this receipt proves test inventory, not a pass run. The marker selection excludes the live-provider/gated tests. Reproduce with the command above."
+}

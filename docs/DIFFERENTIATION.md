@@ -42,8 +42,9 @@ stays quiet when the work is actually complete.
   supervision/recovery tests, and 243 expanded Strands/provider/AgentCore/evidence
   tests (four skips). The latest
   complete Python regression passed with zero failures (the suite now
-  collects **5,530 tests** — `pytest --collect-only` re-verified
-  2026-10-15); the earlier 5,462-pass run at `c9fc4ec` is retained as a
+  collects **5,531 tests** — `pytest --collect-only` re-verified
+  2026-10-15, [receipt](evidence/pytest-collect-2026-10-15.json)); the
+  earlier 5,462-pass run at `c9fc4ec` is retained as a
   historical data point.
 - A real Codex Spark worker and free Muse/Strands supervisor demonstrated restraint and
   specific same-thread recovery on clean `e864389`.

@@ -101,7 +101,7 @@ in [`docs/SUBMISSION_DRAFT.md`](SUBMISSION_DRAFT.md).
    non-goals, evidence) for editing — a one-click illustration of what a
    verifiable goal looks like.
 
-5. With the OpenCode CLI installed (`npm i opencode-ai`), `python
+5. With the OpenCode CLI installed (`npm i -g opencode-ai`), `uv run python
    scripts/demo.py --live` does the same against a **real worker** on the
    free NVIDIA Nemotron 3 Ultra route — no key. The worker's false "All tests
    passed" is contradicted by PEX's own pytest observation with the failing
@@ -189,8 +189,10 @@ all callable in-page) and a scoped MCP tool surface at `/mcp/`.
 
 - **Runs today offline:** the full supervision pipeline, deterministic triage,
   acceptance-surface sealing and tamper detection, the replay demo, local
-  subprocess public-test verification, 5,530 backend tests collected
-  (latest full run 2026-10-13, 0 failures). `uv run python scripts/eval_replays.py` scores the
+  subprocess public-test verification, 5,531 backend tests collected
+  (latest full run 2026-10-13, 0 failures; collection re-verified
+  2026-10-15 — [receipt](../evidence/pytest-collect-2026-10-15.json)).
+  `uv run python scripts/eval_replays.py` scores the
   shipped fixture suite against its declared supervision arcs — 17/17,
   re-verified 2026-10-14
   ([receipt](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-14.json) —

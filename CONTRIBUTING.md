@@ -36,7 +36,7 @@ npm run build
 ```
 
 The replay fixture suite is scored end-to-end by `scripts/eval_replays.py`
-against a running demo bridge (`python scripts/demo.py`):
+against a running demo bridge (`uv run python scripts/demo.py`):
 
 ```powershell
 .\.venv\Scripts\python scripts/eval_replays.py --bridge http://127.0.0.1:7420

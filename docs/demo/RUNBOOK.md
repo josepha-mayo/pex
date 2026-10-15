@@ -57,7 +57,7 @@ needed. It seeds a throwaway git workspace under `build/demo/live-<utc>/`
 attaches the Scenario B goal through the bridge's public API, and sends the
 decoy-checker task. Select the OpenCode worker (badged **Live**) and watch the
 claim ledger go `Uncertain → Contradicted → Verified`. The OpenCode CLI must
-be on `PATH` (`npm i opencode-ai`) or named by `PEX_OPENCODE_BIN`. Free-tier
+be on `PATH` (`npm i -g opencode-ai`) or named by `PEX_OPENCODE_BIN`. Free-tier
 models are rate-limited upstream; a slow first turn is the provider, not PEX.
 When a live worker stops emitting events entirely, the session row and the
 Inspector call the observed silence out as `quiet Nm` / an observation gap —
@@ -353,7 +353,7 @@ ruling — durable human intent reaching a worker that never asked.
 ```powershell
 uv run python scripts/demo_bridge.py
 # semantic reviews, bounded at 3 dispatches/session:
-$env:PEX_CLOUD_REASONING="true"; uv run uv run python scripts/demo_bridge.py
+$env:PEX_CLOUD_REASONING="true"; uv run python scripts/demo_bridge.py
 ```
 
 With a Token Factory key, verify the supervisor wiring in seconds before

@@ -237,10 +237,9 @@ Those failures are evidence of provider access and catalog limits, not PEX lift.
 On 12 September 2026, the expanded benchmark/integration selection passed
 **447/447 in 295.53 seconds**. It covers PexBench integrity and execution
 safety, immutable result admission, hidden-evaluator boundaries, Cursor
-capture/delivery/ack/policy, and speculative supervision. The exact command and
-scope are retained in
-The exact command and scope were part of the internal development record; the public
-benchmark contract and task prompts remain in this directory.
+capture/delivery/ack/policy, and speculative supervision. The exact command
+and scope were part of the internal development record; the public benchmark
+contract and task prompts remain in this directory.
 
 The same checkpoint's `four_arm.py readiness` returned exit code 0 while
 correctly reporting `coherent_runs: []`, `can_freeze: false`. Passing the

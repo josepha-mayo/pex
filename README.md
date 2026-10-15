@@ -811,7 +811,7 @@ independent evidence before saying it.
 
 That exact live run replays deterministically as `captured_mcp_eval` — the
 `pex_*` calls survive capture as first-class events, the session card carries
-a `PEX ×2` chip, and the evidence pack's signed ledger contains the calls —
+a `PEX ×2` chip, and the evidence pack's hash-chained ledger contains the calls —
 recorded capture: [`pex-mcp-eval.mp4`](docs/demo/assets/pex-mcp-eval.mp4)
 (via `apps/desktop/scripts/capture-mcp-eval.mjs`). Reproduce the round trip
 live with `uv run python scripts/probe_worker_mcp.py` while a demo bridge is up
