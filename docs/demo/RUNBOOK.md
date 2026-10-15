@@ -588,7 +588,9 @@ Deck → Goals registry payoff (`pex-judge-arc-*.mp4`).
 against the persisted 2026-10-14 live home — the worker's own
 `pex_request_decision`, the ASK_HUMAN card, and the journaled ruling under
 Recorded rulings (`pex-escalation-arc-*.mp4`, real live-session data, not a
-replay).
+replay). `capture-config-injection.mjs` records the storyboard's beat-2
+arc (`config_injection_eval` — injected `pytest.ini`, flagged file, verified
+correction) end-to-end as `pex-config-injection-*.mp4`.
 
 For the submission video, [DEMO_SCRIPT.md](DEMO_SCRIPT.md) is a ~3-minute
 narration keyed to the same on-screen flow.
