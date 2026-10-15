@@ -130,14 +130,15 @@ and runnable through Dec 15 judging.
 git clone https://github.com/josepha-mayo/pex && cd pex
 npm install --prefix apps/desktop    # once — the UI bundle
 uv run python scripts/demo.py        # bridge + UI, no keys needed
-# open http://127.0.0.1:1420 → "Recorded replays" → run worker_escalation_eval
-# or any of the 18 fixtures; each replays a recorded trajectory through the
+# open http://127.0.0.1:1420 → "Recorded replays" → run premature_stop_eval
+# (tagged "start here") — then worker_escalation_eval, or any of the 18
+# fixtures; each replays a recorded trajectory through the
 # real adjudication pipeline — four were exported from real live worker
 # sessions — and shows its verdict.
 uv run python scripts/eval_replays.py   # second terminal, while demo.py runs;
 #                                        scores all 18 (prints a table;
 #                                        --json/--html write a receipt file)
-# With a Token Factory key:
+# With a Token Factory key (PowerShell: $env:NEBIUS_API_KEY="..." first):
 NEBIUS_API_KEY=... uv run python scripts/check_token_factory.py --infer
 #   # one real catalog + one real inference call against Nemotron
 ```

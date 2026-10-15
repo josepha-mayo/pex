@@ -1,37 +1,48 @@
 %%{init: {"theme":"base","themeVariables":{"fontFamily":"Inter, Segoe UI, Arial","fontSize":"18px","primaryTextColor":"#f5fbf8","lineColor":"#78949b","edgeLabelBackground":"#071116","clusterBkg":"#0d1b21","clusterBorder":"#34515a"},"flowchart":{"curve":"linear","nodeSpacing":45,"rankSpacing":70,"htmlLabels":true}}}%%
 flowchart LR
-  human["<b>Human</b><br/>sets goals · makes consequential decisions"]
-  ui["<b>PEX desktop + 2 companions</b><br/>attach · inspect · pause · dismiss"]
-  zen["<b>Zen BYOK model</b><br/>credential remains in OS vault"]
+  human["<b>Human</b><br/>seals goals · rules on escalations"]
+  ui["<b>PEX desktop</b><br/>Command Deck · Inspector · Pet<br/>replay · rulings · evidence packs"]
+  nebius["<b>Nebius Token Factory</b><br/>NVIDIA Nemotron supervisor model<br/><b>KEY-GATED</b>"]
 
   subgraph local["LOCAL PEX · IMPLEMENTED"]
     direction TB
     bridge["<b>Bridge + adapters</b><br/>authenticated worker events"]
-    evidence["<b>Goal-bound evidence</b><br/>files · tests · progress"]
-    strands["<b>Strands supervisor</b><br/>bounded typed proposal"]
-    verifier["<b>Independent verifier</b><br/>checks consequential corrections"]
-    policy["<b>Local policy guard</b><br/>allow · deny · ask human"]
-    ledger[("<b>Audit ledger</b><br/>goal · action · outcome")]
-    bridge --> evidence --> strands --> verifier --> policy
-    strands -->|correct work: NOOP| ledger
+    seal["<b>Sealed acceptance surface</b><br/>baseline snapshot at goal attach"]
+    claims["<b>Claim ledger</b><br/>worker claims extracted from events<br/>narration is signal, never proof"]
+    verifier["<b>Independent verifier</b><br/>workspace evidence: files · diffs ·<br/>test exits · staleness · tamper"]
+    supervisor["<b>Strands supervisor</b><br/>semantic proposal over redacted<br/>evidence · independent verifier agent"]
+    policy["<b>Local policy guard</b><br/>nudge · ask human · noop"]
+    ledger[("<b>Audit ledger</b><br/>goal · claims · interventions · rulings")]
+    mcp["<b>MCP server /mcp/</b><br/>8 tools · 5 scopes · session-bound<br/>expiring credentials"]
+    replay["<b>Replay pipeline</b><br/>deterministic recorded trajectories<br/>replay:true · not_live_control:true"]
+
+    bridge --> seal --> claims --> verifier --> supervisor --> policy
+    claims -->|every adjudication| ledger
     policy -->|audit| ledger
+    mcp -->|scoped writes: verify_claim · report_progress<br/>request_decision · handoff| claims
+    replay -->|same adjudication pipeline| verifier
   end
 
-  worker["<b>Existing coding worker</b><br/>OpenCode HTTP · Codex App Server"]
+  worker["<b>Existing coding worker</b><br/>OpenCode serve · Codex App Server"]
   agentcore["<b>Optional AgentCore Runtime</b><br/>implemented + locally tested<br/><b>NOT DEPLOYED</b>"]
+  contree["<b>Nebius ConTree Sandboxes</b><br/>disposable public-pytest VMs<br/><b>KEY-GATED (beta)</b>"]
+  tavily["<b>Tavily web evidence</b><br/>public-claim citation checks<br/><b>KEY-GATED</b>"]
 
-  human --> ui -->|goal + controls| bridge
+  human --> ui -->|sealed goal + rulings| bridge
   worker -->|observed events| bridge
+  worker <-->|session-scoped tools| mcp
   policy -->|one authorized same-session correction| worker
   policy -->|real decision only| ui
-  strands <-->|model inference| zen
+  supervisor <-->|model inference| nebius
+  verifier -.->|public claims only| tavily
+  verifier -.->|isolated pytest runs| contree
   bridge -.->|optional remote proposal path| agentcore
-  agentcore -.-> strands
+  agentcore -.-> supervisor
 
   classDef core fill:#123a32,stroke:#4ee0ad,color:#f5fbf8,stroke-width:2px;
   classDef surface fill:#13242b,stroke:#6d8d96,color:#f5fbf8,stroke-width:1.5px;
   classDef optional fill:#29271e,stroke:#d8b456,color:#fff7dc,stroke-width:2px,stroke-dasharray:7 5;
-  class bridge,evidence,strands,verifier,policy,worker core;
-  class human,ui,zen,ledger surface;
-  class agentcore optional;
+  class bridge,seal,claims,verifier,supervisor,policy,worker,mcp,replay core;
+  class human,ui,nebius,ledger surface;
+  class agentcore,contree,tavily optional;
   style local fill:#0b181d,stroke:#35535c,color:#f5fbf8,stroke-width:2px

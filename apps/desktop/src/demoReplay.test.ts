@@ -274,6 +274,22 @@ test("the verdict parses the declared-arc scoring honestly", () => {
   }
 });
 
+test("the verdict quotes worker->PEX calls only when the ledger reported any", () => {
+  const base = { replay: true, not_live_control: true, session_id: "s" };
+  assert.equal(
+    parseReplayVerdict({ ...base, worker_pex_calls: 3 })?.workerPexCalls,
+    3,
+  );
+  for (const count of [undefined, 0, -1, "3", Number.NaN, 2.5 < 0 ? 1 : null]) {
+    assert.equal(parseReplayVerdict({ ...base, worker_pex_calls: count })?.workerPexCalls, undefined);
+  }
+  // Fractional positive counts floor to a whole call count.
+  assert.equal(
+    parseReplayVerdict({ ...base, worker_pex_calls: 2.9 })?.workerPexCalls,
+    2,
+  );
+});
+
 test("the verdict parses the worker-claim-vs-adjudication contrast", () => {
   const verdict = parseReplayVerdict({
     replay: true,

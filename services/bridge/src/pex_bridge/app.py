@@ -6183,6 +6183,24 @@ def create_app() -> FastAPI:
                 if not escalation.replayed:
                     await _publish_committed_decision_update(escalation.intervention)
                 return escalation.response()
+            if pending is not None:
+                # Delivery-bearing resolutions (lifecycle, permission) imply a
+                # live worker — meaningless on a sealed recording. The two
+                # ruling-recording branches above are exempt: a human answer on
+                # a replay's escalation is durable intent that governs attached
+                # replays, and the finalize paths already keep replay sessions
+                # stopped rather than pretending a worker resumed.
+                pending_session = await state.store.get_session_for_authority(pending.session_id)
+                if (
+                    pending_session is not None
+                    and (pending_session.metadata or {}).get("not_live_control") is True
+                ):
+                    raise HTTPException(
+                        409,
+                        "recorded replay session: permission and lifecycle decisions "
+                        "imply a live worker; rulings on recorded escalations remain "
+                        "allowed because they journal durable intent onto the goal",
+                    )
             if pending and pending.proposed_action.type in lifecycle_types:
                 lifecycle = await resolve_lifecycle_decision(
                     state.store,
@@ -7064,6 +7082,9 @@ def create_app() -> FastAPI:
             "narration_check": narration_check,
             "verified_facts": verified_facts,
             "stats": stats,
+            # Ledger-derived — identical semantics to the /v1/sessions read
+            # path, so the verdict card quotes the same count the row shows.
+            "worker_pex_calls": (await state.store.worker_pex_call_counts()).get(session.id, 0),
         }
 
     @app.get("/v1/adapters")
@@ -7092,8 +7113,19 @@ def create_app() -> FastAPI:
         body: SyntheticSessionIn | None = None,
         _: None = Depends(_require_token),
     ):
+        vendor_id = body.vendor_id if body and body.vendor_id else "synth-1"
+        existing = await state.store.get_session_for_authority(f"synthetic:{vendor_id}")
+        if existing is not None and (
+            existing.metadata.get("not_live_control") is True
+            or existing.metadata.get("replay") is True
+            or existing.metadata.get("observe_only") is True
+        ):
+            raise HTTPException(
+                409,
+                "recorded replay session: a sealed evidence row cannot be re-seeded",
+            )
         session = state.adapters.synthetic.seed_session(
-            vendor_id=(body.vendor_id if body and body.vendor_id else "synth-1"),
+            vendor_id=vendor_id,
             cwd=(body.cwd if body else None),
         )
         await state.store.upsert_session(session)

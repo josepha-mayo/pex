@@ -458,6 +458,9 @@ async def test_demo_replay_stamps_worker_pex_calls(client):
     calls never earn the signal."""
     replay = await client.post("/v1/demo/replay", json={"fixture": "captured_mcp_eval"})
     assert replay.status_code == 200
+    # The verdict card reads the count straight off the replay response —
+    # same ledger-derived number the session row projects.
+    assert replay.json()["worker_pex_calls"] == 2
     sid = replay.json()["session_id"]
     detail = await client.get(f"/v1/sessions/{sid}")
     assert detail.json()["metadata"]["worker_pex_calls"] == 2
@@ -475,6 +478,7 @@ async def test_demo_replay_stamps_worker_pex_calls(client):
     }
     replay2 = await client.post("/v1/demo/replay", json={"inline": inline})
     assert replay2.status_code == 200
+    assert replay2.json()["worker_pex_calls"] == 0
     detail2 = await client.get(f"/v1/sessions/{replay2.json()['session_id']}")
     assert "worker_pex_calls" not in detail2.json()["metadata"]
 

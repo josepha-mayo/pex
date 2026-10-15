@@ -30,6 +30,7 @@ from pex_protocol.intervention import Intervention
 from pex_protocol.session import HarnessEvent, HarnessSession
 
 from scripts.verify_pack import load_pack, render_html, verify
+from scripts.verify_pack import main as verify_pack_main
 
 
 @pytest.fixture
@@ -309,3 +310,25 @@ def test_committed_evidence_packs_still_verify() -> None:
         failures = [line for line in checks if line.startswith("FAIL")]
         assert not failures, f"{path.name}: {failures}"
         assert any(line.startswith("PASS") for line in checks), path.name
+
+
+def test_directory_sweep_exit_codes(tmp_path, monkeypatch) -> None:
+    """A judge pointing verify_pack.py at a directory gets a strict exit
+    code: 0 only when at least one pack fully verifies with zero failures,
+    1 when any pack candidate fails, 2 when nothing pack-shaped exists."""
+    pack_dir = tmp_path / "packs"
+    pack_dir.mkdir()
+    (pack_dir / "EVIDENCE_PACK_ok.json").write_text(json.dumps(_fixture_pack()), encoding="utf-8")
+    # Non-pack receipts share the directory and are skipped, never failed.
+    (pack_dir / "suite-receipt.html").write_text("<html>receipt</html>", encoding="utf-8")
+    monkeypatch.setattr("sys.argv", ["verify_pack", str(pack_dir)])
+    assert verify_pack_main() == 0
+
+    corrupted = _fixture_pack()
+    corrupted["acceptance_baselines"][0]["contents"]["test_csv_utils.py"] = "assert True\n"
+    (pack_dir / "EVIDENCE_PACK_bad.json").write_text(json.dumps(corrupted), encoding="utf-8")
+    assert verify_pack_main() == 1
+
+    (pack_dir / "EVIDENCE_PACK_ok.json").unlink()
+    (pack_dir / "EVIDENCE_PACK_bad.json").unlink()
+    assert verify_pack_main() == 2

@@ -335,7 +335,19 @@ export function Inspector({
           </dl>
           {current ? (
             <div className="button-row">
-              <button type="button" className="solid" onClick={onOpen} disabled={!canOpen}>
+              <button
+                type="button"
+                className="solid"
+                onClick={onOpen}
+                disabled={!canOpen}
+                title={
+                  canOpen
+                    ? undefined
+                    : current.metadata?.not_live_control === true
+                      ? "A recorded replay has no live process to open"
+                      : "This session has no focusable window or external URL to open"
+                }
+              >
                 {canOpen ? "Open agent" : "Open unavailable"}
               </button>
               <button type="button" className="ghost" onClick={onPause}
@@ -378,7 +390,8 @@ export function Inspector({
             <p className="empty-copy">
               PEX lists already-open Cursor, Codex, OpenCode, Hermes, and Claude Code
               sessions without restarting them. A closed harness stays unavailable until
-              its app or API is actually running.
+              its app or API is actually running. No worker installed? Home replays a
+              recorded supervision arc — the same adjudication pipeline, no install.
             </p>
           ) : null}
         </section>

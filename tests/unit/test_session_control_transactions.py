@@ -19,7 +19,7 @@ from pex_bridge.mcp_auth import digest_mcp_session_token, mint_mcp_session_token
 from pex_bridge.pets import PetSettings
 from pex_bridge.pipeline import Pipeline
 from pex_bridge.store import Store, goal_intent_semantic_hash, utcnow
-from pex_protocol.enums import HarnessType, SessionStatus
+from pex_protocol.enums import EventType, HarnessType, SessionStatus
 from pex_protocol.goal import Goal
 from pex_protocol.project_identity import PathPlatform, ProjectLocator, ProjectOrigin
 from pex_protocol.session import HarnessSession
@@ -670,6 +670,132 @@ async def test_replay_sessions_refuse_every_live_worker_surface(tmp_path):
             assert "recorded replay session" in (
                 detail["message"] if isinstance(detail, dict) else detail
             )
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_synthetic_reseed_cannot_unseal_a_replay(tmp_path):
+    """Re-seeding an existing id through /v1/synthetic/sessions must not
+    wipe the replay/not_live_control labels — otherwise every guarded
+    route passes again and synthetic events write into sealed evidence."""
+    settings = Settings(require_auth=True, home=tmp_path, autonomy="manage")
+    store = Store(tmp_path / "pex.sqlite")
+    adapters = AdapterRegistry()
+    bus = EventBus()
+    state.settings = settings
+    state.store = store
+    state.adapters = adapters
+    state.bus = bus
+    state.pipeline = Pipeline(store, adapters, bus, settings)
+    state.token = "replay-reseed-operator-token-001"
+    state.pet_settings = PetSettings()
+    state.pet_path = tmp_path / "pet.json"
+    await store.connect()
+    try:
+        sealed = adapters.synthetic.seed_session(vendor_id="sealed-run")
+        sealed.metadata["replay"] = True
+        sealed.metadata["not_live_control"] = True
+        await store.upsert_session(sealed)
+
+        transport = ASGITransport(app=create_app())
+        headers = {"Authorization": f"Bearer {state.token}"}
+        async with AsyncClient(transport=transport, base_url="http://127.0.0.1") as client:
+            reseed = await client.post(
+                "/v1/synthetic/sessions",
+                headers=headers,
+                json={"vendor_id": "sealed-run"},
+            )
+            assert reseed.status_code == 409, reseed.text
+            assert "sealed evidence" in reseed.json()["detail"]
+
+            after = await client.get(f"/v1/sessions/{sealed.id}", headers=headers)
+            assert after.json()["metadata"]["replay"] is True
+            assert after.json()["metadata"]["not_live_control"] is True
+
+            # A plain id is still re-seedable — the guard is seal-scoped.
+            plain = await client.post(
+                "/v1/synthetic/sessions",
+                headers=headers,
+                json={"vendor_id": "plain-seed"},
+            )
+            assert plain.status_code == 200, plain.text
+            again = await client.post(
+                "/v1/synthetic/sessions",
+                headers=headers,
+                json={"vendor_id": "plain-seed"},
+            )
+            assert again.status_code == 200, again.text
+
+        # Store-level backstop: no upsert path may drop the seal either.
+        stripped = sealed.model_copy(deep=True)
+        stripped.metadata = {}
+        stripped.last_activity = utcnow() + timedelta(seconds=1)
+        with pytest.raises(ValueError, match="cannot unseal"):
+            await store.upsert_session(stripped)
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_replay_sessions_refuse_delivery_bearing_decisions(tmp_path):
+    """Rulings on a replay's recorded escalations are durable intent (the
+    attached-replay demo depends on it), but permission and lifecycle
+    decisions only exist to be delivered — on a sealed session they 409."""
+    settings = Settings(require_auth=True, home=tmp_path, autonomy="manage")
+    store = Store(tmp_path / "pex.sqlite")
+    adapters = AdapterRegistry()
+    bus = EventBus()
+    state.settings = settings
+    state.store = store
+    state.adapters = adapters
+    state.bus = bus
+    state.pipeline = Pipeline(store, adapters, bus, settings)
+    state.token = "replay-decision-operator-token-001"
+    state.pet_settings = PetSettings()
+    state.pet_path = tmp_path / "pet.json"
+    await store.connect()
+    try:
+        await _register_identity(store, "/work/session-control-replay-decision")
+        target = adapters.synthetic.seed_session(
+            vendor_id="replay-decision",
+            project_id=PROJECT_ID,
+            goal_id="goal-a",
+        )
+        await _seed(store, session=target)
+        event = adapters.synthetic.emit(
+            target,
+            EventType.PERMISSION_REQUEST,
+            phase="before",
+            command="rm -rf /tmp/important-state",
+        )
+        intervention = await state.pipeline.ingest_event(event, target)
+        assert intervention is not None
+        assert intervention.result == "permission_awaiting_human"
+
+        # Seal the row after the pending permission exists — the resolve
+        # route must still refuse delivery semantics on the recording.
+        stored = await store.get_session_for_authority(target.id)
+        assert stored is not None
+        stored.metadata["replay"] = True
+        stored.metadata["not_live_control"] = True
+        await store.upsert_session(stored)
+
+        transport = ASGITransport(app=create_app())
+        headers = {"Authorization": f"Bearer {state.token}"}
+        async with AsyncClient(transport=transport, base_url="http://127.0.0.1") as client:
+            resolved = await client.post(
+                f"/v1/decisions/{intervention.id}/resolve",
+                headers=headers,
+                json={"decision": "allow"},
+            )
+            assert resolved.status_code == 409, resolved.text
+            assert "recorded replay session" in resolved.json()["detail"]
+
+            # The sealed intervention stays pending — nothing pretended to act.
+            pending = await store.get_intervention(intervention.id)
+            assert pending is not None
+            assert pending.result == "permission_awaiting_human"
     finally:
         await store.close()
 

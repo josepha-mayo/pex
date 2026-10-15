@@ -4,38 +4,48 @@ PEX is a personal adaptive control plane. The unit of optimization is the human 
 
 ```mermaid
 flowchart TB
-  human[Human: goals and decisions]
-  pet[PEX Pet / Command Deck]
-  bridge[Local Bridge]
+  human[Human: sealed goals and rulings]
+  pet[PEX desktop: Command Deck / Inspector / Pet]
+  bridge[Local Bridge + adapters]
   policy[Policy Guard]
-  store[(SQLite intent + events)]
-  cursor[Cursor hooks]
+  store[(SQLite intent + claims + events)]
+  opencode[OpenCode serve]
   codex[Codex App Server]
   other[Other harness adapters]
   strands[Strands Supervisor]
   verifier[Independent Strands Verifier]
-  evidence[Bounded local evidence + verification]
-  runtime[AgentCore Runtime target]
+  evidence[Sealed acceptance surface + workspace verification]
+  claims[Claim ledger: narration is signal, never proof]
+  replay[Replay pipeline: deterministic trajectories, not live control]
+  runtime[AgentCore Runtime target — not deployed]
+  nebius[Nebius Token Factory: NVIDIA Nemotron]
+  contree[Nebius ConTree Sandboxes: isolated pytest — key-gated]
+  tavily[Tavily web evidence — key-gated]
 
   human --> pet
   pet <--> bridge
-  cursor --> bridge
+  opencode --> bridge
   codex --> bridge
   other --> bridge
   bridge --> store
   bridge --> policy
-  policy --> cursor
+  policy --> opencode
   policy --> codex
-  bridge --> evidence
+  bridge --> claims
+  claims --> evidence
   evidence -->|redacted request| strands
+  strands <-->|model inference| nebius
   evidence --> verifier
   strands -->|semantic-only proposed action| verifier
   verifier -->|approved typed proposal| policy
   bridge -->|deterministic typed action| policy
+  replay -->|recorded trajectories re-adjudicate| claims
   runtime -.->|deploy target hosts both Agents| strands
   runtime -.-> verifier
+  evidence -.->|isolated public pytest| contree
+  strands -.->|bounded web evidence tools| tavily
 
-  mcpserver[MCP server /mcp — scoped tools]
+  mcpserver[MCP server /mcp — 8 tools, 5 scopes]
   bridge --> mcpserver
   worker2[Worker/agent MCP clients]
   mcpserver <-->|session-bound scoped credentials| worker2
@@ -51,7 +61,8 @@ flowchart TB
 - Bounded intervention: a delivered correction the worker engages but does not
   resolve is a human decision (`ASK_HUMAN`, once), never an unbounded nudge loop.
 - AgentCore Runtime / Memory / CloudWatch are optional deployment integrations. They are not claimed as live until deployed.
-- The mounted MCP server is a scoped surface, not a backdoor: session-bound credentials carry read/report/decision/handoff scopes, are bound to one session+goal+vendor triple, expire, and a superseded goal invalidates them; anonymous local callers are read-only.
+- The mounted MCP server is a scoped surface, not a backdoor: session-bound credentials carry `mcp:read` plus four write scopes (`pex.verify_claim`, `pex.report_progress`, `pex.request_decision`, `pex.handoff`), are bound to one session+goal+vendor triple, expire, and a superseded goal invalidates them; anonymous local callers are read-only.
+- Recorded replays re-enter the same claim/verification path but are sealed: `replay: true` + `not_live_control: true` are immutable once set, and every live-worker mutation surface (messages, focus, synthetic events, credential issuance, handoff targeting, re-seeding) refuses them server-side with 409. Escalation rulings on replay sessions are still recorded durably — the human's answer is intent, not worker delivery.
 
 ## Strands usage
 

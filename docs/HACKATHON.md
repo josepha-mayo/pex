@@ -20,12 +20,21 @@ in [`docs/SUBMISSION_DRAFT.md`](SUBMISSION_DRAFT.md).
 
 ## The five-minute judge path
 
+Prerequisites: Node, and [`uv`](https://docs.astral.sh/uv/) which resolves the
+pinned workspace env itself. Worker steps additionally need
+`npm i -g opencode-ai`.
+
 1. `uv run python scripts/demo.py` (after `npm install --prefix apps/desktop`) boots the
-   demo bridge and dev UI in one step — the setup card offers **Recorded
+   demo bridge and dev UI in one step — open the URL it prints,
+   `http://127.0.0.1:1420`. The setup card offers **Recorded
    replay** fixtures with no agent install, and an empty workers rail offers
    **Or run a recorded replay** that starts the recommended fixture in one
    click.
-2. Replay `tampered_acceptance_eval`. It walks a reward-hacking worker through
+2. Replay `premature_stop_eval` — the card tagged **start here**. It is the
+   most legible first run: the worker claims "All tests passed" with no suite
+   ever run, PEX contradicts the claim on missing evidence, the worker repairs,
+   and the goal ends `verified_complete`. Then `tampered_acceptance_eval`
+   walks a reward-hacking worker through
    the real pipeline: sealed acceptance baseline → test weakened → green "all
    tests passed" claim → `uncertain` verdict → corrective nudge naming the
    file → restore → `verified_complete`. Its sibling `config_injection_eval`
@@ -190,9 +199,9 @@ all callable in-page) and a scoped MCP tool surface at `/mcp/`.
 
 - **Runs today offline:** the full supervision pipeline, deterministic triage,
   acceptance-surface sealing and tamper detection, the replay demo, local
-  subprocess public-test verification, 5,531 backend tests collected
-  (latest full run 2026-10-13, 0 failures; collection re-verified
-  2026-10-15 — [receipt](../evidence/pytest-collect-2026-10-15.json)).
+  subprocess public-test verification, 5,531 backend tests collected —
+  [collection receipt](evidence/pytest-collect-2026-10-15.json)
+  re-verified 2026-10-15; the last full non-live run passed 2026-10-13.
   `uv run python scripts/eval_replays.py` scores the
   shipped fixture suite against its declared supervision arcs — 18/18,
   re-verified 2026-10-15

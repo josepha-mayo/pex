@@ -68,7 +68,7 @@ def card(
     centered(draw, (cx, y), title, F_HEADING, TEXT)
     for line in lines:
         y += 30
-        line_color = GOLD if optional and "NOT DEPLOYED" in line else MUTED
+        line_color = GOLD if optional and ("NOT DEPLOYED" in line or "KEY-GATED" in line) else MUTED
         centered(draw, (cx, y), line, F_BODY, line_color)
 
 
@@ -143,100 +143,158 @@ def render() -> None:
         anchor="lm",
     )
 
-    card(draw, (48, 152, 348, 272), "Human", ["sets goals", "makes consequential decisions"])
+    card(draw, (48, 152, 348, 272), "Human", ["seals goals", "rules on escalations"])
     card(
         draw,
         (48, 332, 348, 466),
-        "PEX desktop + pets",
-        ["attach · inspect · pause", "quiet unless you are needed"],
+        "PEX desktop",
+        ["Command Deck · Inspector · Pet", "replay · rulings · evidence packs"],
     )
     card(
         draw,
         (48, 618, 348, 750),
-        "Zen BYOK model",
-        ["Muse through Strands", "credential stays in OS vault"],
+        "Nebius Token Factory",
+        ["NVIDIA Nemotron model", "supervisor inference · key-gated"],
     )
 
     draw.rounded_rectangle((398, 124, 1188, 820), radius=26, fill=PANEL, outline="#36545d", width=2)
     draw.text((438, 170), "LOCAL PEX · IMPLEMENTED", font=F_SMALL, fill=MUTED, anchor="lm")
     card(
         draw,
-        (456, 206, 756, 314),
+        (448, 196, 672, 296),
         "Bridge + adapters",
         ["authenticated worker events"],
         core=True,
     )
     card(
         draw,
-        (830, 206, 1130, 314),
-        "Goal-bound evidence",
-        ["files · tests · progress"],
+        (692, 196, 916, 296),
+        "Sealed acceptance",
+        ["baseline snapshot at attach"],
         core=True,
     )
-    card(draw, (456, 405, 756, 513), "Strands supervisor", ["bounded typed proposal"], core=True)
     card(
         draw,
-        (830, 405, 1130, 513),
-        "Independent verifier",
-        ["checks consequential corrections"],
+        (936, 196, 1160, 296),
+        "Claim ledger",
+        ["narration is signal", "never proof"],
         core=True,
     )
-    card(draw, (642, 594, 942, 702), "Local policy guard", ["allow · deny · ask human"], core=True)
-    card(draw, (932, 714, 1140, 796), "Audit ledger", ["goal · action · outcome"])
+    card(
+        draw,
+        (448, 380, 672, 480),
+        "Strands supervisor",
+        ["semantic proposal on", "redacted evidence"],
+        core=True,
+    )
+    card(
+        draw,
+        (692, 380, 916, 480),
+        "Independent verifier",
+        ["files · diffs · test exits", "staleness · tamper"],
+        core=True,
+    )
+    card(
+        draw,
+        (936, 380, 1160, 480),
+        "MCP server /mcp/",
+        ["8 tools · 5 scopes", "session-bound credentials"],
+        core=True,
+    )
+    card(draw, (448, 564, 672, 664), "Local policy guard", ["nudge · ask human · noop"], core=True)
+    card(draw, (692, 564, 916, 664), "Audit ledger", ["claims · interventions", "rulings"])
+    card(
+        draw,
+        (936, 564, 1160, 664),
+        "Replay pipeline",
+        ["deterministic trajectories", "not live control"],
+        core=True,
+    )
 
     card(
         draw,
-        (1252, 222, 1552, 368),
+        (1252, 190, 1552, 336),
         "Existing coding worker",
-        ["OpenCode HTTP", "Codex App Server"],
+        ["OpenCode serve", "Codex App Server"],
         core=True,
     )
     card(
         draw,
-        (1252, 610, 1552, 762),
-        "AgentCore Runtime (optional)",
+        (1252, 480, 1552, 580),
+        "AgentCore Runtime",
         ["implemented + locally tested", "NOT DEPLOYED"],
+        optional=True,
+    )
+    card(
+        draw,
+        (1252, 620, 1552, 700),
+        "Nebius ConTree",
+        ["isolated pytest VMs", "KEY-GATED (beta)"],
+        optional=True,
+    )
+    card(
+        draw,
+        (1252, 740, 1552, 830),
+        "Tavily web evidence",
+        ["public-claim checks", "KEY-GATED"],
         optional=True,
     )
 
     arrow(draw, [(198, 272), (198, 332)])
-    arrow(draw, [(348, 399), (432, 399), (432, 260), (456, 260)])
-    label(draw, (405, 373), "goal + controls")
+    arrow(draw, [(348, 399), (430, 399), (430, 246), (448, 246)])
+    label(draw, (400, 385), "sealed goal + rulings")
 
-    arrow(draw, [(756, 260), (830, 260)], color=TEAL)
-    arrow(draw, [(980, 314), (980, 362), (606, 362), (606, 405)], color=TEAL)
-    arrow(draw, [(756, 459), (830, 459)], color=TEAL)
-    arrow(draw, [(980, 513), (980, 565), (792, 565), (792, 594)], color=TEAL)
+    arrow(draw, [(672, 246), (692, 246)], color=TEAL)
+    arrow(draw, [(916, 246), (936, 246)], color=TEAL)
+    arrow(draw, [(990, 296), (990, 345), (804, 345), (804, 380)], color=TEAL)
+    label(draw, (895, 339), "claims extracted")
+    arrow(draw, [(692, 430), (672, 430)], color=TEAL)
+    arrow(draw, [(580, 480), (580, 564)], color=TEAL)
+    label(draw, (648, 522), "typed action")
+    arrow(draw, [(672, 614), (692, 614)])
+    arrow(draw, [(1048, 564), (1048, 540), (804, 540), (804, 480)], color=TEAL)
+    label(draw, (925, 532), "recorded trajectories")
+    arrow(draw, [(1048, 380), (1048, 296)])
+    label(draw, (1048, 318), "scoped writes")
 
+    arrow(draw, [(1252, 232), (1210, 232), (1210, 150), (560, 150), (560, 196)])
+    label(draw, (880, 144), "observed events")
+    arrow(draw, [(1402, 336), (1402, 430), (1160, 430)], color=TEAL)
+    label(draw, (1285, 422), "8 tools · session-bound", color=TEAL)
+    arrow(draw, [(560, 664), (560, 722), (1210, 722), (1210, 290), (1252, 290)], color=TEAL)
+    label(draw, (880, 714), "authorized correction", color=TEAL)
+
+    arrow(draw, [(448, 614), (382, 614), (382, 421), (348, 421)])
+    label(draw, (414, 606), "decision needed")
+    arrow(draw, [(500, 480), (500, 502), (370, 502), (370, 684), (348, 684)])
+    label(draw, (435, 496), "model inference")
+
+    arrow(draw, [(560, 196), (560, 132), (1430, 132), (1430, 480)], color=GOLD, dashed=True)
+    label(draw, (990, 126), "optional remote path", color=GOLD)
     arrow(
         draw,
-        [(1252, 282), (1210, 282), (1210, 190), (606, 190), (606, 206)],
-    )
-    label(draw, (1010, 190), "observed events")
-    arrow(draw, [(942, 648), (1192, 648), (1192, 332), (1252, 332)], color=TEAL)
-    label(draw, (1135, 646), "authorized correction", color=TEAL)
-
-    arrow(draw, [(642, 648), (370, 648), (370, 421), (348, 421)])
-    label(draw, (454, 648), "decision needed")
-    arrow(draw, [(348, 684), (432, 684), (432, 459), (456, 459)])
-    label(draw, (398, 684), "inference")
-
-    arrow(draw, [(606, 513), (606, 758), (932, 758)])
-    label(draw, (722, 756), "correct → NOOP", color=TEAL)
-    arrow(draw, [(942, 684), (970, 714)])
-
-    arrow(draw, [(756, 286), (1180, 286), (1180, 686), (1252, 686)], color=GOLD, dashed=True)
-    label(draw, (1205, 550), "optional remote path", color=GOLD)
-    arrow(
-        draw,
-        [(1252, 668), (1208, 668), (1208, 540), (606, 540), (606, 513)],
+        [(1252, 530), (1245, 530), (1245, 556), (620, 556), (620, 480)],
         color=GOLD,
         dashed=True,
     )
+    arrow(
+        draw,
+        [(916, 400), (928, 400), (928, 355), (1240, 355), (1240, 660), (1252, 660)],
+        color=GOLD,
+        dashed=True,
+    )
+    label(draw, (1085, 349), "isolated pytest", color=GOLD)
+    arrow(
+        draw,
+        [(672, 462), (685, 462), (685, 505), (1230, 505), (1230, 785), (1252, 785)],
+        color=GOLD,
+        dashed=True,
+    )
+    label(draw, (950, 499), "bounded web evidence", color=GOLD)
 
     draw.text(
         (48, 850),
-        "Observe → reason → verify → act → observe again",
+        "Worker claims → sealed surface → evidence → verdict → durable ruling",
         font=F_SUBTITLE,
         fill=MUTED,
         anchor="lm",

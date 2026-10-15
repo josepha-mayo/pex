@@ -931,6 +931,21 @@ p {
   background: color-mix(in srgb, var(--panel) 70%, transparent);
 }
 .replay-verdict .eyebrow { margin-bottom: 4px; }
+.replay-verdict-pending {
+  border-style: dashed;
+  animation: replay-pending-pulse 1.6s ease-in-out infinite;
+}
+.replay-verdict-pending .replay-verdict-arc { font-weight: 500; color: var(--muted); }
+@keyframes replay-pending-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.journey-complete {
+  color: var(--mint);
+  font-size: 11.5px;
+  font-weight: 600;
+  margin: 6px 0 0;
+}
 .replay-verdict-arc { font-weight: 600; }
 .replay-verdict-cite {
   color: var(--mint);

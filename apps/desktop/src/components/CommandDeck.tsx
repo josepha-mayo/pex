@@ -409,7 +409,7 @@ function NowView({
         <EmptyState
           title={sourceFresh ? "No active sessions" : "Sessions unavailable"}
           body={sourceFresh
-            ? "Start a supported worker normally. PEX will not manufacture one for the deck."
+            ? "Start a supported worker normally — or run a recorded replay from Home; its supervised sessions appear here. PEX will not manufacture one for the deck."
             : "PEX could not refresh current sessions. Reconnect the local bridge to check again."}
         />
       ) : null}
@@ -463,7 +463,19 @@ function NowView({
               </div>
             </dl>
             <div className="button-row">
-              <button type="button" className="solid" disabled={!canOpen} onClick={() => onOpen(session)}>
+              <button
+                type="button"
+                className="solid"
+                disabled={!canOpen}
+                title={
+                  canOpen
+                    ? undefined
+                    : session.metadata?.not_live_control === true
+                      ? "A recorded replay has no live process to open"
+                      : "This session has no focusable window or external URL to open"
+                }
+                onClick={() => onOpen(session)}
+              >
                 {canOpen ? "Open agent" : "Open unavailable"}
               </button>
               <button type="button" className="ghost" onClick={() => onSelect(session.id)}>Inspect</button>

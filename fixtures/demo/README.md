@@ -6,7 +6,8 @@ sealed-baseline checks → verdicts → policy → interventions), always labele
 `replay: true` + `not_live_control: true`. No worker install needed — the
 setup card in `uv run python scripts/demo.py` lists them as buttons.
 
-`captured_live_eval`, `captured_handoff_eval`, and `captured_mcp_eval` are
+`captured_live_eval`, `captured_handoff_eval`, `captured_mcp_eval`, and
+`worker_escalation_eval` are
 different in provenance, not privilege: all were exported from recorded live
 OpenCode runs by `scripts/capture_replay.py` and are tagged **from live** in
 the UI. `captured_handoff_eval` is the *handoff target's* trajectory — it
@@ -70,6 +71,17 @@ escalation. Attached to the ruled goal it proves the ledger governs both
 directions — compliance verifies, violation is caught. Its declared arc
 uses `interventions_never: ["ASK_HUMAN"]` to pin the absence.
 
+`report_progress_eval` closes the signal-vs-proof loop: the worker files
+two faithful `pex.report_progress` updates (first-class `tool_call` events
+on the ledger), then claims done before running the suite. The reports are
+real supervision signal — the premature claim is still contradicted on
+`missing:results.json`, and only the attributable pytest run after repair
+earns `verified_complete`. Progress narration cannot soften a verdict.
+
+`dataset_before_eval` is the missing-input edge: the eval ran before the
+dataset it cites existed — the run is surfaced as honest uncertainty, not
+read as failure or success.
+
 Every fixture carries an `expected` block — the arc it exists to
 demonstrate, machine-checkable:
 
@@ -90,7 +102,7 @@ The replay endpoint scores every run against that block and returns
 `declared: {expectation, met, failures}` — the UI's verdict card prints
 the result, and `scripts/eval_replays.py` enforces the *same* contract
 suite-wide on every push
-(`docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-06.json`). A fixture
+(`docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.json`). A fixture
 without `expected` fails the suite as "declares no expected arc".
 
 ## Write your own — challenge the supervisor
@@ -141,7 +153,9 @@ instead of minting a fresh one — the response's `goal_source` declares
 
 Event types the pipeline consumes: `user_prompt`, `agent_response`,
 `file_edit` (with `file_paths`), `shell` (with `command` + optional
-`process_state.pytest`), `stop` (terminal claims). Optional fields: `phase`
+`process_state.pytest`), `stop` (terminal claims), `tool_call` (with
+`tool_name` — `pex_*` worker-MCP calls replay as first-class supervision
+signal; other tools stay filtered). Optional fields: `phase`
 (`before|during|after|terminal` — defaults: shell→`before` for permission
 brokering, everything else→`during`, stop→`terminal`), `error` (repeated
 identical errors feed the drift scorer), `tool_name`. Test files under

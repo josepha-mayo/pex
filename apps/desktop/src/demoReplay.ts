@@ -156,6 +156,11 @@ export type ReplayVerdict = {
     claims: number;
     incidents: number;
   };
+  // Ledger-derived count of the worker's pex_* MCP calls during this run —
+  // proof the supervision loop itself was exercised, not just observed.
+  // Absent when the worker made none, so the card never implies calls that
+  // did not happen.
+  workerPexCalls?: number;
 };
 
 // Two arcs count as identical when the intervention chain, the cited
@@ -248,6 +253,10 @@ export function parseReplayVerdict(payload: unknown): ReplayVerdict | null {
     ) {
       verdict.stats = { events, claims, incidents };
     }
+  }
+  const pexCalls = payload.worker_pex_calls;
+  if (typeof pexCalls === "number" && Number.isFinite(pexCalls) && pexCalls > 0) {
+    verdict.workerPexCalls = Math.floor(pexCalls);
   }
   return verdict;
 }

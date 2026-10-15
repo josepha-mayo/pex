@@ -506,6 +506,8 @@ export function App() {
   const [suiteReceiptCopied, setSuiteReceiptCopied] = useState(false);
   const [suiteMdCopied, setSuiteMdCopied] = useState(false);
   const [verdictReceiptCopied, setVerdictReceiptCopied] = useState(false);
+  const [capabilitiesVisited, setCapabilitiesVisited] = useState(false);
+  const [journeyCollapsed, setJourneyCollapsed] = useState(false);
   // In-session flag for the judge checklist: a dispute escalation resolved
   // through this UI records a ruling even when the session row is collapsed
   // out of the compact rail's promptable set.
@@ -537,6 +539,16 @@ export function App() {
     };
   }, []);
   const operatorActionsAvailable = TAURI || demoOperatorActions;
+
+  // A finished replay leaves its verdict on Home below the replay controls —
+  // bring it into view so a judge doesn't have to know to scroll for it.
+  useEffect(() => {
+    if (!demoReplay.verdict) return;
+    const frame = requestAnimationFrame(() => {
+      document.querySelector(".replay-verdict")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [demoReplay.verdict]);
 
   useEffect(() => {
     const acceptVisibility = (visible: boolean) => {
@@ -1668,7 +1680,7 @@ export function App() {
           || replaySessionsRan.some((session) => replayFixtureLabel(session) === startFixture.id)
         ),
       ),
-      body: <>Click <strong>False completion without tests</strong> (tagged <em>start here</em>) — the worker claims done with no test run; PEX adjudicates the claim unsupported and ends <code>uncertain</code>.</>,
+      body: <>Click <strong>False completion without tests</strong> (tagged <em>start here</em>) — the worker claims done with no test run; PEX adjudicates the claim unsupported, and only the real suite run earns <code>verified_complete</code>.</>,
     },
     {
       key: "verdict",
@@ -1688,7 +1700,7 @@ export function App() {
       done: journeyRulingRecorded || replaySessionsRan.some(
         (session) => replayFixtureLabel(session) === "nudge_dispute_eval" && session.status !== "needs_decision",
       ),
-      body: <>Make a ruling of your own: run <strong>Worker disputes the nudge</strong>, open <strong>Decisions</strong>, and record your answer — it journals onto the goal ledger. Then tick <strong>Attach replays</strong> and run <em>Second-act replay</em> — <em>your</em> ruling now governs the new run. The <em>complies</em> fixture proves it isn't a trap.</>,
+      body: <>Make a ruling of your own: run <strong>Worker disputes the nudge</strong>, open <strong>Decisions</strong>, and record your answer — it journals onto the goal ledger. Then tick <strong>Attach replays</strong> and run <em>Second-act replay</em> — <em>your</em> ruling now governs the new run. The <em>worker complies</em> fixture proves it isn't a trap.</>,
     },
     {
       key: "attach",
@@ -1709,12 +1721,13 @@ export function App() {
     },
     {
       key: "capabilities",
-      done: false,
-      body: <>Skeptical about what is real? <button type="button" className="text-button" onClick={() => openSettings("capabilities")}>Settings → Capabilities</button> lists what this build actually does, derived from live probes — what is key-gated, unfrozen, or not deployed is labelled, not implied.</>,
+      done: capabilitiesVisited,
+      body: <>Skeptical about what is real? <button type="button" className="text-button" onClick={() => { setCapabilitiesVisited(true); openSettings("capabilities"); }}>Settings → Capabilities</button> lists what this build actually does, derived from live probes — what is key-gated, unfrozen, or not deployed is labelled, not implied.</>,
     },
   ] : [];
   const journeyTotal = journeySteps.filter((step) => step.key !== "capabilities").length;
   const journeyDoneCount = journeySteps.filter((step) => step.done && step.key !== "capabilities").length;
+  const journeyAllDone = journeyTotal > 0 && journeyDoneCount === journeyTotal;
   const inspectorCanonicalStateAvailable = sessionStateFresh
     && goalStateFresh
     && goalEvidenceFresh
@@ -3407,8 +3420,17 @@ export function App() {
                 </div>
                 </details>
                 <div className="button-row">
+                  {setup.state === "connect_worker" && startFixture ? (
+                    <button
+                      type="button"
+                      className="solid"
+                      onClick={() => void runDemoReplay(startFixture.id)}
+                    >
+                      Watch PEX catch a false claim — recorded replay, no install
+                    </button>
+                  ) : null}
                   {setup.cta ? (
-                    <button type="button" className="solid" onClick={() => {
+                    <button type="button" className={setup.state === "connect_worker" && startFixture ? "ghost" : "solid"} onClick={() => {
                       if (setup.cta?.intent === "goal") openGoalSetup();
                       else openSettings("connections");
                     }}>{setup.cta.label}</button>
@@ -3421,7 +3443,11 @@ export function App() {
               <div className="demo-replay">
                 <p className="eyebrow">See the loop without a worker</p>
                 <p>Replay a recorded supervision trajectory through the real pipeline — labeled as a replay, never live worker control.</p>
-                <details className="judge-quickstart">
+                <details
+                  className="judge-quickstart"
+                  open={!journeyAllDone && !journeyCollapsed}
+                  onToggle={(event) => setJourneyCollapsed(!event.currentTarget.open)}
+                >
                   <summary>Five-minute judge path
                     {journeyDoneCount > 0 ? <span className="journey-progress"> · {journeyDoneCount}/{journeyTotal} done</span> : null}
                   </summary>
@@ -3435,6 +3461,11 @@ export function App() {
                       </li>
                     ))}
                   </ol>
+                  {journeyAllDone ? (
+                    <p className="journey-complete" role="status">
+                      Every step verified against real bridge state — you checked each claim yourself.
+                    </p>
+                  ) : null}
                 </details>
                 <div className="button-row">
                   {demoFixtures.map((fixture) => (
@@ -3626,6 +3657,17 @@ export function App() {
                     </div>
                   ) : null}
                 </details>
+                {demoReplay.running ? (
+                  <div className="replay-verdict replay-verdict-pending" role="status" aria-busy="true">
+                    <p className="eyebrow">
+                      Replaying {demoReplay.fixture === "inline" ? "custom trajectory" : demoReplay.fixture}…
+                    </p>
+                    <p className="replay-verdict-arc">
+                      The recorded trajectory is running through the real adjudication pipeline —
+                      claims extracted, workspace evidence checked, verdict lands here.
+                    </p>
+                  </div>
+                ) : null}
                 {demoReplay.verdict ? (
                   <div className="replay-verdict" role="status">
                     <p className="eyebrow">
@@ -3669,6 +3711,14 @@ export function App() {
                         {demoReplay.verdict.stats.events} events adjudicated ·{" "}
                         {demoReplay.verdict.stats.claims} claims ·{" "}
                         {demoReplay.verdict.stats.incidents} integrity incidents
+                        {demoReplay.verdict.workerPexCalls ? (
+                          <span
+                            title="The worker called PEX's own MCP tools during this run — the supervision loop exercised, not just observed. Calls are signal, never a verdict."
+                          >
+                            {" "}· {demoReplay.verdict.workerPexCalls} worker→PEX call
+                            {demoReplay.verdict.workerPexCalls === 1 ? "" : "s"}
+                          </span>
+                        ) : null}
                       </p>
                     ) : null}
                     {demoReplay.verdict.declared ? (

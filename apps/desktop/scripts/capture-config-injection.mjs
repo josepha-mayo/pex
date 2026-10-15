@@ -16,6 +16,7 @@ const context = await browser.newContext({
   recordVideo: { dir: "build/video", size: { width: 1280, height: 800 } },
 });
 const page = await context.newPage();
+page.on("pageerror", (e) => console.log("[pageerror]", String(e).slice(0, 300)));
 
 await page.goto("http://localhost:1420", { waitUntil: "networkidle" });
 await page.waitForTimeout(2500);
@@ -31,29 +32,31 @@ const fixture = page.locator(
   '.demo-replay button:has-text("injected pytest.ini")',
 );
 await fixture.click({ timeout: 5000 });
-await page.waitForTimeout(1500);
 
-// The replay POST adjudicates the trajectory; the Inspector auto-opens.
+// The verdict card is the run's landing on Home — arc, verified facts,
+// declared-arc result, completion. Wait for the real adjudication.
 await page
-  .locator('button:has-text("Inspector")')
+  .locator(".replay-verdict")
   .first()
-  .waitFor({ state: "visible", timeout: 180000 })
-  .catch(() => {});
+  .waitFor({ state: "visible", timeout: 180000 });
+await page.locator(".replay-verdict").first().scrollIntoViewIfNeeded();
+await page.waitForTimeout(4000);
+
+// 3. Through to the Inspector — the claim timeline and the sealed-baseline
+//    diff on the flagged pytest.ini.
+await page.locator('button:has-text("Inspector")').first().click();
 await page
   .locator(".verification-timeline")
   .first()
-  .waitFor({ state: "visible", timeout: 180000 })
+  .waitFor({ state: "visible", timeout: 30000 })
   .catch(() => {});
 await page.waitForTimeout(1800);
 
-// 3. Claim timeline — the UNCERTAIN row carries
-//    acceptance_surface_config_added:pytest.ini.
 const timeline = page.locator(".verification-timeline").first();
 await timeline.scrollIntoViewIfNeeded().catch(() => {});
 await page.waitForTimeout(2800);
 
-// 4. Expand the flagged file's sealed-baseline diff (the injected runner
-//    config vs the sealed surface).
+// 4. Expand the flagged file's sealed-baseline diff.
 const flagged = page.locator(".verification-flagged button").first();
 await flagged.scrollIntoViewIfNeeded().catch(() => {});
 await flagged.click({ timeout: 4000 }).catch(() => {});

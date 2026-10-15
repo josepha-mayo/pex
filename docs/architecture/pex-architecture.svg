@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
   <title id="title">PEX supervised-agent architecture</title>
-  <desc id="desc">A local closed loop observes OpenCode or Codex, gathers goal-bound evidence, asks a Strands supervisor and independent verifier, applies local policy, and either stays quiet or sends one authorized correction. AgentCore is shown as optional and not deployed.</desc>
+  <desc id="desc">A local closed loop observes OpenCode or Codex workers, seals the goal's acceptance surface, extracts worker claims into a claim ledger, verifies them against workspace evidence with a Strands supervisor backed by a Nebius Token Factory NVIDIA Nemotron model, applies local policy, and journals rulings. Workers can call PEX back through a scoped MCP server; a replay pipeline re-runs recorded trajectories through the same adjudication. AgentCore, ConTree Sandboxes, and Tavily web evidence are shown as optional and key-gated.</desc>
   <defs>
     <style>
       .title{font:700 42px 'Segoe UI',Arial,sans-serif;fill:#f4faf7}.sub{font:400 20px 'Segoe UI',Arial,sans-serif;fill:#9eb3b7}
@@ -21,92 +21,134 @@
 
   <rect x="48" y="152" width="300" height="120" rx="18" class="card"/>
   <text x="198" y="194" text-anchor="middle" class="h">Human</text>
-  <text x="198" y="225" text-anchor="middle" class="b">sets goals</text>
-  <text x="198" y="248" text-anchor="middle" class="b">makes consequential decisions</text>
+  <text x="198" y="225" text-anchor="middle" class="b">seals goals</text>
+  <text x="198" y="250" text-anchor="middle" class="b">rules on escalations</text>
 
   <rect x="48" y="332" width="300" height="134" rx="18" class="card"/>
-  <text x="198" y="374" text-anchor="middle" class="h">PEX desktop + pets</text>
-  <text x="198" y="405" text-anchor="middle" class="b">attach · inspect · pause</text>
-  <text x="198" y="430" text-anchor="middle" class="b">quiet unless you are needed</text>
+  <text x="198" y="374" text-anchor="middle" class="h">PEX desktop</text>
+  <text x="198" y="405" text-anchor="middle" class="b">Command Deck · Inspector · Pet</text>
+  <text x="198" y="432" text-anchor="middle" class="b">replay · rulings · evidence packs</text>
 
   <rect x="48" y="618" width="300" height="132" rx="18" class="card"/>
-  <text x="198" y="661" text-anchor="middle" class="h">Zen BYOK model</text>
-  <text x="198" y="693" text-anchor="middle" class="b">Muse through Strands</text>
-  <text x="198" y="718" text-anchor="middle" class="b">credential stays in OS vault</text>
+  <text x="198" y="661" text-anchor="middle" class="h">Nebius Token Factory</text>
+  <text x="198" y="693" text-anchor="middle" class="b">NVIDIA Nemotron model</text>
+  <text x="198" y="719" text-anchor="middle" class="b">supervisor inference · key-gated</text>
 
   <rect x="398" y="124" width="790" height="696" rx="26" class="container"/>
   <text x="438" y="170" class="small">LOCAL PEX · IMPLEMENTED</text>
 
-  <rect x="456" y="206" width="300" height="108" rx="16" class="core"/>
-  <text x="606" y="248" text-anchor="middle" class="h">Bridge + adapters</text>
-  <text x="606" y="279" text-anchor="middle" class="b">authenticated worker events</text>
+  <rect x="448" y="196" width="224" height="100" rx="16" class="core"/>
+  <text x="560" y="239" text-anchor="middle" class="h">Bridge + adapters</text>
+  <text x="560" y="269" text-anchor="middle" class="b">authenticated worker events</text>
 
-  <rect x="830" y="206" width="300" height="108" rx="16" class="core"/>
-  <text x="980" y="248" text-anchor="middle" class="h">Goal-bound evidence</text>
-  <text x="980" y="279" text-anchor="middle" class="b">files · tests · progress</text>
+  <rect x="692" y="196" width="224" height="100" rx="16" class="core"/>
+  <text x="804" y="239" text-anchor="middle" class="h">Sealed acceptance</text>
+  <text x="804" y="269" text-anchor="middle" class="b">baseline snapshot at attach</text>
 
-  <rect x="456" y="405" width="300" height="108" rx="16" class="core"/>
-  <text x="606" y="447" text-anchor="middle" class="h">Strands supervisor</text>
-  <text x="606" y="478" text-anchor="middle" class="b">bounded typed proposal</text>
+  <rect x="936" y="196" width="224" height="100" rx="16" class="core"/>
+  <text x="1048" y="228" text-anchor="middle" class="h">Claim ledger</text>
+  <text x="1048" y="256" text-anchor="middle" class="b">narration is signal</text>
+  <text x="1048" y="284" text-anchor="middle" class="b">never proof</text>
 
-  <rect x="830" y="405" width="300" height="108" rx="16" class="core"/>
-  <text x="980" y="447" text-anchor="middle" class="h">Independent verifier</text>
-  <text x="980" y="478" text-anchor="middle" class="b">checks consequential corrections</text>
+  <rect x="448" y="380" width="224" height="100" rx="16" class="core"/>
+  <text x="560" y="412" text-anchor="middle" class="h">Strands supervisor</text>
+  <text x="560" y="440" text-anchor="middle" class="b">semantic proposal on</text>
+  <text x="560" y="468" text-anchor="middle" class="b">redacted evidence</text>
 
-  <rect x="642" y="594" width="300" height="108" rx="16" class="core"/>
-  <text x="792" y="636" text-anchor="middle" class="h">Local policy guard</text>
-  <text x="792" y="667" text-anchor="middle" class="b">allow · deny · ask human</text>
+  <rect x="692" y="380" width="224" height="100" rx="16" class="core"/>
+  <text x="804" y="412" text-anchor="middle" class="h">Independent verifier</text>
+  <text x="804" y="440" text-anchor="middle" class="b">files · diffs · test exits</text>
+  <text x="804" y="468" text-anchor="middle" class="b">staleness · tamper</text>
 
-  <rect x="932" y="714" width="208" height="82" rx="34" class="card"/>
-  <text x="1036" y="744" text-anchor="middle" class="h" font-size="19">Audit ledger</text>
-  <text x="1036" y="773" text-anchor="middle" class="small">goal · action · outcome</text>
+  <rect x="936" y="380" width="224" height="100" rx="16" class="core"/>
+  <text x="1048" y="412" text-anchor="middle" class="h">MCP server /mcp/</text>
+  <text x="1048" y="440" text-anchor="middle" class="b">8 tools · 5 scopes</text>
+  <text x="1048" y="468" text-anchor="middle" class="b">session-bound credentials</text>
 
-  <rect x="1252" y="222" width="300" height="146" rx="20" class="core"/>
-  <text x="1402" y="266" text-anchor="middle" class="h">Existing coding worker</text>
-  <text x="1402" y="302" text-anchor="middle" class="b">OpenCode HTTP</text>
-  <text x="1402" y="329" text-anchor="middle" class="b">Codex App Server</text>
+  <rect x="448" y="564" width="224" height="100" rx="16" class="core"/>
+  <text x="560" y="607" text-anchor="middle" class="h">Local policy guard</text>
+  <text x="560" y="637" text-anchor="middle" class="b">nudge · ask human · noop</text>
 
-  <rect x="1252" y="610" width="300" height="152" rx="20" class="optional"/>
-  <text x="1402" y="653" text-anchor="middle" class="h">AgentCore Runtime (optional)</text>
-  <text x="1402" y="688" text-anchor="middle" class="b">implemented + locally tested</text>
-  <text x="1402" y="724" text-anchor="middle" class="h gold">NOT DEPLOYED</text>
+  <rect x="692" y="564" width="224" height="100" rx="16" class="card"/>
+  <text x="804" y="598" text-anchor="middle" class="h" font-size="19">Audit ledger</text>
+  <text x="804" y="626" text-anchor="middle" class="small">claims · interventions</text>
+  <text x="804" y="654" text-anchor="middle" class="small">rulings</text>
+
+  <rect x="936" y="564" width="224" height="100" rx="16" class="core"/>
+  <text x="1048" y="596" text-anchor="middle" class="h">Replay pipeline</text>
+  <text x="1048" y="624" text-anchor="middle" class="b">deterministic trajectories</text>
+  <text x="1048" y="652" text-anchor="middle" class="b">not live control</text>
+
+  <rect x="1252" y="190" width="300" height="146" rx="20" class="core"/>
+  <text x="1402" y="234" text-anchor="middle" class="h">Existing coding worker</text>
+  <text x="1402" y="270" text-anchor="middle" class="b">OpenCode serve</text>
+  <text x="1402" y="297" text-anchor="middle" class="b">Codex App Server</text>
+
+  <rect x="1252" y="480" width="300" height="100" rx="20" class="optional"/>
+  <text x="1402" y="512" text-anchor="middle" class="h">AgentCore Runtime</text>
+  <text x="1402" y="540" text-anchor="middle" class="b">implemented + locally tested</text>
+  <text x="1402" y="568" text-anchor="middle" class="h gold" font-size="15">NOT DEPLOYED</text>
+
+  <rect x="1252" y="620" width="300" height="80" rx="20" class="optional"/>
+  <text x="1402" y="646" text-anchor="middle" class="h">Nebius ConTree</text>
+  <text x="1402" y="671" text-anchor="middle" class="b">isolated pytest VMs</text>
+  <text x="1402" y="695" text-anchor="middle" class="h gold" font-size="15">KEY-GATED (beta)</text>
+
+  <rect x="1252" y="740" width="300" height="90" rx="20" class="optional"/>
+  <text x="1402" y="766" text-anchor="middle" class="h">Tavily web evidence</text>
+  <text x="1402" y="791" text-anchor="middle" class="b">public-claim checks</text>
+  <text x="1402" y="816" text-anchor="middle" class="h gold" font-size="15">KEY-GATED</text>
 
   <path d="M198 272V332" class="line" marker-end="url(#arrow)"/>
-  <path d="M348 399H414Q432 399 432 381V278Q432 260 456 260" class="line" marker-end="url(#arrow)"/>
-  <text x="368" y="373" class="small">goal + controls</text>
+  <path d="M348 399H430V246H448" class="line" marker-end="url(#arrow)"/>
+  <rect x="313" y="372" width="174" height="26" rx="5" class="labelbg"/>
+  <text x="400" y="390" text-anchor="middle" class="small">sealed goal + rulings</text>
 
-  <path d="M756 260H830" class="accent" marker-end="url(#arrowAccent)"/>
-  <path d="M980 314V353Q980 371 962 371H624Q606 371 606 405" class="accent" marker-end="url(#arrowAccent)"/>
-  <path d="M756 459H830" class="accent" marker-end="url(#arrowAccent)"/>
-  <path d="M980 513V547Q980 565 962 565H810Q792 565 792 594" class="accent" marker-end="url(#arrowAccent)"/>
+  <path d="M672 246H692" class="accent" marker-end="url(#arrowAccent)"/>
+  <path d="M916 246H936" class="accent" marker-end="url(#arrowAccent)"/>
+  <path d="M990 296V345H804V380" class="accent" marker-end="url(#arrowAccent)"/>
+  <rect x="827" y="326" width="136" height="26" rx="5" class="labelbg"/>
+  <text x="895" y="344" text-anchor="middle" class="small">claims extracted</text>
+  <path d="M692 430H672" class="accent" marker-end="url(#arrowAccent)"/>
+  <path d="M580 480V564" class="accent" marker-end="url(#arrowAccent)"/>
+  <rect x="595" y="509" width="106" height="26" rx="5" class="labelbg"/>
+  <text x="648" y="527" text-anchor="middle" class="small">typed action</text>
+  <path d="M672 614H692" class="line" marker-end="url(#arrow)"/>
+  <path d="M1048 564V540H804V480" class="accent" marker-end="url(#arrowAccent)"/>
+  <rect x="838" y="519" width="174" height="26" rx="5" class="labelbg"/>
+  <text x="925" y="537" text-anchor="middle" class="small">recorded trajectories</text>
+  <path d="M1048 380V296" class="line" marker-end="url(#arrow)"/>
+  <rect x="991" y="305" width="114" height="26" rx="5" class="labelbg"/>
+  <text x="1048" y="323" text-anchor="middle" class="small">scoped writes</text>
 
-  <path d="M1252 282H1210V190H606V206" class="line" marker-end="url(#arrow)"/>
-  <rect x="945" y="176" width="130" height="26" class="labelbg"/>
-  <text x="1010" y="195" text-anchor="middle" class="small">observed events</text>
+  <path d="M1252 232H1210V150H560V196" class="line" marker-end="url(#arrow)"/>
+  <rect x="816" y="131" width="128" height="26" rx="5" class="labelbg"/>
+  <text x="880" y="149" text-anchor="middle" class="small">observed events</text>
+  <path d="M1402 336V430H1160" class="accent" marker-end="url(#arrowAccent)"/>
+  <rect x="1191" y="409" width="188" height="26" rx="5" class="labelbg"/>
+  <text x="1285" y="427" text-anchor="middle" class="small green">8 tools · session-bound</text>
+  <path d="M560 664V722H1210V290H1252" class="accent" marker-end="url(#arrowAccent)"/>
+  <rect x="793" y="701" width="174" height="26" rx="5" class="labelbg"/>
+  <text x="880" y="719" text-anchor="middle" class="small green">authorized correction</text>
 
-  <path d="M942 648H1192V332H1252" class="accent" marker-end="url(#arrowAccent)"/>
-  <rect x="1042" y="626" width="225" height="28" class="labelbg"/>
-  <text x="1154" y="646" text-anchor="middle" class="small green">authorized correction</text>
+  <path d="M448 614H382V421H348" class="line" marker-end="url(#arrow)"/>
+  <rect x="350" y="593" width="128" height="26" rx="5" class="labelbg"/>
+  <text x="414" y="611" text-anchor="middle" class="small">decision needed</text>
+  <path d="M500 480V502H370V684H348" class="line" marker-end="url(#arrow)"/>
+  <rect x="371" y="483" width="128" height="26" rx="5" class="labelbg"/>
+  <text x="435" y="501" text-anchor="middle" class="small">model inference</text>
 
-  <path d="M642 648H382Q360 648 360 626V443Q360 421 348 421" class="line" marker-end="url(#arrow)"/>
-  <rect x="370" y="628" width="163" height="28" class="labelbg"/>
-  <text x="451" y="648" text-anchor="middle" class="small">decision needed</text>
+  <path d="M560 196V132H1430V480" class="dash" marker-end="url(#arrowGold)"/>
+  <rect x="907" y="113" width="166" height="26" rx="5" class="labelbg"/>
+  <text x="990" y="131" text-anchor="middle" class="small gold">optional remote path</text>
+  <path d="M1252 530H1245V556H620V480" class="dash" marker-end="url(#arrowGold)"/>
+  <path d="M916 400H928V355H1240V660H1252" class="dash" marker-end="url(#arrowGold)"/>
+  <rect x="1021" y="336" width="128" height="26" rx="5" class="labelbg"/>
+  <text x="1085" y="354" text-anchor="middle" class="small gold">isolated pytest</text>
+  <path d="M672 462H685V505H1230V785H1252" class="dash" marker-end="url(#arrowGold)"/>
+  <rect x="867" y="486" width="166" height="26" rx="5" class="labelbg"/>
+  <text x="950" y="504" text-anchor="middle" class="small gold">bounded web evidence</text>
 
-  <path d="M348 684H410Q432 684 432 662V477Q432 459 456 459" class="line" marker-end="url(#arrow)"/>
-  <rect x="365" y="667" width="124" height="27" class="labelbg"/>
-  <text x="427" y="686" text-anchor="middle" class="small">inference</text>
-
-  <path d="M606 513V744Q606 758 624 758H932" class="line" marker-end="url(#arrow)"/>
-  <rect x="632" y="736" width="160" height="28" class="labelbg"/>
-  <text x="712" y="756" text-anchor="middle" class="small green">correct → NOOP</text>
-  <path d="M942 684L970 714" class="line" marker-end="url(#arrow)"/>
-
-  <path d="M756 286H1180V686H1252" class="dash" marker-end="url(#arrowGold)"/>
-  <rect x="1147" y="531" width="121" height="45" class="labelbg"/>
-  <text x="1207" y="549" text-anchor="middle" class="small gold">optional remote</text>
-  <text x="1207" y="568" text-anchor="middle" class="small gold">proposal path</text>
-  <path d="M1252 668H1208V540H606V513" class="dash" marker-end="url(#arrowGold)"/>
-
-  <text x="48" y="850" class="sub">Observe → reason → verify → act → observe again</text>
+  <text x="48" y="850" class="sub">Worker claims → sealed surface → evidence → verdict → durable ruling</text>
   <text x="1552" y="850" text-anchor="end" class="sub">Typed actions. Local policy stays authoritative.</text>
 </svg>

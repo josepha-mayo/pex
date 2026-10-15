@@ -11531,6 +11531,12 @@ class Store:
                             session = HarnessSession.model_validate_json(session_row["json"])
                             if session.goal_id != current.id:
                                 continue
+                            if session.metadata.get("not_live_control") is True:
+                                # A recorded replay keeps the goal revision it was
+                                # captured against — its binding is sealed evidence.
+                                # Lineage-aware reads follow the supersedes chain, so
+                                # the run still surfaces under the successor goal.
+                                continue
                             if session.project_id is None or not await _same_live_project_binding(
                                 transaction,
                                 session.project_id,
@@ -12113,6 +12119,14 @@ class Store:
                         raise ValueError("a session update cannot change harness identity")
                     if existing.vendor_session_id != session.vendor_session_id:
                         raise ValueError("a session update cannot change vendor identity")
+                    existing_metadata = existing.metadata or {}
+                    incoming_metadata = session.metadata or {}
+                    for seal_key in ("replay", "not_live_control"):
+                        if (
+                            existing_metadata.get(seal_key) is True
+                            and incoming_metadata.get(seal_key) is not True
+                        ):
+                            raise ValueError("a session update cannot unseal a recorded replay")
                     if existing_binding and row["project_binding"] is not None:
                         live_existing_binding = await _project_binding_snapshot(
                             tx,
@@ -13688,6 +13702,20 @@ class Store:
                 receipt = _session_control_receipt(row, session=session)
                 control_revision = int(row["control_revision"])
 
+                # Liveness is a control contract in both directions: pausing a
+                # recording or a detached row writes control state onto evidence
+                # just as surely as resuming one would.
+                if session.status == SessionStatus.DETACHED or bool(
+                    session.metadata.get("not_live_control") or session.metadata.get("observe_only")
+                ):
+                    await transaction.rollback()
+                    return {
+                        **receipt,
+                        "granted": False,
+                        "changed": False,
+                        "reason": "session_not_live_control",
+                    }
+
                 if not paused:
                     try:
                         authority_session, _ = await _load_bound_session(
@@ -13707,17 +13735,6 @@ class Store:
                                 if exc.code == "artifact_project_identity_changed"
                                 else exc.code
                             ),
-                        }
-                    if session.status == SessionStatus.DETACHED or bool(
-                        session.metadata.get("not_live_control")
-                        or session.metadata.get("observe_only")
-                    ):
-                        await transaction.rollback()
-                        return {
-                            **receipt,
-                            "granted": False,
-                            "changed": False,
-                            "reason": "session_not_live_control",
                         }
                     if session.goal_id:
                         try:
