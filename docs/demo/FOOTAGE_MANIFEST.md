@@ -24,10 +24,13 @@ labeled `not_live_control` inside the product itself.
 | 6 | Offline pack verification | `assets/pex-pack-verify-browser.png` (still) or a fresh terminal capture of `uv run python scripts/verify_pack.py` | `capture-pack-verify.mjs` |
 | 7 | Judge arc overview / suite | `assets/pex-judge-arc-597ce13.mp4` | `capture-judge-arc.mjs` |
 | 8 | Close — Nebius Token Factory × NVIDIA Nemotron card | title card over `pex-mark.svg`; URLs: `api.tokenfactory.nebius.com/v1`, model `nvidia/nemotron-3-super-120b-a12b` | static — script end-card |
+| 9 | Live worker self-escalation (2026-10-15 run) | `assets/pex-live-escalation-2026-10-15.mp4` | `capture-live-escalation.mjs` — real OpenCode worker read the tamper task, escalated via `pex.request_decision` quoting the sealed forbidden outcome; ruling recorded durably (`session_terminal` delivery, honest) |
 
 ## Supporting stills (cutaways / thumbnails)
 
 - `pex-claim-timeline-fa8d76e.png` — Inspector claim timeline on a live capture
+- `pex-live-escalation-inspector-2026-10-15.png` — LIVE WORKER chip + "I should
+  not proceed with the forbidden…" + 7 `pex.*` calls + honest "delivery failed"
 - `pex-live-opencode-tamper-b21b51d.png` / `pex-live-tamper-demo.mp4` — live
   OpenCode tamper catch (use for the "real worker" proof beat)
 - `pex-live-handoff-d02df03.png` — sealed-source handoff affordance
