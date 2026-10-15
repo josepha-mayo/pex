@@ -158,7 +158,14 @@ def _parse(argv: list[str] | None) -> argparse.Namespace:
         action="store_true",
         help="also run a real OpenCode worker on a free model under live supervision",
     )
-    parser.add_argument("--worker-model", default=None, help="free OpenCode Zen model id")
+    parser.add_argument(
+        "--worker-model",
+        default=None,
+        help=(
+            "worker model id — a free OpenCode Zen model, or a Token Factory "
+            "NVIDIA model (nvidia/…) when NEBIUS_API_KEY is set"
+        ),
+    )
     parser.add_argument(
         "--scenario",
         choices=("false-claim", "tamper"),

@@ -512,6 +512,11 @@ export function App() {
   // through this UI records a ruling even when the session row is collapsed
   // out of the compact rail's promptable set.
   const [journeyRulingRecorded, setJourneyRulingRecorded] = useState(false);
+  // Same latch for the evidence step: it only becomes true while the judge is
+  // on the Inspector looking at a replay, but the checklist renders on Home —
+  // without the latch the step un-ticks on the way back and the journey can
+  // never complete.
+  const [inspectorReplayVisited, setInspectorReplayVisited] = useState(false);
   const [scale, setScale] = useState(1);
   const [nickname, setNickname] = useState("");
   const [clickThrough, setClickThrough] = useState(false);
@@ -540,15 +545,18 @@ export function App() {
   }, []);
   const operatorActionsAvailable = TAURI || demoOperatorActions;
 
-  // A finished replay leaves its verdict on Home below the replay controls —
-  // bring it into view so a judge doesn't have to know to scroll for it.
+  // A finished replay leaves its verdict — or its failure — on Home below the
+  // replay controls; bring whichever landed into view so a judge doesn't have
+  // to know to scroll for it.
   useEffect(() => {
-    if (!demoReplay.verdict) return;
+    if (!demoReplay.verdict && !demoReplay.error) return;
     const frame = requestAnimationFrame(() => {
-      document.querySelector(".replay-verdict")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      document
+        .querySelector(".replay-verdict, .demo-replay-error")
+        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
     return () => cancelAnimationFrame(frame);
-  }, [demoReplay.verdict]);
+  }, [demoReplay.verdict, demoReplay.error]);
 
   useEffect(() => {
     const acceptVisibility = (visible: boolean) => {
@@ -1193,6 +1201,15 @@ export function App() {
   // An explicit selection is an interaction boundary. If it disappears, show
   // unavailable state instead of silently retargeting an open goal form.
   const current = selectedId ? explicitlySelected : selectPrimarySession(pet ? homeSessions : sessions);
+
+  // Latch "looked at the sealed evidence" so the journey checklist can tick
+  // the step after the judge navigates back to Home.
+  useEffect(() => {
+    if (surface === "inspector" && current && isReplaySession(current)) {
+      setInspectorReplayVisited(true);
+    }
+  }, [surface, current]);
+
   const attachedGoal = availableGoals.find((goal) => goal.id === current?.goal_id);
   const projectId = current?.project_id || attachedGoal?.project_id || current?.cwd || "";
   const contextScopeGoalId = current?.goal_id || "";
@@ -1692,7 +1709,7 @@ export function App() {
     },
     {
       key: "evidence",
-      done: surface === "inspector" && Boolean(current && isReplaySession(current)),
+      done: inspectorReplayVisited,
       body: <>Click <strong>Open the session evidence</strong> — the Inspector shows the claim timeline and the sealed-baseline diff.</>,
     },
     {
@@ -1837,8 +1854,17 @@ export function App() {
     setup, Boolean(pet?.paused),
   );
 
+  // Latch: once a judge has engaged the replay path (fixtures loaded, a run
+  // in flight, or a verdict on screen), the panel stays mounted — a transient
+  // bridge blip or connecting a real worker mid-journey must not unmount a
+  // completed verdict card.
   const demoReplayAvailable = Boolean(
-    setup?.state === "connect_worker" || isReplaySession(current),
+    setup?.state === "connect_worker"
+      || isReplaySession(current)
+      || demoFixtures?.length
+      || demoReplay.running
+      || demoReplay.verdict
+      || demoReplay.history.length,
   );
   const demoFixtureTried = useRef(false);
   useEffect(() => {
@@ -3441,10 +3467,12 @@ export function App() {
                 </div>
               </div>
             ) : null}
-            {demoReplayAvailable && demoFixtures?.length ? (
+            {demoReplayAvailable ? (
               <div className="demo-replay">
                 <p className="eyebrow">See the loop without a worker</p>
                 <p>Replay a recorded supervision trajectory through the real pipeline — labeled as a replay, never live worker control.</p>
+                {demoFixtures?.length ? (
+                <>
                 <details
                   className="judge-quickstart"
                   open={!journeyAllDone && !journeyCollapsed}
@@ -3659,6 +3687,8 @@ export function App() {
                     </div>
                   ) : null}
                 </details>
+                </>
+                ) : null}
                 {demoReplay.running ? (
                   <div className="replay-verdict replay-verdict-pending" role="status" aria-busy="true">
                     <p className="eyebrow">
@@ -3702,14 +3732,13 @@ export function App() {
                           >
                             <span className="replay-verdict-claim-text">“{entry.claim}”</span>
                             <span className="replay-verdict-claim-status">
-                              {entry.status === "supported"
-                                ? "verified"
-                                : entry.status}
+                              {entry.status}
                             </span>
                           </li>
                         ))}
                       </ul>
-                    ) : demoReplay.verdict.narrationCheck ? (
+                    ) : null}
+                    {demoReplay.verdict.narrationCheck ? (
                       <p
                         className={
                           demoReplay.verdict.narrationCheck.status === "supported"
@@ -3719,7 +3748,7 @@ export function App() {
                       >
                         Narration check: “{demoReplay.verdict.narrationCheck.claim}” →{" "}
                         {demoReplay.verdict.narrationCheck.status === "supported"
-                          ? "verified against the workspace"
+                          ? "supported — verified against the workspace"
                           : `${demoReplay.verdict.narrationCheck.status} — narration-only supervision would have accepted it`}
                       </p>
                     ) : null}
@@ -3843,7 +3872,9 @@ export function App() {
                   </div>
                 ) : null}
                 {demoReplay.error ? (
-                  <p className="demo-replay-error" role="status">{demoReplay.error}</p>
+                  <p className="demo-replay-error" role="alert">
+                    <strong>Replay failed:</strong> {demoReplay.error}
+                  </p>
                 ) : null}
               </div>
             ) : null}

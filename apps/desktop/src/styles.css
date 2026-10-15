@@ -880,6 +880,10 @@ p {
 .demo-replay .button-row { margin-top: 0; }
 .demo-replay-error {
   margin: 10px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(245, 184, 86, 0.42);
+  border-radius: 10px;
+  background: rgba(245, 184, 86, 0.08);
   color: var(--amber);
   font-size: 12px;
 }

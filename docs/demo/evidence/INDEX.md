@@ -1,9 +1,10 @@
 # Evidence index
 
-Every claim PEX makes has a committed receipt; this directory is the receipts.
-Nothing here is asserted without a re-verification path — each family lists the
-command that re-checks it. A PASS proves the artifact is internally consistent;
-it does not claim a live worker ran where the artifact itself is a recording.
+This directory catalogues the demo-facing receipts — every file below lists
+the command that re-checks it. A PASS proves the artifact is internally
+consistent; it does not claim a live worker ran where the artifact itself is
+a recording. Deeper engineering receipts live in `docs/evidence/` and are
+referenced where their claims are made.
 
 ## Evidence packs — `verify_pack.py`
 
@@ -42,8 +43,8 @@ uv run python scripts/eval_replays.py --json out.json --html out.html   # needs 
 | --- | --- |
 | `FIXTURE_SUITE_EVAL_2026-10-15.{json,html}` | **Latest — 18/18 arcs**, including `report_progress_eval` (progress reports are signal, never proof). |
 | `FIXTURE_SUITE_EVAL_2026-10-14.{json,html}` | 17/17 — first suite with the live-captured `worker_escalation_eval`. |
-| `FIXTURE_SUITE_EVAL_2026-10-06.{json,html}` | 16/16 historical snapshot. |
-| `FIXTURE_SUITE_EVAL_2026-10-05.{json,html}` | 16/16 historical snapshot. |
+| `FIXTURE_SUITE_EVAL_2026-10-06.{json,html}` | 15/15 historical snapshot. |
+| `FIXTURE_SUITE_EVAL_2026-10-05.{json,html}` | 12/12 historical snapshot. |
 | `CHALLENGE_PRESETS_EVAL_2026-10-06.json` | Attack-preset sweep: each shipped challenge preset adjudicated honestly — none reach verified completion on the attack. |
 
 ## Live-run receipts — verification reports and captures

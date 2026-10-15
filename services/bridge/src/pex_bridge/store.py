@@ -11531,12 +11531,11 @@ class Store:
                             session = HarnessSession.model_validate_json(session_row["json"])
                             if session.goal_id != current.id:
                                 continue
-                            if session.metadata.get("not_live_control") is True:
-                                # A recorded replay keeps the goal revision it was
-                                # captured against — its binding is sealed evidence.
-                                # Lineage-aware reads follow the supersedes chain, so
-                                # the run still surfaces under the successor goal.
-                                continue
+                            # A replay's goal_id is an attachment pointer, not
+                            # evidence — it follows the goal's supersedes chain
+                            # so recorded rulings keep governing re-attached
+                            # replays. The sealed parts (events, interventions,
+                            # verdict stamps) stay untouched by this rebind.
                             if session.project_id is None or not await _same_live_project_binding(
                                 transaction,
                                 session.project_id,
@@ -19540,8 +19539,13 @@ class Store:
         source_session_id: str,
         target_session_id: str,
         token_budget: int,
-    ) -> tuple[ContextBundle, Intervention, HarnessEvent]:
-        """Validate the complete immutable handoff receipt and its link rows."""
+    ) -> tuple[ContextBundle, Intervention, HarnessEvent | None]:
+        """Validate the complete immutable handoff receipt and its link rows.
+
+        The trigger event is ``None`` for a sealed-source reservation: the
+        derived artifact binds the effect but is deliberately absent from the
+        replay's sealed evidence ledger.
+        """
 
         request_hash = self._operator_handoff_request_hash(
             source_session_id=source_session_id,
@@ -19616,11 +19620,11 @@ class Store:
         ):
             raise RuntimeError("stored handoff effect payload binding is invalid")
         trigger_event_mode = payload.get("trigger_event_mode")
-        if trigger_event_mode not in {"derived", "existing"}:
+        if trigger_event_mode not in {"derived", "existing", "sealed_source"}:
             raise RuntimeError("stored handoff trigger mode is invalid")
         event_id = str(payload.get("event_id") or "")
-        if trigger_event_mode == "derived" and event_id != stable_operator_artifact_id(
-            expected_effect_id, "event"
+        if trigger_event_mode in {"derived", "sealed_source"} and event_id != (
+            stable_operator_artifact_id(expected_effect_id, "event")
         ):
             raise RuntimeError("stored handoff derived event identity is invalid")
         intervention_id = stable_operator_artifact_id(expected_effect_id, "intervention")
@@ -19689,28 +19693,39 @@ class Store:
             (event_id, source_session_id),
         )
         event_row = await event_cursor.fetchone()
-        if event_row is None:
-            raise RuntimeError("stored handoff trigger event is missing")
-        event = HarnessEvent.model_validate_json(event_row["json"])
-        if (
-            event.event_id != event_id
-            or event.goal_id != effect.get("goal_id")
-            or event.harness_type.value != payload.get("source_harness_type")
-            or intervention.trigger != event.event_type.value
-            or intervention.metadata.get("trigger_event_id") != event_id
-            or (
-                trigger_event_mode == "derived"
-                and (
-                    event_row["mode"] != "record_only"
-                    or event_row["state"] != "record_only_complete"
+        event: HarnessEvent | None = None
+        if trigger_event_mode == "sealed_source":
+            # The whole point of the sealed-source reservation: the derived
+            # trigger artifact is bound to the effect but must NEVER land in
+            # the recording's sealed evidence ledger. A row here means the
+            # seal was violated.
+            if event_row is not None:
+                raise RuntimeError("sealed-source handoff wrote to the sealed ledger")
+            if intervention.metadata.get("trigger_event_id") != event_id:
+                raise RuntimeError("stored handoff trigger receipt is invalid")
+        else:
+            if event_row is None:
+                raise RuntimeError("stored handoff trigger event is missing")
+            event = HarnessEvent.model_validate_json(event_row["json"])
+            if (
+                event.event_id != event_id
+                or event.goal_id != effect.get("goal_id")
+                or event.harness_type.value != payload.get("source_harness_type")
+                or intervention.trigger != event.event_type.value
+                or intervention.metadata.get("trigger_event_id") != event_id
+                or (
+                    trigger_event_mode == "derived"
+                    and (
+                        event_row["mode"] != "record_only"
+                        or event_row["state"] != "record_only_complete"
+                    )
                 )
-            )
-            or (
-                trigger_event_mode == "existing"
-                and event_row["state"] not in EVENT_PROCESSING_TERMINAL_STATES
-            )
-        ):
-            raise RuntimeError("stored handoff trigger receipt is invalid")
+                or (
+                    trigger_event_mode == "existing"
+                    and event_row["state"] not in EVENT_PROCESSING_TERMINAL_STATES
+                )
+            ):
+                raise RuntimeError("stored handoff trigger receipt is invalid")
         if trigger_event_mode == "existing":
             followup_cursor = await connection.execute(
                 "SELECT state FROM event_followups WHERE event_id = ? AND kind = 'auto_handoff'",
@@ -19816,8 +19831,15 @@ class Store:
         intervention: Intervention,
         trigger_event_is_existing: bool = False,
         actor_assurance: str | None = None,
+        sealed_source: bool = False,
     ) -> dict[str, Any]:
-        """Atomically reserve one handoff, trigger event, intervention, and audit row."""
+        """Atomically reserve one handoff, trigger event, intervention, and audit row.
+
+        ``sealed_source`` marks a handoff whose source is a recorded replay:
+        the operator's request is real, but the derived trigger event must not
+        be appended to the sealed evidence ledger — the reservation, audit row,
+        and operator effect still record the full trail.
+        """
 
         _validate_store_id(principal_id, label="operator effect principal")
         if actor_assurance is not None and actor_assurance != OPERATOR_ACTOR_ASSURANCE:
@@ -19965,6 +19987,13 @@ class Store:
                     raise PermissionError("handoff observe-only desktop is forbidden")
                 if not source.goal_id or target.goal_id != source.goal_id:
                     raise PermissionError("handoff goal binding mismatch")
+                source_sealed = (source.metadata or {}).get("not_live_control") is True or bool(
+                    (source.metadata or {}).get("observe_only")
+                )
+                if source_sealed and not sealed_source:
+                    raise ValueError("sealed handoff source requires sealed_source=True")
+                if not source_sealed and sealed_source:
+                    raise ValueError("sealed_source flag on a live source is invalid")
                 if bundle.goal_id != source.goal_id or intervention.goal_id != source.goal_id:
                     raise ValueError("handoff artifact goal binding mismatch")
                 goal, goal_binding = await _load_bound_goal(transaction, source.goal_id)
@@ -20197,14 +20226,20 @@ class Store:
                     "token_budget": token_budget,
                     "bundle": bundle.model_dump(mode="json"),
                     "event_id": event.event_id,
-                    "trigger_event_mode": ("existing" if trigger_event_is_existing else "derived"),
+                    "trigger_event_mode": (
+                        "sealed_source"
+                        if sealed_source
+                        else "existing"
+                        if trigger_event_is_existing
+                        else "derived"
+                    ),
                     "intervention_id": intervention.id,
                 }
                 if actor_assurance is not None:
                     payload["actor_assurance"] = actor_assurance
                 payload_json = _canonical_json(payload)
                 now = utcnow().isoformat()
-                if not trigger_event_is_existing:
+                if not trigger_event_is_existing and not sealed_source:
                     await transaction.execute(
                         "INSERT INTO events(event_id, session_id, ts, json) VALUES (?, ?, ?, ?)",
                         (
@@ -20473,17 +20508,25 @@ class Store:
                     (str(payload.get("event_id") or ""), source.id),
                 )
                 event_row = await event_cursor.fetchone()
-                if event_row is None:
-                    raise RuntimeError("operator handoff trigger event is missing")
-                trigger_event = HarnessEvent.model_validate_json(event_row["json"])
-                if (
-                    trigger_event.event_id != payload.get("event_id")
-                    or trigger_event.harness_type != source.harness_type
-                    or trigger_event.goal_id != goal.id
-                    or intervention.trigger != trigger_event.event_type.value
-                    or intervention.metadata.get("trigger_event_id") != trigger_event.event_id
-                ):
-                    raise ValueError("operator handoff trigger binding is invalid")
+                if payload.get("trigger_event_mode") == "sealed_source":
+                    # Seal invariant: the derived trigger binds the effect but
+                    # never lands in the replay's sealed evidence ledger.
+                    if event_row is not None:
+                        raise RuntimeError("sealed-source handoff wrote to the sealed ledger")
+                    if intervention.metadata.get("trigger_event_id") != payload.get("event_id"):
+                        raise ValueError("operator handoff trigger binding is invalid")
+                else:
+                    if event_row is None:
+                        raise RuntimeError("operator handoff trigger event is missing")
+                    trigger_event = HarnessEvent.model_validate_json(event_row["json"])
+                    if (
+                        trigger_event.event_id != payload.get("event_id")
+                        or trigger_event.harness_type != source.harness_type
+                        or trigger_event.goal_id != goal.id
+                        or intervention.trigger != trigger_event.event_type.value
+                        or intervention.metadata.get("trigger_event_id") != trigger_event.event_id
+                    ):
+                        raise ValueError("operator handoff trigger binding is invalid")
 
                 current_item_ids = {item.id for item in bundle.items}
                 duplicate_cursor = await transaction.execute(
@@ -25988,7 +26031,10 @@ class Store:
                         if restored == SessionStatus.NEEDS_DECISION:
                             restored = SessionStatus.WORKING
                         session.status = restored
-                    session.last_activity = resolved_at
+                    if session_metadata.get("replay") is not True:
+                        # last_activity describes the recording, not the
+                        # operator's later ruling — keep sealed rows honest.
+                        session.last_activity = resolved_at
                     session_update = await self.db.execute(
                         "UPDATE sessions SET json = ?, revision = revision + 1 WHERE id = ?",
                         (_dump(session), session.id),

@@ -75,13 +75,18 @@
     agent's claims, and checks each one against the workspace itself — files,
     diffs, test exits — before anything is called finished.
   </p>
+  <p style="color:var(--muted);font-size:14px;margin:-24px 0 36px">
+    This is not hypothetical: METR measured 39 of 128 RE-Bench 2 runs
+    (~30%) reward-hacking unprompted — agents declaring victory over tests
+    they quietly gamed.
+  </p>
 
   <div class="card catch">
     <div class="row"><span class="said">worker narrates: "All tests passed."</span><span class="bad">contradicted — results.json missing</span></div>
     <div class="row"><span class="said">worker runs pytest, then repeats: "All tests passed."</span><span class="ok">verified — attributable pytest evidence</span></div>
     <p style="margin:10px 0 0;color:var(--muted);font-size:12.5px">
       Same words, different verdicts — because evidence, not narration, decides.
-      From a real recorded run; adjudicate it yourself below.
+      A real adjudication from the recorded replay suite; run it yourself below.
     </p>
   </div>
 
@@ -116,9 +121,10 @@
 
   <h2>Platform</h2>
   <ul>
-    <li>Semantic supervision runs <strong>NVIDIA Nemotron-3-Super-120B-A12B</strong> on
-      <strong>Nebius Token Factory</strong> — receipts in the repo under
-      <code>docs/evidence/</code> (live inference, corrected live-worker premature stops).</li>
+    <li>Semantic supervision runs <strong>NVIDIA nemotron-3-super-120b-a12b</strong> on
+      <strong>Nebius Token Factory</strong> (OpenAI-compatible chat completions) — receipts
+      in the repo under <code>docs/evidence/</code> (live inference, corrected live-worker
+      premature stops).</li>
     <li>Isolated public-pytest execution targets <strong>Nebius ConTree Sandboxes</strong>
       — implemented, currently key-gated (beta access pending).</li>
     <li>Bounded public-claim checks route <strong>Tavily web evidence</strong> — wired and

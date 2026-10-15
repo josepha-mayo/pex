@@ -26,6 +26,25 @@ import httpx
 BASE_URL = os.environ.get("PEX_NEBIUS_BASE_URL", "https://api.tokenfactory.nebius.com/v1")
 DEFAULT_MODEL = "nvidia/nemotron-3-super-120b-a12b"
 
+# Catalog deployment regions (tokenfactory.nebius.com/model-catalog.md).
+# Public serverless inference is global-routed behind the default base URL;
+# the region matters when a deployment is dedicated or region-gated — so on a
+# model-not-found we retry the model's regional data plane and report which
+# answered, rather than guessing silently.
+MODEL_REGION_HINTS = {
+    "nvidia/nemotron-3-super-120b-a12b": "us-central1",
+    "nvidia/Nemotron-3-Ultra-550b-a55b": "us-central1",
+    "nvidia/Nemotron-3.5-Super-VL": "us-north1",
+    "nvidia/Nemotron-3_5-Lightning": "eu-north1",
+    "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B": "eu-north1",
+}
+
+
+def _regional_base_url(region: str) -> str:
+    if region == "eu-north1":
+        return "https://api.tokenfactory.nebius.com/v1"
+    return f"https://api.tokenfactory.{region}.nebius.com/v1"
+
 
 def _key() -> str | None:
     # Same order providers.py resolves them: PEX-specific override first,
@@ -99,8 +118,45 @@ def main() -> int:
             return 1
         elapsed = time.monotonic() - started
         if completion.status_code != 200:
-            print(f"FAIL inference: HTTP {completion.status_code} - {completion.text[:300]}")
-            return 1
+            # If the model is region-gated (dedicated endpoint semantics),
+            # retry once on its catalog region's data plane and say so.
+            region = MODEL_REGION_HINTS.get(args.model)
+            regional_url = _regional_base_url(region) if region else None
+            if regional_url and regional_url != BASE_URL:
+                print(
+                    f"primary endpoint failed: HTTP {completion.status_code} - "
+                    f"{completion.text[:200]}"
+                )
+                print(f"retrying on the model's catalog region ({region}): {regional_url}")
+                started = time.monotonic()
+                with httpx.Client(base_url=regional_url, headers=headers, timeout=30.0) as regional:
+                    try:
+                        completion = regional.post(
+                            "/chat/completions",
+                            json={
+                                "model": args.model,
+                                "messages": [{"role": "user", "content": prompt}],
+                                "max_tokens": 16,
+                                "temperature": 0,
+                            },
+                        )
+                    except httpx.HTTPError as exc:
+                        print(f"FAIL inference (regional): {type(exc).__name__}: {exc}")
+                        return 1
+                elapsed = time.monotonic() - started
+                if completion.status_code != 200:
+                    print(
+                        f"FAIL inference (regional): HTTP {completion.status_code} - "
+                        f"{completion.text[:300]}"
+                    )
+                    return 1
+                print(
+                    f"note: {args.model} answered on the {region} data plane, "
+                    f"not the global endpoint - set PEX_SUPERVISOR_BASE_URL={regional_url}"
+                )
+            else:
+                print(f"FAIL inference: HTTP {completion.status_code} - {completion.text[:300]}")
+                return 1
         body = completion.json()
         content = body.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
         usage = body.get("usage", {})

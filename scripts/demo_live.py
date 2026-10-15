@@ -27,8 +27,11 @@ if str(ROOT) not in sys.path:
 
 from benchmarks.opencode_proof_route import (  # noqa: E402
     FREE_OPENCODE_MODELS,
+    NEBIUS_MODELS,
+    ProofRouteError,
     native_free_worker_environment,
     proof_worker_config,
+    proof_worker_route,
     resolve_opencode_executable,
 )
 from scripts.opencode_recovery_once import scenario_spec, seed_scenario  # noqa: E402
@@ -72,8 +75,26 @@ def prepare_run(
 
     if scenario not in SCENARIOS:
         raise ValueError(f"unknown live scenario {scenario!r}; choose from {SCENARIOS}")
-    if worker_model not in FREE_OPENCODE_MODELS:
-        raise ValueError(f"live demo needs a listed free OpenCode model: {FREE_OPENCODE_MODELS}")
+    nebius = worker_model in NEBIUS_MODELS
+    worker_key: str | None = None
+    if not nebius and worker_model not in FREE_OPENCODE_MODELS:
+        raise ValueError(
+            "live demo worker model must be a listed free OpenCode model "
+            f"{FREE_OPENCODE_MODELS} or a Token Factory model {NEBIUS_MODELS}"
+        )
+    if nebius:
+        # A Token Factory worker needs a real key — fail fast rather than
+        # spawn a worker that 401s its first prompt.
+        worker_key = os.environ.get("PEX_PROOF_PROVIDER_KEY") or os.environ.get("NEBIUS_API_KEY")
+        if not worker_key:
+            raise ValueError(
+                "a Nebius worker model needs NEBIUS_API_KEY (or "
+                "PEX_PROOF_PROVIDER_KEY) in the environment"
+            )
+        try:
+            proof_worker_route("nebius", worker_model)
+        except ProofRouteError as exc:
+            raise ValueError(str(exc)) from exc
     workspace = root / "workspace"
     workspace.mkdir(parents=True, exist_ok=False)
     subprocess.run(
@@ -84,7 +105,15 @@ def prepare_run(
     seed_scenario(workspace, SCENARIO)
     if scenario == "tamper":
         (workspace / "verify.py").unlink()
-    config = proof_worker_config("opencode", worker_model, "OpenCode Zen", native_free=True)
+    if nebius:
+        # The worker itself runs on Token Factory — both sides of the
+        # supervision loop are then Nebius calls (Nemotron worker + Nemotron
+        # supervisor), receipted under docs/evidence/.
+        config = proof_worker_config(
+            "nebius", worker_model, "Nebius Token Factory", native_free=False
+        )
+    else:
+        config = proof_worker_config("opencode", worker_model, "OpenCode Zen", native_free=True)
     # Give the live worker PEX's own MCP tools: OpenCode serve mode connects
     # remote MCP servers but never registers their tools into sessions
     # (verified on 1.18.32 + 1.19.0), while local stdio servers do register —
@@ -117,7 +146,12 @@ def prepare_run(
     (workspace / "opencode.json").write_text(
         json.dumps({"mcp": config["mcp"]}, indent=2) + "\n", encoding="utf-8"
     )
-    return workspace, native_free_worker_environment(dict(os.environ), root)
+    environment = native_free_worker_environment(dict(os.environ), root)
+    if worker_key:
+        # Credential-free homes stay credential-free; the key enters only the
+        # spawned server's env, where the provider config resolves it.
+        environment["PEX_PROOF_PROVIDER_KEY"] = worker_key
+    return workspace, environment
 
 
 def opencode_command(executable: Path, port: int) -> list[str]:

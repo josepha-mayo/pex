@@ -5385,6 +5385,10 @@ def create_app() -> FastAPI:
                 "session_project_identity_changed": "session project identity changed",
                 "session_control_revision_changed": "session control revision changed",
                 "goal_intent_revision_changed": "goal intent revision changed",
+                "session_not_live_control": (
+                    "recorded replay session: its goal binding is sealed evidence, "
+                    "not a writable control"
+                ),
             }
             detail: str | dict[str, str] = messages.get(reason, reason)
             if reason.startswith("project_identity_"):

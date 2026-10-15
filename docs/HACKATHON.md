@@ -201,14 +201,15 @@ all callable in-page) and a scoped MCP tool surface at `/mcp/`.
   acceptance-surface sealing and tamper detection, the replay demo, local
   subprocess public-test verification, 5,531 backend tests collected —
   [collection receipt](evidence/pytest-collect-2026-10-15.json)
-  re-verified 2026-10-15; the last full non-live run passed 2026-10-13.
+  re-verified 2026-10-15.
   `uv run python scripts/eval_replays.py` scores the
   shipped fixture suite against its declared supervision arcs — 18/18,
   re-verified 2026-10-15
   ([receipt](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.json) —
   [readable form](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.html) with the
-  same JSON embedded). Every committed artifact is catalogued with its
-  re-verify command in [docs/demo/evidence/INDEX.md](demo/evidence/INDEX.md);
+  same JSON embedded). The demo evidence directory is catalogued with
+  per-artifact re-verify commands in
+  [docs/demo/evidence/INDEX.md](demo/evidence/INDEX.md);
   `uv run python scripts/verify_pack.py docs/demo/evidence` re-checks all
   eleven committed evidence packs in one sweep.
 - **Runs live with no key:** a real OpenCode worker on the free Nemotron 3

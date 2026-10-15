@@ -166,8 +166,10 @@ NEBIUS_API_KEY=... uv run python scripts/check_token_factory.py --infer
 
 ## Built during the submission period (pre-existing-project note)
 
-This repository predates the submission window in part; the work submitted
-here was built during it. Substantially new since the window opened:
+This repository predates the submission window in part — the window opened
+August 26, 2026, and 1,380 of the project's 1,386 commits land on or after
+it; the work submitted here was built during it. Substantially new since
+the window opened:
 
 - The entire worker↔PEX MCP supervision loop (session-bound credentials,
   eight session-bound tools behind five scopes — one read, four write —

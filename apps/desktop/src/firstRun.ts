@@ -1,4 +1,5 @@
 import type { Goal, SessionRow, StatusCopy, SupervisorInfo } from "./types.ts";
+import { isReplaySession } from "./demoReplay.ts";
 import { canAttachPersistentGoal, supervisorActivationCopy, titleCase } from "./viewModel.ts";
 
 export type FirstRunCtaIntent = "connect" | "goal";
@@ -98,6 +99,17 @@ export function firstRunGuidance({
       state: "unavailable",
       title: "Checking local state",
       detail: "Connecting to your local bridge…",
+      cta: null,
+    };
+  }
+  // A selected replay is sealed evidence, not a worker that needs connecting —
+  // the guidance must point at the recording, not Connections. Keep the
+  // connect_worker state so the replay panel's availability gate stays open.
+  if (isReplaySession(current)) {
+    return {
+      state: "connect_worker",
+      title: "Recorded replay selected",
+      detail: "This is a sealed supervision recording, not a live worker — open the Inspector for its claim timeline and evidence, or run another replay below.",
       cta: null,
     };
   }

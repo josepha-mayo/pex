@@ -5892,6 +5892,13 @@ class Pipeline:
         if actor_assurance is not None and actor_assurance != "bridge_bearer":
             raise ValueError("operator actor assurance is invalid")
         human_requested = actor_assurance == "bridge_bearer"
+        # A replay may be a handoff source (its goal context is legitimate),
+        # but nothing may append to its sealed evidence ledger — the derived
+        # trigger event binds the reservation without landing as a fake
+        # post-recording user prompt.
+        sealed_source = source.metadata.get("not_live_control") is True or bool(
+            source.metadata.get("observe_only")
+        )
         effect_id = stable_operator_effect_id(
             principal_id,
             "context_handoff",
@@ -5974,6 +5981,7 @@ class Pipeline:
             intervention=intervention,
             trigger_event_is_existing=origin_event is not None,
             actor_assurance=actor_assurance,
+            sealed_source=sealed_source,
         )
         return reserved
 
@@ -6574,6 +6582,10 @@ class Pipeline:
         if live_source is None or live_source.goal_id != session.goal_id:
             return
         session = live_source
+        if session.metadata.get("not_live_control") is True or session.metadata.get("observe_only"):
+            # A recorded replay's events are sealed evidence, not live signal —
+            # they must never drive mutations on a real worker.
+            return
         content = (event.message_delta or event.command or "").strip()
         project_key = session.project_id or session.cwd
         explicitly_relevant = (event.metadata or {}).get("handoff_relevant") is True
@@ -6613,6 +6625,8 @@ class Pipeline:
             and row.status in active_targets
             and not row.supervision_paused
             and not is_desktop_observe_session(row)
+            and (row.metadata or {}).get("not_live_control") is not True
+            and not (row.metadata or {}).get("observe_only")
         ]
         if not siblings:
             return
@@ -6647,6 +6661,8 @@ class Pipeline:
                 or target.status not in active_targets
                 or target.supervision_paused
                 or is_desktop_observe_session(target)
+                or (target.metadata or {}).get("not_live_control") is True
+                or (target.metadata or {}).get("observe_only")
             ):
                 continue
             if await self._negotiate_capabilities(target):
@@ -6695,7 +6711,12 @@ class Pipeline:
                         continue
                     raise
                 except ValueError as exc:
-                    if str(exc) == ("handoff bundle is not the canonical stored projection"):
+                    if str(exc) in {
+                        "handoff bundle is not the canonical stored projection",
+                        # Deterministic refusal — a candidate sealed between the
+                        # filter and the reserve can never succeed on retry.
+                        "recorded replay session: there is no live worker to receive a handoff",
+                    }:
                         continue
                     raise
             if record is None:

@@ -64,6 +64,28 @@ test("first-run guidance stops claiming an active connection attempt after the b
   });
 });
 
+test("first-run guidance treats a selected replay as sealed evidence, not a worker to connect", () => {
+  const replay: SessionRow = {
+    ...worker,
+    id: "synthetic:replay-premature_stop_eval-abcd1234",
+    harness_type: "synthetic" as SessionRow["harness_type"],
+    status: "stopped",
+    metadata: { replay: true, not_live_control: true },
+  };
+  const guidance = firstRunGuidance({
+    current: replay,
+    sessionFresh: true,
+    goalFresh: true,
+  });
+  assert.equal(guidance?.state, "connect_worker");
+  assert.equal(guidance?.title, "Recorded replay selected");
+  assert.equal(guidance?.cta, null);
+  assert.equal(guidance?.detail.includes("sealed supervision recording"), true);
+  // The connect_worker state keeps the replay panel's availability gate open —
+  // the copy, not the state, is what changed.
+  assert.equal(guidance?.detail.includes("Connect a running OpenCode"), false);
+});
+
 test("first-run guidance distinguishes no usable worker from an attachable unbound worker", () => {
   const noWorker = firstRunGuidance({ sessionFresh: true, goalFresh: true });
   assert.deepEqual(noWorker?.cta, { intent: "connect", label: "How to connect a worker" });

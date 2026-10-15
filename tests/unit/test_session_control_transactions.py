@@ -670,6 +670,133 @@ async def test_replay_sessions_refuse_every_live_worker_surface(tmp_path):
             assert "recorded replay session" in (
                 detail["message"] if isinstance(detail, dict) else detail
             )
+
+            # Goal rebinding is a sealed-evidence mutation too — the attach
+            # route must refuse with the honest replay reason, not a raw code.
+            control_cursor = await store.db.execute(
+                "SELECT control_revision FROM sessions WHERE id = ?", (session.id,)
+            )
+            control_revision = int((await control_cursor.fetchone())[0])
+            intent_cursor = await store.db.execute(
+                "SELECT intent_revision FROM goals WHERE id = ?", ("goal-a",)
+            )
+            intent_revision = int((await intent_cursor.fetchone())[0])
+            attach = await client.post(
+                f"/v1/sessions/{session.id}/attach",
+                headers=headers,
+                json={
+                    "idempotency_key": "replay-attach-0001",
+                    "goal_id": "goal-a",
+                    "expected_goal_id": "goal-a",
+                    "expected_control_revision": control_revision,
+                    "expected_goal_intent_revision": intent_revision,
+                },
+            )
+            assert attach.status_code == 409, attach.text
+            assert "recorded replay session" in attach.json()["detail"]
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_replay_source_handoff_keeps_the_sealed_ledger_pristine(tmp_path):
+    """A replay may be a handoff source (its goal context is legitimate), but
+    the operator request must not append a fabricated user_prompt into the
+    recording's sealed evidence ledger — the reservation still records the
+    full trail via the intervention, audit row, and operator effect."""
+    settings = Settings(require_auth=True, home=tmp_path, autonomy="manage")
+    store = Store(tmp_path / "pex.sqlite")
+    adapters = AdapterRegistry()
+    bus = EventBus()
+    state.settings = settings
+    state.store = store
+    state.adapters = adapters
+    state.bus = bus
+    state.pipeline = Pipeline(store, adapters, bus, settings)
+    state.token = "replay-handoff-source-token-001"
+    state.pet_settings = PetSettings()
+    state.pet_path = tmp_path / "pet.json"
+    await store.connect()
+    try:
+        await _register_identity(store, "/work/session-control-handoff-src")
+        now = utcnow()
+        await store.upsert_goal(
+            Goal(
+                id="goal-a",
+                project_id=PROJECT_ID,
+                title="Share the dataset path",
+                objective="Share the dataset path the recorded worker discovered",
+                acceptance_criteria=["the sibling uses the discovered dataset path"],
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        replay = adapters.synthetic.seed_session(
+            vendor_id="replay-src",
+            project_id=PROJECT_ID,
+            goal_id="goal-a",
+        )
+        replay.metadata["replay"] = True
+        replay.metadata["not_live_control"] = True
+        await store.upsert_session(replay)
+        target = adapters.synthetic.seed_session(
+            vendor_id="live-target",
+            project_id=PROJECT_ID,
+            goal_id="goal-a",
+        )
+        await store.upsert_session(target)
+
+        # Record-time ingest: the replay's own recorded worker response mints
+        # the goal-scoped, provenance-backed context item the bundle hands off.
+        # (Bundle items must carry source_session_id == source.id — only the
+        # replay's recorded evidence qualifies.)
+        event = adapters.synthetic.emit(
+            replay,
+            EventType.AGENT_RESPONSE,
+            phase="after",
+            message_delta="Dataset is at artifacts/prepared_dataset.parquet. Do not regenerate.",
+            file_paths=["artifacts/prepared_dataset.parquet"],
+        )
+        await state.pipeline.ingest_event(event, replay)
+        before_cursor = await store.db.execute(
+            "SELECT event_id FROM events WHERE session_id = ?", (replay.id,)
+        )
+        before = await before_cursor.fetchall()
+
+        transport = ASGITransport(app=create_app())
+        headers = {"Authorization": f"Bearer {state.token}"}
+        async with AsyncClient(transport=transport, base_url="http://127.0.0.1") as client:
+            handoff = await client.post(
+                f"/v1/sessions/{replay.id}/handoff",
+                headers=headers,
+                json={
+                    "idempotency_key": "replay-src-handoff-0001",
+                    "target_session_id": target.id,
+                    "token_budget": 2_000,
+                },
+            )
+            assert handoff.status_code == 200, handoff.text
+            body = handoff.json()
+            assert body["ok"] is True
+
+            # The sealed ledger gained nothing — no post-recording prompt.
+            after_cursor = await store.db.execute(
+                "SELECT event_id FROM events WHERE session_id = ?", (replay.id,)
+            )
+            after = await after_cursor.fetchall()
+            assert {row["event_id"] for row in after} == {row["event_id"] for row in before}
+
+            # But the trail is complete: the operator effect records the
+            # derived trigger artifact and names why it was not journaled.
+            cursor = await store.db.execute(
+                "SELECT payload_json FROM operator_effects WHERE effect_id = ?",
+                (body["effect"]["effect_id"],),
+            )
+            import json as _json
+
+            payload = _json.loads((await cursor.fetchone())[0])
+            assert payload["trigger_event_mode"] == "sealed_source"
+            assert payload["source_session_id"] == replay.id
     finally:
         await store.close()
 

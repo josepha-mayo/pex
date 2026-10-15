@@ -9,25 +9,38 @@ from __future__ import annotations
 CATALOG: list[dict[str, str]] = [
     # NVIDIA models on Nebius Token Factory. Hints, not account-access claims.
     # https://github.com/nebius/token-factory-cookbook/tree/main/models/nemotron
+    # `region` is the catalog's deployment region — it matters for dedicated
+    # endpoints (api.tokenfactory.<region>.nebius.com); public serverless is
+    # global-routed behind api.tokenfactory.nebius.com.
     {
         "provider": "nebius",
         "model_id": "nvidia/nemotron-3-super-120b-a12b",
         "label": "Nemotron 3 Super · Nebius",
+        "region": "us-central1",
     },
     {
         "provider": "nebius",
         "model_id": "nvidia/Nemotron-3_5-Lightning",
         "label": "Nemotron 3.5 Lightning · Nebius",
+        "region": "eu-north1",
     },
     {
         "provider": "nebius",
         "model_id": "nvidia/Nemotron-3-Ultra-550b-a55b",
         "label": "Nemotron 3 Ultra · Nebius",
+        "region": "us-central1",
     },
     {
         "provider": "nebius",
         "model_id": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
         "label": "Nemotron 3 Nano · Nebius",
+        "region": "eu-north1",
+    },
+    {
+        "provider": "nebius",
+        "model_id": "nvidia/Nemotron-3.5-Super-VL",
+        "label": "Nemotron 3.5 Super VL · Nebius",
+        "region": "us-north1",
     },
     # OpenAI
     {"provider": "openai", "model_id": "gpt-5.6-sol", "label": "GPT 5.6 Sol"},
