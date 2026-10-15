@@ -958,6 +958,35 @@ p {
   margin-top: -4px !important;
 }
 .replay-verdict-determinism.replay-verdict-diverged { color: var(--amber); }
+.replay-verdict-claims {
+  list-style: none;
+  margin: 2px 0 4px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.replay-verdict-claim {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+}
+.replay-verdict-claim-text {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.replay-verdict-claim-ok .replay-verdict-claim-status { color: var(--mint); }
+.replay-verdict-claim-bad .replay-verdict-claim-status { color: var(--amber); }
+.replay-verdict-claim-status {
+  font-weight: 600;
+  flex-shrink: 0;
+  text-transform: lowercase;
+}
 .replay-suite { margin-top: 10px; }
 .replay-suite-line {
   color: var(--mint);

@@ -6967,6 +6967,7 @@ def create_app() -> FastAPI:
         # PEX adjudicates it against the workspace.
         narration_check: dict[str, Any] | None = None
         verified_facts: list[str] = []
+        claim_verdicts: list[dict[str, Any]] = []
         if report:
             severity = {
                 "contradicted": 0,
@@ -6992,6 +6993,21 @@ def create_app() -> FastAPI:
                     worst = (rank, str(statements[0]), status)
             if worst is not None:
                 narration_check = {"claim": worst[1], "status": worst[2]}
+            # The full said-vs-verified ledger for this session — every claim
+            # the worker made paired with the verdict evidence produced.
+            # Worst-first so the card leads with the contradiction.
+            for _, claim in sorted(session_claims, key=lambda item: item[0]):
+                statements = claim.get("claim_statements") or []
+                if not statements:
+                    continue
+                claim_verdicts.append(
+                    {
+                        "claim": str(statements[0])[:200],
+                        "status": str(claim.get("verification_status") or ""),
+                    }
+                )
+                if len(claim_verdicts) >= 5:
+                    break
             # The deciding evidence, verbatim — sealed-surface diffs, pytest
             # exits, staleness markers. Ordered so the most-contradicted
             # claim's facts come first; capped for the card.
@@ -7080,6 +7096,7 @@ def create_app() -> FastAPI:
             "completion": completion,
             "declared": declared,
             "narration_check": narration_check,
+            "claim_verdicts": claim_verdicts,
             "verified_facts": verified_facts,
             "stats": stats,
             # Ledger-derived — identical semantics to the /v1/sessions read

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PEX — the judge for coding agents</title>
+<style>
+  :root {
+    --bg: #071116; --panel: #0b171c; --card: #122229; --edge: #36545d;
+    --text: #f4faf7; --muted: #9eb3b7; --dim: #b8c9cc;
+    --mint: #4ee0ad; --mint2: #55e4b3; --amber: #e0bd63;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 400 16px/1.55 'Segoe UI', system-ui, sans-serif;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 48px 24px 64px; }
+  .brand { display: flex; align-items: baseline; gap: 14px; margin-bottom: 8px; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; background: #35ddb0; align-self: center; }
+  h1 { font-size: 40px; margin: 0; letter-spacing: -0.01em; }
+  .tag { color: var(--muted); font-size: 19px; margin: 0 0 28px; }
+  .thesis {
+    border-left: 3px solid var(--mint); padding: 4px 0 4px 18px;
+    color: var(--dim); font-size: 17px; margin: 0 0 36px;
+  }
+  .thesis strong { color: var(--text); }
+  h2 {
+    font-size: 13px; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--muted); margin: 40px 0 14px; font-weight: 600;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--edge); border-radius: 12px;
+    padding: 18px 20px; margin-bottom: 14px;
+  }
+  .card h3 { margin: 0 0 6px; font-size: 17px; }
+  .card p { margin: 4px 0; color: var(--dim); font-size: 14.5px; }
+  .card a { color: var(--mint); }
+  .catch { font-family: Consolas, monospace; font-size: 14px; }
+  .catch .row { display: flex; justify-content: space-between; gap: 16px; padding: 3px 0; }
+  .catch .said { color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .catch .bad { color: var(--amber); font-weight: 600; white-space: nowrap; }
+  .catch .ok { color: var(--mint2); font-weight: 600; white-space: nowrap; }
+  .pill {
+    display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
+    text-transform: uppercase; padding: 2px 8px; border-radius: 20px; margin-left: 8px;
+    vertical-align: 2px;
+  }
+  .pill-mint { background: rgba(78,224,173,.14); color: var(--mint); }
+  .pill-gold { background: rgba(224,189,99,.14); color: var(--amber); }
+  code, .cmd {
+    font-family: Consolas, monospace; font-size: 13.5px;
+    background: var(--panel); border: 1px solid var(--edge); border-radius: 6px;
+    padding: 1px 7px; color: var(--mint2);
+  }
+  pre.cmd {
+    display: block; padding: 12px 16px; margin: 10px 0; overflow-x: auto;
+  }
+  ul { margin: 6px 0; padding-left: 20px; }
+  li { margin: 4px 0; color: var(--dim); font-size: 14.5px; }
+  li::marker { color: var(--mint); }
+  a { color: var(--mint2); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } }
+  .foot { margin-top: 48px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--edge); padding-top: 18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><span class="dot"></span><h1>PEX</h1><span class="tag">the judge for coding agents</span></div>
+
+  <p class="thesis">
+    Your coding agent says <strong>"all tests passed — I'm done."</strong>
+    PEX doesn't take its word for it. PEX seals your intent up front, watches the
+    agent's claims, and checks each one against the workspace itself — files,
+    diffs, test exits — before anything is called finished.
+  </p>
+
+  <div class="card catch">
+    <div class="row"><span class="said">worker narrates: "All tests passed."</span><span class="bad">contradicted — results.json missing</span></div>
+    <div class="row"><span class="said">worker runs pytest, then repeats: "All tests passed."</span><span class="ok">verified — attributable pytest evidence</span></div>
+    <p style="margin:10px 0 0;color:var(--muted);font-size:12.5px">
+      Same words, different verdicts — because evidence, not narration, decides.
+      From a real recorded run; adjudicate it yourself below.
+    </p>
+  </div>
+
+  <h2>Verify it yourself — no install needed</h2>
+
+  <div class="card">
+    <h3>Self-verifying evidence pack <span class="pill pill-mint">renders in this browser</span></h3>
+    <p>Every adjudication exports a hash-chained evidence bundle. The HTML below
+    recomputes its own digests when you open it — a judge does not have to trust
+    us, or even run our code, to check the receipts.</p>
+    <p><a href="demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.html">Open the captured-live evidence pack →</a>
+    &nbsp;·&nbsp; <a href="demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.html">18/18 replay suite receipt →</a></p>
+    <p>Offline verification, one command:</p>
+    <pre class="cmd">uv run python scripts/verify_pack.py docs/demo/evidence/</pre>
+  </div>
+
+  <h2>What PEX is</h2>
+  <ul>
+    <li><strong>A supervisor, not an agent</strong> — PEX sits above the coding agents
+      you already run (OpenCode, Codex, Cursor). Worker narration is signal, never proof.</li>
+    <li><strong>Sealed intent</strong> — your goal's acceptance surface is snapshotted at
+      attach; mid-run tampering ("let me weaken that test") is caught as an integrity incident.</li>
+    <li><strong>Bounded interventions</strong> — typed actions only (nudge · ask human · noop).
+      Unresolved conflicts escalate to a durable human ruling, never an unbounded loop.</li>
+    <li><strong>Rulings outlive sessions</strong> — a human's answer propagates to sibling
+      sessions and survives goal amendments via supersedes lineage.</li>
+    <li><strong>Workers call back</strong> — a scoped MCP server (8 tools, 5 scopes) lets an
+      agent read its goal, report progress, verify a claim, or escalate an intent conflict itself.</li>
+    <li><strong>Deterministic replays</strong> — 18 curated trajectories re-adjudicate through
+      the real pipeline; identical arcs prove supervision is deterministic, not a lucky path.</li>
+  </ul>
+
+  <h2>Platform</h2>
+  <ul>
+    <li>Semantic supervision runs <strong>NVIDIA Nemotron-3-Super-120B-A12B</strong> on
+      <strong>Nebius Token Factory</strong> — receipts in the repo under
+      <code>docs/evidence/</code> (live inference, corrected live-worker premature stops).</li>
+    <li>Isolated public-pytest execution targets <strong>Nebius ConTree Sandboxes</strong>
+      — implemented, currently key-gated (beta access pending).</li>
+    <li>Bounded public-claim checks route <strong>Tavily web evidence</strong> — wired and
+      scope-limited to classified public claims.</li>
+  </ul>
+
+  <h2>Run it</h2>
+  <pre class="cmd">git clone https://github.com/josepha-mayo/pex
+cd pex
+uv run python scripts/demo.py          # bridge + UI, replay fixtures work with no workers
+uv run python scripts/eval_replays.py  # all 18 fixtures, self-scored</pre>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Repository</h3>
+      <p><a href="https://github.com/josepha-mayo/pex">github.com/josepha-mayo/pex</a></p>
+      <p>MIT license · full test suite · CI green on Linux.</p>
+    </div>
+    <div class="card">
+      <h3>Judge path</h3>
+      <p><a href="HACKATHON.md">docs/HACKATHON.md</a> — the five-minute path;
+      <a href="demo/RUNBOOK.md">RUNBOOK</a> — live and replay demos;
+      <a href="demo/evidence/INDEX.md">receipt index</a>.</p>
+    </div>
+  </div>
+
+  <p class="foot">
+    PEX · Nebius × NVIDIA Global AI Hackathon · Coding &amp; Agentic Engineering track.<br>
+    Labels are honest: replay ≠ live control; key-gated ≠ deployed. Everything above
+    that claims a run happened links to the receipt that proves it.
+  </p>
+</div>
+</body>
+</html>

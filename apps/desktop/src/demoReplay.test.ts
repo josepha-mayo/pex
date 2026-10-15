@@ -310,6 +310,34 @@ test("the verdict parses the worker-claim-vs-adjudication contrast", () => {
   }
 });
 
+test("the verdict parses the full said-vs-verified claim ledger", () => {
+  const verdict = parseReplayVerdict({
+    replay: true,
+    not_live_control: true,
+    session_id: "s",
+    claim_verdicts: [
+      { claim: "all tests pass", status: "contradicted" },
+      { claim: "suite green after fix", status: "supported" },
+      { claim: "", status: "supported" },
+      { claim: "missing status" },
+      "not-a-claim",
+      { claim: "   spaced   ", status: "uncertain" },
+    ],
+  });
+  assert.deepEqual(verdict?.claimVerdicts, [
+    { claim: "all tests pass", status: "contradicted" },
+    { claim: "suite green after fix", status: "supported" },
+    { claim: "spaced", status: "uncertain" },
+  ]);
+  // Absent or malformed payloads omit the list entirely — never fabricate.
+  for (const claim_verdicts of [undefined, null, {}, "x", []]) {
+    const parsed = parseReplayVerdict({
+      replay: true, not_live_control: true, session_id: "s", claim_verdicts,
+    });
+    assert.equal(parsed?.claimVerdicts, undefined);
+  }
+});
+
 test("replay rail label names the source fixture or the custom trajectory", () => {
   const base: SessionRow = {
     id: "synthetic:replay-ruling_continuity_eval-c720e688",

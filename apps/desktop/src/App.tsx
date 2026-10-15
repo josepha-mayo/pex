@@ -2030,6 +2030,8 @@ export function App() {
       observed_arc: verdict.actions,
       cited_constraint: verdict.citedConstraint ?? null,
       narration_check: verdict.narrationCheck ?? null,
+      claim_verdicts: verdict.claimVerdicts ?? [],
+      worker_pex_calls: verdict.workerPexCalls ?? 0,
       verified_facts: verdict.verifiedFacts ?? [],
       stats: verdict.stats ?? null,
       declared: verdict.declared ?? null,
@@ -3684,7 +3686,30 @@ export function App() {
                         cites “{demoReplay.verdict.citedConstraint}”
                       </p>
                     ) : null}
-                    {demoReplay.verdict.narrationCheck ? (
+                    {demoReplay.verdict.claimVerdicts?.length ? (
+                      <ul
+                        className="replay-verdict-claims"
+                        title="Every claim the worker made, paired with the verdict independent verification produced"
+                      >
+                        {demoReplay.verdict.claimVerdicts.map((entry, index) => (
+                          <li
+                            key={index}
+                            className={
+                              entry.status === "supported"
+                                ? "replay-verdict-claim replay-verdict-claim-ok"
+                                : "replay-verdict-claim replay-verdict-claim-bad"
+                            }
+                          >
+                            <span className="replay-verdict-claim-text">“{entry.claim}”</span>
+                            <span className="replay-verdict-claim-status">
+                              {entry.status === "supported"
+                                ? "verified"
+                                : entry.status}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : demoReplay.verdict.narrationCheck ? (
                       <p
                         className={
                           demoReplay.verdict.narrationCheck.status === "supported"

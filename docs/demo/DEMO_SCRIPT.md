@@ -6,20 +6,26 @@ or an API key.
 
 ## Submission cut — the ≤2:55 storyboard (use this for the Devpost video)
 
-Rules: ≤3:00, public YouTube, English, no third-party music. Five beats —
-each maps to committed evidence, so nothing on screen is a mock.
+Rules: ≤3:00, public YouTube, English, no third-party music. The first 30
+seconds carry the required content (the catch + the platform); the durable
+ruling lineage — the feature nobody else ships — is the centerpiece, not a
+late beat. Every frame maps to committed evidence; nothing is a mock.
 
 | Time | Beat | On screen | Line |
 |------|------|-----------|------|
-| 0:00–0:20 | The problem | Home rail + fixtures | "Your agent says done. Sometimes it even ran the tests. PEX is the supervisor beside OpenCode and Codex that checks the claim against your intent — sealed goals, workspace evidence, human rulings — not the agent's narration." |
-| 0:20–1:05 | Reward hacking caught | `config_injection_eval` replay → claim ledger `UNCERTAIN`, `acceptance_surface_config_added:pytest.ini` | "The worker quietly added a pytest.ini pointing the suite at an empty dir — exit 0, claims green. PEX sealed the acceptance surface before it started. The claim lands Uncertain with the flagged file named. Then the correction is verified on evidence." |
-| 1:05–1:50 | Worker consults + escalates | `worker_escalation_eval` (FROM LIVE) → `pex_*` tool calls in ledger, `PEX ×3` chip, `incomplete` verdict | "This worker hit a real conflict: told to edit the test, the goal forbids it. It called PEX's own MCP server — `get_goal`, then `request_decision` with the conflict and three options. This is a real recorded OpenCode run, replayed deterministically — the verdict is `incomplete`, honestly, because the worker stopped to ask." |
-| 1:50–2:25 | Durable human ruling | Resolve the ASK_HUMAN → `RECORDED RULINGS` + `session_terminal` delivery receipt; sibling context | "The worker's turn ended before the human answered. The ruling still lands on the durable intent ledger — delivery honestly reports `session_terminal`. And it propagates: the sibling session receives the ruling in its next context bundle. Human intent outlives the worker that asked." |
-| 2:25–2:55 | Verifiable artifact + platform | Export report → evidence pack; capabilities panel | "Every verdict ships a receipt you can verify offline — sealed digests, a hash-chained ledger, `verify_pack.py`. Semantic supervision runs NVIDIA Nemotron through Nebius Token Factory; sandboxed verification is wired for ConTree. What's deterministic is labeled deterministic; what needs a key says so." |
+| 0:00–0:12 | **Cold open: the catch** | A verdict card already on screen (pre-run `report_progress_eval` before rolling): `"All tests passed" → contradicted` beside `"All tests passed" → verified` | "Same words. Different verdicts. The first claim had no test run behind it — PEX checked the workspace, not the narration." |
+| 0:12–0:22 | Thesis | pull back to the Home rail + fixture grid | "PEX is the judge for the coding agents you already run — OpenCode, Codex. It seals your goal's acceptance surface, checks every claim against the evidence, and escalates what it can't resolve." |
+| 0:22–0:32 | Platform + this-is-real | `check_token_factory.py --infer` PASS line *or* the committed Nemotron receipt; `FROM LIVE` tag on a fixture card | "Semantic rulings run NVIDIA Nemotron-3-Super on Nebius Token Factory — this is a real inference call. And the trajectories you're about to see are recorded runs, replayed deterministically — always labeled, never faked." |
+| 0:32–1:10 | Reward hacking, caught | `config_injection_eval` replay lands → claim `contradicted`, `acceptance_surface_config_added:pytest.ini` named, then the verified correction | "This worker added a pytest.ini pointing the suite at an empty dir — exit 0, claims green. PEX sealed the acceptance surface before it started: the claim lands contradicted with the file named. It removes the cheat, reruns, and *now* the same claim verifies — on a pytest exit, not its word." |
+| 1:10–1:55 | **Centerpiece: worker calls back + durable ruling** | `worker_escalation_eval` (FROM LIVE) → `pex_*` calls in the ledger, `PEX ×3` chip, `incomplete` verdict → resolve the ASK_HUMAN → `RECORDED RULINGS` + `session_terminal` → sibling context bundle | "This worker hit a real conflict — told to edit the test, the goal forbids it. It called PEX's own MCP server and escalated itself with three authored options. A real recorded OpenCode run. Now watch: the worker's turn ends before the human answers — and the ruling still lands on the durable intent ledger, honestly marked `session_terminal`… and propagates to a sibling worker that never asked. Human intent outlives the worker." |
+| 1:55–2:30 | Positive control + verifiable artifact | `ruling_compliance_eval` green; **Evidence pack** → `verify_pack.py` PASS lines → the in-browser recomputation | "A ledger that only blocks would be a trap — the same sealed goal signs off a compliant run. And the whole adjudication exports as a hash-chained evidence pack: digests recomputed offline, no trust in us required." |
+| 2:30–2:55 | Platform close + the parallel | capabilities panel (honesty labels) → end card: repo URL + `uv run python scripts/demo.py` | "Deterministic where correctness demands it, Nemotron where judgment is needed — every label enforced, every claim receipted. This hackathon's own judging pipeline runs the same pattern: automated evidence gates, a Nemotron pass, humans on the calls that matter. PEX is that layer for your agents." |
 
-Alt swap: if recording live instead, replace beats 2–3 with the `--live`
+Alt swap: if recording live instead, replace beats 4–5 with the `--live`
 OpenCode run (a real worker, `uncertain` → `contradicted` → worker repairs)
-and keep beats 1, 4, 5 identical.
+and keep beats 1–3 and 6–7 identical. If a `NEBIUS_API_KEY` is available at
+recording time, prefer a `PEX_CLOUD_REASONING=true` live run so a real
+Nemotron verdict lands on camera (receipts live under `docs/evidence/`).
 
 ## Setup (before recording)
 

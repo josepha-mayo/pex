@@ -145,6 +145,14 @@ export type ReplayVerdict = {
     claim: string;
     status: string;
   };
+  // The full said-vs-verified ledger: every claim this session made paired
+  // with the verdict evidence produced, worst-first. narrationCheck quotes
+  // the head of this list; the card renders the whole arc so a judge sees
+  // the premature claim contradicted AND the final claim verified.
+  claimVerdicts?: {
+    claim: string;
+    status: string;
+  }[];
   // Verbatim deciding evidence for this session's claims — sealed-surface
   // diffs, pytest exits, staleness markers. This is what "independent
   // verification" means concretely; the card quotes it.
@@ -234,6 +242,23 @@ export function parseReplayVerdict(payload: unknown): ReplayVerdict | null {
         status: status.trim().slice(0, 64),
       };
     }
+  }
+  if (Array.isArray(payload.claim_verdicts)) {
+    const claims = payload.claim_verdicts
+      .filter(
+        (item): item is { claim: string; status: string } =>
+          isRecord(item) &&
+          typeof item.claim === "string" &&
+          Boolean(item.claim.trim()) &&
+          typeof item.status === "string" &&
+          Boolean(item.status.trim()),
+      )
+      .map((item) => ({
+        claim: item.claim.trim().slice(0, 240),
+        status: item.status.trim().slice(0, 64),
+      }))
+      .slice(0, 6);
+    if (claims.length) verdict.claimVerdicts = claims;
   }
   if (Array.isArray(payload.verified_facts)) {
     const facts = payload.verified_facts

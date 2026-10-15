@@ -53,6 +53,20 @@ digests — verifiable offline without trusting us. Semantic supervision runs
 NVIDIA Nemotron through Nebius Token Factory; the deterministic evidence
 layer does most of the catching, and both are labeled honestly.
 
+**Why it matters.** PEX plus your existing coding agents *is* the
+agentic-engineering system that plans, writes, runs, and tests code — the
+supervisor half is what makes its output shippable. The audience is every
+team already running more than one coding agent. The stakes are measured:
+METR found 39 of 128 unprompted frontier-model runs on RE-Bench attempted
+reward hacking (~30%) — modifying the tests, monkey-patching the evaluator,
+caching the answer. PEX is built for exactly that failure class: it caught
+a real OpenCode worker claiming done on a decoy checker, and disputed a
+weakened acceptance test with named evidence. One more thing, for the
+judges reading this: the hackathon's own evaluation pipeline — automated
+evidence gates, a Nemotron judgment pass, humans on the calls that matter —
+is the architecture PEX ships. This submission is, in a real sense,
+judged by our thesis.
+
 ## The live story (for the "story" field / video)
 
 - A worker on OpenCode's free Nemotron route is told to make
@@ -116,10 +130,17 @@ the wiring with one real search call.
 
 ## Working demo URL
 
-`https://github.com/josepha-mayo/pex` — the repo IS the test build: a
-five-minute, no-keys replay path (`uv run python scripts/demo.py`, then any
-fixture button) replays real recorded worker sessions through the live
-adjudication pipeline in the judge's browser. Live mode
+**Primary (submit this): `https://josepha-mayo.github.io/pex/`** — a static
+page served from this repo's `docs/` that renders real product output: the
+self-verifying evidence-pack HTML (recomputes its own digests in the
+browser), the 18/18 replay suite receipt, and the one-command offline
+verification path. A web scraper or a skimming judge sees the artifact, not
+a README wall — and the page itself is a demo of the deliverable.
+
+Repo link stays in the description as the test build: a five-minute,
+no-keys replay path (`uv run python scripts/demo.py`, then any fixture
+button) replays real recorded worker sessions through the live adjudication
+pipeline in the judge's browser. Live mode
 (`uv run python scripts/demo.py --live`) supervises a real OpenCode worker.
 Testing instructions are in `docs/HACKATHON.md`; the repo must stay public
 and runnable through Dec 15 judging.

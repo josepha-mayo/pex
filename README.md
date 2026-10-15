@@ -31,6 +31,12 @@ npm install --prefix apps/desktop && npm i -g opencode-ai   # once
 uv run python scripts/demo.py --live
 ```
 
+No `uv`? `pip install -e packages/protocol -e services/supervisor -e
+services/bridge` installs the workspace members, then
+`.venv/Scripts/python` (or `.venv/bin/python`) substitutes for `uv run
+python` — the pure-Python judge path (replay suite, evidence verification,
+`check_token_factory.py`) needs neither Node nor Rust.
+
 One command starts a real OpenCode worker on a free NVIDIA Nemotron 3 Ultra
 route (no API key), the PEX bridge, and the desktop UI, then gives the worker
 a persistent goal: *make every local test pass.* The worker runs a decoy
