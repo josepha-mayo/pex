@@ -2589,8 +2589,31 @@ test("observation gap copy flags stalled live workers only", async () => {
     observation: { last_event_age_seconds: 12, stalled: false } };
   assert.equal(observationGapCopy(fresh), null);
   assert.equal(observationGapCopy({ id: "w", harness_type: "opencode", status: "working" }), null);
+  // Canonical rows authoritatively clear the projection — a session that left
+  // the live-observed state must not keep a stale stall badge.
+  const cleared = mergeSessionObservation(stalled, { ...stalled, observation: undefined }, { authoritativeObservation: true });
+  assert.equal(cleared.observation, undefined);
+  // Pet/deck rows never carry the projection — absence must preserve the last
+  // canonical reading instead of flickering the badge off between polls.
   const merged = mergeSessionObservation(stalled, { ...stalled, observation: undefined });
-  assert.equal(merged.observation, undefined);
+  assert.equal(merged.observation?.last_event_age_seconds, 900);
+});
+
+test("pet-row merge preserves read-path projections", async () => {
+  const { mergeSessionObservation } = await import("./viewModel.ts");
+  const canonical = {
+    id: "w",
+    harness_type: "opencode",
+    status: "working",
+    metadata: { worker_pex_calls: 3, human_decision_attention: { pending: true } },
+    observation: { last_event_age_seconds: 30, stalled: false },
+  };
+  const petRow = { id: "w", harness_type: "opencode", status: "working", metadata: {} };
+  const merged = mergeSessionObservation(canonical, petRow);
+  assert.equal(merged.metadata?.worker_pex_calls, 3);
+  assert.equal(merged.observation?.last_event_age_seconds, 30);
+  // Keys the server deliberately strips still clear — the absence is real.
+  assert.equal(merged.metadata?.human_decision_attention, undefined);
 });
 
 test("goal lineage walks the supersedes chain and survives gaps", async () => {

@@ -1182,7 +1182,7 @@ export function App() {
     const merged = new Map<string, SessionRow>();
     for (const session of deck.sessions || []) merged.set(session.id, session);
     for (const session of canonicalSessions) {
-      merged.set(session.id, mergeSessionObservation(merged.get(session.id), session));
+      merged.set(session.id, mergeSessionObservation(merged.get(session.id), session, { authoritativeObservation: true }));
     }
     for (const session of pet?.sessions || []) {
       merged.set(session.id, mergeSessionObservation(merged.get(session.id), session));
@@ -1904,6 +1904,7 @@ export function App() {
     setVerdictReceiptCopied(false);
     const priorVerdict = demoReplay.verdict;
     const priorFixture = demoReplay.fixture;
+    setChallengeError(null);
     setDemoReplay((previous) => ({
       ...previous, running: true, fixture: fixtureId, error: null, verdict: null,
     }));
@@ -3497,7 +3498,12 @@ export function App() {
                 </div>
               </div>
             ) : null}
-            {demoReplayAvailable ? (
+            {/* Packaged builds ship no fixtures — hide the whole panel rather
+                than advertise a capability that can never load. Once a run is
+                in flight (or has history), keep it rendered through transient
+                fixture-list failures. */}
+            {demoReplayAvailable &&
+            (demoFixtures?.length || demoReplay.running || demoReplay.verdict || demoReplay.history.length) ? (
               <div className="demo-replay">
                 <p className="eyebrow">See the loop without a worker</p>
                 <p>Replay a recorded supervision trajectory through the real pipeline — labeled as a replay, never live worker control.</p>

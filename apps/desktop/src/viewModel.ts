@@ -198,7 +198,11 @@ export function cursorRejectionReasonCopy(reason: string): string {
   } as Record<string, string>)[reason] ?? "Unknown rejected input";
 }
 
-export function mergeSessionObservation(previous: SessionRow | undefined, incoming: SessionRow): SessionRow {
+export function mergeSessionObservation(
+  previous: SessionRow | undefined,
+  incoming: SessionRow,
+  opts?: { authoritativeObservation?: boolean },
+): SessionRow {
   if (!previous || previous.id !== incoming.id) return incoming;
   const merged = { ...previous, ...incoming };
   // Projections like worker_pex_calls are minted on the /v1/sessions read
@@ -209,10 +213,13 @@ export function mergeSessionObservation(previous: SessionRow | undefined, incomi
   if (previous.metadata?.worker_pex_calls != null && incoming.metadata?.worker_pex_calls == null) {
     merged.metadata = { ...(incoming.metadata ?? {}), worker_pex_calls: previous.metadata.worker_pex_calls };
   }
-  // The observation gap is a point-in-time server reading: a row that no
-  // longer carries it has left the live-observed state, so the stale block
-  // must not linger on the merged row.
-  merged.observation = incoming.observation;
+  // Observation is minted on the /v1/sessions read path only. A canonical row
+  // that stops carrying it has left the live-observed state and must clear —
+  // but a /v1/pet or deck row never carries it at all, so absence there is a
+  // projection artifact and must not flicker the stall badge off.
+  merged.observation =
+    incoming.observation ??
+    (opts?.authoritativeObservation ? undefined : previous.observation);
   const oldTime = Date.parse(previous.supervisor_review_allowance?.observed_at || "");
   const newTime = Date.parse(incoming.supervisor_review_allowance?.observed_at || "");
   if (Number.isFinite(oldTime) && Number.isFinite(newTime) && oldTime > newTime) {
