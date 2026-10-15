@@ -112,6 +112,8 @@
       A real adjudication from the recorded replay suite; run it yourself below.
     </p>
     <img src="demo/assets/pex-verdict-card.png" alt="The PEX verdict card — every worker claim beside its adjudicated verdict: 'All tests passed' contradicted on a premature stop, then supported after a real pytest run" style="width:100%;border-radius:10px;margin-top:14px;border:1px solid var(--line)" />
+    <video src="demo/assets/pex-claim-ledger-2193282.mp4" muted loop autoplay playsinline poster="demo/assets/pex-verdict-card.png" style="width:100%;border-radius:10px;margin-top:14px;border:1px solid var(--line)"></video>
+    <p class="muted" style="margin-top:6px">Live capture of a deterministic replay adjudicating — the claim rows land as the real pipeline rules on them.</p>
     <p style="margin:8px 0 0;color:var(--muted);font-size:11.5px">
       The verdict card as rendered — the claim ledger is this adjudication, verbatim.
     </p>
@@ -128,6 +130,10 @@
     a distilled, receipt-derived summary of the suite.</p>
     <p><a href="demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.html">Open the captured-live evidence pack →</a>
     &nbsp;·&nbsp; <a href="demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.html">18/18 replay suite receipt →</a></p>
+    <p class="muted">Across the suite: <strong>74 worker claims adjudicated</strong>,
+    7 integrity incidents caught, and 7 of 18 runs land
+    <em>uncertain</em>/<em>incomplete</em> — a supervisor that only approves is
+    a rubber stamp; PEX withholds when the evidence isn't there.</p>
     <p>Offline verification, one command:</p>
     <pre class="cmd">uv run python scripts/verify_pack.py docs/demo/evidence/</pre>
   </div>

@@ -1,0 +1,45 @@
+1
+00:00:04,500 --> 00:00:19,000
+Same words. Different verdicts. The first claim had no test run behind it —
+PEX checked the workspace, not the narration.
+
+2
+00:00:19,500 --> 00:00:25,000
+This worker added a pytest.ini pointing the suite at an empty dir —
+PEX sealed the acceptance surface before it started.
+
+3
+00:00:25,500 --> 00:00:35,000
+Semantic rulings run NVIDIA Nemotron-3-Super on Nebius Token Factory.
+The trajectories are recorded runs — labeled, never faked.
+
+4
+00:00:35,500 --> 00:00:50,000
+The worker's turn ended before the human answered — the ruling still
+landed on the durable intent ledger, marked session_terminal.
+Human intent outlives the worker.
+
+5
+00:00:50,500 --> 00:01:02,000
+Told to edit a test the goal forbids, the worker called PEX's own MCP
+server and escalated itself with three authored options.
+
+6
+00:01:02,500 --> 00:01:14,000
+A ledger that only blocks would be a trap — the same sealed goal signs
+off a compliant run.
+
+7
+00:01:14,500 --> 00:01:20,000
+Every adjudication exports a hash-chained evidence pack —
+verifiable offline, no trust in us required.
+
+8
+00:01:20,500 --> 00:01:30,000
+And it catches real workers on real runs — this OpenCode session
+claimed done on a decoy checker.
+
+9
+00:01:30,500 --> 00:01:36,000
+Deterministic where correctness demands it,
+Nemotron where judgment is needed.

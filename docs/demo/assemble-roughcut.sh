@@ -77,3 +77,12 @@ EOF
 
 ffmpeg -y -f concat -safe 0 -i "$OUT/concat.txt" -c copy build/pex-demo-roughcut.mp4
 ffprobe -v quiet -show_entries format=duration -of csv=p=0 build/pex-demo-roughcut.mp4
+
+# Optional captioned variant — burns the storyboard narration (SRT keyed to
+# this cut's segment timings) so the video reviews well before VO is recorded.
+if [ -f docs/demo/roughcut-captions.srt ]; then
+  ffmpeg -y -i build/pex-demo-roughcut.mp4 \
+    -vf "subtitles=docs/demo/roughcut-captions.srt:force_style='FontName=Arial,FontSize=13,PrimaryColour=&H00FFFFFF,OutlineColour=&H80000000,BorderStyle=3,Outline=1,Shadow=0,MarginV=28'" \
+    -c:v libx264 -pix_fmt yuv420p -an build/pex-demo-roughcut-captioned.mp4
+  echo "captioned: build/pex-demo-roughcut-captioned.mp4"
+fi

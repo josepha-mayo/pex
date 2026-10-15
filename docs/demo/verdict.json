@@ -11,6 +11,14 @@
     ],
     "replay": true,
     "not_live_control": true,
+    "claims_adjudicated": 74,
+    "interventions": 74,
+    "integrity_incidents": 7,
+    "completion_statuses": {
+      "uncertain": 6,
+      "verified_complete": 11,
+      "incomplete": 1
+    },
     "note": "Deterministic replay adjudication of recorded trajectories through the real pipeline \u2014 not a benchmark and not live worker control."
   },
   "fixtures": [
