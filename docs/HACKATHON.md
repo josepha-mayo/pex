@@ -212,7 +212,7 @@ all callable in-page) and a scoped MCP tool surface at `/mcp/`.
   [collection receipt](evidence/pytest-collect-2026-10-15.json)
   re-verified 2026-10-15.
   `uv run python scripts/eval_replays.py` scores the
-  shipped fixture suite against its declared supervision arcs — 18/18,
+  shipped fixture suite against its declared supervision arcs — 19/19,
   re-verified 2026-10-15
   ([receipt](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.json) —
   [readable form](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.html) with the

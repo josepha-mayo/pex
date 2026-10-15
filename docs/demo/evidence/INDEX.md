@@ -41,8 +41,8 @@ uv run python scripts/eval_replays.py --json out.json --html out.html   # needs 
 
 | Receipt | Suite state |
 | --- | --- |
-| `FIXTURE_SUITE_EVAL_2026-10-15.{json,html}` | **Latest — 18/18 arcs**, including `report_progress_eval` (progress reports are signal, never proof). |
-| `FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-15.{json,html}` | **18/18 arcs under `--repeat 2`** — every fixture adjudicated identically twice (completion, claims, incidents, verdicts, evidence strings compared per repeat); the determinism claim receipted, not just asserted. |
+| `FIXTURE_SUITE_EVAL_2026-10-15.{json,html}` | **Latest — 19/19 arcs**, including `report_progress_eval` (progress reports are signal, never proof). |
+| `FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-15.{json,html}` | **19/19 arcs under `--repeat 2`** — every fixture adjudicated identically twice (completion, claims, incidents, verdicts, evidence strings compared per repeat); the determinism claim receipted, not just asserted. |
 | `FIXTURE_SUITE_EVAL_2026-10-14.{json,html}` | 17/17 — first suite with the live-captured `worker_escalation_eval`. |
 | `FIXTURE_SUITE_EVAL_2026-10-06.{json,html}` | 15/15 historical snapshot. |
 | `FIXTURE_SUITE_EVAL_2026-10-05.{json,html}` | 12/12 historical snapshot. |

@@ -88,6 +88,7 @@ const FIXTURE_ORDER = [
   "captured_handoff_eval",
   "captured_mcp_eval",
   "worker_escalation_eval",
+  "live_self_escalation_eval",
 ];
 
 export function orderFixtures(fixtures: DemoFixture[]): DemoFixture[] {

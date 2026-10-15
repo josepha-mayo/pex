@@ -146,7 +146,7 @@ the wiring with one real search call.
 **Primary (submit this): `https://josepha-mayo.github.io/pex/`** — a static
 page served from this repo's `docs/` that renders real product output: the
 self-verifying evidence-pack HTML (recomputes its own digests in the
-browser), the 18/18 replay suite receipt, and the one-command offline
+browser), the 19/19 replay suite receipt, and the one-command offline
 verification path. A web scraper or a skimming judge sees the artifact, not
 a README wall — and the page itself is a demo of the deliverable.
 
@@ -170,7 +170,7 @@ uv run python scripts/demo.py        # bridge + UI, no keys needed
 # real adjudication pipeline — four were exported from real live worker
 # sessions — and shows its verdict.
 uv run python scripts/eval_replays.py   # second terminal, while demo.py runs;
-#                                        scores all 18 (prints a table;
+#                                        scores all 19 (prints a table;
 #                                        --json/--html write a receipt file)
 # With a Token Factory key (PowerShell: $env:NEBIUS_API_KEY="..." first):
 NEBIUS_API_KEY=... uv run python scripts/check_token_factory.py --infer
