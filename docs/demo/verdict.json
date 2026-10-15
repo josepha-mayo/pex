@@ -19,6 +19,12 @@
       "verified_complete": 11,
       "incomplete": 1
     },
+    "determinism": {
+      "repeat": 2,
+      "identical_arcs": 18,
+      "receipt": "demo/evidence/FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-15.html",
+      "note": "Every fixture adjudicated identically across repeats \u2014 completion, claims, incidents, verdicts, and normalized evidence strings compared."
+    },
     "note": "Deterministic replay adjudication of recorded trajectories through the real pipeline \u2014 not a benchmark and not live worker control."
   },
   "fixtures": [
@@ -260,7 +266,7 @@
     }
   ],
   "verify": {
-    "offline": "uv run python scripts/verify_pack.py docs/demo/evidence/",
+    "offline": "python3 scripts/verify_pack.py docs/demo/evidence/",
     "in_browser": "demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.html",
     "suite_receipt": "demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.html"
   }

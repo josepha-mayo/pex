@@ -62,6 +62,19 @@ Release preflight must run with `apps/desktop` as cwd:
 node apps/desktop/scripts/build-sidecar.mjs --preflight-release
 ```
 
+Demo/media conventions:
+
+- `docs/demo/verdict.json` is **generated** from
+  `docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-*.json` — regenerate it after
+  the suite receipt changes; never hand-edit values it could derive.
+- `docs/demo/assemble-roughcut.sh` builds the ~96s submission rough cut
+  (`build/pex-demo-roughcut*.mp4`, gitignored) from `docs/demo/assets/`;
+  beat mapping lives in `docs/demo/FOOTAGE_MANIFEST.md`, narration in
+  `docs/demo/DEMO_SCRIPT.md` + `roughcut-captions.srt`.
+- GitHub Pages serves `docs/` at https://josepha-mayo.github.io/pex/ —
+  `docs/index.html` is the public demo URL; keep JSON-LD and every claim
+  there consistent with committed receipts.
+
 Full backend suite takes ~35 min on this machine; do not run two suites
 concurrently (CPU contention has caused false `TimeoutExpired` on the
 preflight test, which now has a 300 s budget).

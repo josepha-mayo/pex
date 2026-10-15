@@ -32,7 +32,9 @@ uv run python scripts/demo.py --live
 ```
 
 No `uv`? `pip install -r requirements.txt` installs the workspace members
-(editables + `mcp<2`), then `.venv/Scripts/python` (or
+(editables + `mcp<2`) — use Python 3.12 (the version in
+[`.python-version`](.python-version)); newer interpreters are not yet a
+tested surface. Then `.venv/Scripts/python` (or
 `.venv/bin/python`) substitutes for `uv run
 python` — the pure-Python judge path (replay suite, evidence verification,
 `check_token_factory.py`) needs neither Node nor Rust.
@@ -241,8 +243,8 @@ PASS ledger synthetic:replay-capture.. hash chain reaches recorded head
 A real pack ships in the repo — verify it right now, no bridge or UI needed:
 
 ```powershell
-uv run python scripts/verify_pack.py docs/demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.json --html build/pack.html
-uv run python scripts/verify_pack.py docs/demo/evidence   # or sweep every committed pack at once
+python scripts/verify_pack.py docs/demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.json --html build/pack.html
+python scripts/verify_pack.py docs/demo/evidence   # or sweep every committed pack at once — stdlib-only, no install
 ```
 
 or just open [`docs/demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.html`](docs/demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.html)

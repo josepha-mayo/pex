@@ -211,6 +211,11 @@ new since it opened:
   `docs/evidence/codex-nebius-live-2026-09-24.json`). Deterministic-enough
   for supervision when bounded (we cap dispatches per session and never let
   the model override the deterministic evidence layer).
+- **AI Cloud**: we evaluated Serverless Jobs/Endpoints for the pack-verify
+  proxy and judged them unnecessary — the deliverable's trust property is
+  *offline* verifiability, so we shipped hash-chained packs + a stdlib
+  verifier instead of hosted compute. Sandboxes (ConTree) was the one
+  AI Cloud surface with a real fit — see below.
 - **Sandboxes/ConTree**: the API shape (operation → `metadata.result`,
   `tag:`-prefixed image refs) integrated cleanly behind
   `PEX_PUBLIC_PYTEST_BACKEND=contree`; we could not exercise it end-to-end
@@ -227,11 +232,13 @@ new since it opened:
 ## Links to wire up at submission time
 
 - Demo video: **<3:00, public on YouTube specifically** (rules: ≤3 min,
-  public — not unlisted; no third-party music/trademarks). Source footage:
-  `docs/demo/assets/pex-replay-walkthrough-b28d999.mp4` (full judge path)
-  and `docs/demo/assets/pex-escalation-arc-6d16888.mp4` (worker-initiated
-  `pex.request_decision` → durable ruling, real live data). Narration plan:
-  `docs/demo/DEMO_SCRIPT.md` — cut to ~2:55.
+  public — not unlisted; no third-party music/trademarks; must be public
+  *at submission time*). A ready-made rough cut exists:
+  `docs/demo/assemble-roughcut.sh` builds `build/pex-demo-roughcut.mp4`
+  (96s, all beats + title/end cards) and a captioned variant
+  (`build/pex-demo-roughcut-captioned.mp4`, storyboard narration burned in —
+  watchable before VO). Beat→asset map: `docs/demo/FOOTAGE_MANIFEST.md`;
+  narration: `docs/demo/DEMO_SCRIPT.md`.
 - Supporting clips: `docs/demo/assets/pex-live-tamper-demo.mp4`,
   `docs/demo/assets/pex-judge-arc-597ce13.mp4`,
   `docs/demo/assets/pex-ruling-arc-eabd646.mp4`

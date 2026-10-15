@@ -129,13 +129,14 @@
     answer from <a href="demo/verdict.json"><code>demo/verdict.json</code></a> —
     a distilled, receipt-derived summary of the suite.</p>
     <p><a href="demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.html">Open the captured-live evidence pack →</a>
-    &nbsp;·&nbsp; <a href="demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.html">18/18 replay suite receipt →</a></p>
+    &nbsp;·&nbsp; <a href="demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.html">18/18 replay suite receipt →</a>
+    &nbsp;·&nbsp; <a href="demo/evidence/FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-15.html">18/18 ×2 runs, identical arcs →</a></p>
     <p class="muted">Across the suite: <strong>74 worker claims adjudicated</strong>,
     7 integrity incidents caught, and 7 of 18 runs land
     <em>uncertain</em>/<em>incomplete</em> — a supervisor that only approves is
     a rubber stamp; PEX withholds when the evidence isn't there.</p>
     <p>Offline verification, one command:</p>
-    <pre class="cmd">uv run python scripts/verify_pack.py docs/demo/evidence/</pre>
+    <pre class="cmd">python3 scripts/verify_pack.py docs/demo/evidence/  # stdlib-only, no install</pre>
   </div>
 
   <h2>What PEX is</h2>

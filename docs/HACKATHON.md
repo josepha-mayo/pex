@@ -95,7 +95,7 @@ pinned workspace env itself. Worker steps additionally need
    Inspector header's **Copy evidence link** hands a judge a shareable URL.
 3. Click **Evidence pack** in the Inspector — the app recomputes every digest
    *in your browser* while it downloads (a TypeScript port of the verifier,
-   independent of the bridge). Then `uv run python scripts/verify_pack.py
+   independent of the bridge). Then `python3 scripts/verify_pack.py
    <downloaded-pack>.json` runs the authoritative offline check (sealed
    bytes ↔ digests, flagged bytes ↔ incident digests, the hash-chained event
    ledger, the manifest) — or drop the file into the demo panel's
@@ -219,7 +219,7 @@ all callable in-page) and a scoped MCP tool surface at `/mcp/`.
   same JSON embedded). The demo evidence directory is catalogued with
   per-artifact re-verify commands in
   [docs/demo/evidence/INDEX.md](demo/evidence/INDEX.md);
-  `uv run python scripts/verify_pack.py docs/demo/evidence` re-checks all
+  `python3 scripts/verify_pack.py docs/demo/evidence` re-checks all
   eleven committed evidence packs in one sweep.
 - **Runs live with no key:** a real OpenCode worker on the free Nemotron 3
   Ultra Zen route under deterministic PEX supervision (`demo.py --live`);

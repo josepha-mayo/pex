@@ -237,7 +237,7 @@ inline; the CLI below remains the authoritative check for edge cases.
 exit.
 
 ```powershell
-uv run python scripts/verify_pack.py pex-evidence-pack.json --html build/pack-report.html
+python3 scripts/verify_pack.py pex-evidence-pack.json --html build/pack-report.html  # stdlib-only — no install needed
 ```
 
 The verifier recomputes every digest — baseline contents ↔ sealed digests,
@@ -257,7 +257,7 @@ verifies each `pex.evidence-pack.v1` document it finds and skips unrelated
 receipts:
 
 ```powershell
-uv run python scripts/verify_pack.py docs/demo/evidence
+python3 scripts/verify_pack.py docs/demo/evidence
 ```
 
 (2,920 checks across 11 packs, re-verified 2026-10-15 — and CI pins this via
@@ -593,7 +593,11 @@ arc (`config_injection_eval` — injected `pytest.ini`, flagged file, verified
 correction) end-to-end as `pex-config-injection-*.mp4`.
 
 For the submission video, [DEMO_SCRIPT.md](DEMO_SCRIPT.md) is a ~3-minute
-narration keyed to the same on-screen flow.
+narration keyed to the same on-screen flow. [FOOTAGE_MANIFEST.md](FOOTAGE_MANIFEST.md)
+maps storyboard beats to the captured assets, and
+`docs/demo/assemble-roughcut.sh` trims + concatenates them into a 96-second
+rough cut (`build/pex-demo-roughcut.mp4`, plus a captioned variant from
+`roughcut-captions.srt`) — ready for a narration pass before upload.
 
 ## What this does not prove
 
