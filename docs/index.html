@@ -11,7 +11,7 @@
   "@type": "SoftwareApplication",
   "name": "PEX",
   "applicationCategory": "DeveloperApplication",
-  "operatingSystem": "Windows, macOS, Linux",
+  "operatingSystem": "Windows, Linux",
   "description": "Goal-aware supervisor for existing coding agents. Worker narration is signal, never proof: PEX seals the goal's acceptance surface, adjudicates every worker claim against workspace evidence, escalates conflicts to durable human rulings, and exports hash-chained evidence packs that verify offline. Deterministic supervision is handled in the bridge; semantic judgment runs NVIDIA nemotron-3-super-120b-a12b on Nebius Token Factory.",
   "url": "https://josepha-mayo.github.io/pex/",
   "codeRepository": "https://github.com/josepha-mayo/pex",
@@ -164,7 +164,7 @@
   <pre class="cmd">git clone https://github.com/josepha-mayo/pex
 cd pex
 uv run python scripts/demo.py          # bridge + UI, replay fixtures work with no workers
-uv run python scripts/eval_replays.py  # all 18 fixtures, self-scored</pre>
+uv run python scripts/eval_replays.py  # all 18 fixtures, self-scored — needs demo.py running</pre>
 
   <div class="grid2">
     <div class="card">

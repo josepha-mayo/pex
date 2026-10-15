@@ -31,9 +31,9 @@ npm install --prefix apps/desktop && npm i -g opencode-ai   # once
 uv run python scripts/demo.py --live
 ```
 
-No `uv`? `pip install -e packages/protocol -e services/supervisor -e
-services/bridge` installs the workspace members, then
-`.venv/Scripts/python` (or `.venv/bin/python`) substitutes for `uv run
+No `uv`? `pip install -r requirements.txt` installs the workspace members
+(editables + `mcp<2`), then `.venv/Scripts/python` (or
+`.venv/bin/python`) substitutes for `uv run
 python` — the pure-Python judge path (replay suite, evidence verification,
 `check_token_factory.py`) needs neither Node nor Rust.
 

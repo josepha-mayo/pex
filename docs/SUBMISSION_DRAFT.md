@@ -6,12 +6,19 @@ pasting; keep the honesty framing (judges reward it, and the form requires it).
 
 **Deadline: Oct 30, 2026 10:00 AM PT (17:00 UTC) — morning, not end-of-day.**
 
+Judging: two-stage — a pass/fail viability gate (automated repo-clone build in
+a Nebius Sandbox + Token Factory/model-ID grep + Tavily demo-URL scrape + video
+length check), then four equally weighted human criteria (25% each):
+Technological Implementation, Design, Potential Impact, Quality of the Idea.
+Write to those four words explicitly.
+
 Form checklist (all required unless noted):
 
 - [ ] Name, tagline, ONE track: **Coding and Agentic Engineering**
 - [ ] Description (elevator text below)
-- [ ] **Working demo URL** → repo link (test build) — see section below
-- [ ] **Demo video** → ≤3:00, **public on YouTube**, English
+- [ ] **Working demo URL** → `https://josepha-mayo.github.io/pex/` — see below
+- [ ] **Demo video** → ≤3:00, **public on YouTube at submission time**
+      (not just by judging), English, no third-party marks
 - [ ] Public repo + OSI license visible at repo top (MIT — done)
 - [ ] README highlights NVIDIA-model usage + Token Factory + other Nebius tools
 - [ ] **Feedback on Nebius/NVIDIA tooling** — required component, not optional
@@ -168,9 +175,9 @@ NEBIUS_API_KEY=... uv run python scripts/check_token_factory.py --infer
 ## Built during the submission period (pre-existing-project note)
 
 This repository predates the submission window in part — the window opened
-August 26, 2026, and 1,386 of the project's 1,387 commits land inside it;
+August 26, 2026, and 1,388 of the project's 1,389 commits land inside it;
 the single earlier commit (`d138f4a`, the initial tree publish) predates it
-by hours. The work submitted here was built during the window. Substantially
+by ~18 hours. The work submitted here was built during the window. Substantially
 new since it opened:
 
 - The entire worker↔PEX MCP supervision loop (session-bound credentials,

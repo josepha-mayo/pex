@@ -160,14 +160,22 @@ def test_live_prepare_run_mounts_the_bridge_mcp_server(tmp_path) -> None:
     assert demo_live.task_text() == demo_live.task_text()
 
 
-def test_live_prepare_run_rejects_paid_models(tmp_path) -> None:
+def test_live_prepare_run_rejects_paid_models(tmp_path, monkeypatch) -> None:
     import pytest
 
     from scripts import demo_live
 
+    # A model outside the free-Zen + Token Factory catalogs is still refused.
     with pytest.raises(ValueError, match="free OpenCode model"):
-        demo_live.prepare_run(tmp_path / "run", "nvidia/nemotron-3-super-120b-a12b")
+        demo_live.prepare_run(tmp_path / "run", "anthropic/claude-sonnet-4-5")
     assert not (tmp_path / "run").exists()
+
+    # A Token Factory model is admitted — but needs a real key, fail-fast.
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("PEX_PROOF_PROVIDER_KEY", raising=False)
+    with pytest.raises(ValueError, match="needs NEBIUS_API_KEY"):
+        demo_live.prepare_run(tmp_path / "run2", "nvidia/nemotron-3-super-120b-a12b")
+    assert not (tmp_path / "run2").exists()
 
 
 def test_live_goal_requires_real_pytest(tmp_path) -> None:
