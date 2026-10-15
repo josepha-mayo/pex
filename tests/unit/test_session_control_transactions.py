@@ -551,6 +551,46 @@ async def test_pause_route_refuses_test_only_no_auth_before_store_access(tmp_pat
 
 
 @pytest.mark.asyncio
+async def test_replay_sessions_cannot_mint_worker_credentials(tmp_path):
+    settings = Settings(require_auth=True, home=tmp_path, autonomy="manage")
+    store = Store(tmp_path / "pex.sqlite")
+    adapters = AdapterRegistry()
+    bus = EventBus()
+    state.settings = settings
+    state.store = store
+    state.adapters = adapters
+    state.bus = bus
+    state.pipeline = Pipeline(store, adapters, bus, settings)
+    state.token = "replay-credential-operator-token-001"
+    state.pet_settings = PetSettings()
+    state.pet_path = tmp_path / "pet.json"
+    await store.connect()
+    try:
+        await _register_identity(store, "/work/session-control-replay")
+        replay = _session()
+        replay.metadata["replay"] = True
+        replay.metadata["not_live_control"] = True
+        session, _ = await _seed(store, session=replay)
+        # A recorded session can still satisfy every other mint gate: a bound
+        # goal, a project identity, an issuable recorded status. The only
+        # honest answer is 409 — the credential implies a live worker.
+        session.goal_id = "goal-a"
+        await store.upsert_session(session)
+        transport = ASGITransport(app=create_app())
+        headers = {"Authorization": f"Bearer {state.token}"}
+        async with AsyncClient(transport=transport, base_url="http://127.0.0.1") as client:
+            for route in ("mcp-credential", "hook-credential"):
+                response = await client.post(
+                    f"/v1/sessions/{session.id}/{route}",
+                    headers=headers,
+                )
+                assert response.status_code == 409, (route, response.text)
+                assert "recorded replay session" in response.json()["detail"]
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
 async def test_attach_cannot_cross_typed_project_rebinding(tmp_path):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()

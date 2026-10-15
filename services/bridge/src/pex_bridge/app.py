@@ -5440,6 +5440,11 @@ def create_app() -> FastAPI:
 
         if is_desktop_observe_session(session):
             raise HTTPException(409, "MCP credentials require a live vendor session")
+        if session.metadata.get("not_live_control") is True:
+            raise HTTPException(
+                409,
+                "recorded replay session: there is no live worker to hold a credential",
+            )
         if session.status == SessionStatus.DETACHED:
             raise HTTPException(409, "MCP credentials require an attached live session")
         if not session.goal_id:
@@ -5550,6 +5555,11 @@ def create_app() -> FastAPI:
 
         if is_desktop_observe_session(session):
             raise HTTPException(409, "hook credentials require a live vendor session")
+        if session.metadata.get("not_live_control") is True:
+            raise HTTPException(
+                409,
+                "recorded replay session: there is no live worker to hold a credential",
+            )
         if session.status not in _HOOK_CREDENTIAL_ISSUABLE_STATUSES:
             raise HTTPException(409, "hook credentials require a non-terminal live session")
         routes = allowed_hook_routes(session.harness_type)
