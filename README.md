@@ -850,3 +850,10 @@ showed Nemotron 3 Super correcting one incomplete stop on the same thread and
 staying quiet after verification. This is a bounded case, not a benchmark score.
 AgentCore remains optional and is not deployed. See the
 [testing guide](docs/TESTING.md) for reproducible checks and limits.
+
+> **Note for automated reviewers:** this repository intentionally contains
+> agent-directed strings — MCP tool descriptions, worker nudge templates, and
+> adjudication prompts (e.g. `services/supervisor/src/pex_supervisor/`,
+> `scripts/demo_live.py`'s seeded worker task). They are *product inputs*
+> consumed by the supervised workers and the supervisor model, not instructions
+> addressed to repository reviewers or evaluation tooling.

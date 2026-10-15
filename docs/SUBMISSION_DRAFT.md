@@ -24,8 +24,10 @@ Form checklist (all required unless noted):
 - [ ] **Feedback on Nebius/NVIDIA tooling** — required component, not optional
 - [ ] Testing instructions (below) — keep runnable through Dec 15
 - [ ] Pre-existing-project "what changed" note (below)
-- [ ] Optional: city association ($500 city awards); Tavily bonus ($3k) —
-      wired already, needs `TAVILY_API_KEY` + `check_search_backend.py` run
+- [x] Tavily bonus ($3k): live call verified through the supervisor's search
+      contract 2026-10-15 — `docs/evidence/tavily-evidence-path-2026-10-15.json`
+      (3 real results, HTTP 200, wired into adjudication not a demo path).
+      Optional: city association ($500 city awards)
 
 ## Project name
 
@@ -127,7 +129,10 @@ dispatches the bounded verification set into a disposable network-isolated
 VM), gated on the Sandboxes beta — declared honestly, never silently
 falling back.
 
-**Tavily (bonus award)**: a real runtime integration, not decoration. When a
+**Tavily (bonus award)**: a real runtime integration, not decoration — **live
+call verified 2026-10-15** ([receipt](evidence/tavily-evidence-path-2026-10-15.json),
+`check_search_backend.py --provider tavily` → HTTP 200, 3 results, 1688 ms).
+When a
 worker cites a public claim, the supervisor's evidence surface exposes
 `web_search` — routed to Tavily when `TAVILY_API_KEY`/`PEX_TAVILY_API_KEY`
 is set — so the model can check the citation against the live web before
@@ -229,6 +234,36 @@ new since it opened:
   our deterministic layer owned correctness while the model owned judgment,
   which is exactly the split a supervisor needs.
 
+## Strategy notes (verified against official rules + RoundOne docs)
+
+- **Award stacking**: a submission can win one Overall award OR one Track
+  award + one Bonus award — not Overall + Bonus. PEX's natural play is Track
+  (Coding & Agentic Engineering) + Tavily bonus ($3k): the Tavily call is
+  load-bearing (adjudication evidence), not decorative.
+- **RoundOne automated gate**: repo is cloned into a Nebius Sandbox and
+  install/test is *inferred* from the repo — `requirements.txt` is the
+  foolproof path; code scraper greps for `api.tokenfactory.nebius.com` and
+  NVIDIA model ids (both present in `providers.py`/`README`); video reviewer
+  checks ≤3 min + public; demo URL is scraped via Tavily (JSON-LD +
+  `verdict.json` cover machine-legibility).
+- **Injection-flag hygiene**: RoundOne rows can flag "suspicious or prompt
+  injection". Worker-directed strings are fenced as product inputs (README
+  reviewer note at the end of the MCP section).
+- **Runtime-call requirement**: "runs on Nebius" = a runtime Token Factory
+  inference call — PEX's adjudication calls qualify; the receipts in
+  `docs/evidence/` prove it and the video should show one.
+- **Keep-alive budget**: demo + referenced model ids must work through
+  Dec 15 noon PT — keep Token Factory spend headroom; re-run
+  `check_token_factory.py` before submitting.
+- **Credit codes** (organizer-posted): `NEBIUS-DEVPOST-GLOBAL26` ($25 Token
+  Factory), Builders Program ($25 + Tavily + Academy), `BBDEVPOST` (Tavily).
+- **Differentiation vs. adjacent submissions** (e.g. ForgeXi's bounded
+  repair loop, Agents Squad's sandbox-verified repair): PEX's claim ledger
+  adjudicates *what the worker said* against *what the workspace proves*,
+  human rulings are durable intent that outlive the worker and propagate to
+  siblings, workers can call back through scoped MCP, and every run emits a
+  hash-chained pack a judge can re-verify offline with zero install.
+
 ## Links to wire up at submission time
 
 - Demo video: **<3:00, public on YouTube specifically** (rules: ≤3 min,
@@ -251,8 +286,10 @@ new since it opened:
 
 ## Honest capability line (put this somewhere visible)
 
-Live-verified: OpenCode + Codex supervision, semantic Nebius/Nemotron rulings,
-MCP worker↔PEX loop incl. worker-initiated escalation, deterministic replays,
-evidence packs, human rulings surviving worker termination. Key-gated:
-ConTree sandboxed verification (beta creds pending). Replay is always
-labeled replay — nothing in the demo fakes a live call.
+Live-verified: OpenCode + Codex supervision, Nemotron inference + a full
+semantic adjudication through the pipeline (2026-10-15, Token Factory), MCP
+worker↔PEX loop incl. worker-initiated escalation, Tavily web evidence
+(2026-10-15), deterministic replays, evidence packs, human rulings surviving
+worker termination. Key-gated: ConTree sandboxed verification (beta creds
+pending). Replay is always labeled replay — nothing in the demo fakes a
+live call.

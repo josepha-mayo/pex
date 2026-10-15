@@ -104,12 +104,14 @@ def main() -> int:
         prompt = "Reply with exactly: PEX-TOKEN-FACTORY-OK"
         started = time.monotonic()
         try:
+            # Nemotron reasons before answering — a 16-token cap lets the
+            # reasoning exhaust the budget and content comes back null.
             completion = http.post(
                 "/chat/completions",
                 json={
                     "model": args.model,
                     "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": 16,
+                    "max_tokens": 96,
                     "temperature": 0,
                 },
             )
@@ -158,7 +160,8 @@ def main() -> int:
                 print(f"FAIL inference: HTTP {completion.status_code} - {completion.text[:300]}")
                 return 1
         body = completion.json()
-        content = body.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        msg = body.get("choices", [{}])[0].get("message") or {}
+        content = (msg.get("content") or "").strip()
         usage = body.get("usage", {})
         print(f"POST /chat/completions  {completion.status_code}  {elapsed * 1000:.0f} ms")
         print(f"model={body.get('model', args.model)}  usage={json.dumps(usage)}")

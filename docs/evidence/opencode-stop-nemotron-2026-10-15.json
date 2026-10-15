@@ -1,0 +1,19 @@
+{
+ "schema_version": 1,
+ "observed_date": "2026-10-15",
+ "source_commit": "64ab5d9d437681d21804b0bdf4db9e633e0b74a6",
+ "test": "tests/contract/test_live_opencode_stop.py::test_live_opencode_idle_stop_sends_specific_prompt",
+ "test_result": "passed",
+ "provider": "nebius",
+ "supervisor_model": "nvidia/nemotron-3-super-120b-a12b",
+ "worker_harness": "opencode (in-memory transport, real OpenCode event shapes)",
+ "stop_adjudication": {
+  "used_llm": true,
+  "inference_status": "completed",
+  "diagnosis": "strands_structured_decision:independent_verifier_approved",
+  "pex_action": "SEND_NUDGE",
+  "nudge_text": "Please create report.txt with exact content 'shipped' and then confirm completion.",
+  "delivery_path": "prompt_async"
+ },
+ "scope": "One live Nemotron-3-Super-120B-A12B adjudication of a worker idle stop through the full Pipeline (goal 'report.txt contains shipped', empty workspace). The model read the sealed goal, the verifier approved the correction, and the nudge names the exact artifact \u2014 specific supervision, not a generic retry. In-memory transport: this proves model adjudication, not a real OpenCode process. Not a benchmark."
+}

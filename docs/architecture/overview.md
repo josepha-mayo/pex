@@ -20,7 +20,7 @@ flowchart TB
   runtime[AgentCore Runtime target — not deployed]
   nebius[Nebius Token Factory: NVIDIA Nemotron]
   contree[Nebius ConTree Sandboxes: isolated pytest — key-gated]
-  tavily[Tavily web evidence — key-gated]
+  tavily[Tavily web evidence — live-verified 2026-10-15]
 
   human --> pet
   pet <--> bridge

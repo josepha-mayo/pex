@@ -22487,6 +22487,22 @@ class Store:
                 )
                 if updated.rowcount != 1:
                     raise RuntimeError("event effect finalization CAS was lost")
+                supervisor_result = (
+                    result.get("supervisor_result") if isinstance(result, dict) else None
+                )
+                if (
+                    isinstance(supervisor_result, dict)
+                    and supervisor_result.get("inference_status") == "not_attempted"
+                    and not supervisor_result.get("used_llm")
+                ):
+                    # A deterministic pre-model exit is provably not provider
+                    # work — release the semantic slot it reserved. Attempted
+                    # inferences (failed, timed out, ambiguous) keep theirs:
+                    # they can conceal real provider spend.
+                    await transaction.execute(
+                        "DELETE FROM supervisor_dispatch_reservations WHERE effect_id = ?",
+                        (effect["effect_id"],),
+                    )
                 if effect["kind"] == "supervisor_decision":
                     processing_state = (
                         "plan_generation_uncertain" if state == "delivery_uncertain" else "planning"

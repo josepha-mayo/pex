@@ -1,0 +1,20 @@
+{
+ "schema_version": 1,
+ "observed_date": "2026-10-15",
+ "source_commit": "64ab5d9d437681d21804b0bdf4db9e633e0b74a6",
+ "test": "scripts/check_search_backend.py --provider tavily (manual run)",
+ "test_result": "passed",
+ "provider": "tavily",
+ "endpoint": "https://api.tavily.com/search",
+ "role_in_product": "web_search evidence tool \u2014 offered to the supervisor only when a worker claim is classified as public-facing; bounded results feed adjudication, never hidden-evaluator reach",
+ "query": "Nebius Token Factory NVIDIA Nemotron",
+ "http_status": 200,
+ "latency_ms": 1688,
+ "results_returned": 3,
+ "result_titles": [
+  "NVIDIA Nemotron 3 Super now available on Nebius Token Factory",
+  "Nebius launches token factory platform for open-source AI models",
+  "NVIDIA Nemotron and Nebius Token Factory"
+ ],
+ "scope": "One real Tavily search call through the supervisor's search backend contract (services/supervisor/src/pex_supervisor/search.py). Proves the functional runtime call the bonus track requires \u2014 wired into adjudication, not a demo-only path. Not a benchmark."
+}

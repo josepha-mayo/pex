@@ -169,17 +169,9 @@ async def test_live_codex_app_server_stop_reaches_ingest(tmp_path: Path):
 def _has_supervisor_key() -> bool:
     import os
 
-    names = (
-        "PEX_SUPERVISOR_API_KEY",
-        "OPENAI_API_KEY",
-        "OPENROUTER_API_KEY",
-        "PEX_ZEN_API_KEY",
-        "OPENCODE_API_KEY",
-        "ANTHROPIC_API_KEY",
-        "XAI_API_KEY",
-        "GEMINI_API_KEY",
-        "GROQ_API_KEY",
-    )
+    from pex_supervisor.providers import PROVIDERS
+
+    names = {name for spec in PROVIDERS.values() for name in spec.key_envs}
     if any(os.environ.get(name) for name in names):
         return True
     env_path = Path(__file__).resolve().parents[2] / ".env"
@@ -210,7 +202,9 @@ def _ensure_local_supervisor_env() -> None:
     _load_dotenv()
     if os.environ.get("PEX_SUPERVISOR_PROVIDER"):
         return
-    if os.environ.get("PEX_ZEN_API_KEY") or os.environ.get("OPENCODE_API_KEY"):
+    # Any configured provider credential (zen, nebius, …) already resolves a
+    # real provider — do not let a stray local :8080 service steal the run.
+    if _has_supervisor_key():
         return
     if not _local_openai_compat():
         return

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
   <title id="title">PEX supervised-agent architecture</title>
-  <desc id="desc">A local closed loop observes OpenCode or Codex workers, seals the goal's acceptance surface, extracts worker claims into a claim ledger, verifies them against workspace evidence with a Strands supervisor backed by a Nebius Token Factory NVIDIA Nemotron model, applies local policy, and journals rulings. Workers can call PEX back through a scoped MCP server; a replay pipeline re-runs recorded trajectories through the same adjudication. AgentCore, ConTree Sandboxes, and Tavily web evidence are shown as optional and key-gated.</desc>
+  <desc id="desc">A local closed loop observes OpenCode or Codex workers, seals the goal's acceptance surface, extracts worker claims into a claim ledger, verifies them against workspace evidence with a Strands supervisor backed by a Nebius Token Factory NVIDIA Nemotron model, applies local policy, and journals rulings. Workers can call PEX back through a scoped MCP server; a replay pipeline re-runs recorded trajectories through the same adjudication. AgentCore and ConTree Sandboxes are shown as optional and key-gated; Tavily web evidence is optional and live-verified 2026-10-15.</desc>
   <defs>
     <style>
       .title{font:700 42px 'Segoe UI',Arial,sans-serif;fill:#f4faf7}.sub{font:400 20px 'Segoe UI',Arial,sans-serif;fill:#9eb3b7}

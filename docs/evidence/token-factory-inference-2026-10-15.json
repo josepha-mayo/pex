@@ -1,0 +1,34 @@
+{
+ "schema_version": 1,
+ "observed_date": "2026-10-15",
+ "source_commit": "64ab5d9d437681d21804b0bdf4db9e633e0b74a6",
+ "test": "scripts/check_token_factory.py --infer (manual run)",
+ "test_result": "passed",
+ "provider": "nebius",
+ "endpoint": "https://api.tokenfactory.nebius.com/v1/chat/completions",
+ "supervisor_model": "nvidia/nemotron-3-super-120b-a12b",
+ "prompt": "Reply with exactly: PEX-TOKEN-FACTORY-OK",
+ "reply": "PEX-TOKEN-FACTORY-OK",
+ "http_status": 200,
+ "latency_ms": 1500,
+ "usage": {
+  "completion_tokens": 41,
+  "prompt_tokens": 30,
+  "total_tokens": 71,
+  "completion_tokens_details": {
+   "accepted_prediction_tokens": null,
+   "audio_tokens": null,
+   "reasoning_tokens": 28,
+   "rejected_prediction_tokens": null
+  },
+  "prompt_tokens_details": {
+   "audio_tokens": null,
+   "cached_tokens": 0,
+   "created_cache_tokens": 0,
+   "multimodal_tokens": null
+  },
+  "prompt_cache_hit_tokens": 0,
+  "prompt_cache_miss_tokens": 30
+ },
+ "scope": "One catalog + one real inference call against Nemotron-3-Super-120B-A12B via Token Factory serverless. Proves the supervisor provider path reaches the model end-to-end. Not a benchmark."
+}

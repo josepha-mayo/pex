@@ -487,6 +487,81 @@ async def test_two_store_instances_claim_once_and_stale_dispatch_is_uncertain(tm
         await first.close()
 
 
+@pytest.mark.asyncio
+async def test_deterministic_not_attempted_finalize_releases_dispatch_reservation(
+    tmp_path,
+):
+    path = tmp_path / "pex.sqlite"
+    store = Store(path, process_boot_id="boot-a")
+    await store.connect()
+
+    async def _granted(event_id: str, session_id: str) -> str:
+        event = _event(event_id, session_id=session_id)
+        await store.accept_pipeline_event(event)
+        claim = await store.claim_event_processing(event.event_id, owner="owner")
+        assert claim["outcome"] == "claimed"
+        owner = str(claim["processing"]["lease_owner"])
+        payload = {"event_id": event.event_id, "request": "decide"}
+        request_hash = hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        await store.reserve_event_effect(
+            event_id=event.event_id,
+            effect_key="planner",
+            kind="supervisor_decision",
+            target_session_id=event.session_id,
+            payload=payload,
+            request_hash=request_hash,
+            owner=owner,
+        )
+        grant = await store.start_event_effect_dispatch(
+            event_id=event.event_id,
+            effect_key="planner",
+            owner=owner,
+            semantic_dispatch_limit=3,
+        )
+        assert grant["granted"] is True
+        return event.event_id
+
+    try:
+        deterministic_event = await _granted("fast-path-stop", "codex:fastpath")
+        assert await store.supervisor_dispatch_counts(["codex:fastpath"]) == {"codex:fastpath": 1}
+        await store.finalize_event_effect(
+            event_id=deterministic_event,
+            effect_key="planner",
+            state="delivered",
+            result={
+                "status": "delivered",
+                "supervisor_result": {
+                    "inference_status": "not_attempted",
+                    "used_llm": False,
+                    "diagnosis": "observed_pytest_failure_fast_path",
+                },
+            },
+        )
+        # The deterministic fast-path provably never reached a provider: the
+        # semantic slot is released rather than charged.
+        assert await store.supervisor_dispatch_counts(["codex:fastpath"]) == {"codex:fastpath": 0}
+
+        inferred_event = await _granted("attempted-inference", "codex:inferred")
+        await store.finalize_event_effect(
+            event_id=inferred_event,
+            effect_key="planner",
+            state="delivered",
+            result={
+                "status": "delivered",
+                "supervisor_result": {
+                    "inference_status": "completed",
+                    "used_llm": True,
+                    "diagnosis": "strands_structured_decision",
+                },
+            },
+        )
+        assert await store.supervisor_dispatch_counts(["codex:inferred"]) == {"codex:inferred": 1}
+    finally:
+        await store.close()
+
+
 def test_stable_effect_id_uses_unambiguous_tuple_encoding():
     assert stable_event_effect_id("a:b", "c") != stable_event_effect_id("a", "b:c")
 
