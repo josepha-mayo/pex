@@ -85,10 +85,7 @@ def main() -> int:
         identical = sum(
             1
             for row in det_fixtures
-            if not any(
-                str(f).startswith("nondeterministic")
-                for f in (row.get("failures") or [])
-            )
+            if not any(str(f).startswith("nondeterministic") for f in (row.get("failures") or []))
         )
         out["suite"]["determinism"] = {
             "repeat": repeat,
@@ -117,8 +114,7 @@ def main() -> int:
                 "provider": body.get("provider"),
                 "model": body.get("supervisor_model")
                 or (body.get("supervisor") or {}).get("model"),
-                "worker": body.get("worker_harness")
-                or (body.get("worker") or {}).get("harness"),
+                "worker": body.get("worker_harness") or (body.get("worker") or {}).get("harness"),
             }
         )
     if live:
