@@ -293,3 +293,19 @@ async def test_rendered_html_verifies_itself(client, tmp_path) -> None:
 async def test_pack_for_unknown_goal_is_404(client) -> None:
     http, _, _ = client
     assert (await http.get("/v1/goals/nope/evidence-pack")).status_code == 404
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_committed_evidence_packs_still_verify() -> None:
+    """Committed packs are judge-facing receipts — a corrupted or stale pack
+    must fail here, not in front of a judge running verify_pack.py."""
+    pack_dir = REPO_ROOT / "docs" / "demo" / "evidence"
+    paths = sorted(pack_dir.glob("*PACK*.json")) + sorted(pack_dir.glob("*PACK*.html"))
+    assert paths, "expected committed evidence packs under docs/demo/evidence"
+    for path in paths:
+        checks = verify(load_pack(path))
+        failures = [line for line in checks if line.startswith("FAIL")]
+        assert not failures, f"{path.name}: {failures}"
+        assert any(line.startswith("PASS") for line in checks), path.name
