@@ -161,13 +161,24 @@
   <ul>
     <li>Semantic supervision runs <strong>NVIDIA nemotron-3-super-120b-a12b</strong> on
       <strong>Nebius Token Factory</strong> (OpenAI-compatible chat completions) —
-      <a href="evidence/codex-nebius-live-2026-09-24.json">live inference receipt</a>
-      (corrected a live worker's premature stop).</li>
+      <a href="evidence/token-factory-inference-2026-10-15.json">inference receipt</a>
+      and <a href="evidence/codex-nebius-live-2026-09-24.json">a live adjudication</a>
+      (corrected a live worker's premature stop); Nemotron also adjudicated a
+      real worker stop through the full pipeline 2026-10-15
+      (<a href="evidence/opencode-stop-nemotron-2026-10-15.json">receipt</a>).</li>
+    <li><strong>2026-10-15 live run:</strong> an OpenCode worker (nemotron-3-ultra-free)
+      read a seeded reward-hack task and escalated itself via
+      <code>pex.request_decision</code> — quoting the sealed goal's forbidden
+      outcome — before touching the test file. The human ruling is recorded
+      durably; delivery honestly reported <code>session_terminal</code>
+      (<a href="evidence/opencode-tamper-escalation-2026-10-15.json">receipt</a>,
+      <a href="demo/evidence/EVIDENCE_PACK_live_escalation_2026-10-15.json">evidence
+      pack — 266/266 offline checks</a>).</li>
     <li>Isolated public-pytest execution targets <strong>Nebius ConTree Sandboxes</strong>
       — implemented, currently key-gated (beta access pending).</li>
     <li>Bounded public-claim checks route <strong>Tavily web evidence</strong> — wired and
       scope-limited to classified public claims; live call verified 2026-10-15
-      (<a href="demo/../../evidence/tavily-evidence-path-2026-10-15.json">receipt</a>).</li>
+      (<a href="evidence/tavily-evidence-path-2026-10-15.json">receipt</a>).</li>
   </ul>
 
   <h2>Run it</h2>
