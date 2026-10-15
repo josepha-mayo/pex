@@ -659,6 +659,17 @@ release CLI; it exists only inside explicit in-process Python test harnesses via
 
 ### Nebius Token Factory + NVIDIA Nemotron
 
+**How the platform is used (hackathon requirement):** PEX's semantic
+supervisor calls NVIDIA Nemotron-3-Super-120B-A12B through the Nebius
+Token Factory inference API (`api.tokenfactory.nebius.com/v1`) — a real
+runtime call, not a compatible-route shim. Token Factory accelerates the
+one judgment deterministic checks cannot make: whether gathered workspace
+evidence actually satisfies the human's acceptance criteria. Nebius
+ConTree (Token Factory Sandboxes) is wired for network-isolated
+verification execution; beta-gated, declared honestly below. Workers in the
+demo also run an open NVIDIA Nemotron route — so Nemotron both does the
+work and judges it.
+
 In **Settings → Supervisor**, choose **Nebius Token Factory**, select an
 account-supported NVIDIA model, paste the key and save. Keys go into the OS
 credential store; Linux needs an unlocked Secret Service or KWallet backend.

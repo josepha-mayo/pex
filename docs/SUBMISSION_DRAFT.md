@@ -4,6 +4,22 @@ Working draft for the submission form. Every claim below is backed by a
 committed receipt or a runnable demo path — nothing aspirational. Edit before
 pasting; keep the honesty framing (judges reward it, and the form requires it).
 
+**Deadline: Oct 30, 2026 10:00 AM PT (17:00 UTC) — morning, not end-of-day.**
+
+Form checklist (all required unless noted):
+
+- [ ] Name, tagline, ONE track: **Coding and Agentic Engineering**
+- [ ] Description (elevator text below)
+- [ ] **Working demo URL** → repo link (test build) — see section below
+- [ ] **Demo video** → ≤3:00, **public on YouTube**, English
+- [ ] Public repo + OSI license visible at repo top (MIT — done)
+- [ ] README highlights NVIDIA-model usage + Token Factory + other Nebius tools
+- [ ] **Feedback on Nebius/NVIDIA tooling** — required component, not optional
+- [ ] Testing instructions (below) — keep runnable through Dec 15
+- [ ] Pre-existing-project "what changed" note (below)
+- [ ] Optional: city association ($500 city awards), Tavily integration
+      ($3k bonus — needs a real runtime Tavily API call)
+
 ## Project name
 
 PEX — the judge for coding agents.
@@ -59,47 +75,115 @@ workspaces, not a mock.
 
 ## How we used the platform (required-ish content — also answers feedback)
 
-**Nebius Token Factory + NVIDIA Nemotron-3-Super-120B-A12B** power PEX's
-semantic supervisor: the bounded LLM that re-reads the goal against
-independently gathered workspace evidence and writes the pass/fail/correct
-ruling a worker cannot talk its way out of. Configuration is three
-environment variables (`NEBIUS_API_KEY`, `PEX_SUPERVISOR_PROVIDER=nebius`,
-`PEX_CLOUD_REASONING=true`) and `scripts/check_token_factory.py` verifies the
-wiring with one real catalog + inference call in seconds.
+**The qualifying NVIDIA-model call: PEX's semantic supervisor calls
+NVIDIA Nemotron-3-Super-120B-A12B through the Nebius Token Factory
+inference API.** The supervisor is the bounded LLM that re-reads the goal
+against independently gathered workspace evidence and writes the
+pass/fail/correct ruling a worker cannot talk its way out of. This is a
+real runtime call to `api.tokenfactory.nebius.com` — live-verified
+(`docs/evidence/codex-nebius-live-2026-09-24.json` records a Nemotron
+supervisor correcting a Codex worker's premature stop). Configuration is
+three environment variables (`NEBIUS_API_KEY`,
+`PEX_SUPERVISOR_PROVIDER=nebius`, `PEX_CLOUD_REASONING=true`) and
+`scripts/check_token_factory.py` verifies the wiring with one real catalog
++ inference call in seconds.
 
-**NVIDIA Nemotron (open weights) also powers the workers**: live sessions run
-on OpenCode's free Nemotron route, so the demo shows Nemotron both doing the
-work and judging it — the supervisor model that catches its sibling's
-reward hacking.
+**NVIDIA Nemotron also powers the workers in the demo**: live sessions run
+on OpenCode's free Nemotron route, so the demo shows Nemotron both doing
+the work and judging it — the supervisor model that catches its sibling's
+reward hacking. (PEX is worker-agnostic; the worker's model choice is the
+worker's. The hackathon-qualifying model call is the supervisor's Token
+Factory path above — not the worker's free route.)
 
 **ConTree/Token Factory Sandboxes**: wired (`PEX_PUBLIC_PYTEST_BACKEND=contree`
 dispatches the bounded verification set into a disposable network-isolated
 VM), gated on the Sandboxes beta — declared honestly, never silently
 falling back.
 
+## Working demo URL
+
+`https://github.com/josepha-mayo/pex` — the repo IS the test build: a
+five-minute, no-keys replay path (`uv run python scripts/demo.py`, then any
+fixture button) replays real recorded worker sessions through the live
+adjudication pipeline in the judge's browser. Live mode
+(`uv run python scripts/demo.py --live`) supervises a real OpenCode worker.
+Testing instructions are in `docs/HACKATHON.md`; the repo must stay public
+and runnable through Dec 15 judging.
+
+## Testing instructions (paste into the form)
+
+```text
+git clone https://github.com/josepha-mayo/pex && cd pex
+uv run python scripts/demo.py        # bridge + UI, no keys needed
+# open http://127.0.0.1:1420 → "Recorded replays" → run worker_escalation_eval
+# or any of the 17 fixtures; each replays a real recorded session through
+# the live adjudication pipeline and shows its verdict.
+uv run python scripts/eval_replays.py   # scores all 17 fixtures, prints receipt
+# With a Token Factory key: NEBIUS_API_KEY=... \
+#   PEX_SUPERVISOR_PROVIDER=nebius PEX_CLOUD_REASONING=true \
+#   uv run python scripts/check_token_factory.py   # one real inference call
+```
+
+## Built during the submission period (pre-existing-project note)
+
+This repository predates the submission window in part; the work submitted
+here was built during it. Substantially new since the window opened:
+
+- The entire worker↔PEX MCP supervision loop (session-bound credentials,
+  five scoped tools, flat+nested arg contract) — including the
+  worker-initiated escalation captured live into `worker_escalation_eval`.
+- Durable human rulings: journaled rulings distinct from editable goal
+  text, surviving worker termination, propagating to sibling workers.
+- The deterministic replay system: 17-fixture suite, evaluator, replay
+  isolation (`replay: true` + `not_live_control: true` enforced server-side).
+- Evidence packs + offline verification (`scripts/verify_pack.py`).
+- The desktop supervision surface (fixtures rail, capabilities panel,
+  inspector, escalation affordances).
+
 ## Tooling feedback (required field — draft)
 
 - **Token Factory**: OpenAI-compatible endpoint made integration a provider
-  entry, not a rewrite. Model catalog endpoint made the smoke check trivial.
-  A first-class "verify my key+model" recipe in the console would shortcut
-  onboarding.
+  entry, not a rewrite — `PEX_SUPERVISOR_PROVIDER=nebius` + `NEBIUS_API_KEY`
+  and the supervisor was live. The model catalog endpoint made the smoke
+  check trivial (`scripts/check_token_factory.py` does one real catalog +
+  inference call). A first-class "verify my key+model" recipe in the
+  console would shortcut onboarding.
 - **Nemotron-3-Super-120B-A12B**: strong at structured judgment — it read an
   acceptance criterion, inspected evidence lines, and produced an actionable
-  correction for a live worker that stopped early. Deterministic-enough
-  for supervision when bounded (we cap dispatches per session).
-- **Wishlist**: Sandboxes/ConTree beta availability for CI; a published
-  latency profile per model would help teams size supervision budgets.
+  correction for a live worker that stopped early (receipt:
+  `docs/evidence/codex-nebius-live-2026-09-24.json`). Deterministic-enough
+  for supervision when bounded (we cap dispatches per session and never let
+  the model override the deterministic evidence layer).
+- **Sandboxes/ConTree**: the API shape (operation → `metadata.result`,
+  `tag:`-prefixed image refs) integrated cleanly behind
+  `PEX_PUBLIC_PYTEST_BACKEND=contree`; we could not exercise it end-to-end
+  because beta credentials are still pending. Honest gap: error paths are
+  contract-tested, live execution is not.
+- **Wishlist**: Sandboxes beta availability for CI; a published
+  latency profile per model would help teams size supervision budgets;
+  model-id lifecycle notices (rename/deprecation warnings) so a frozen
+  submission can't silently break mid-judging.
+- **Would we build on it again?** Yes — the OpenAI-compatible surface meant
+  our deterministic layer owned correctness while the model owned judgment,
+  which is exactly the split a supervisor needs.
 
 ## Links to wire up at submission time
 
-- Demo video: `docs/demo/assets/pex-replay-walkthrough-b28d999.mp4` (full
-  judge path) — post to YouTube, link in form
-- Live escalation clip: `docs/demo/assets/pex-escalation-arc-6d16888.mp4`
-  (worker-initiated `pex_request_decision` → durable ruling, real live data)
-- Supporting: `docs/demo/assets/pex-live-tamper-demo.mp4`,
-  `docs/demo/assets/pex-judge-arc-597ce13.mp4`
-- Repo: https://github.com/josepha-mayo/pex (public, MIT)
+- Demo video: **<3:00, public on YouTube specifically** (rules: ≤3 min,
+  public — not unlisted; no third-party music/trademarks). Source footage:
+  `docs/demo/assets/pex-replay-walkthrough-b28d999.mp4` (full judge path)
+  and `docs/demo/assets/pex-escalation-arc-6d16888.mp4` (worker-initiated
+  `pex_request_decision` → durable ruling, real live data). Narration plan:
+  `docs/demo/DEMO_SCRIPT.md` — cut to ~2:55.
+- Supporting clips: `docs/demo/assets/pex-live-tamper-demo.mp4`,
+  `docs/demo/assets/pex-judge-arc-597ce13.mp4`,
+  `docs/demo/assets/pex-ruling-arc-eabd646.mp4`
+- Repo: https://github.com/josepha-mayo/pex (public, MIT — LICENSE at root)
 - Judge path: `docs/HACKATHON.md` — five-minute replay path, no keys needed
+- Keep-alive: the repo and any Token Factory model ids referenced must stay
+  valid through judging (Dec 15 noon PT); if `nemotron-3-super-120b-a12b`
+  is renamed/deprecated in the catalog, update the provider default and
+  re-run `check_token_factory.py` before the deadline.
 
 ## Honest capability line (put this somewhere visible)
 
