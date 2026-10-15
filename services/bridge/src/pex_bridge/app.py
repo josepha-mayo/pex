@@ -776,6 +776,8 @@ async def _revalidate_mcp_session_principal(
         return None
     if session is None or session.status == SessionStatus.DETACHED:
         return None
+    if session.metadata.get("not_live_control") is True or session.metadata.get("observe_only"):
+        return None
     from pex_bridge.adapters.desktop import is_desktop_observe_session
 
     if is_desktop_observe_session(session):
@@ -5440,7 +5442,7 @@ def create_app() -> FastAPI:
 
         if is_desktop_observe_session(session):
             raise HTTPException(409, "MCP credentials require a live vendor session")
-        if session.metadata.get("not_live_control") is True:
+        if session.metadata.get("not_live_control") is True or session.metadata.get("observe_only"):
             raise HTTPException(
                 409,
                 "recorded replay session: there is no live worker to hold a credential",
@@ -5555,7 +5557,7 @@ def create_app() -> FastAPI:
 
         if is_desktop_observe_session(session):
             raise HTTPException(409, "hook credentials require a live vendor session")
-        if session.metadata.get("not_live_control") is True:
+        if session.metadata.get("not_live_control") is True or session.metadata.get("observe_only"):
             raise HTTPException(
                 409,
                 "recorded replay session: there is no live worker to hold a credential",
@@ -5755,6 +5757,14 @@ def create_app() -> FastAPI:
         body: MessageIn,
         _: Annotated[OperatorActorEvidence, Depends(_require_operator_token)],
     ):
+        session = await state.store.get_session(session_id)
+        if session is None:
+            raise HTTPException(404, "session not found")
+        if session.metadata.get("not_live_control") is True:
+            raise HTTPException(
+                409,
+                "recorded replay session: there is no live worker to receive a message",
+            )
         try:
             reservation = await state.store.reserve_operator_message(
                 principal_id=_.principal_id,
@@ -5905,6 +5915,11 @@ def create_app() -> FastAPI:
         adapter = state.adapters.for_session(session_id)
         if not session or not adapter:
             raise HTTPException(404, "session not found")
+        if session.metadata.get("not_live_control") is True:
+            raise HTTPException(
+                409,
+                "recorded replay session: there is no live window to focus",
+            )
         try:
             ok = await asyncio.wait_for(
                 adapter.focus_ui(session), timeout=ADAPTER_FOCUS_TIMEOUT_SECONDS
@@ -7089,6 +7104,12 @@ def create_app() -> FastAPI:
         session = await state.store.get_session_for_authority(body.session_id)
         if not session:
             raise HTTPException(404, "session not found")
+        if session.metadata.get("not_live_control") is True:
+            raise HTTPException(
+                409,
+                "recorded replay session: its event ledger is sealed evidence, "
+                "not a writable stream",
+            )
         try:
             event = state.adapters.synthetic.emit(
                 session,

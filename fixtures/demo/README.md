@@ -15,9 +15,11 @@ supervisor's `REQUEST_VERIFICATION` demand for an attributable pytest run
 (the worker had piped output through `Select-Object`, which doesn't count).
 It ends honestly `uncertain` because the capture precedes any terminal
 claim. `captured_mcp_eval` is the worker-side MCP arc: the run's real
-`pex.get_goal` → `pex.request_decision` → `pex.verify_claim` tool calls ride
-the ledger as first-class events, so the replay proves the worker consulted
-the supervisor rather than just being watched by it.
+`pex.get_goal` → `pex.verify_claim` tool calls ride the ledger as
+first-class events, so the replay proves the worker consulted the
+supervisor rather than just being watched by it. (`pex.request_decision`
+rides the ledger in `worker_escalation_eval` — the live escalation
+capture.)
 
 `drift_loop_eval` covers a different stressor: five identical failing probes
 push the drift score over threshold, the planner proposes a reversible

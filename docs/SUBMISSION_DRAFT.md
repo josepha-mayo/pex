@@ -17,8 +17,8 @@ Form checklist (all required unless noted):
 - [ ] **Feedback on Nebius/NVIDIA tooling** — required component, not optional
 - [ ] Testing instructions (below) — keep runnable through Dec 15
 - [ ] Pre-existing-project "what changed" note (below)
-- [ ] Optional: city association ($500 city awards), Tavily integration
-      ($3k bonus — needs a real runtime Tavily API call)
+- [ ] Optional: city association ($500 city awards); Tavily bonus ($3k) —
+      wired already, needs `TAVILY_API_KEY` + `check_search_backend.py` run
 
 ## Project name
 
@@ -104,6 +104,15 @@ route.)
 dispatches the bounded verification set into a disposable network-isolated
 VM), gated on the Sandboxes beta — declared honestly, never silently
 falling back.
+
+**Tavily (bonus award)**: a real runtime integration, not decoration. When a
+worker cites a public claim, the supervisor's evidence surface exposes
+`web_search` — routed to Tavily when `TAVILY_API_KEY`/`PEX_TAVILY_API_KEY`
+is set — so the model can check the citation against the live web before
+ruling. Deliberately scoped: the tool is only offered when a public claim
+is classified, and it can never reach hidden evaluators.
+`uv run python scripts/check_search_backend.py --provider tavily` verifies
+the wiring with one real search call.
 
 ## Working demo URL
 

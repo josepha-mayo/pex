@@ -591,6 +591,90 @@ async def test_replay_sessions_cannot_mint_worker_credentials(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_replay_sessions_refuse_every_live_worker_surface(tmp_path):
+    """A recorded trajectory is sealed evidence: no messages, no focus, no
+    fabricated events, no handoff delivery — every mutation that implies a
+    live worker must 409 before it writes anything."""
+    settings = Settings(require_auth=True, home=tmp_path, autonomy="manage")
+    store = Store(tmp_path / "pex.sqlite")
+    adapters = AdapterRegistry()
+    bus = EventBus()
+    state.settings = settings
+    state.store = store
+    state.adapters = adapters
+    state.bus = bus
+    state.pipeline = Pipeline(store, adapters, bus, settings)
+    state.token = "replay-isolation-operator-token-001"
+    state.pet_settings = PetSettings()
+    state.pet_path = tmp_path / "pet.json"
+    await store.connect()
+    try:
+        await _register_identity(store, "/work/session-control-replay")
+        replay = _session()
+        replay.metadata["replay"] = True
+        replay.metadata["not_live_control"] = True
+        replay.goal_id = "goal-a"
+        live_sibling = _session()
+        live_sibling.id = "cursor:session-control-live"
+        live_sibling.vendor_session_id = "session-control-live"
+        live_sibling.goal_id = "goal-a"
+        session, _ = await _seed(store, session=replay)
+        await store.upsert_session(live_sibling)
+        transport = ASGITransport(app=create_app())
+        headers = {"Authorization": f"Bearer {state.token}"}
+        async with AsyncClient(transport=transport, base_url="http://127.0.0.1") as client:
+            message = await client.post(
+                f"/v1/sessions/{session.id}/message",
+                headers=headers,
+                json={
+                    "idempotency_key": "replay-message-0001",
+                    "text": "are you there?",
+                },
+            )
+            assert message.status_code == 409, message.text
+            assert "recorded replay session" in message.json()["detail"]
+
+            focus = await client.post(
+                f"/v1/sessions/{session.id}/focus",
+                headers=headers,
+            )
+            assert focus.status_code == 409, focus.text
+            assert "recorded replay session" in focus.json()["detail"]
+
+            event = await client.post(
+                "/v1/synthetic/events",
+                headers=headers,
+                json={
+                    "session_id": session.id,
+                    "event_type": "message_delta",
+                    "message": "fabricated narration",
+                },
+            )
+            assert event.status_code == 409, event.text
+            assert "recorded replay session" in event.json()["detail"]
+
+            # Handoff targeting the recording is refused; the reverse
+            # direction (replay as a context *source*) stays legal — the
+            # source guard lives in the store's goal-binding checks.
+            handoff = await client.post(
+                f"/v1/sessions/{live_sibling.id}/handoff",
+                headers=headers,
+                json={
+                    "idempotency_key": "replay-handoff-0001",
+                    "target_session_id": session.id,
+                    "token_budget": 256,
+                },
+            )
+            assert handoff.status_code == 409, handoff.text
+            detail = handoff.json()["detail"]
+            assert "recorded replay session" in (
+                detail["message"] if isinstance(detail, dict) else detail
+            )
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
 async def test_attach_cannot_cross_typed_project_rebinding(tmp_path):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()

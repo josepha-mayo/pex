@@ -5803,6 +5803,10 @@ class Pipeline:
         target = stored_target
         if source.id == target.id:
             raise ValueError("handoff source and target must differ")
+        if target.metadata.get("not_live_control") is True or target.metadata.get("observe_only"):
+            raise ValueError(
+                "recorded replay session: there is no live worker to receive a handoff"
+            )
         if not source.goal_id or not target.goal_id:
             raise ValueError("handoff requires attached source and target")
         if target.goal_id != source.goal_id:

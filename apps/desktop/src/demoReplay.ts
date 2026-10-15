@@ -313,10 +313,11 @@ export function replayArcCopy(
   return parts.join(" · ");
 }
 
-// Distinct pex_* tool calls the worker made mid-run — stamped by the ingest
-// pipeline for live sessions and by the replay finalizer for fixtures. It
-// proves the worker consulted the supervision surface; the calls themselves
-// are evidence, not verdicts.
+// Distinct pex_* tool calls the worker made mid-run — projected at the
+// /v1/sessions read path from the committed event ledger, so live, replay,
+// and pre-feature sessions all report the same way. It proves the worker
+// consulted the supervision surface; the calls themselves are evidence,
+// not verdicts.
 export function workerPexCalls(session: SessionRow | null | undefined): number {
   const value = session?.metadata?.worker_pex_calls;
   return typeof value === "number" && Number.isFinite(value) && value > 0

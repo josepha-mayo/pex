@@ -1,8 +1,10 @@
 // Standalone verification-report export: renders the bridge's raw
 // pex.verification-report.v1 payload into a self-contained HTML document a
 // reviewer can open without PEX. The raw JSON rides inside a <script
-// type="application/json"> tag so the artifact doubles as the machine-checkable
-// record — nothing is re-stated beyond what the bridge reported.
+// type="application/json"> tag for inspection and diffing — nothing is
+// re-stated beyond what the bridge reported. The machine-checkable artifact
+// is the evidence pack (pex.evidence-pack.v1), which embeds this report plus
+// the digests and event chain `verify_pack.py` recomputes.
 
 export function escapeHtml(value: string): string {
   return value

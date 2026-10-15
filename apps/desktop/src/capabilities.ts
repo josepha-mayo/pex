@@ -160,7 +160,7 @@ export function capabilityRows({
     {
       capability: "MCP tool surface",
       status: "implemented",
-      detail: "A scoped Model Context Protocol server is mounted at /mcp — workers with session-bound credentials can read their goal, verify claims, request decisions, or hand off; local anonymous calls are read-only.",
+      detail: "A scoped Model Context Protocol server is mounted at /mcp — workers with session-bound credentials can read their goal and project state, verify claims, report progress, request decisions, or hand off; local anonymous calls are read-only.",
     },
     benchRow(bench),
     {
