@@ -3,7 +3,30 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="PEX is a goal-aware supervisor for coding agents (OpenCode, Codex). Worker narration is signal, never proof — every claim is adjudicated against sealed goals and workspace evidence. Runs NVIDIA Nemotron-3-Super-120B on Nebius Token Factory.">
 <title>PEX — the judge for coding agents</title>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "PEX",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Windows, macOS, Linux",
+  "description": "Goal-aware supervisor for existing coding agents. Worker narration is signal, never proof: PEX seals the goal's acceptance surface, adjudicates every worker claim against workspace evidence, escalates conflicts to durable human rulings, and exports hash-chained evidence packs that verify offline. Deterministic supervision is handled in the bridge; semantic judgment runs NVIDIA nemotron-3-super-120b-a12b on Nebius Token Factory.",
+  "url": "https://josepha-mayo.github.io/pex/",
+  "codeRepository": "https://github.com/josepha-mayo/pex",
+  "license": "https://opensource.org/licenses/MIT",
+  "offers": { "@type": "Offer", "price": "0" },
+  "featureList": [
+    "Sealed acceptance surfaces with tamper detection",
+    "Independent claim adjudication — worker narration is signal, never proof",
+    "Durable human rulings that survive worker termination and propagate to siblings",
+    "Deterministic replay re-adjudication (18-fixture suite)",
+    "Scoped worker-facing MCP server (8 tools, 5 scopes)",
+    "Hash-chained evidence packs with offline and in-browser verification"
+  ]
+}
+</script>
 <style>
   :root {
     --bg: #071116; --panel: #0b171c; --card: #122229; --edge: #36545d;
@@ -100,7 +123,9 @@
     <h3>Self-verifying evidence pack <span class="pill pill-mint">renders in this browser</span></h3>
     <p>Every adjudication exports a hash-chained evidence bundle. The HTML below
     recomputes its own digests when you open it — a judge does not have to trust
-    us, or even run our code, to check the receipts.</p>
+    us, or even run our code, to check the receipts. Machines get the same
+    answer from <a href="demo/verdict.json"><code>demo/verdict.json</code></a> —
+    a distilled, receipt-derived summary of the suite.</p>
     <p><a href="demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.html">Open the captured-live evidence pack →</a>
     &nbsp;·&nbsp; <a href="demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.html">18/18 replay suite receipt →</a></p>
     <p>Offline verification, one command:</p>
