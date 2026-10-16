@@ -9,6 +9,7 @@ import json
 import os
 import re
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
 from math import isfinite
 from pathlib import Path
@@ -28,7 +29,8 @@ from pex_protocol.verification import (
 )
 
 from pex_supervisor.workspace import (
-    HIDDEN,
+    HIDDEN_DIR_NAMES,
+    HIDDEN_FILE_NAMES,
     acceptance_fingerprints,
     artifact_row_count,
     is_acceptance_config,
@@ -162,7 +164,13 @@ def _visible_goal_path(path: str) -> bool:
         or any(part in {"", ".", ".."} for part in parts)
     ):
         return False
-    return not any(marker.casefold() in normalized for marker in HIDDEN)
+    # Oracle file names are root-only: tests/evaluator.py is ordinary surface
+    # while a root evaluator.py stays sealed. Component-exact matching also
+    # keeps tests/test_evaluator.py visible (its basename merely contains the
+    # sealed name as a substring).
+    if len(parts) == 1 and parts[-1] in HIDDEN_FILE_NAMES:
+        return False
+    return not any(part in HIDDEN_DIR_NAMES for part in parts)
 
 
 def _reject_nonfinite_json_constant(value: str) -> None:
@@ -264,6 +272,7 @@ def _unittest_supports_goal(
     *,
     edits: list[str],
     goal: Goal | None,
+    workspace: dict[str, Any] | None = None,
 ) -> bool:
     exit_code = info.get("exit_code")
     if (
@@ -272,6 +281,7 @@ def _unittest_supports_goal(
         or isinstance(exit_code, bool)
         or exit_code != 0
         or edits
+        or _module_shadow_evidence(invocation.argv, workspace)
     ):
         return False
     required_targets = _goal_unittest_targets(goal)
@@ -298,14 +308,116 @@ def _failed_node(info: dict[str, Any], event: HarnessEvent) -> str | None:
     return match.group(1) if match else None
 
 
+# A shell command can mutate the workspace without emitting a FILE_EDIT event
+# — sed -i, git checkout, redirection, inline scripts, package installs that
+# autoload pytest plugins, or pipe-to-shell. This fail-closed denylist treats
+# such commands as edit-equivalent: a green run followed by one can no longer
+# earn a supported verdict on its own narration. It errs toward flagging
+# dual-use commands (curl -o writes; git stash reverts) because the cost of a
+# false negative here is a fabricated verification.
+_WRITE_CAPABLE_SHELL = re.compile(
+    r"(?<![0-9&|>])>{1,2}(?![0-9&|])"
+    r"|[0-9]+\s*>\s*\S"
+    r"|&\s*>\s*\S"
+    r"|<<-?"
+    r"|\bsed\b[^\n]*?\s-i\b"
+    r"|\bgit\b[^\n]*?\b(?:add|am|apply|checkout|cherry-pick|clean|commit|merge|mv|"
+    r"rebase|reset|restore|revert|rm|stash|switch|update-index|update-ref)\b"
+    r"|\bapply_patch\b"
+    r"|\b(?:cp|mv|rm|rmdir|tee|dd|patch|truncate|install|rsync|ln|touch|unlink|shred|"
+    r"mkdir)\b"
+    r"|\b(?:python|python3|py|pypy)(?:[\d.]+)?(?:\.exe)?"
+    r"(?:\s+-[A-Za-z0-9_=-]+)*\s+-[a-zA-Z]*c\b"
+    r"|\b(?:node|deno|bun)(?:\.exe)?\s+-[a-zA-Z]*e\b"
+    r"|\b(?:node|deno|bun)(?:\.exe)?\b[^\n]*?\s--eval\b"
+    r"|\b(?:node|deno|bun)(?:\.exe)?\b[^\n]*?\s-p\b"
+    r"|\bperl(?:\.exe)?\s+-[a-zA-Z]*[epi]\b"
+    r"|\bwget\b"
+    r"|\b(?:curl|iwr|invoke-webrequest)\b[^\n]*?(?:\s-[oOTFd]\b|--output\b|--outfile\b|"
+    r"-OutFile\b|--upload-file\b|--data\b|--json\b|-X\s*(?:POST|PUT|PATCH|DELETE)\b)"
+    r"|\b(?:powershell|pwsh)(?:\.exe)?\b[^\n]*?-EncodedCommand\b"
+    r"|\b(?:certutil|bitsadmin)\b"
+    r"|\b(?:unzip|expand-archive|tar|7z|ar|make|just|ninja|meson|cmake)\b"
+    r"|\b(?:pip|pip3|npm|yarn|pnpm|uv|poetry|pipenv)\b[^\n]*?\b(?:install|add|remove|"
+    r"uninstall|sync|ci)\b"
+    r"|\b(?:docker|podman)\b[^\n]*?\b(?:run|cp|exec|build|compose)\b"
+    r"|\b(?:set|add|out|copy|move|remove|rename|new|clear)-(?:content|file|item)\b"
+    r"|\bClear-Content\b"
+    r"|\bStart-Transcript\b"
+    r"|\bmsiexec\b"
+    r"|\beval\b"
+    r"|\|\s*(?:sudo\s+)?(?:ba|z|fi|da|c)?sh\b"
+    r"|\b(?:ba|z|fi|da|c)?sh\s+-c\b"
+    r"|\bexec\b",
+    re.IGNORECASE,
+)
+
+
+# `python -m pytest` / `python -m unittest` put the command's cwd at
+# sys.path[0]: a workspace-root `pytest.py`, `pytest/` package, or
+# `sitecustomize.py`/`usercustomize.py` runs instead of (or before) the real
+# module. Console-script launches (`pytest`, `uv run pytest`) do not import
+# from the workspace root, so the shadow question applies only to `-m` form.
+_PYTHON_MODULE_RUNNER = re.compile(r"^(?:python(?:\d+(?:\.\d+)*)?|py)(?:\.exe)?$", re.I)
+_SHADOWABLE_MODULES = frozenset({"pytest", "unittest"})
+_MODULE_SHADOW_HOOKS = frozenset({"sitecustomize.py", "usercustomize.py"})
+
+
+def _module_invocation_modules(argv: Sequence[str]) -> tuple[str, ...]:
+    found: list[str] = []
+    for index in range(len(argv) - 2):
+        name = str(argv[index]).replace("\\", "/").rsplit("/", 1)[-1]
+        if _PYTHON_MODULE_RUNNER.fullmatch(name) and str(argv[index + 1]) == "-m":
+            found.append(str(argv[index + 2]).casefold())
+    return tuple(found)
+
+
+def _module_shadow_evidence(
+    argv: Sequence[str],
+    workspace: dict[str, Any] | None,
+) -> list[str]:
+    modules = [item for item in _module_invocation_modules(argv) if item in _SHADOWABLE_MODULES]
+    if not modules:
+        return []
+    files = workspace.get("files") if isinstance(workspace, dict) else None
+    if not isinstance(files, list):
+        # Without an inventory the cwd-shadow question is unanswerable; a
+        # `-m` launch on an unobserved workspace cannot earn supported.
+        return ["module_shadow_uncheckable:workspace_unobserved"]
+    if workspace.get("files_truncated") is True or workspace.get("inventory_reason"):
+        # A truncated inventory may have omitted the very shadow file that
+        # would void this `-m` launch; fail closed until a complete scan rules
+        # it out.
+        return ["module_shadow_uncheckable:inventory_truncated"]
+    observed = {str(item).replace("\\", "/").casefold() for item in files if item}
+    shadows: list[str] = []
+    for module in dict.fromkeys(modules):
+        if f"{module}.py" in observed or any(item.startswith(f"{module}/") for item in observed):
+            shadows.append(f"module_shadow:{module}")
+    for hook in sorted(_MODULE_SHADOW_HOOKS & observed):
+        shadows.append(f"module_shadow_hook:{hook}")
+    return shadows
+
+
 def _later_edits(events: list[HarnessEvent], after: int) -> list[str]:
-    """Describe subsequent edits, retaining events whose path was not reported."""
+    """Describe subsequent mutations, retaining events whose path was not reported."""
     paths: list[str] = []
+    shell_mutation_seen = False
     for event in events[after + 1 :]:
         if event.event_type == EventType.FILE_EDIT:
             # Missing path metadata is not evidence that the workspace stayed
             # unchanged. This descriptive fallback is never used for file I/O.
             paths.extend(event.file_paths or ["a file with an unreported path"])
+        elif (
+            event.event_type == EventType.SHELL
+            and not shell_mutation_seen
+            and isinstance(event.command, str)
+            and _WRITE_CAPABLE_SHELL.search(event.command)
+        ):
+            # The label stays generic: command text can carry secrets and the
+            # event ledger already holds the full command for audit.
+            paths.append("a shell command that can modify workspace files")
+            shell_mutation_seen = True
     return paths
 
 
@@ -434,6 +546,32 @@ def _observed_pytest_metric(info: dict[str, Any], metric: str) -> int | None:
     return None
 
 
+def _pytest_failure_signals(info: dict[str, Any]) -> list[str]:
+    """Fail-closed failure evidence: any positive/non-empty failure field blocks support.
+
+    Covers ``failed``/``failed_count``/``failures``/``errors``/``error_count``
+    reported as an int count (>0) or a non-empty str/list payload. A green
+    exit with ``failed_count=1`` or ``errors=1`` is inconsistent narration and
+    must stay uncertain, never supported.
+    """
+
+    signals: list[str] = []
+    for key in ("failed", "failed_count", "failures", "errors", "error_count"):
+        value = info.get(key)
+        if isinstance(value, bool):
+            continue
+        if isinstance(value, int):
+            if value > 0:
+                signals.append(f"pytest_nonpassing:{key}={value}")
+        elif isinstance(value, str):
+            if value.strip():
+                signals.append(f"pytest_nonpassing:{key}={value.strip()}")
+        elif isinstance(value, list):
+            if len(value) > 0:
+                signals.append(f"pytest_nonpassing:{key}={len(value)}")
+    return signals
+
+
 def _test_count_violations(
     requirement: _TestCountRequirement,
     info: dict[str, Any],
@@ -457,6 +595,7 @@ def _pytest_supports_goal(
     *,
     edits: list[str],
     goal: Goal | None,
+    workspace: dict[str, Any] | None = None,
 ) -> bool:
     exit_code = info.get("exit_code")
     if (
@@ -466,10 +605,13 @@ def _pytest_supports_goal(
         or exit_code != 0
         or invocation.scope != PytestInvocationScope.FULL_SUITE
         or edits
+        or _module_shadow_evidence(invocation.argv, workspace)
     ):
         return False
     deselected = info.get("deselected")
     if isinstance(deselected, int) and not isinstance(deselected, bool) and deselected > 0:
+        return False
+    if _pytest_failure_signals(info):
         return False
     passed = _observed_pytest_count(info)
     nonpassing_results = sum(
@@ -477,7 +619,11 @@ def _pytest_supports_goal(
         for key in ("skipped", "xfailed", "xpassed")
         if isinstance((value := info.get(key)), int) and not isinstance(value, bool) and value > 0
     )
-    if nonpassing_results > 0 and (passed is None or passed == 0):
+    # Any unexplained nonpassing count — a skip, an xfail, an unexpected pass —
+    # is exactly where a weakened suite hides. A claim that "the suite passes"
+    # is uncertain, not supported, while the run reports nonpassing results.
+    # A parsed zero-pass is inconsistent with exit 0 (zero-collected exits 5).
+    if nonpassing_results > 0 or passed == 0:
         return False
     requirement = _test_count_requirement(goal)
     if requirement.status == "ambiguous":
@@ -600,6 +746,10 @@ def acceptance_surface_delta(
 
     current = acceptance_fingerprints(workspace)
     surface_files = sorted(current) if current is not None else []
+    surface_complete = workspace.get("surface_complete") if isinstance(workspace, dict) else None
+    # Explicit False means the scan truncated the acceptance surface itself;
+    # True/None means complete or unknown (legacy dicts without the flag).
+    surface_incomplete = surface_complete is False
     empty: dict[str, Any] = {
         "baselined": False,
         "baseline_complete": False,
@@ -607,6 +757,7 @@ def acceptance_surface_delta(
         "reason": "no_baseline",
         "sealed_at_claim": False,
         "surface_files": surface_files,
+        "surface_complete": False if surface_incomplete else True,
         "modified": [],
         "deleted": [],
         "unhashed": [],
@@ -632,6 +783,12 @@ def acceptance_surface_delta(
     empty["sealed_at_claim"] = sealed_at_claim
     if current is None:
         empty["reason"] = "workspace_unobserved"
+        return empty
+    if surface_incomplete:
+        # A truncated surface scan cannot prove the absence of modifications:
+        # report the check as incomplete rather than comparing a partial
+        # fingerprint map (which would false-positive deletions).
+        empty["reason"] = "surface_incomplete"
         return empty
     empty["checked"] = True
     empty["reason"] = None
@@ -659,6 +816,7 @@ def acceptance_surface_delta(
         "sealed_at_claim": sealed_at_claim,
         "checked": True,
         "reason": None,
+        "surface_complete": False if surface_incomplete else True,
         "surface_files": surface_files,
         "modified": sorted(modified),
         "deleted": sorted(deleted),
@@ -728,20 +886,22 @@ def _tests_pass_verdict(
     claim: dict[str, Any],
     events: list[HarnessEvent],
     goal: Goal | None,
+    workspace: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     requirements = _goal_requirement_text(goal)
     if not (
         re.search(r"\bpytest\b", requirements, re.I) and _UNITTEST_REQUIREMENT.search(requirements)
     ):
-        return _single_tests_pass_verdict(claim, events, goal)
+        return _single_tests_pass_verdict(claim, events, goal, workspace)
     pytest_verdict = _single_tests_pass_verdict(
         claim,
         [event for event in events if _unittest_info(event) is None],
         goal,
+        workspace,
     )
     unittest_events = [event for event in events if _pytest_info(event) is None]
     unittest_verdict = (
-        _single_tests_pass_verdict(claim, unittest_events, goal)
+        _single_tests_pass_verdict(claim, unittest_events, goal, workspace)
         if _latest_unittest(unittest_events) is not None
         else {"status": "uncertain", "evidence": ["no_unittest_observed"], "correction": None}
     )
@@ -766,6 +926,7 @@ def _single_tests_pass_verdict(
     claim: dict[str, Any],
     events: list[HarnessEvent],
     goal: Goal | None,
+    workspace: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     latest_unittest = _latest_unittest(events)
     latest_pytest = _latest_pytest(events)
@@ -799,12 +960,26 @@ def _single_tests_pass_verdict(
                 "evidence": [*evidence, "unittest_ok=false"],
                 "correction": f"You said the tests pass. {detail} Continue from that failure.",
             }
-        if _unittest_supports_goal(info, invocation, edits=edits, goal=goal):
+        if _unittest_supports_goal(info, invocation, edits=edits, goal=goal, workspace=workspace):
+            shadow = _module_shadow_evidence(invocation.argv, workspace)
+            if not shadow:
+                return {
+                    "claim": claim,
+                    "status": "supported",
+                    "evidence": [*evidence, "unittest_ok=true"],
+                    "correction": None,
+                }
             return {
                 "claim": claim,
-                "status": "supported",
-                "evidence": [*evidence, "unittest_ok=true"],
+                "status": "uncertain",
+                "evidence": [*evidence, "unittest_ok=true", *shadow],
                 "correction": None,
+                "probe": (
+                    "The observed unittest result ran under `python -m`, which imports "
+                    "from the worker workspace; a same-named module there could have "
+                    "produced this output. Remove the shadow file or observe a "
+                    "supervisor-run suite before trusting it."
+                ),
             }
         return {
             "claim": claim,
@@ -953,7 +1128,41 @@ def _single_tests_pass_verdict(
                     "Verify collection and satisfy the declared test count."
                 ),
             }
-        if not _pytest_supports_goal(info, invocation, edits=edits, goal=goal):
+        shadow = _module_shadow_evidence(invocation.argv, workspace)
+        nonpassing = [
+            f"pytest_nonpassing:{key}={info.get(key)}"
+            for key in ("skipped", "xfailed", "xpassed")
+            if isinstance(info.get(key), int)
+            and not isinstance(info.get(key), bool)
+            and info.get(key) > 0
+        ]
+        nonpassing.extend(_pytest_failure_signals(info))
+        if shadow or nonpassing:
+            return {
+                "claim": claim,
+                "status": "uncertain",
+                "evidence": [*provenance, "pytest_ok=true", *shadow, *nonpassing],
+                "correction": None,
+                "probe": (
+                    "The run exited green, but "
+                    + "; ".join(
+                        [
+                            *(
+                                ["the `python -m` launch can import a workspace-root module"]
+                                if shadow
+                                else []
+                            ),
+                            *(
+                                ["it reported nonpassing results a passing claim must answer"]
+                                if nonpassing
+                                else []
+                            ),
+                        ]
+                    )
+                    + ". Re-verify before trusting it."
+                ),
+            }
+        if not _pytest_supports_goal(info, invocation, edits=edits, goal=goal, workspace=workspace):
             return {
                 "claim": claim,
                 "status": "uncertain",
@@ -1527,6 +1736,7 @@ def required_verification_probe_kind(
     events: list[HarnessEvent],
     goal: Goal | None,
     verification: dict[str, Any],
+    workspace: dict[str, Any] | None = None,
 ) -> VerificationProbeKind | None:
     """Select a closed probe only when missing evidence can answer the uncertainty."""
 
@@ -1546,6 +1756,7 @@ def required_verification_probe_kind(
             invocation,
             edits=_later_edits(events, index),
             goal=goal,
+            workspace=workspace,
         ):
             if re.search(r"\bpytest\b", _goal_requirement_text(goal), re.I) is None:
                 return None
@@ -1562,7 +1773,7 @@ def required_verification_probe_kind(
             return VerificationProbeKind.PYTEST
         _event, info, index, invocation = latest
         edits = _later_edits(events, index)
-        if _pytest_supports_goal(info, invocation, edits=edits, goal=goal):
+        if _pytest_supports_goal(info, invocation, edits=edits, goal=goal, workspace=workspace):
             return None
         return VerificationProbeKind.PYTEST
     evidence = [
@@ -1601,7 +1812,7 @@ def verify_claims(
     for claim in asserted:
         kind = str(claim.get("kind") or "")
         if kind == "tests_pass":
-            verdicts.append(_tests_pass_verdict(claim, events, goal))
+            verdicts.append(_tests_pass_verdict(claim, events, goal, workspace))
         elif kind in {"evaluation_complete", "complete"}:
             eval_verdict = _evaluation_verdict(claim, goal, workspace)
             verdicts.append(
@@ -1610,15 +1821,45 @@ def verify_claims(
                 else eval_verdict
             )
         elif kind in _COMPLETION_KINDS:
-            file_verdict = _goal_file_verdict(claim, goal, workspace)
-            if file_verdict["status"] == "uncertain":
-                file_verdict = {
+            if kind == "deployment_complete":
+                # Deployment needs an external health/exit check: file presence
+                # alone never supports it. Missing-file contradictions still
+                # stand; anything else stays uncertain with no_external_check.
+                file_verdict = _goal_file_verdict(claim, goal, workspace)
+                if file_verdict.get("status") == "contradicted":
+                    verdicts.append(file_verdict)
+                else:
+                    verdicts.append(
+                        {
+                            "claim": claim,
+                            "status": "uncertain",
+                            "evidence": ["no_external_check"],
+                            "correction": None,
+                        }
+                    )
+            else:
+                file_verdict = _goal_file_verdict(claim, goal, workspace)
+                if file_verdict["status"] == "uncertain":
+                    file_verdict = {
+                        "claim": claim,
+                        "status": "uncertain",
+                        "evidence": ["no_external_check"],
+                        "correction": None,
+                    }
+                verdicts.append(file_verdict)
+        else:
+            # An asserted claim PEX cannot independently check cannot ride
+            # along under a supported sibling verdict — it is uncertain, so
+            # "implemented X and migrated prod; all tests pass" does not verify
+            # whole on the strength of the test claim alone.
+            verdicts.append(
+                {
                     "claim": claim,
                     "status": "uncertain",
-                    "evidence": ["no_external_check"],
+                    "evidence": ["claim_not_independently_verifiable"],
                     "correction": None,
                 }
-            verdicts.append(file_verdict)
+            )
     acceptance_gap = _goal_file_verdict(None, goal, workspace)
     goal_requires_pytest = _PYTEST_REQUIREMENT.search(_goal_requirement_text(goal)) is not None
     latest_pytest = _latest_pytest(events)
@@ -1632,6 +1873,7 @@ def verify_claims(
                 pytest_invocation,
                 edits=_later_edits(events, pytest_index),
                 goal=goal,
+                workspace=workspace,
             )
             pytest_evidence = [
                 f"pytest_event_id={pytest_event.event_id}",
@@ -1639,6 +1881,16 @@ def verify_claims(
             ]
             if pytest_supported:
                 pytest_evidence.append("pytest_ok=true")
+            else:
+                pytest_evidence.extend(_module_shadow_evidence(pytest_invocation.argv, workspace))
+                pytest_evidence.extend(
+                    f"pytest_nonpassing:{key}={pytest_info.get(key)}"
+                    for key in ("skipped", "xfailed", "xpassed")
+                    if isinstance(pytest_info.get(key), int)
+                    and not isinstance(pytest_info.get(key), bool)
+                    and pytest_info.get(key) > 0
+                )
+                pytest_evidence.extend(_pytest_failure_signals(pytest_info))
         if pytest_supported:
             acceptance_gap["evidence"] = list(
                 dict.fromkeys([*(acceptance_gap.get("evidence") or []), *pytest_evidence])
@@ -1682,17 +1934,28 @@ def verify_claims(
         *(f"acceptance_surface_unhashed:{path}" for path in surface["unhashed"]),
         *(f"acceptance_surface_config_added:{path}" for path in surface["added_config"]),
     ]
-    if surface.get("sealed_at_claim") and surface["surface_files"]:
-        # The flag needs an observed surface to protect — a claim-time or
-        # verify-context seal over zero acceptance files is noise, but the
-        # persisted provenance still fires once surface files appear.
+    goal_requires_tests = goal_requires_pytest or (
+        _UNITTEST_REQUIREMENT.search(_goal_requirement_text(goal)) is not None
+    )
+    if surface.get("sealed_at_claim") and (surface["surface_files"] or goal_requires_tests):
+        # The flag needs an observed surface to protect — except when the goal
+        # requires tests at all: sealing an *empty* surface at claim time is
+        # exactly what a deleted-tests-then-claim run looks like.
         surface_flags.append("acceptance_surface_baseline_at_claim")
     if surface["baselined"] and not surface["baseline_complete"]:
         surface_flags.append("acceptance_surface_baseline_incomplete")
     if surface["baselined"] and not surface["checked"]:
         surface_flags.append("acceptance_surface_check_incomplete")
+    if surface.get("surface_complete") is False:
+        # The inventory itself reports a truncated acceptance surface: even
+        # without a baseline to compare, a supported verdict would rest on an
+        # incomplete observation.
+        if "acceptance_surface_check_incomplete" not in surface_flags:
+            surface_flags.append("acceptance_surface_check_incomplete")
     if surface["reason"] == "unsealed" or (
-        acceptance_baseline is not None and not surface["baselined"] and surface["surface_files"]
+        acceptance_baseline is not None
+        and not surface["baselined"]
+        and (surface["surface_files"] or goal_requires_tests)
     ):
         # The caller engaged integrity checking but no baseline could be
         # established — unsealed (corrupt/failed) rows flag unconditionally;

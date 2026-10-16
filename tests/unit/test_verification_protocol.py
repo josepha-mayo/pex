@@ -73,9 +73,15 @@ def test_probe_is_typed_and_rejects_executable_or_escaping_input():
     "command",
     [
         "pytest -q",
+        "pytest -x -q",
+        "pytest -xvs --tb=short",
         "python -m pytest -q",
         "uv run pytest -q",
+        "uv run --locked pytest -q",
+        "uv run --no-sync --frozen pytest -q",
         "uv run --frozen python -m pytest -q",
+        "poetry run pytest -q",
+        "pipenv run pytest -q",
     ],
 )
 def test_classifier_recognizes_only_direct_full_suite_invocations(command):
@@ -104,6 +110,103 @@ def test_classifier_marks_subset_and_selection_modes_targeted(command):
     assert invocation is not None
     assert invocation.scope == PytestInvocationScope.TARGETED
     assert invocation.selectors
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "pytest -p myplugin",
+        "pytest -p myplugin -q",
+        "pytest -pno:cacheprovider -q",
+        "pytest --junitxml report.xml -p conftest_hooks",
+        "python -m pytest -p myplugin",
+        "uv run --frozen pytest -p myplugin -q",
+    ],
+)
+def test_classifier_never_promotes_plugin_loading_flags_to_full_suite(command):
+    invocation = classify_pytest_invocation(command)
+    # A -p plugin can hook sessionfinish/summary output, so the run may stay
+    # pytest evidence but must never earn credit-eligible scope.
+    assert invocation is not None
+    assert invocation.scope == PytestInvocationScope.TARGETED
+    assert invocation.selection_flags
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "uv run --python 3.12 pytest -q",
+        "uv run --python=3.12 pytest -q",
+        "uv run --directory other pytest -q",
+        "uv run --env-file .env pytest -q",
+        "uv run --env-file=.env pytest -q",
+        "uv run --isolated pytest -q",
+        "uv run --with pytest-xdist pytest -q",
+        "uv run --with=pytest-xdist pytest -q",
+        "uv run --no-project pytest -q",
+        "uv run --project other pytest -q",
+        "uv run --project=other pytest -q",
+        "uv run --active pytest -q",
+        "uv run --index https://mirror.invalid/simple pytest -q",
+        "uv run --locked --isolated pytest -q",
+        "uv run --python 3.12 python -m pytest -q",
+        "uv run --with pytest-xdist pytest tests/test_parser.py",
+    ],
+)
+def test_classifier_denies_credit_scope_for_env_selecting_uv_wrappers(command):
+    invocation = classify_pytest_invocation(command)
+    # Wrapper flags that choose the interpreter, env, index, or cwd keep the
+    # run classified as a test invocation but void credit-eligible scope.
+    assert invocation is not None
+    assert invocation.scope == PytestInvocationScope.TARGETED
+    assert invocation.selection_flags
+
+
+def test_scope_invalidating_invocations_cannot_satisfy_a_typed_pytest_probe():
+    full_probe = _probe(relative_targets=[])
+    exact_probe = _probe()
+    for command in (
+        "pytest -p myplugin -q",
+        "uv run --python 3.12 pytest -q",
+        "uv run --with pytest-xdist pytest -q",
+        "uv run --isolated pytest -q",
+        "uv run --directory other pytest -q",
+        "uv run --env-file .env pytest tests/test_parser.py",
+    ):
+        invocation = classify_pytest_invocation(command)
+        assert invocation is not None
+        assert invocation.scope != PytestInvocationScope.FULL_SUITE
+        assert not full_probe.matches_pytest_invocation(invocation)
+        assert not exact_probe.matches_pytest_invocation(invocation)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "uv run --isolated python -m unittest",
+        "uv run --env-file .env python -m unittest discover",
+        "uv run --directory other python -m unittest -v",
+        "uv run --python 3.12 python -m unittest test_timeline.py",
+    ],
+)
+def test_unittest_classifier_denies_credit_scope_for_env_selecting_uv_wrappers(command):
+    invocation = classify_unittest_invocation(command)
+    assert invocation is not None
+    assert invocation.scope == UnittestInvocationScope.TARGETED
+    assert invocation.selection_flags
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "uv run --upgrade pytest",
+        "uv run --quiet pytest",
+        "uv run --with",
+        "uv run --python",
+    ],
+)
+def test_classifier_rejects_uv_wrappers_with_unparseable_boundaries(command):
+    assert classify_pytest_invocation(command) is None
 
 
 def test_classifier_unwraps_only_one_literal_powershell_command_pytest_payload():

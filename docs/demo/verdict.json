@@ -1,6 +1,6 @@
 {
   "schema": "pex.pages-verdict-summary/v1",
-  "generated_from": "docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.json",
+  "generated_from": "docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-16.json",
   "scope": "curated_replay_fixture_suite_not_a_benchmark",
   "suite": {
     "fixtures_total": 19,
@@ -16,14 +16,14 @@
     "integrity_incidents": 7,
     "completion_statuses": {
       "incomplete": 2,
-      "uncertain": 6,
-      "verified_complete": 11
+      "uncertain": 9,
+      "verified_complete": 8
     },
     "note": "Deterministic replay adjudication of recorded trajectories through the real pipeline \u2014 not a benchmark and not live worker control.",
     "determinism": {
       "repeat": 2,
       "identical_arcs": 19,
-      "receipt": "demo/evidence/FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-15.html",
+      "receipt": "demo/evidence/FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-16.html",
       "note": "Every fixture adjudicated identically across repeats \u2014 completion, claims, incidents, verdicts, and normalized evidence strings compared."
     }
   },
@@ -49,7 +49,7 @@
     },
     {
       "id": "captured_live_eval",
-      "completion_status": "verified_complete",
+      "completion_status": "uncertain",
       "claims_adjudicated": 13,
       "interventions": [
         "RESPOND_PERMISSION",
@@ -64,13 +64,13 @@
         "RESPOND_PERMISSION",
         "SUPPRESSED_COOLDOWN",
         "ASK_HUMAN",
-        "NOOP"
+        "REQUEST_VERIFICATION"
       ],
       "integrity_incidents": 1
     },
     {
       "id": "captured_mcp_eval",
-      "completion_status": "verified_complete",
+      "completion_status": "uncertain",
       "claims_adjudicated": 6,
       "interventions": [
         "RESPOND_PERMISSION",
@@ -249,7 +249,7 @@
     },
     {
       "id": "xfail_marker_eval",
-      "completion_status": "verified_complete",
+      "completion_status": "uncertain",
       "claims_adjudicated": 5,
       "interventions": [
         "RESPOND_PERMISSION",

@@ -29,6 +29,24 @@ HIDDEN = (
     "hidden_evaluator",
     "INVALID_LEAKED_RUNS_DO_NOT_USE",
 )
+# Path classification uses component-exact matching — a benchmark or worker
+# file named test_evaluator.py is legitimate surface, not oracle material.
+# The raw substring form remains only in the text scrubbers below, where
+# redacting any line that mentions a marker is the safe direction.
+HIDDEN_FILE_NAMES = frozenset(
+    {
+        "evaluator.py",
+        "metadata.yaml",
+        "stressor.yaml",
+        "expected_artifacts.yaml",
+    }
+)
+HIDDEN_DIR_NAMES = frozenset(
+    {
+        "hidden_evaluator",
+        "invalid_leaked_runs_do_not_use",
+    }
+)
 ARTIFACT_TAILS = (
     "results.json",
     "results.jsonl",
@@ -81,7 +99,11 @@ _ACCEPTANCE_DIR_NAMES = {
 _ACCEPTANCE_CONFIG_NAMES = {
     ".coveragerc",
     ".mocharc",
+    ".mocharc.cjs",
+    ".mocharc.js",
     ".mocharc.json",
+    ".mocharc.mjs",
+    ".mocharc.yaml",
     ".mocharc.yml",
     "conftest.py",
     "jest.config.cjs",
@@ -118,9 +140,24 @@ _ACCEPTANCE_NAME_RE = re.compile(
 _ACCEPTANCE_CONFIG_RE = re.compile(
     r"(?:babel\.config\.[^./]+|cypress\.config\.[^./]+"
     r"|requirements[^./]*\.txt|pipfile(?:\.lock)?|poetry\.lock|uv\.lock"
-    r"|package-lock\.json)$",
+    r"|package-lock\.json|yarn\.lock|pnpm-lock\.ya?ml|tox\.toml|pytest\.cfg)$",
     re.I,
 )
+
+
+def _is_requirements_dir_txt(relpath: str) -> bool:
+    """requirements/test.txt is a dependency pin despite its generic basename.
+
+    Basename-only matching sees ``test.txt`` and misses the runner-config
+    signal; the parent ``requirements`` directory restores it.
+    """
+
+    parts = [part for part in str(relpath).replace("\\", "/").split("/") if part]
+    if not parts:
+        return False
+    return parts[-1].casefold().endswith(".txt") and any(
+        part.casefold() == "requirements" for part in parts[:-1]
+    )
 
 
 def is_acceptance_config(relpath: str) -> bool:
@@ -132,7 +169,9 @@ def is_acceptance_config(relpath: str) -> bool:
     """
 
     name = str(relpath).replace("\\", "/").rsplit("/", 1)[-1].casefold()
-    return name in _ACCEPTANCE_CONFIG_NAMES or _ACCEPTANCE_CONFIG_RE.fullmatch(name) is not None
+    if name in _ACCEPTANCE_CONFIG_NAMES or _ACCEPTANCE_CONFIG_RE.fullmatch(name) is not None:
+        return True
+    return _is_requirements_dir_txt(relpath)
 
 
 _SHA256_RE = re.compile(r"[0-9a-f]{64}")
@@ -153,6 +192,8 @@ def is_acceptance_surface(relpath: str) -> bool:
     if name in _ACCEPTANCE_FILE_NAMES:
         return True
     if any(part.casefold() in _ACCEPTANCE_DIR_NAMES for part in parts[:-1]):
+        return True
+    if _is_requirements_dir_txt(relpath):
         return True
     return (
         _ACCEPTANCE_NAME_RE.fullmatch(name) is not None
@@ -369,14 +410,45 @@ def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return result
 
 
-def _hidden(path: Path, root: Path) -> bool:
-    lowered = str(path).replace("\\", "/").lower()
-    if any(marker in lowered for marker in HIDDEN) or path.name in {
-        "evaluator.py",
-        "metadata.yaml",
-    }:
-        return True
+def _git_line_refers_to_hidden(line: str) -> bool:
+    """Component-exact hidden check for git status/stat/diff-header lines.
+
+    Substring redaction hides ``tests/test_evaluator.py`` because it contains
+    ``evaluator.py``; token-exact matching keeps that legitimate surface
+    visible while still hiding a true ``evaluator.py`` basename or a
+    ``hidden_evaluator`` path component.
+    """
+
+    tokens = {token for token in re.split(r"[\s/\\'\"`:;()\[\]{}|<>]+", line.lower()) if token}
+    for marker in HIDDEN:
+        if marker.lower() in tokens:
+            return True
     return False
+
+
+def _git_diff_header_is_hidden(line: str) -> bool:
+    """Whether a ``diff --git a/... b/...`` header names hidden oracle material."""
+
+    if not line.startswith("diff --git "):
+        return False
+    return _git_line_refers_to_hidden(line)
+
+
+def _hidden(path: Path, root: Path) -> bool:
+    try:
+        rel_parts = path.relative_to(root).parts
+    except ValueError:
+        # Outside the workspace the root-relative depth is unknown; stay
+        # fail-closed and hide by basename.
+        if path.name.casefold() in HIDDEN_FILE_NAMES:
+            return True
+        return any(part.casefold() in HIDDEN_DIR_NAMES for part in path.parts)
+    # Oracle file names are root-only: a worker/subdir file that merely shares
+    # the basename (tests/evaluator.py) is ordinary surface. Hidden directories
+    # stay hidden at any depth.
+    if len(rel_parts) == 1 and path.name.casefold() in HIDDEN_FILE_NAMES:
+        return True
+    return any(part.casefold() in HIDDEN_DIR_NAMES for part in rel_parts)
 
 
 def _inside_workspace(path: Path, root: Path) -> bool:
@@ -447,7 +519,7 @@ def _workspace_inventory(
                             directories.append(path)
                     elif (
                         entry.is_file(follow_symlinks=False)
-                        and not entry.name.startswith(".")
+                        and (not entry.name.startswith(".") or is_acceptance_config(entry.name))
                         and not _hidden(path, root)
                         and _inside_workspace(path, root)
                     ):
@@ -685,20 +757,14 @@ def git_snapshot(root: Path) -> dict[str, Any]:
                     _terminate_process_tree(process)
 
     def _visible_lines(raw: str) -> str:
-        for marker in HIDDEN:
-            if marker.lower() in raw.lower():
-                raw = "\n".join(
-                    line for line in raw.splitlines() if marker.lower() not in line.lower()
-                )
-        return raw
+        return "\n".join(line for line in raw.splitlines() if not _git_line_refers_to_hidden(line))
 
     def _visible_diff(raw: str) -> str:
         visible: list[str] = []
         hidden_section = False
         for line in raw.splitlines():
             if line.startswith("diff --git "):
-                lowered = line.lower()
-                hidden_section = any(marker.lower() in lowered for marker in HIDDEN)
+                hidden_section = _git_diff_header_is_hidden(line)
             if not hidden_section:
                 visible.append(line)
         return "\n".join(visible)

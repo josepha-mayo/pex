@@ -162,10 +162,10 @@ and runnable through Dec 15 judging.
 
 ```text
 git clone https://github.com/josepha-mayo/pex && cd pex
-npm install --prefix apps/desktop    # once — the UI bundle
-uv run python scripts/demo.py        # bridge + UI, no keys needed
+npm install --prefix apps/desktop    # once — the web UI bundle (vite only, no Rust/Tauri)
+uv run python scripts/demo.py        # bridge :7420 + web UI :1420, no keys needed
 # open http://127.0.0.1:1420 → "Recorded replays" → run premature_stop_eval
-# (tagged "start here") — then worker_escalation_eval, or any of the 18
+# (tagged "start here") — then worker_escalation_eval, or any of the 19
 # fixtures; each replays a recorded trajectory through the
 # real adjudication pipeline — four were exported from real live worker
 # sessions — and shows its verdict.
@@ -191,7 +191,7 @@ new since it opened:
   escalation captured live into `worker_escalation_eval`.
 - Durable human rulings: journaled rulings distinct from editable goal
   text, surviving worker termination, propagating to sibling workers.
-- The deterministic replay system: 18-fixture suite, evaluator, replay
+- The deterministic replay system: 19-fixture suite, evaluator, replay
   isolation (`replay: true` + `not_live_control: true` enforced server-side —
   sealed ledgers refuse control mutations yet remain legitimate handoff
   *sources* via `sealed_source` triggers: evidence in, control out).
@@ -199,8 +199,8 @@ new since it opened:
   adjudicated verdict — "All tests passed" shown *contradicted* on a
   premature stop, then *verified* after a real pytest run.
 - Evidence packs + offline verification (`scripts/verify_pack.py`).
-- The desktop supervision surface (fixtures rail, capabilities panel,
-  inspector, escalation affordances).
+- The web UI supervision surface (fixtures rail, capabilities panel,
+  inspector, escalation affordances; packaged Tauri desktop frozen/optional).
 
 ## Tooling feedback (required field — draft)
 

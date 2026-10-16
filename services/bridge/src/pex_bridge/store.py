@@ -1338,6 +1338,7 @@ MAX_CREATED_HUMAN_DECISIONS_PER_SESSION = 128
 MAX_FINGERPRINT_COHORT_EVENTS = 500
 MCP_VERIFY_CLAIM_TOOL = "pex.verify_claim"
 MCP_CLAIM_VERIFY_FINGERPRINT_SCHEMA = "pex.mcp.verify_claim.v1"
+MCP_CLAIM_VERIFY_SUBJECT_SCHEMA = "pex.mcp.verify_claim.subject.v1"
 MCP_CHECK_ACTION_TOOL = "pex.check_action"
 MCP_ACTION_CHECK_FINGERPRINT_SCHEMA = "pex.mcp.check_action.v1"
 _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
@@ -4498,6 +4499,58 @@ def claim_verification_request_fingerprint(
         "goal_id": goal_id,
         "project": _project_key(project_id),
         "claim": claim,
+    }
+    return hashlib.sha256(_canonical_json(payload).encode("utf-8")).hexdigest()
+
+
+def _normalize_claim_subject(claim: str) -> str:
+    """Normalize one claim for session-bound receipt identity.
+
+    Subject-only normalization: casefold, collapse whitespace, strip trailing
+    punctuation. The request fingerprint keeps the exact statement; only the
+    supersession subject is normalized so "All tests passed." and
+    "all  tests PASSED!" retire the same receipt trail.
+    """
+
+    collapsed = " ".join(claim.split())
+    stripped = collapsed.strip().rstrip(".!?;:,").strip()
+    return stripped.casefold()
+
+
+def claim_verification_subject_fingerprint(
+    *,
+    session_id: str,
+    goal_id: str,
+    project_id: str,
+    claim: str,
+) -> str:
+    """Hash the session-bound claim identity used to supersede stale receipts.
+
+    Unlike the request fingerprint this excludes the principal: rotating a
+    session credential must not orphan the claim's receipt trail. The claim
+    subject is normalized (casefold, collapsed whitespace, no trailing
+    punctuation) so cosmetic rephrasing cannot fork the receipt trail.
+    """
+
+    _validate_store_id(session_id, label="claim verification session id")
+    _validate_store_id(goal_id, label="claim verification goal id")
+    if (
+        not isinstance(project_id, str)
+        or not project_id.strip()
+        or len(project_id) > MAX_PROJECT_ID_LENGTH
+    ):
+        raise ValueError("claim verification project id is invalid")
+    if not isinstance(claim, str) or not claim.strip() or len(claim) > 4_000:
+        raise ValueError("claim verification statement is invalid")
+    normalized = _normalize_claim_subject(claim)
+    if not normalized:
+        raise ValueError("claim verification statement is invalid")
+    payload = {
+        "schema": MCP_CLAIM_VERIFY_SUBJECT_SCHEMA,
+        "session_id": session_id,
+        "goal_id": goal_id,
+        "project": _project_key(project_id),
+        "claim": normalized,
     }
     return hashlib.sha256(_canonical_json(payload).encode("utf-8")).hexdigest()
 
@@ -16011,6 +16064,13 @@ class Store:
             raise ValueError("claim verification trigger statement is invalid")
         if len(_dump(event).encode("utf-8")) > 64_000:
             raise ValueError("claim verification trigger exceeds its bound")
+        claim_fingerprint = claim_verification_subject_fingerprint(
+            session_id=event.session_id,
+            goal_id=event.goal_id,
+            project_id=project_id,
+            claim=statement,
+        )
+        valid_as_of = _utc_iso(event.ts)
 
         for item in contexts:
             if item.goal_id != event.goal_id:
@@ -16057,6 +16117,14 @@ class Store:
                 raise ValueError("claim verification result lacks its trigger source")
             if item.metadata.get("status") != outcome:
                 raise ValueError("claim verification result outcome mismatch")
+            if item.metadata.get("claim_fingerprint") != claim_fingerprint:
+                raise ValueError("claim verification result claim fingerprint is invalid")
+            if item.metadata.get("valid_as_of") != valid_as_of:
+                raise ValueError("claim verification result validity timestamp is invalid")
+            if item.metadata.get("superseded") is not False:
+                raise ValueError("claim verification result cannot be minted superseded")
+            if item.metadata.get("superseded_by") is not None:
+                raise ValueError("claim verification result supersession must be empty")
             if item.metadata.get("verified") is True and outcome != "supported":
                 raise ValueError("only a supported outcome may mint verified context")
             if item.metadata.get("verified") is True and item.provenance not in {
@@ -16135,6 +16203,7 @@ class Store:
             "raw_status": raw_status,
             "outcome": outcome,
             "verified": outcome == "supported",
+            "valid_as_of": valid_as_of,
             "claims": extracted_claims,
             "evidence": verification_evidence,
             "correction": correction,
@@ -16170,13 +16239,21 @@ class Store:
             await _configure_connection(transaction)
             await transaction.execute("BEGIN IMMEDIATE")
             try:
-                principal, session, goal, _ = await _load_active_mcp_principal_authority(
+                principal, session, goal, goal_binding = await _load_active_mcp_principal_authority(
                     transaction,
                     principal_id,
                     checked_at=now,
                     required_scope=tool,
                 )
                 live_project = _session_project(session)
+                if (
+                    session.metadata.get("replay") is True
+                    or session.metadata.get("not_live_control") is True
+                    or session.metadata.get("observe_only")
+                ):
+                    raise ValueError(
+                        "recorded replay session: there is no live worker to verify a claim for"
+                    )
                 if event.session_id != session.id or event.harness_type != session.harness_type:
                     raise ValueError("claim verification event reporter identity mismatch")
                 if event.goal_id != goal.id:
@@ -16365,6 +16442,60 @@ class Store:
                         _canonical_json(receipt),
                     ),
                 )
+                if outcome == "contradicted":
+                    # Only a contradicted verdict retires a still-standing
+                    # supported receipt for this exact session claim; an
+                    # uncertain observation never supersedes standing support,
+                    # and the reverse never resurrects one. Covers the PEX
+                    # receipt and any verified items minted beside it.
+                    superseded_cursor = await transaction.execute(
+                        "SELECT id, json FROM context_items "
+                        "WHERE project_binding = ? AND goal_id = ? "
+                        "AND json_extract(json, '$.metadata.claim_fingerprint') = ? "
+                        "AND json_extract(json, '$.metadata.source_session_id') = ? "
+                        "AND json_extract(json, '$.metadata.status') = 'supported' "
+                        "AND COALESCE(json_extract(json, '$.metadata.superseded'), 0) = 0 "
+                        "AND (json_extract(json, '$.metadata.valid_as_of') IS NULL "
+                        "OR json_extract(json, '$.metadata.valid_as_of') <= ?) "
+                        "AND (json_extract(json, '$.metadata.receipt_type') = "
+                        "'mcp_claim_verification' "
+                        "OR json_extract(json, '$.metadata.verified') = 1) "
+                        "ORDER BY id LIMIT 10001",
+                        (
+                            goal_binding.project_binding,
+                            goal.id,
+                            claim_fingerprint,
+                            session.id,
+                            valid_as_of,
+                        ),
+                    )
+                    superseded_rows = await superseded_cursor.fetchall()
+                    if len(superseded_rows) > 10_000:
+                        raise RuntimeError("claim verification supersession scan is bounded")
+                    superseded_at = _utc_iso(now)
+                    for superseded_row in superseded_rows:
+                        stale_item = ContextItem.model_validate_json(superseded_row["json"])
+                        stale_item.metadata = {
+                            **stale_item.metadata,
+                            "superseded": True,
+                            "superseded_by": receipt_item.id,
+                            "superseded_at": superseded_at,
+                        }
+                        updated = await transaction.execute(
+                            "UPDATE context_items SET json = ? WHERE id = ? "
+                            "AND project_binding = ? AND goal_id = ? "
+                            "AND (json_extract(json, '$.metadata.valid_as_of') IS NULL "
+                            "OR json_extract(json, '$.metadata.valid_as_of') <= ?)",
+                            (
+                                _dump(stale_item),
+                                stale_item.id,
+                                goal_binding.project_binding,
+                                goal.id,
+                                valid_as_of,
+                            ),
+                        )
+                        if updated.rowcount != 1:
+                            raise RuntimeError("claim verification supersession was lost")
                 await _require_session_workspace_current(transaction, session)
                 await transaction.commit()
             except aiosqlite.IntegrityError as exc:
@@ -29831,6 +29962,9 @@ class Store:
                     live_binding = await _project_binding_snapshot(transaction, project_id)
                     query = "SELECT json FROM context_items WHERE project_binding = ?"
                     parameters = [live_binding]
+                # A claim-superseded receipt stays durable for audit but must never
+                # re-enter selection: mirror the goal-succession exclusion above.
+                query += " AND COALESCE(json_extract(json, '$.metadata.superseded'), 0) = 0"
                 if observed_at is not None:
 
                     def observed(value: object) -> bool:

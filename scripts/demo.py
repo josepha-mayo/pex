@@ -1,14 +1,17 @@
-"""One-command judge demo: demo bridge + vite dev UI.
+"""One-command judge demo: demo bridge + web UI (vite).
 
 Run from the repository root:
 
-    uv run python scripts/demo.py          # or: python scripts/demo.py
-    uv run python scripts/demo.py --live   # plus a real OpenCode worker
+    uv run python scripts/demo.py              # bridge :7420 + web UI :1420
+    uv run python scripts/demo.py --live       # plus a real OpenCode worker
+    uv run python scripts/demo.py --bridge-only  # bridge only, no web UI
+    uv run python scripts/demo.py --prebuilt     # bridge + prebuilt dist via preview
 
-Starts the test-scoped demo bridge on http://127.0.0.1:7420 and the vite dev
-server on http://127.0.0.1:1420 (which proxies /v1 to the bridge), then prints
-the URL to open. Ctrl+C stops everything. No agent install is required - the
-setup card offers recorded-replay fixtures immediately.
+Starts the test-scoped demo bridge on http://127.0.0.1:7420 and the web UI
+vite server on http://127.0.0.1:1420 (which proxies /v1 to the bridge), then
+prints the URL to open. Ctrl+C stops everything. No agent install is required -
+the setup card offers recorded-replay fixtures immediately. The packaged
+Tauri desktop is frozen/optional — the default here is the web UI.
 
 ``--live`` additionally starts ``opencode serve`` on a free OpenCode Zen model
 (no API key, fresh credential-free homes), seeds a throwaway false-test-claim
@@ -16,9 +19,15 @@ workspace, attaches a persistent goal, and sends the task: a live worker under
 live supervision. Needs the ``opencode`` CLI on PATH (``npm i opencode-ai``)
 or ``PEX_OPENCODE_BIN``.
 
+``--bridge-only`` starts only the bridge (no web UI process).
+``--prebuilt`` serves the prebuilt web UI from ``apps/desktop/dist``
+(``npm run build`` once) via ``vite preview`` instead of the vite dev server.
+
 This launches the same processes the demo runbook lists separately; it adds
 no supervision behavior of its own. Environment variables documented in
-``demo_bridge.py`` pass straight through.
+``demo_bridge.py`` pass straight through. Ports: ``PEX_DEMO_PORT`` (bridge,
+default 7420), ``PEX_VITE_PORT`` (web UI, default 1420), ``PEX_OPENCODE_PORT``
+(``--live`` worker server, default 4096).
 """
 
 from __future__ import annotations
@@ -152,11 +161,29 @@ def _terminate_tree(child: subprocess.Popen) -> None:
 
 
 def _parse(argv: list[str] | None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="PEX one-command demo")
+    parser = argparse.ArgumentParser(
+        description="PEX one-command demo (bridge :7420 + web UI :1420)",
+        epilog=(
+            "ports: PEX_DEMO_PORT (bridge, default 7420), "
+            "PEX_VITE_PORT (web UI, default 1420), "
+            "PEX_OPENCODE_PORT (--live worker server, default 4096)"
+        ),
+    )
     parser.add_argument(
         "--live",
         action="store_true",
         help="also run a real OpenCode worker on a free model under live supervision",
+    )
+    parser.add_argument(
+        "--bridge-only",
+        action="store_true",
+        help="start only the demo bridge on PEX_DEMO_PORT, skip the web UI",
+    )
+    parser.add_argument(
+        "--prebuilt",
+        action="store_true",
+        help="serve the prebuilt web UI from apps/desktop/dist via vite preview "
+        "instead of the vite dev server (run `npm run build` under apps/desktop once)",
     )
     parser.add_argument(
         "--worker-model",
@@ -177,8 +204,18 @@ def _parse(argv: list[str] | None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse(argv)
-    if not (ROOT / "apps" / "desktop" / "node_modules").is_dir():
-        sys.exit("apps/desktop dependencies are missing - run `npm install` there first.")
+    run_ui = not args.bridge_only
+    use_prebuilt = args.prebuilt and run_ui
+    if run_ui and not (ROOT / "apps" / "desktop" / "node_modules").is_dir():
+        sys.exit(
+            "web UI dependencies are missing under apps/desktop - run "
+            "`npm install --prefix apps/desktop` once (vite only, no Rust/Tauri) first."
+        )
+    if use_prebuilt and not (ROOT / "apps" / "desktop" / "dist").is_dir():
+        sys.exit(
+            "prebuilt web UI not found at apps/desktop/dist - run "
+            "`npm run build` under apps/desktop once, or drop --prebuilt for the vite dev server."
+        )
     try:
         import importlib.util
 
@@ -205,7 +242,8 @@ def main(argv: list[str] | None = None) -> int:
         # Set PEX_DEMO_HOME yourself to keep a stable home between runs.
         bridge_env["PEX_DEMO_HOME"] = str(ROOT / "build" / "demo" / f"home-{stamp}")
     _ensure_port_free(BRIDGE_PORT, "demo bridge", "PEX_DEMO_PORT")
-    _ensure_port_free(VITE_PORT, "vite dev server", "PEX_VITE_PORT")
+    if run_ui:
+        _ensure_port_free(VITE_PORT, "web UI", "PEX_VITE_PORT")
     if args.live:
         _ensure_port_free(OPENCODE_PORT, "opencode serve", "PEX_OPENCODE_PORT")
         from scripts import demo_live
@@ -237,40 +275,48 @@ def main(argv: list[str] | None = None) -> int:
             )
         )
 
-    children += [
+    children.append(
         subprocess.Popen(
             [sys.executable, str(ROOT / "scripts" / "demo_bridge.py")],
             cwd=ROOT,
             env=bridge_env,
             start_new_session=(os.name != "nt"),
         ),
-        subprocess.Popen(
-            [
-                _npm(),
-                "run",
-                "dev",
-                "--",
-                "--host",
-                "127.0.0.1",
-                "--port",
-                str(VITE_PORT),
-                "--strictPort",
-            ],
-            cwd=ROOT / "apps" / "desktop",
-            env={
-                **os.environ,
-                "PEX_BRIDGE_URL": f"http://127.0.0.1:{BRIDGE_PORT}",
-            },
-            start_new_session=(os.name != "nt"),
-        ),
-    ]
-    bridge, vite = children[-2], children[-1]
+    )
+    bridge = children[-1]
+    vite = None
+    if run_ui:
+        ui_script = "preview" if use_prebuilt else "dev"
+        children.append(
+            subprocess.Popen(
+                [
+                    _npm(),
+                    "run",
+                    ui_script,
+                    "--",
+                    "--host",
+                    "127.0.0.1",
+                    "--port",
+                    str(VITE_PORT),
+                    "--strictPort",
+                ],
+                cwd=ROOT / "apps" / "desktop",
+                env={
+                    **os.environ,
+                    "PEX_BRIDGE_URL": f"http://127.0.0.1:{BRIDGE_PORT}",
+                },
+                start_new_session=(os.name != "nt"),
+            ),
+        )
+        vite = children[-1]
     live_receipt: tuple[Path, str] | None = None
     try:
         checks = [
             (f"http://127.0.0.1:{BRIDGE_PORT}/health", bridge, "demo bridge"),
-            (f"http://127.0.0.1:{VITE_PORT}", vite, "vite dev server"),
         ]
+        if vite is not None:
+            ui_name = "prebuilt web UI" if use_prebuilt else "web UI"
+            checks.append((f"http://127.0.0.1:{VITE_PORT}", vite, ui_name))
         if live:
             checks.insert(
                 0,
@@ -293,7 +339,10 @@ def main(argv: list[str] | None = None) -> int:
             print("A demo process did not come up; see the logs above.", flush=True)
             return 1
         print()
-        print(f"  PEX demo ready:  http://127.0.0.1:{VITE_PORT}", flush=True)
+        if vite is not None:
+            print(f"  PEX demo ready:  http://127.0.0.1:{VITE_PORT}", flush=True)
+        else:
+            print("  PEX demo ready:  bridge only (no web UI)", flush=True)
         print(f"  bridge API:      http://127.0.0.1:{BRIDGE_PORT}/v1", flush=True)
         if "PEX_DEMO_HOME" in bridge_env:
             print(f"  demo home:       {bridge_env['PEX_DEMO_HOME']}", flush=True)
@@ -327,10 +376,16 @@ def main(argv: list[str] | None = None) -> int:
                 flush=True,
             )
         else:
-            print(
-                "  Open the demo URL - Recorded replay fixtures need no agent install.",
-                flush=True,
-            )
+            if vite is not None:
+                print(
+                    "  Open the demo URL - Recorded replay fixtures need no agent install.",
+                    flush=True,
+                )
+            else:
+                print(
+                    "  Bridge only - use the API at /v1 or POST /v1/demo/replay for fixtures.",
+                    flush=True,
+                )
         print("  Ctrl+C to stop.", flush=True)
         while True:
             time.sleep(1)

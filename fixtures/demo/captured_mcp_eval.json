@@ -125,12 +125,12 @@
   ],
   "expected": {
     "completion_in": [
-      "verified_complete"
+      "uncertain"
     ],
     "min_claims": 6,
     "claim_evidence_any": [
       "no_pytest_observed"
     ],
-    "summary": "six claims adjudicated; one held uncertain on no_pytest_observed; ends verified_complete"
+    "summary": "six claims adjudicated; premature done-claims contradicted on the red suite and held uncertain with no pytest observed; the final bundle withholds on the unverifiable implemented-claim; ends uncertain"
   }
 }

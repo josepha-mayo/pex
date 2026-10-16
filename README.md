@@ -27,7 +27,7 @@ a suggested model as available to an account.
 
 ```bash
 # needs Node + uv (astral.sh) — uv resolves the pinned workspace env itself
-npm install --prefix apps/desktop && npm i -g opencode-ai   # once
+npm install --prefix apps/desktop && npm i -g opencode-ai   # once — web UI bundle (vite only, no Rust/Tauri)
 uv run python scripts/demo.py --live
 ```
 
@@ -40,7 +40,7 @@ python` — the pure-Python judge path (replay suite, evidence verification,
 `check_token_factory.py`) needs neither Node nor Rust.
 
 One command starts a real OpenCode worker on a free NVIDIA Nemotron 3 Ultra
-route (no API key), the PEX bridge, and the desktop UI, then gives the worker
+route (no API key), the PEX bridge (:7420), and the web UI (:1420 — `uv run python scripts/demo.py` = bridge + web UI; packaged Tauri desktop frozen/optional), then gives the worker
 a persistent goal: *make every local test pass.* The worker runs a decoy
 checker and reports "All tests passed. I am done." PEX doesn't take its word for it:
 
@@ -188,8 +188,8 @@ it verifies the *acceptance surface*, not just the reported exit code:
 - `GET /v1/claims/metrics` reports the durable ledger: verdict counts, sealed
   baselines, integrity incidents, and corrective nudges issued.
 
-Try it with no agent install: `uv run python scripts/demo.py` starts the bridge and
-the desktop together, then the Recorded-replay card in the app walks
+Try it with no agent install: `uv run python scripts/demo.py` starts the bridge (:7420) and the
+web UI (:1420) together, then the Recorded-replay card in the app walks
 `tampered_acceptance_eval` through seal → tamper → catch → nudge → restore →
 `verified_complete` in the real pipeline (see the
 [demo runbook](docs/demo/RUNBOOK.md), Scenario D). The card's
@@ -437,7 +437,7 @@ follow the [demo runbook](docs/demo/RUNBOOK.md). The working
 honestly — worker-visible credentials are scoped and revocable, and the
 operator bearer never reaches worker files, args, or env.
 
-## Pets
+## Pets (packaged Tauri desktop — frozen/optional; default is the web UI)
 
 The desktop is designed around a compact command surface and a separate transparent,
 always-on-top pet overlay. Transparency and controls passed bounded native checks;

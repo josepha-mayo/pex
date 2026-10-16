@@ -4,6 +4,9 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   clearScreen: false,
+  // WEB-ONLY default: `uv run python scripts/demo.py` serves this web UI via
+  // vite dev (or `vite preview` for the prebuilt dist with --prebuilt).
+  // The packaged Tauri desktop is frozen/optional — no Rust/Tauri needed here.
   server: {
     port: 1420,
     strictPort: true,

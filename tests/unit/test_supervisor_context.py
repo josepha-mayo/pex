@@ -561,3 +561,39 @@ def test_exact_context_lookup_preserves_tail_constraint_and_reports_source_trunc
     assert tail.strip() in detail["item"]["content"]
     assert detail["item"]["content"] == envelope.context_items[0].content
     assert detail["item"]["content_truncated"] is oversized
+
+
+def test_claim_superseded_receipts_are_excluded_from_selection_budget_and_offer():
+    now = datetime(2026, 9, 5, 12, tzinfo=UTC)
+    session, _, _ = _bound(now)
+    stale = _context(
+        now,
+        "stale-supported-receipt",
+        content="Claim verification outcome: supported.",
+        metadata={
+            "receipt_type": "mcp_claim_verification",
+            "status": "supported",
+            "claim_fingerprint": "abc",
+            "valid_as_of": (now - timedelta(minutes=10)).isoformat(),
+            "superseded": True,
+            "superseded_by": "fresh-contradicted-receipt",
+        },
+    )
+    fresh = _context(
+        now,
+        "fresh-contradicted-receipt",
+        content="Claim verification outcome: contradicted.",
+        metadata={
+            "receipt_type": "mcp_claim_verification",
+            "status": "contradicted",
+            "claim_fingerprint": "abc",
+            "valid_as_of": now.isoformat(),
+            "superseded": False,
+            "superseded_by": None,
+        },
+    )
+    envelope = build_supervisor_context(session, [stale, fresh], [], now=now)
+    assert "stale-supported-receipt" not in envelope.offered_context_ids
+    assert "fresh-contradicted-receipt" in envelope.offered_context_ids
+    assert all(item.id != "stale-supported-receipt" for item in envelope.context_items)
+    assert "stale-supported-receipt" not in envelope.model_dump_json()

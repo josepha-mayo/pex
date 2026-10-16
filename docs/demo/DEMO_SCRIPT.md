@@ -30,8 +30,8 @@ Nemotron verdict lands on camera (receipts live under `docs/evidence/`).
 ## Setup (before recording)
 
 ```bash
-npm install --prefix apps/desktop   # once
-uv run python scripts/demo.py       # boots bridge :7420 + UI :1420
+npm install --prefix apps/desktop   # once — web UI bundle (vite only, no Rust/Tauri)
+uv run python scripts/demo.py       # boots bridge :7420 + web UI :1420 (packaged Tauri frozen/optional)
 ```
 
 Open `http://127.0.0.1:1420`. Have the Inspector tab ready.
@@ -268,6 +268,6 @@ Expand **Challenge the supervisor**:
 
 - Say "recorded replay of the real pipeline," not "live worker."
 - The demo bridge is loopback-only and unauthenticated by design; the packaged
-  app uses an operator bearer.
+  Tauri app (frozen/optional) uses an operator bearer — default is the web UI.
 - Verification verdicts come from workspace evidence — sealed baselines,
   process observations, and file diffs — not from the model's prose.

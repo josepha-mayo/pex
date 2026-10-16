@@ -144,6 +144,7 @@ from pex_bridge.store import (
     Store,
     action_check_request_fingerprint,
     claim_verification_request_fingerprint,
+    claim_verification_subject_fingerprint,
     event_semantic_hash,
     event_semantic_payload,
     human_decision_logical_key,
@@ -355,8 +356,17 @@ def _matching_test_execution(
     test_state = state.get(process_key)
     if not isinstance(test_state, dict):
         return None
-    if event.harness_type == HarnessType.CODEX:
-        execution_cwd = test_state.get("execution_cwd")
+    if test_state.get("cwd_unverified") is True:
+        # An unobserved OpenCode cwd is not execution evidence: the worker never
+        # proved which directory ran the suite, so this cannot satisfy a probe.
+        # Stay ATTEMPTED (requesting) and let a supervisor-run supply proof.
+        return None
+    execution_cwd = test_state.get("execution_cwd")
+    if event.harness_type == HarnessType.CODEX or isinstance(execution_cwd, str):
+        # Codex always reports a cwd, so a missing one is a mismatch. OpenCode
+        # only reports one when the worker set workdir or composed a bound cd:
+        # an observed value must agree, while an unobserved one stays bound by
+        # the session-directory default (marked cwd_unverified in the state).
         if (
             not isinstance(execution_cwd, str)
             or not same_absolute_path(execution_cwd, session.cwd)
@@ -380,7 +390,7 @@ def _matching_test_execution(
         source_event_id=event.event_id,
         observed_at=event.ts,
         observed_command=command,
-        cwd=execution_cwd if event.harness_type == HarnessType.CODEX else probe.cwd,
+        cwd=execution_cwd if isinstance(execution_cwd, str) else probe.cwd,
         process_started=True,
         exit_code=exit_code,
         result=result,
@@ -391,6 +401,54 @@ def _matching_test_execution(
 
 # Retain the private compatibility name used by focused attribution regressions.
 _matching_pytest_execution = _matching_test_execution
+
+
+def _is_cwd_unverified_test_state(event: HarnessEvent) -> bool:
+    """Return True when typed test evidence lacks an observed execution cwd."""
+
+    state = event.process_state if isinstance(event.process_state, dict) else {}
+    for key in ("pytest", "unittest"):
+        test_state = state.get(key)
+        if isinstance(test_state, dict) and test_state.get("cwd_unverified") is True:
+            return True
+    return False
+
+
+def _without_cwd_unverified_test_support(
+    events: list[HarnessEvent],
+) -> list[HarnessEvent]:
+    """Copy events so an unobserved cwd cannot earn a supported verdict.
+
+    verify.py (owned by another agent) reads ok/exit_code without checking
+    execution_cwd. Strip the terminal verdict here so the receipt stays
+    uncertain and a supervisor-run probe is requested instead. The marker is
+    kept for audit; only the mintable claim is removed.
+    """
+
+    sanitized: list[HarnessEvent] = []
+    for event in events:
+        state = event.process_state if isinstance(event.process_state, dict) else None
+        if state is None or not _is_cwd_unverified_test_state(event):
+            sanitized.append(event)
+            continue
+        cleaned_state: dict = {}
+        for key, value in state.items():
+            if (
+                key in ("pytest", "unittest")
+                and isinstance(value, dict)
+                and value.get("cwd_unverified") is True
+            ):
+                kept = {
+                    k: v
+                    for k, v in value.items()
+                    if k not in ("ok", "exit_code", "passed", "failed", "failure_node")
+                }
+                kept["cwd_unverified"] = True
+                cleaned_state[key] = kept
+            else:
+                cleaned_state[key] = value
+        sanitized.append(event.model_copy(update={"process_state": cleaned_state}))
+    return sanitized
 
 
 _TYPED_PROCESS_STATE_KEYS = {
@@ -2939,6 +2997,7 @@ class Pipeline:
                 recent,
                 goal,
                 verification,
+                workspace,
             )
             probe: VerificationProbe | None = None
             probe_unavailable_reason: str | None = None
@@ -6367,6 +6426,14 @@ class Pipeline:
         if live is None:
             raise ValueError("session not found")
         session = live
+        if (
+            session.metadata.get("replay") is True
+            or session.metadata.get("not_live_control") is True
+            or session.metadata.get("observe_only")
+        ):
+            raise ValueError(
+                "recorded replay session: there is no live worker to verify a claim for"
+            )
         if not session.goal_id:
             raise ValueError("session has no attached persistent goal")
         goal = await self.store.get_goal_for_authority(session.goal_id)
@@ -6398,6 +6465,12 @@ class Pipeline:
         request_fingerprint = claim_verification_request_fingerprint(
             principal_id=principal.principal_id,
             tool=MCP_VERIFY_CLAIM_TOOL,
+            session_id=session.id,
+            goal_id=goal.id,
+            project_id=project_id,
+            claim=statement,
+        )
+        claim_fingerprint = claim_verification_subject_fingerprint(
             session_id=session.id,
             goal_id=goal.id,
             project_id=project_id,
@@ -6444,9 +6517,14 @@ class Pipeline:
             except Exception:
                 workspace = {"error": "workspace_snapshot_failed"}
         baseline = await self._acceptance_baseline_for(session, goal, workspace)
+        # An OpenCode cwd_unverified run never observed its directory, so it
+        # cannot support a verdict here. Sanitize before adjudication (verify.py
+        # is owned by another agent) so the receipt stays uncertain and a
+        # supervisor-run probe is requested instead.
+        adjudication_recent = _without_cwd_unverified_test_support(recent)
         verification = verify_claims(
             extracted_claims,
-            recent,
+            adjudication_recent,
             goal,
             workspace,
             acceptance_baseline=baseline,
@@ -6536,6 +6614,10 @@ class Pipeline:
                                 "evidence": [value for value in item_evidence if value],
                                 "claim": bounded_claim,
                                 "source_session_id": session.id,
+                                "claim_fingerprint": claim_fingerprint,
+                                "valid_as_of": observed_at.isoformat(),
+                                "superseded": False,
+                                "superseded_by": None,
                             },
                         }
                     )
@@ -6605,6 +6687,12 @@ class Pipeline:
                 "verified": False,
                 "evidence": evidence,
                 "correction": correction,
+                "claim_fingerprint": claim_fingerprint,
+                # A momentary observation: valid at observed_at only, and a
+                # later not-supported receipt for the same claim retires it.
+                "valid_as_of": observed_at.isoformat(),
+                "superseded": False,
+                "superseded_by": None,
             },
         )
         result_items = [receipt_item, *verified_items]
@@ -6665,6 +6753,7 @@ class Pipeline:
             "raw_status": raw_status,
             "outcome": outcome,
             "verified": outcome == "supported",
+            "valid_as_of": observed_at.isoformat(),
             "claims": extracted_claims,
             "evidence": evidence,
             "correction": correction,

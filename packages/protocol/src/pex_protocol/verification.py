@@ -8,7 +8,7 @@ from collections import Counter
 from collections.abc import Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import Annotated, Literal, Self
+from typing import Annotated, Literal, NamedTuple, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -167,7 +167,6 @@ _SAFE_VALUE_FLAGS = {
     "--verbosity",
     "-w",
     "-n",
-    "-p",
     "-r",
 }
 _SAFE_BOOLEAN_FLAGS = {
@@ -195,6 +194,36 @@ _SAFE_BOOLEAN_FLAGS = {
     "-v",
     "-x",
 }
+# ``uv run`` flags that only tune sync behavior keep an auditable wrapper.
+_UV_SAFE_BOOLEAN_FLAGS = {
+    "--frozen",
+    "--locked",
+    "--no-sync",
+}
+# ``uv run`` flags that silently choose which interpreter, environment,
+# resolver index, or working directory actually runs the child command. The
+# invocation still counts as a real test run, but it can never earn
+# credit-eligible scope: the evidence may describe a different suite entirely.
+_UV_SCOPE_INVALIDATING_BOOLEAN_FLAGS = {
+    "--active",
+    "--isolated",
+    "--no-project",
+}
+_UV_SCOPE_INVALIDATING_VALUE_FLAGS = {
+    "--directory",
+    "--env-file",
+    "--index",
+    "--project",
+    "--python",
+    "--with",
+}
+
+
+class _UnwrappedArgv(NamedTuple):
+    """Launcher-stripped argv plus the scope-invalidating wrapper flag, if any."""
+
+    args: tuple[str, ...]
+    scope_invalidating_flag: str | None = None
 
 
 def _command_has_shell_syntax(command: str) -> bool:
@@ -250,44 +279,61 @@ def _executable_name(token: str) -> str:
     return token.replace("\\", "/").rsplit("/", 1)[-1].casefold()
 
 
-def _pytest_arguments(argv: Sequence[str]) -> tuple[str, ...] | None:
+def _pytest_arguments(argv: Sequence[str]) -> _UnwrappedArgv | None:
     """Return pytest arguments only for a recognized direct launcher."""
 
     if not argv:
         return None
     executable = _executable_name(argv[0])
     if executable in _PYTEST_EXECUTABLES:
-        return tuple(argv[1:])
+        return _UnwrappedArgv(tuple(argv[1:]))
     if _PYTHON_RUNNER.fullmatch(executable):
         if len(argv) >= 3 and argv[1] == "-m" and argv[2].casefold() == "pytest":
-            return tuple(argv[3:])
+            return _UnwrappedArgv(tuple(argv[3:]))
         return None
     if executable in {"uv", "uv.exe", "poetry", "poetry.exe", "pipenv", "pipenv.exe"}:
         if len(argv) < 3 or argv[1].casefold() != "run":
             return None
         index = 2
+        invalidating_flag: str | None = None
         if executable in {"uv", "uv.exe"}:
             # uv flags precede the child command. Unknown uv flags make the
             # boundary ambiguous, so do not guess where pytest starts.
-            uv_value_flags = {"--directory", "--env-file", "--index", "--python"}
-            uv_boolean_flags = {"--active", "--frozen", "--isolated", "--locked", "--no-sync"}
             while index < len(argv) and argv[index].startswith("-"):
-                flag = argv[index].split("=", 1)[0]
+                token = argv[index]
+                flag = token.split("=", 1)[0]
                 if flag == "--":
                     index += 1
                     break
-                if flag in uv_boolean_flags or "=" in argv[index]:
+                if flag in _UV_SAFE_BOOLEAN_FLAGS:
                     index += 1
                     continue
-                if flag in uv_value_flags and index + 1 < len(argv):
+                if flag in _UV_SCOPE_INVALIDATING_BOOLEAN_FLAGS:
+                    invalidating_flag = invalidating_flag or f"uv run {flag}"
+                    index += 1
+                    continue
+                if flag in _UV_SCOPE_INVALIDATING_VALUE_FLAGS:
+                    invalidating_flag = invalidating_flag or f"uv run {flag}"
+                    if "=" in token:
+                        index += 1
+                        continue
+                    if index + 1 >= len(argv):
+                        return None
                     index += 2
                     continue
                 return None
-        return _pytest_arguments(argv[index:])
+        child = _pytest_arguments(argv[index:])
+        if (
+            child is not None
+            and invalidating_flag is not None
+            and child.scope_invalidating_flag is None
+        ):
+            child = _UnwrappedArgv(child.args, invalidating_flag)
+        return child
     return None
 
 
-def _unittest_arguments(argv: Sequence[str]) -> tuple[str, ...] | None:
+def _unittest_arguments(argv: Sequence[str]) -> _UnwrappedArgv | None:
     """Return unittest arguments only for a recognized direct Python launcher."""
 
     if not argv:
@@ -295,28 +341,45 @@ def _unittest_arguments(argv: Sequence[str]) -> tuple[str, ...] | None:
     executable = _executable_name(argv[0])
     if _PYTHON_RUNNER.fullmatch(executable):
         if len(argv) >= 3 and argv[1] == "-m" and argv[2].casefold() == "unittest":
-            return tuple(argv[3:])
+            return _UnwrappedArgv(tuple(argv[3:]))
         return None
     if executable in {"uv", "uv.exe", "poetry", "poetry.exe", "pipenv", "pipenv.exe"}:
         if len(argv) < 3 or argv[1].casefold() != "run":
             return None
         index = 2
+        invalidating_flag: str | None = None
         if executable in {"uv", "uv.exe"}:
-            uv_value_flags = {"--directory", "--env-file", "--index", "--python"}
-            uv_boolean_flags = {"--active", "--frozen", "--isolated", "--locked", "--no-sync"}
             while index < len(argv) and argv[index].startswith("-"):
-                flag = argv[index].split("=", 1)[0]
+                token = argv[index]
+                flag = token.split("=", 1)[0]
                 if flag == "--":
                     index += 1
                     break
-                if flag in uv_boolean_flags or "=" in argv[index]:
+                if flag in _UV_SAFE_BOOLEAN_FLAGS:
                     index += 1
                     continue
-                if flag in uv_value_flags and index + 1 < len(argv):
+                if flag in _UV_SCOPE_INVALIDATING_BOOLEAN_FLAGS:
+                    invalidating_flag = invalidating_flag or f"uv run {flag}"
+                    index += 1
+                    continue
+                if flag in _UV_SCOPE_INVALIDATING_VALUE_FLAGS:
+                    invalidating_flag = invalidating_flag or f"uv run {flag}"
+                    if "=" in token:
+                        index += 1
+                        continue
+                    if index + 1 >= len(argv):
+                        return None
                     index += 2
                     continue
                 return None
-        return _unittest_arguments(argv[index:])
+        child = _unittest_arguments(argv[index:])
+        if (
+            child is not None
+            and invalidating_flag is not None
+            and child.scope_invalidating_flag is None
+        ):
+            child = _UnwrappedArgv(child.args, invalidating_flag)
+        return child
     return None
 
 
@@ -351,9 +414,10 @@ def classify_pytest_argv(argv: Sequence[str]) -> PytestInvocation | None:
     normalized = tuple(str(item) for item in argv)
     if not normalized or any(not item or len(item) > 4_096 for item in normalized):
         return None
-    args = _pytest_arguments(normalized)
-    if args is None:
+    unwrapped = _pytest_arguments(normalized)
+    if unwrapped is None:
         return None
+    args = unwrapped.args
     lowered = {item.split("=", 1)[0].casefold() for item in args}
     if lowered & _REJECTED_MODES or any(item.startswith("@") for item in args):
         return None
@@ -412,6 +476,11 @@ def classify_pytest_argv(argv: Sequence[str]) -> PytestInvocation | None:
         relative_targets.append(token.replace("\\", "/"))
         index += 1
 
+    if unwrapped.scope_invalidating_flag is not None:
+        # The wrapper reselected the interpreter, environment, or cwd: keep the
+        # run as pytest evidence but never let it satisfy credit-eligible scope.
+        selectors.append(unwrapped.scope_invalidating_flag)
+        selection_flags.append(unwrapped.scope_invalidating_flag)
     scope = PytestInvocationScope.TARGETED if selectors else PytestInvocationScope.FULL_SUITE
     return PytestInvocation(
         argv=normalized,
@@ -441,9 +510,10 @@ def classify_unittest_argv(argv: Sequence[str]) -> UnittestInvocation | None:
     normalized = tuple(str(item) for item in argv)
     if not normalized or any(not item or len(item) > 4_096 for item in normalized):
         return None
-    args = _unittest_arguments(normalized)
-    if args is None:
+    unwrapped = _unittest_arguments(normalized)
+    if unwrapped is None:
         return None
+    args = unwrapped.args
     if any(item.startswith("@") for item in args):
         return None
 
@@ -499,6 +569,8 @@ def classify_unittest_argv(argv: Sequence[str]) -> UnittestInvocation | None:
         targets.append(token.replace("\\", "/"))
         index += 1
 
+    if unwrapped.scope_invalidating_flag is not None:
+        selection_flags.append(unwrapped.scope_invalidating_flag)
     scope = (
         UnittestInvocationScope.TARGETED
         if targets or selection_flags

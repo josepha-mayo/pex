@@ -24,12 +24,13 @@ Prerequisites: Node, and [`uv`](https://docs.astral.sh/uv/) which resolves the
 pinned workspace env itself. Worker steps additionally need
 `npm i -g opencode-ai`.
 
-1. `uv run python scripts/demo.py` (after `npm install --prefix apps/desktop`) boots the
-   demo bridge and dev UI in one step — open the URL it prints,
+1. `uv run python scripts/demo.py` (after `npm install --prefix apps/desktop` — once, the web UI bundle, vite only, no Rust/Tauri) boots the
+   demo bridge (`127.0.0.1:7420`) and web UI (`127.0.0.1:1420`) in one step — open the URL it prints,
    `http://127.0.0.1:1420`. The setup card offers **Recorded
    replay** fixtures with no agent install, and an empty workers rail offers
    **Or run a recorded replay** that starts the recommended fixture in one
-   click.
+   click. The packaged Tauri desktop is frozen/optional — the default judge
+   path is the web UI above.
 2. Replay `premature_stop_eval` — the card tagged **start here**. It is the
    most legible first run: the worker claims "All tests passed" with no suite
    ever run, PEX contradicts the claim on missing evidence, the worker repairs,
@@ -240,7 +241,8 @@ all callable in-page) and a scoped MCP tool surface at `/mcp/`.
 Because PEX sits beside privileged local agents, the bridge is treated as
 holding the user's agent permissions — the working
 [threat model](threat-model/overview.md) covers prompt injection, worker-hook
-credential scoping, bearer-token containment (the packaged Tauri host keeps it
+credential scoping, bearer-token containment (the packaged Tauri host — frozen/optional —
+keeps it
 in Rust memory, never in worker files or env), cross-origin mutation guards,
 and the honest trust boundary (no cryptographic isolation from same-user OS
 processes — stated, not hand-waved).

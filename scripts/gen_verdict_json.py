@@ -15,8 +15,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SUITE = ROOT / "docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.json"
-DETERMINISM = ROOT / "docs/demo/evidence/FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-15.json"
+SUITE = ROOT / "docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-16.json"
+DETERMINISM = ROOT / "docs/demo/evidence/FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-16.json"
 EVIDENCE = ROOT / "docs/evidence"
 OUT = ROOT / "docs/demo/verdict.json"
 

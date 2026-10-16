@@ -104,6 +104,8 @@ def _source_session_id(metadata: object) -> str | None:
 
 def _context_status(item: ContextItem) -> str:
     metadata = item.metadata if isinstance(item.metadata, dict) else {}
+    if metadata.get("superseded") is True:
+        return "superseded"
     if _context_verified(item):
         return "verified"
     return _clean_label(metadata.get("status"), 80) or "active"
@@ -204,12 +206,21 @@ def build_supervisor_context(
         if (superseded := _clean_id(item.supersedes)) is not None
         and (superseded not in human_commitments or item.provenance == SourceKind.HUMAN)
     }
+    # A claim-superseded receipt stays durable for audit but must never re-enter
+    # selection, rank, budget, or offered ids — same fail-closed rule as a
+    # goal-superseded predecessor above.
+    claim_superseded_ids = {
+        item.id
+        for item in in_scope
+        if isinstance(item.metadata, dict) and item.metadata.get("superseded") is True
+    }
     selected_context: list[SupervisorContextItem] = []
     selected_context_ids: set[str] = set()
     context_text = 0
     for item in sorted(in_scope, key=lambda item: _context_rank(item, goal_id), reverse=True):
         if (
             item.id in superseded_ids
+            or item.id in claim_superseded_ids
             or item.id in selected_context_ids
             or (item.stale_after is not None and item.stale_after <= observed_at)
             or item.sensitivity not in _ALLOWED_SENSITIVITY

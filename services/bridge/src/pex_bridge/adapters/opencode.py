@@ -37,6 +37,7 @@ from pex_bridge.adapters.base import (
     preserve_bridge_state,
     session_binding_matches,
 )
+from pex_bridge.adapters.codex import _validated_execution_cwd
 from pex_bridge.adapters.desktop import (
     _active_process_snapshot,
     desktop_focus_supported,
@@ -68,24 +69,101 @@ MAX_PATH_CHARS = 4_096
 PROMPT_RECEIPT_POLL_ATTEMPTS = 10
 PROMPT_RECEIPT_POLL_SECONDS = 0.1
 OPENCODE_SCOPED_TEST_COMMAND_KEY = "opencode_scoped_test_command"
+# Typed test evidence with no observed execution cwd keeps ``cwd_unverified``
+# instead of silently inheriting session.cwd; adjudication can then discount it.
+OPENCODE_CWD_UNVERIFIED_KEY = "cwd_unverified"
+_TOOL_CWD_KEYS = ("workdir", "cwd", "directory")
+
+
+def _bound_workspace_prefix(command: str | None, cwd: str | None) -> str | None:
+    """Return the observed ``cd <workspace>`` prefix bound to ``cwd``, if composed."""
+
+    if not command or not cwd or command.count("&&") != 1:
+        return None
+    prefix = command.split("&&", 1)[0].strip()
+    if not prefix.casefold().startswith("cd "):
+        return None
+    raw_path = prefix[3:].strip()
+    if len(raw_path) >= 2 and raw_path[0] == raw_path[-1] and raw_path[0] in {"'", '"'}:
+        raw_path = raw_path[1:-1]
+    return raw_path if _same_path(raw_path, cwd) else None
 
 
 def _scoped_test_command(command: str | None, cwd: str) -> str | None:
     """Unwrap OpenCode's exact bound-workspace ``cd`` prefix for test evidence."""
 
-    if not command or command.count("&&") != 1:
+    if _bound_workspace_prefix(command, cwd) is None:
         return command
-    prefix, candidate = command.split("&&", 1)
-    prefix = prefix.strip()
-    if not prefix.casefold().startswith("cd "):
-        return command
-    raw_path = prefix[3:].strip()
-    if len(raw_path) >= 2 and raw_path[0] == raw_path[-1] and raw_path[0] in {"'", '"'}:
-        raw_path = raw_path[1:-1]
-    if not _same_path(raw_path, cwd):
-        return command
-    normalized = candidate.strip()
+    normalized = command.split("&&", 1)[1].strip()
     return normalized or command
+
+
+def _observed_execution_cwd(
+    session: HarnessSession, tool_state: dict, command: str | None
+) -> str | None:
+    """Return the shell cwd observed on this exact OpenCode tool call, if any.
+
+    OpenCode's bash tool accepts an optional ``workdir`` input (defaulting to
+    the session instance directory, which the session binding already proved
+    equal to ``session.cwd``) and the command itself may still compose an
+    in-command ``cd`` that runs after spawn. Only an in-command ``cd`` bound to
+    the session workspace can reach here — a foreign ``cd`` prefix never
+    classifies as a bare test invocation — so the bound prefix is the most
+    precise observation and takes precedence over the spawn ``workdir``.
+    """
+
+    bound_prefix = _bound_workspace_prefix(command, session.cwd)
+    if bound_prefix is not None:
+        return bound_prefix
+    tool_input = tool_state.get("input") if isinstance(tool_state.get("input"), dict) else {}
+    tool_metadata = (
+        tool_state.get("metadata") if isinstance(tool_state.get("metadata"), dict) else {}
+    )
+    for blob in (tool_input, tool_metadata, tool_state):
+        for key in _TOOL_CWD_KEYS:
+            value = blob.get(key)
+            if isinstance(value, str) and value:
+                return value
+    return None
+
+
+def _bind_test_process_cwd(
+    session: HarnessSession,
+    process_state: dict | None,
+    *,
+    command: str | None,
+    tool_state: dict,
+) -> dict | None:
+    """Apply the shared execution-cwd contract to typed test process state.
+
+    Same keys the Codex path writes: ``execution_cwd`` inside the typed state
+    on a validated match, or ``<runner>_unavailable_reason`` replacing the
+    typed evidence on a malformed/mismatched observation. OpenCode reports no
+    cwd for a plain invocation (the tool defaults to the bound session
+    directory), so an unobserved cwd keeps the typed evidence marked
+    ``cwd_unverified`` rather than gaining a silent ``session.cwd`` binding or
+    being destroyed outright.
+    """
+
+    test_key = next(
+        (key for key in ("pytest", "unittest") if key in (process_state or {})),
+        None,
+    )
+    if process_state is None or test_key is None:
+        return process_state
+    test_state = process_state.get(test_key)
+    if not isinstance(test_state, dict):
+        return None
+    execution_cwd, cwd_reason = _validated_execution_cwd(
+        session, _observed_execution_cwd(session, tool_state, command)
+    )
+    if execution_cwd is None:
+        if cwd_reason == "command_cwd_missing":
+            test_state[OPENCODE_CWD_UNVERIFIED_KEY] = True
+            return process_state
+        return {f"{test_key}_unavailable_reason": cwd_reason}
+    test_state["execution_cwd"] = execution_cwd
+    return process_state
 
 
 class OpenCodeAdapter(HarnessAdapter):
@@ -1335,7 +1413,12 @@ class OpenCodeAdapter(HarnessAdapter):
             raw_exit = tool_metadata.get("exit")
             if isinstance(raw_exit, int) and not isinstance(raw_exit, bool):
                 shell_payload["exit_code"] = raw_exit
-            process_state = parse_test_process_state(scoped_test_command, shell_payload)
+            process_state = _bind_test_process_cwd(
+                session,
+                parse_test_process_state(scoped_test_command, shell_payload),
+                command=command,
+                tool_state=state,
+            )
         lineage = (
             opencode_message_lineage(
                 session=session,
@@ -1496,13 +1579,18 @@ class OpenCodeAdapter(HarnessAdapter):
                     raw_exit = tool_metadata.get("exit")
                     if not isinstance(raw_exit, int) or isinstance(raw_exit, bool):
                         break
-                    process_state = parse_test_process_state(
-                        event.metadata.get(OPENCODE_SCOPED_TEST_COMMAND_KEY) or event.command,
-                        {
-                            "output": state.get("output"),
-                            "error": state.get("error"),
-                            "exit_code": raw_exit,
-                        },
+                    process_state = _bind_test_process_cwd(
+                        session,
+                        parse_test_process_state(
+                            event.metadata.get(OPENCODE_SCOPED_TEST_COMMAND_KEY) or event.command,
+                            {
+                                "output": state.get("output"),
+                                "error": state.get("error"),
+                                "exit_code": raw_exit,
+                            },
+                        ),
+                        command=event.command,
+                        tool_state=state,
                     )
                     if process_state is None:
                         return event

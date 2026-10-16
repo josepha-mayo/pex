@@ -21,7 +21,7 @@
     "Sealed acceptance surfaces with tamper detection",
     "Independent claim adjudication — worker narration is signal, never proof",
     "Durable human rulings that survive worker termination and propagate to siblings",
-    "Deterministic replay re-adjudication (18-fixture suite)",
+    "Deterministic replay re-adjudication (19-fixture suite)",
     "Scoped worker-facing MCP server (8 tools, 5 scopes)",
     "Hash-chained evidence packs with offline and in-browser verification"
   ]
@@ -133,8 +133,8 @@
     <p><a href="demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.html">Open the captured-live evidence pack →</a>
     &nbsp;·&nbsp; <a href="demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.html">19/19 replay suite receipt →</a>
     &nbsp;·&nbsp; <a href="demo/evidence/FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-15.html">19/19 ×2 runs, identical arcs →</a></p>
-    <p class="muted">Across the suite: <strong>74 worker claims adjudicated</strong>,
-    7 integrity incidents caught, and 7 of 18 runs land
+    <p class="muted">Across the suite: <strong>80 worker claims adjudicated</strong>,
+    7 integrity incidents caught, and 11 of 19 runs land
     <em>uncertain</em>/<em>incomplete</em> — a supervisor that only approves is
     a rubber stamp; PEX withholds when the evidence isn't there.</p>
     <p>Offline verification, one command:</p>
@@ -184,7 +184,7 @@
   <h2>Run it</h2>
   <pre class="cmd">git clone https://github.com/josepha-mayo/pex
 cd pex
-uv run python scripts/demo.py          # bridge + UI, replay fixtures work with no workers
+uv run python scripts/demo.py          # bridge :7420 + web UI :1420 (packaged Tauri frozen/optional), replay fixtures work with no workers
 uv run python scripts/eval_replays.py  # all 19 fixtures, self-scored — needs demo.py running</pre>
 
   <div class="grid2">

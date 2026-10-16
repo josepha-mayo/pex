@@ -363,3 +363,257 @@ async def test_contradicted_claim_is_durable_but_never_mints_verified_context(tm
                 assert intervention.outcome == "claim_verification_contradicted"
     finally:
         await store.close()
+
+
+@pytest.mark.asyncio
+async def test_later_contradiction_supersedes_standing_supported_receipt(tmp_path):
+    operator_token = "verify-supersede-operator-token-at-least-32"
+    app, store = await _make_app(tmp_path, operator_token=operator_token)
+    try:
+        async with app.state.pex_mcp.session_manager.run():
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://127.0.0.1",
+                headers={"Authorization": f"Bearer {operator_token}"},
+            ) as operator:
+                goal = await _create_goal(operator, "Superseding verification")
+                session_id = await _seed_attached_session(operator, goal["id"])
+                await _seed_passing_pytest(store, session_id, new_id("pytest_passing_"))
+                worker_token = await _issue_worker_token(operator, session_id)
+
+                async with AsyncClient(
+                    transport=ASGITransport(app=app),
+                    base_url="http://127.0.0.1",
+                    headers={"Authorization": f"Bearer {worker_token}"},
+                ) as worker_http:
+                    async with streamable_http_client(
+                        "http://127.0.0.1/mcp/",
+                        http_client=worker_http,
+                    ) as (read_stream, write_stream, _sid):
+                        async with ClientSession(read_stream, write_stream) as mcp:
+                            await mcp.initialize()
+                            supported = _structured(
+                                await mcp.call_tool(
+                                    "pex.verify_claim",
+                                    {
+                                        "session_id": session_id,
+                                        "request": {
+                                            "idempotency_key": "verify-supersede-0001",
+                                            "claim": "All tests passed.",
+                                        },
+                                    },
+                                )
+                            )
+                            assert supported["status"] == "verified"
+                            assert supported["outcome"] == "supported"
+                            assert supported["verified"] is True
+                            assert supported["replayed"] is False
+                            assert supported["valid_as_of"]
+                            receipt = supported["item"]
+                            assert receipt["metadata"]["valid_as_of"] == (supported["valid_as_of"])
+                            assert receipt["metadata"]["claim_fingerprint"]
+                            assert receipt["metadata"]["superseded"] is False
+                            assert receipt["metadata"]["superseded_by"] is None
+                            supported_receipt_id = receipt["id"]
+                            supported_verified_ids = [
+                                item["id"] for item in supported["verified_items"]
+                            ]
+                            assert supported_verified_ids
+                            assert all(
+                                item["metadata"]["superseded"] is False
+                                and item["metadata"]["superseded_by"] is None
+                                for item in supported["verified_items"]
+                            )
+
+                            # The worker regresses: the suite now fails.
+                            session = await store.get_session(session_id)
+                            assert session is not None
+                            failed_pytest = HarnessEvent(
+                                event_id=new_id("pytest_regressed_"),
+                                ts=datetime.now(UTC),
+                                harness_type=session.harness_type,
+                                session_id=session.id,
+                                project_id=session.project_id,
+                                goal_id=session.goal_id,
+                                event_type=EventType.SHELL,
+                                command="pytest -q",
+                                process_state={
+                                    "pytest": {"ok": False, "exit_code": 1, "failed": 1}
+                                },
+                            )
+                            accepted = await store.accept_pipeline_event(
+                                failed_pytest,
+                                session_snapshot=session,
+                            )
+                            assert accepted["processing"]["state"] == "accepted"
+
+                            contradicted = _structured(
+                                await mcp.call_tool(
+                                    "pex.verify_claim",
+                                    {
+                                        "session_id": session_id,
+                                        "request": {
+                                            "idempotency_key": "verify-supersede-0002",
+                                            "claim": "All tests passed.",
+                                        },
+                                    },
+                                )
+                            )
+                            assert contradicted["status"] == "contradicted"
+                            assert contradicted["outcome"] == "contradicted"
+                            assert contradicted["verified"] is False
+                            new_receipt_id = contradicted["item"]["id"]
+                            assert new_receipt_id != supported_receipt_id
+
+                # The standing supported receipt trail now reads superseded.
+                stale_receipt = await store.get_context(supported_receipt_id)
+                assert stale_receipt is not None
+                assert stale_receipt.metadata["superseded"] is True
+                assert stale_receipt.metadata["superseded_by"] == new_receipt_id
+                for verified_id in supported_verified_ids:
+                    stale_item = await store.get_context(verified_id)
+                    assert stale_item is not None
+                    assert stale_item.metadata["verified"] is True
+                    assert stale_item.metadata["superseded"] is True
+                    assert stale_item.metadata["superseded_by"] == new_receipt_id
+                new_receipt = await store.get_context(new_receipt_id)
+                assert new_receipt is not None
+                assert new_receipt.metadata["superseded"] is False
+                assert new_receipt.metadata["superseded_by"] is None
+
+                async with AsyncClient(
+                    transport=ASGITransport(app=app),
+                    base_url="http://127.0.0.1",
+                    headers={"Authorization": f"Bearer {worker_token}"},
+                ) as worker_http:
+                    async with streamable_http_client(
+                        "http://127.0.0.1/mcp/",
+                        http_client=worker_http,
+                    ) as (read_stream, write_stream, _sid):
+                        async with ClientSession(read_stream, write_stream) as mcp:
+                            await mcp.initialize()
+                            before_replay = await _durable_counts(store)
+                            replayed = _structured(
+                                await mcp.call_tool(
+                                    "pex.verify_claim",
+                                    {
+                                        "session_id": session_id,
+                                        "request": {
+                                            "idempotency_key": "verify-supersede-0002",
+                                            "claim": "All tests passed.",
+                                        },
+                                    },
+                                )
+                            )
+                            assert replayed["replayed"] is True
+                            assert replayed["mutation_id"] == contradicted["mutation_id"]
+                            assert replayed["item"]["id"] == new_receipt_id
+                            replayed_first = _structured(
+                                await mcp.call_tool(
+                                    "pex.verify_claim",
+                                    {
+                                        "session_id": session_id,
+                                        "request": {
+                                            "idempotency_key": "verify-supersede-0001",
+                                            "claim": "All tests passed.",
+                                        },
+                                    },
+                                )
+                            )
+                            assert replayed_first["replayed"] is True
+                            assert replayed_first["mutation_id"] == supported["mutation_id"]
+                            assert replayed_first["item"]["id"] == supported_receipt_id
+                            assert await _durable_counts(store) == before_replay
+
+                # Replays mutate nothing: supersession state is unchanged.
+                stale_receipt = await store.get_context(supported_receipt_id)
+                assert stale_receipt is not None
+                assert stale_receipt.metadata["superseded"] is True
+                assert stale_receipt.metadata["superseded_by"] == new_receipt_id
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_uncertain_does_not_supersede_standing_supported_receipt(tmp_path):
+    operator_token = "verify-uncertain-guard-operator-token-32"
+    app, store = await _make_app(tmp_path, operator_token=operator_token)
+    try:
+        async with app.state.pex_mcp.session_manager.run():
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://127.0.0.1",
+                headers={"Authorization": f"Bearer {operator_token}"},
+            ) as operator:
+                goal = await _create_goal(operator, "Uncertain guard")
+                session_id = await _seed_attached_session(operator, goal["id"])
+                await _seed_passing_pytest(store, session_id, new_id("pytest_passing_"))
+                worker_token = await _issue_worker_token(operator, session_id)
+
+                async with AsyncClient(
+                    transport=ASGITransport(app=app),
+                    base_url="http://127.0.0.1",
+                    headers={"Authorization": f"Bearer {worker_token}"},
+                ) as worker_http:
+                    async with streamable_http_client(
+                        "http://127.0.0.1/mcp/",
+                        http_client=worker_http,
+                    ) as (read_stream, write_stream, _sid):
+                        async with ClientSession(read_stream, write_stream) as mcp:
+                            await mcp.initialize()
+                            supported = _structured(
+                                await mcp.call_tool(
+                                    "pex.verify_claim",
+                                    {
+                                        "session_id": session_id,
+                                        "request": {
+                                            "idempotency_key": "verify-uncertain-guard-0001",
+                                            "claim": "All tests passed.",
+                                        },
+                                    },
+                                )
+                            )
+                            assert supported["outcome"] == "supported"
+                            supported_receipt_id = supported["item"]["id"]
+
+                            # A later write-capable shell mutates the workspace, so the
+                            # same claim re-verifies as uncertain rather than supported.
+                            session = await store.get_session(session_id)
+                            assert session is not None
+                            mutating_shell = HarnessEvent(
+                                event_id=new_id("shell_mutating_"),
+                                ts=datetime.now(UTC),
+                                harness_type=session.harness_type,
+                                session_id=session.id,
+                                project_id=session.project_id,
+                                goal_id=session.goal_id,
+                                event_type=EventType.SHELL,
+                                command="echo hi > out.txt",
+                                process_state={},
+                            )
+                            accepted = await store.accept_pipeline_event(
+                                mutating_shell,
+                                session_snapshot=session,
+                            )
+                            assert accepted["processing"]["state"] == "accepted"
+
+                            uncertain = _structured(
+                                await mcp.call_tool(
+                                    "pex.verify_claim",
+                                    {
+                                        "session_id": session_id,
+                                        "request": {
+                                            "idempotency_key": "verify-uncertain-guard-0002",
+                                            "claim": "All tests passed.",
+                                        },
+                                    },
+                                )
+                            )
+                            assert uncertain["outcome"] == "uncertain"
+
+                stale = await store.get_context(supported_receipt_id)
+                assert stale is not None
+                assert stale.metadata["superseded"] is False
+                assert stale.metadata["superseded_by"] is None
+    finally:
+        await store.close()

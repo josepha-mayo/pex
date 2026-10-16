@@ -5,7 +5,12 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.adapters.http_json import MemoryHttpTransport
-from pex_bridge.adapters.opencode import OpenCodeAdapter, _same_path, _scoped_test_command
+from pex_bridge.adapters.opencode import (
+    OPENCODE_SCOPED_TEST_COMMAND_KEY,
+    OpenCodeAdapter,
+    _same_path,
+    _scoped_test_command,
+)
 from pex_bridge.adapters.opencode_outcomes import OPENCODE_MESSAGE_LINEAGE_KEY
 from pex_bridge.bus import EventBus
 from pex_bridge.config import Settings
@@ -190,8 +195,153 @@ def test_opencode_completed_bash_is_typed_shell_with_exact_pytest_exit(tmp_path)
             "exit_code": 1,
             "failed_count": 1,
             "failed": "test_csv_utils.py::test_exports",
+            # The frame carried no cwd observation (no workdir, no bound cd
+            # prefix), so the typed evidence must not silently bind session.cwd.
+            "cwd_unverified": True,
         }
     }
+
+
+def _opencode_bash_payload(
+    cwd: str,
+    command: str,
+    *,
+    workdir: str | None = None,
+    exit_code: int = 0,
+    output: str = "1 passed in 0.1s",
+    tool: str = "bash",
+) -> dict:
+    tool_input: dict = {"command": command}
+    if workdir is not None:
+        tool_input["workdir"] = workdir
+    return {
+        "id": "bash-result",
+        "type": "message.part.updated",
+        "properties": {
+            "cwd": cwd,
+            "info": {"sessionID": "ses_delta", "id": "assistant", "role": "assistant"},
+            "part": {
+                "type": "tool",
+                "tool": tool,
+                "state": {
+                    "status": "completed",
+                    "input": tool_input,
+                    "output": output,
+                    "metadata": {"exit": exit_code},
+                },
+            },
+        },
+    }
+
+
+def _opencode_session(tmp_path) -> HarnessSession:
+    return HarnessSession(
+        id="opencode:ses_delta",
+        harness_type=HarnessType.OPENCODE,
+        vendor_session_id="ses_delta",
+        project_id=str(tmp_path),
+        cwd=str(tmp_path),
+        status=SessionStatus.WORKING,
+        last_activity=datetime.now(UTC),
+    )
+
+
+def test_opencode_bash_workdir_binds_exact_execution_cwd(tmp_path):
+    adapter = OpenCodeAdapter()
+    session = _opencode_session(tmp_path)
+    payload = _opencode_bash_payload(
+        str(tmp_path),
+        "python -m pytest -q",
+        workdir=str(tmp_path),
+        exit_code=1,
+        output="FAILED test_a.py::test_one\n1 failed in 0.2s",
+    )
+
+    event = adapter.normalize_sse(session, payload)
+
+    assert event.event_type == EventType.SHELL
+    pytest_state = event.process_state["pytest"]
+    assert pytest_state["execution_cwd"] == str(tmp_path)
+    assert pytest_state["exit_code"] == 1
+    assert pytest_state["ok"] is False
+    assert "cwd_unverified" not in pytest_state
+
+
+def test_opencode_bash_foreign_workdir_replaces_typed_state_with_unavailable(tmp_path):
+    adapter = OpenCodeAdapter()
+    session = _opencode_session(tmp_path)
+    payload = _opencode_bash_payload(
+        str(tmp_path),
+        "python -m pytest -q",
+        workdir=str(tmp_path / "other"),
+    )
+
+    event = adapter.normalize_sse(session, payload)
+
+    assert event.event_type == EventType.SHELL
+    assert event.process_state == {"pytest_unavailable_reason": "command_cwd_mismatch"}
+
+
+def test_opencode_bash_malformed_workdir_replaces_typed_state_with_unavailable(tmp_path):
+    adapter = OpenCodeAdapter()
+    session = _opencode_session(tmp_path)
+    payload = _opencode_bash_payload(
+        str(tmp_path),
+        "python -m pytest -q",
+        workdir="relative\\subdir",
+    )
+
+    event = adapter.normalize_sse(session, payload)
+
+    assert event.process_state == {"pytest_unavailable_reason": "command_cwd_malformed"}
+
+
+def test_opencode_bound_cd_prefix_supplies_execution_cwd(tmp_path):
+    adapter = OpenCodeAdapter()
+    session = _opencode_session(tmp_path)
+    payload = _opencode_bash_payload(
+        str(tmp_path),
+        f'cd "{tmp_path}" && python -m pytest -q',
+        # Even a foreign spawn workdir is overridden by the in-command cd;
+        # the observed pytest cwd is the bound workspace prefix.
+        workdir=str(tmp_path / "other"),
+    )
+
+    event = adapter.normalize_sse(session, payload)
+
+    assert event.command == f'cd "{tmp_path}" && python -m pytest -q'
+    assert event.metadata[OPENCODE_SCOPED_TEST_COMMAND_KEY] == "python -m pytest -q"
+    pytest_state = event.process_state["pytest"]
+    assert pytest_state["execution_cwd"] == str(tmp_path)
+    assert "cwd_unverified" not in pytest_state
+
+
+def test_opencode_bare_pytest_keeps_evidence_but_marks_cwd_unverified(tmp_path):
+    adapter = OpenCodeAdapter()
+    session = _opencode_session(tmp_path)
+    payload = _opencode_bash_payload(str(tmp_path), "python -m pytest -q")
+
+    event = adapter.normalize_sse(session, payload)
+
+    pytest_state = event.process_state["pytest"]
+    assert pytest_state["cwd_unverified"] is True
+    assert pytest_state["exit_code"] == 0
+    assert pytest_state["ok"] is True
+    assert "execution_cwd" not in pytest_state
+
+
+def test_opencode_unittest_foreign_workdir_marks_unavailable(tmp_path):
+    adapter = OpenCodeAdapter()
+    session = _opencode_session(tmp_path)
+    payload = _opencode_bash_payload(
+        str(tmp_path),
+        "python -m unittest -v",
+        workdir="/definitely/elsewhere",
+    )
+
+    event = adapter.normalize_sse(session, payload)
+
+    assert event.process_state == {"unittest_unavailable_reason": "command_cwd_mismatch"}
 
 
 async def test_opencode_shell_enrichment_binds_http_message_exit(tmp_path):
@@ -308,6 +458,100 @@ async def test_opencode_shell_enrichment_retries_vendor_read_model_race(tmp_path
 
     assert calls == 2
     assert enriched.process_state["pytest"]["exit_code"] == 1
+
+
+async def test_opencode_shell_enrichment_binds_snapshot_workdir(tmp_path):
+    transport = MemoryHttpTransport()
+    adapter = OpenCodeAdapter()
+    adapter.attach_transport(transport)
+    session = _opencode_session(tmp_path)
+    transport.messages = [
+        {
+            "info": {"id": "assistant"},
+            "parts": [
+                {
+                    "type": "tool",
+                    "tool": "bash",
+                    "callID": "call-pytest",
+                    "state": {
+                        "status": "completed",
+                        "input": {"command": "python -m pytest", "workdir": str(tmp_path)},
+                        "output": "1 passed",
+                        "metadata": {"exit": 0},
+                    },
+                }
+            ],
+        }
+    ]
+    event = HarnessEvent(
+        event_id="shell-workdir",
+        ts=datetime.now(UTC),
+        harness_type=HarnessType.OPENCODE,
+        session_id=session.id,
+        project_id=session.project_id,
+        event_type=EventType.SHELL,
+        phase=EventPhase.AFTER,
+        command="python -m pytest",
+        metadata={
+            OPENCODE_MESSAGE_LINEAGE_KEY: {"message_id": "assistant"},
+            "opencode_tool_call_id": "call-pytest",
+            "opencode_tool_status": "completed",
+        },
+    )
+
+    enriched = await adapter._enrich_shell_event(event, session)
+
+    pytest_state = enriched.process_state["pytest"]
+    assert pytest_state["exit_code"] == 0
+    assert pytest_state["execution_cwd"] == str(tmp_path)
+    assert "cwd_unverified" not in pytest_state
+
+
+async def test_opencode_shell_enrichment_foreign_snapshot_workdir_marks_unavailable(tmp_path):
+    transport = MemoryHttpTransport()
+    adapter = OpenCodeAdapter()
+    adapter.attach_transport(transport)
+    session = _opencode_session(tmp_path)
+    transport.messages = [
+        {
+            "info": {"id": "assistant"},
+            "parts": [
+                {
+                    "type": "tool",
+                    "tool": "bash",
+                    "callID": "call-pytest",
+                    "state": {
+                        "status": "completed",
+                        "input": {
+                            "command": "python -m pytest",
+                            "workdir": str(tmp_path / "foreign"),
+                        },
+                        "output": "1 passed",
+                        "metadata": {"exit": 0},
+                    },
+                }
+            ],
+        }
+    ]
+    event = HarnessEvent(
+        event_id="shell-foreign-workdir",
+        ts=datetime.now(UTC),
+        harness_type=HarnessType.OPENCODE,
+        session_id=session.id,
+        project_id=session.project_id,
+        event_type=EventType.SHELL,
+        phase=EventPhase.AFTER,
+        command="python -m pytest",
+        metadata={
+            OPENCODE_MESSAGE_LINEAGE_KEY: {"message_id": "assistant"},
+            "opencode_tool_call_id": "call-pytest",
+            "opencode_tool_status": "completed",
+        },
+    )
+
+    enriched = await adapter._enrich_shell_event(event, session)
+
+    assert enriched.process_state == {"pytest_unavailable_reason": "command_cwd_mismatch"}
 
 
 async def test_opencode_deltas_are_durable_record_only_and_do_not_delay_parent_bound_stop(
@@ -593,3 +837,138 @@ async def test_first_unknown_opencode_delta_uses_normal_pipeline_path(tmp_path, 
         assert normal == [event.event_id]
     finally:
         await store.close()
+
+
+def _verification_probe_fixture(tmp_path, *, session_id="opencode:ses_delta"):
+    from pex_protocol.actions import InterventionType, ProposedAction
+    from pex_protocol.enums import PolicyVerdict
+    from pex_protocol.intervention import Intervention
+    from pex_protocol.verification import (
+        EvidenceGatheringReceipt,
+        EvidenceGatheringState,
+        VerificationProbe,
+        VerificationProbeKind,
+    )
+
+    now = datetime.now(UTC)
+    session = HarnessSession(
+        id=session_id,
+        harness_type=HarnessType.OPENCODE,
+        vendor_session_id="ses_delta",
+        cwd=str(tmp_path),
+        project_id=str(tmp_path),
+        goal_id="goal-delta",
+        status=SessionStatus.WORKING,
+        last_activity=now,
+    )
+    probe = VerificationProbe(
+        id="probe-1",
+        kind=VerificationProbeKind.PYTEST,
+        session_id=session.id,
+        harness_type=HarnessType.OPENCODE,
+        project_id=str(tmp_path),
+        goal_id="goal-delta",
+        request_event_id="trigger-1",
+        cwd=str(tmp_path),
+    )
+    gathering = EvidenceGatheringReceipt(
+        state=EvidenceGatheringState.ATTEMPTED,
+        sources=["verification_request"],
+        recent_events="inspected",
+        workspace_snapshot="inspected",
+        claim_count=1,
+        probe=probe,
+        reason="awaiting_matching_harness_result",
+    )
+    action = ProposedAction(
+        type=InterventionType.REQUEST_VERIFICATION,
+        session_id=session.id,
+        goal_id="goal-delta",
+        payload={"probe": probe.model_dump(mode="json")},
+        rationale="probe",
+        evidence=[],
+        confidence=0.9,
+        risk="low",
+        reversible=True,
+    )
+    prior = Intervention(
+        id="int-probe-1",
+        session_id=session.id,
+        goal_id="goal-delta",
+        trigger="stop",
+        evidence=[],
+        diagnosis="probe",
+        proposed_action=action,
+        confidence=0.9,
+        risk="low",
+        reversible=True,
+        authority_required="local_policy",
+        action_taken=action.type.value,
+        policy_verdict=PolicyVerdict.ALLOW,
+        result="verification_requested",
+        outcome="verification_requested",
+        created_at=now - timedelta(seconds=5),
+        metadata={"trigger_event_id": "trigger-1"},
+    )
+    return session, prior, gathering
+
+
+def test_matching_test_execution_ignores_cwd_unverified(tmp_path):
+    from pex_bridge.pipeline import _matching_test_execution
+
+    session, prior, gathering = _verification_probe_fixture(tmp_path)
+    event = HarnessEvent(
+        event_id="shell-unverified",
+        ts=datetime.now(UTC),
+        harness_type=HarnessType.OPENCODE,
+        session_id=session.id,
+        project_id=session.project_id,
+        goal_id=session.goal_id,
+        event_type=EventType.SHELL,
+        command="python -m pytest -q",
+        process_state={"pytest": {"ok": True, "exit_code": 0, "cwd_unverified": True}},
+    )
+    assert _matching_test_execution(prior, session, event, gathering) is None
+
+
+def test_matching_test_execution_accepts_observed_cwd(tmp_path):
+    from pex_bridge.pipeline import _matching_test_execution
+
+    session, prior, gathering = _verification_probe_fixture(tmp_path)
+    event = HarnessEvent(
+        event_id="shell-observed",
+        ts=datetime.now(UTC),
+        harness_type=HarnessType.OPENCODE,
+        session_id=session.id,
+        project_id=session.project_id,
+        goal_id=session.goal_id,
+        event_type=EventType.SHELL,
+        command="python -m pytest -q",
+        process_state={"pytest": {"ok": True, "exit_code": 0, "execution_cwd": str(tmp_path)}},
+    )
+    receipt = _matching_test_execution(prior, session, event, gathering)
+    assert receipt is not None
+    assert receipt.exit_code == 0
+
+
+def test_without_cwd_unverified_support_strips_terminal_verdict(tmp_path):
+    from pex_bridge.pipeline import _without_cwd_unverified_test_support
+
+    session, _, _ = _verification_probe_fixture(tmp_path)
+    event = HarnessEvent(
+        event_id="shell-strip",
+        ts=datetime.now(UTC),
+        harness_type=HarnessType.OPENCODE,
+        session_id=session.id,
+        project_id=session.project_id,
+        goal_id=session.goal_id,
+        event_type=EventType.SHELL,
+        command="python -m pytest -q",
+        process_state={"pytest": {"ok": True, "exit_code": 0, "cwd_unverified": True}},
+    )
+    (cleaned,) = _without_cwd_unverified_test_support([event])
+    assert cleaned.process_state["pytest"]["cwd_unverified"] is True
+    assert "ok" not in cleaned.process_state["pytest"]
+    assert "exit_code" not in cleaned.process_state["pytest"]
+    # Original is untouched.
+    assert event.process_state["pytest"]["ok"] is True

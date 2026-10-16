@@ -5,9 +5,10 @@ goal to a real OpenCode worker, watch PEX verify or reject its claims, and
 optionally enable model-backed supervisor review through a BYOK provider.
 
 Everything here runs on loopback against a deliberately test-scoped bridge
-(`scripts/demo_bridge.py`). The packaged desktop app uses the authenticated
+(`scripts/demo_bridge.py`). The packaged Tauri desktop app (frozen/optional)
+uses the authenticated
 bridge instead; this flow exists so the supervision loop is demonstrable in a
-browser without reading the desktop bearer. The test bridge advertises
+browser without reading the desktop bearer — the default path is the web UI. The test bridge advertises
 `unauthenticated_operator` on `/health` and mints a local operator principal
 for UI calls, so decisions, pause/resume, the task composer, and handoffs all
 work in the browser — this is demo-scope only, never the packaged bridge's
@@ -29,7 +30,7 @@ Run every command below **from the repository root**.
   (a bare `pip install -e services/bridge` cannot resolve the unpublished
   sibling packages). All Python invocations below use `uv run`; with the
   pip install, substitute the checkout's `.venv\Scripts\python.exe` instead.
-- Node dependencies for the desktop frontend: `cd apps/desktop && npm ci`
+- Node dependencies for the web UI frontend (vite only, no Rust/Tauri): `cd apps/desktop && npm ci`
   (run from the repo root; return to it afterwards).
 - The `opencode` CLI on `PATH` (`opencode serve` provides the worker
   transport) — install via `npm i -g opencode-ai`, see https://opencode.ai.
@@ -42,10 +43,12 @@ Run every command below **from the repository root**.
 uv run python scripts/demo.py
 ```
 
-Boots the demo bridge on `127.0.0.1:7420` and the vite dev UI on
-`127.0.0.1:1420` together, prints the URL, and stops both on Ctrl+C. With no
+Boots the demo bridge on `127.0.0.1:7420` and the web UI (vite dev) on
+`127.0.0.1:1420` together — `uv run python scripts/demo.py` = bridge :7420 + web UI :1420 —
+prints the URL, and stops both on Ctrl+C. With no
 agent installed this is enough for every **Recorded replay** fixture in the
-setup card. Requires `npm install` under `apps/desktop` once.
+setup card. Requires `npm install` under `apps/desktop` once (web UI bundle, vite only).
+The packaged Tauri desktop is frozen/optional.
 
 ### Live worker in one command
 
@@ -389,7 +392,10 @@ profile under `build/demo/pex-home`. `PEX_DEMO_HOME` overrides the *run root*
 opencode serve --port 4096
 ```
 
-## 3. Start the UI
+## 3. Start the web UI
+
+(`uv run python scripts/demo.py` does this by default — manual equivalent below;
+packaged Tauri desktop frozen/optional.)
 
 ```powershell
 cd apps/desktop
@@ -494,7 +500,7 @@ For the quantified receipt, `GET /v1/claims/metrics` reports the durable
 ledger — verdict counts, baselines sealed, integrity incidents, corrective
 nudges issued, and the most-flagged files. `GET /v1/goals/{id}/verification-report`
 packages the per-goal version: every claim with its verdict, the sealed
-baselines that anchored it, and the final completion projection. The desktop
+baselines that anchored it, and the final completion projection. The web UI
 Inspector renders the same ledger inline and can export it as a standalone
 HTML page (raw JSON embedded) — the artifact a reviewer keeps after the demo.
 
@@ -527,7 +533,7 @@ green suite, edits `eval_runner.py` afterwards, then claims done — the claim
 lands `uncertain` with `later_edit:eval_runner.py` because the cited green run
 predates the last workspace change; the re-run upgrades it to `verified`.
 `premature_stop_eval` and `dataset_before_eval` cover unsupported "done"
-claims and permission brokerage on an impossible command. The desktop setup card offers the same
+claims and permission brokerage on an impossible command. The web UI setup card offers the same
 fixtures as a "Recorded replay" button whenever the bridge advertises an
 honestly labeled list, so no curl is needed — replay sessions are visibly
 tagged and can never be mistaken for live worker control.
@@ -571,7 +577,7 @@ silently downgrades to local execution once `contree` is selected.
 
 The committed captures under `docs/demo/assets/` regenerate with
 `node scripts/capture-demo.mjs <session-id> <out.png>` from
-`apps/desktop` (vite dev server on :1420, demo bridge on :7420, a replayed
+`apps/desktop` (web UI vite dev server on :1420, demo bridge on :7420, a replayed
 session present). It drives the installed Microsoft Edge via Playwright; set
 `PEX_BROWSER_EXE` for a different Chromium-family binary. The script exists to
 keep README imagery honest — it only photographs the real UI, never mocks it.
@@ -602,7 +608,7 @@ rough cut (`build/pex-demo-roughcut.mp4`, plus a captioned variant from
 ## What this does not prove
 
 - The demo bridge is unauthenticated and loopback-only; it exercises the real
-  `/v1` surface but not the packaged desktop's bearer flow.
+  `/v1` surface but not the packaged Tauri desktop's bearer flow (frozen/optional).
 - One run shows mechanism, not general worker-quality improvement.
 - Semantic reviews require a valid provider key; deterministic supervision
   remains the fallback and never claims a model ran when it did not.

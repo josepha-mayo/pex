@@ -10,7 +10,7 @@ from pex_supervisor.verify import (
     verification_probe_targets,
     verify_claims,
 )
-from pex_supervisor.workspace import acceptance_fingerprints, snapshot
+from pex_supervisor.workspace import acceptance_fingerprints, is_acceptance_config, snapshot
 
 
 def _event(**kwargs) -> HarnessEvent:
@@ -124,7 +124,9 @@ def test_opencode_scoped_test_command_is_validated_as_direct_pytest():
             _event(event_id="stop", event_type=EventType.STOP),
         ],
         _goal(acceptance_criteria=["python -m pytest -q exits successfully"]),
-        {},
+        # `python -m` launches import from the worker cwd: a supported verdict
+        # requires an observed inventory that rules out a root module shadow.
+        {"workspace": True, "files": ["src/app.py", "tests/test_app.py"]},
     )
 
     assert result["status"] == "supported"
@@ -159,7 +161,10 @@ def test_goal_required_unittest_pass_is_supported_without_pytest_nag():
         evidence_requirements=["A completed python -m unittest -v test_timeline.py run."],
     )
 
-    result = verify_claims(claims, events, goal, {})
+    # `python -m` launches import from the worker cwd: supported requires an
+    # observed inventory that rules out a root `unittest.py`/hook shadow.
+    observed = {"workspace": True, "files": ["test_timeline.py", "src/app.py"]}
+    result = verify_claims(claims, events, goal, observed)
 
     assert result["status"] == "supported"
     assert result["unittest_observation"] == {
@@ -213,9 +218,10 @@ def test_explicit_both_framework_goal_needs_independent_results(runs, status, pr
         )
         for index, (framework, code) in enumerate(runs)
     ]
-    result = verify_claims(claims, events, goal, {})
+    observed = {"workspace": True, "files": ["src/app.py", "tests/test_app.py"]}
+    result = verify_claims(claims, events, goal, observed)
     assert result["status"] == status
-    assert required_verification_probe_kind(claims, events, goal, result) == probe
+    assert required_verification_probe_kind(claims, events, goal, result, observed) == probe
     if status == "supported":
         evidence = result["verdicts"][0]["evidence"]
         assert "pytest_ok=true" in evidence
@@ -240,11 +246,12 @@ def test_goal_required_unittest_pass_needs_no_probe_when_claim_extraction_is_emp
         _event(event_id="stop", event_type=EventType.STOP),
     ]
 
-    result = verify_claims([], events, goal, {})
+    observed = {"workspace": True, "files": ["test_timeline.py", "src/app.py"]}
+    result = verify_claims([], events, goal, observed)
 
     assert result["status"] == "no_claims"
     assert result["unittest_observation"]["ok"] is True
-    assert required_verification_probe_kind([], events, goal, result) is None
+    assert required_verification_probe_kind([], events, goal, result, observed) is None
 
 
 def test_targeted_pytest_pass_cannot_support_an_all_tests_pass_claim():
@@ -1580,7 +1587,13 @@ def test_passed_and_collected_counts_have_distinct_semantics():
 
     result = verify_claims(claims, events, goal, {})
 
-    assert result["status"] == "supported"
+    # 4 passed + 2 skipped + 1 xfailed satisfies the declared counts, but the
+    # nonpassing results are unexplained: "the suite passes" stays uncertain
+    # rather than supported while skips/xfails are on the record.
+    assert result["status"] == "uncertain"
+    evidence = result["verdicts"][0]["evidence"]
+    assert "pytest_nonpassing:skipped=2" in evidence
+    assert "pytest_nonpassing:xfailed=1" in evidence
 
 
 def test_deselected_tests_block_generic_all_tests_support():
@@ -2067,3 +2080,455 @@ def test_tampered_surface_does_not_hide_contradicted_verdict(tmp_path):
 
     assert result["status"] == "contradicted"
     assert result["acceptance_surface"]["modified"] == ["test_core.py"]
+
+
+def _module_pytest_events(command: str = "python -m pytest -q") -> list[HarnessEvent]:
+    return [
+        _event(
+            event_id="pytest-m",
+            event_type=EventType.SHELL,
+            command=command,
+            process_state={"pytest": {"ok": True, "exit_code": 0, "passed": 4}},
+        ),
+        _event(event_id="stop", event_type=EventType.STOP, message_delta="done"),
+    ]
+
+
+def _observed_workspace(*files: str) -> dict:
+    return {"workspace": True, "files": list(files)}
+
+
+def test_python_m_pytest_shadow_module_cannot_support():
+    # `python -m pytest` puts the worker cwd at sys.path[0]: a root pytest.py
+    # or pytest/ package runs *instead of* the real module and can print a
+    # fabricated green summary with exit 0.
+    for shadow_file in ("pytest.py", "pytest/__main__.py", "sitecustomize.py"):
+        result = verify_claims(
+            _tests_pass_claims(),
+            _module_pytest_events(),
+            _goal(acceptance_criteria=["tests pass"]),
+            _observed_workspace(shadow_file, "src/app.py"),
+        )
+        assert result["status"] == "uncertain", shadow_file
+        assert any(
+            item.startswith("module_shadow") for item in result["verdicts"][0]["evidence"]
+        ), shadow_file
+
+
+def test_python_m_pytest_unobserved_workspace_cannot_support():
+    # No inventory means the shadow question is unanswerable — a `-m` launch
+    # cannot earn supported on narration alone.
+    result = verify_claims(
+        _tests_pass_claims(),
+        _module_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        {},
+    )
+    assert result["status"] == "uncertain"
+    assert "module_shadow_uncheckable:workspace_unobserved" in result["verdicts"][0]["evidence"]
+
+
+def test_python_m_pytest_clean_inventory_supports():
+    result = verify_claims(
+        _tests_pass_claims(),
+        _module_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        _observed_workspace("src/app.py", "tests/test_app.py"),
+    )
+    assert result["status"] == "supported"
+
+
+def test_console_pytest_unaffected_by_root_shadow():
+    # A console-script `pytest` resolves from the interpreter's Scripts dir —
+    # the root pytest.py does not hijack that launch.
+    result = verify_claims(
+        _tests_pass_claims(),
+        _green_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        _observed_workspace("pytest.py", "src/app.py"),
+    )
+    assert result["status"] == "supported"
+
+
+def test_shell_mutation_after_green_run_breaks_support():
+    # git checkout / restore / stash and friends emit SHELL, not FILE_EDIT —
+    # a fix-then-revert TOCTOU is invisible to the file-edit ledger alone.
+    for command in (
+        "git checkout .",
+        "git restore .",
+        "git stash",
+        "sed -i 's/assert/return/' tests/test_app.py",
+        "python -c \"open('x','w').write('')\"",
+        "cp saved.py src/app.py",
+        "apply_patch < fix.diff",
+    ):
+        events = [
+            _green_pytest_events()[0],
+            _event(
+                event_id="mutate",
+                event_type=EventType.SHELL,
+                command=command,
+            ),
+            _event(event_id="stop", event_type=EventType.STOP, message_delta="done"),
+        ]
+        result = verify_claims(
+            _tests_pass_claims(),
+            events,
+            _goal(acceptance_criteria=["tests pass"]),
+            _observed_workspace("src/app.py"),
+        )
+        assert result["status"] == "uncertain", command
+        assert any("shell command" in str(item) for item in result["verdicts"][0]["evidence"]), (
+            command
+        )
+
+
+def test_readonly_shell_after_green_run_keeps_support():
+    for command in ("git status", "git log --oneline", "ls -la", "cat src/app.py"):
+        events = [
+            _green_pytest_events()[0],
+            _event(
+                event_id="ro",
+                event_type=EventType.SHELL,
+                command=command,
+            ),
+            _event(event_id="stop", event_type=EventType.STOP, message_delta="done"),
+        ]
+        result = verify_claims(
+            _tests_pass_claims(),
+            events,
+            _goal(acceptance_criteria=["tests pass"]),
+            _observed_workspace("src/app.py"),
+        )
+        assert result["status"] == "supported", command
+
+
+def test_unverifiable_claim_kind_cannot_ride_supported():
+    # "Implemented X. All tests pass." — the test claim verifies, but the
+    # unverifiable implementation narration must not inherit the verdict.
+    claims = [
+        {
+            "statement": "Implemented the auth fix",
+            "kind": "implemented",
+            "polarity": "asserted",
+            "confidence": 0.75,
+            "source_event_id": "stop",
+        },
+        *_tests_pass_claims(),
+    ]
+    result = verify_claims(
+        claims,
+        _green_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        _observed_workspace("src/app.py"),
+    )
+    assert result["status"] == "uncertain"
+    kinds = {
+        verdict.get("claim", {}).get("kind"): verdict["status"]
+        for verdict in result["verdicts"]
+        if isinstance(verdict.get("claim"), dict)
+    }
+    assert kinds["tests_pass"] == "supported"
+    assert kinds["implemented"] == "uncertain"
+    assert any(
+        "claim_not_independently_verifiable" in item
+        for verdict in result["verdicts"]
+        for item in verdict.get("evidence") or []
+    )
+
+
+def test_skips_and_xfails_block_supported():
+    events = [
+        _event(
+            event_id="pytest",
+            event_type=EventType.SHELL,
+            command="pytest -q",
+            process_state={
+                "pytest": {"ok": True, "exit_code": 0, "passed": 4, "skipped": 1, "xfailed": 1}
+            },
+        ),
+        _event(event_id="stop", event_type=EventType.STOP, message_delta="done"),
+    ]
+    result = verify_claims(
+        _tests_pass_claims(),
+        events,
+        _goal(acceptance_criteria=["tests pass"]),
+        _observed_workspace("src/app.py"),
+    )
+    assert result["status"] == "uncertain"
+    evidence = result["verdicts"][0]["evidence"]
+    assert "pytest_nonpassing:skipped=1" in evidence
+    assert "pytest_nonpassing:xfailed=1" in evidence
+
+
+def test_test_evaluator_filename_is_not_hidden(tmp_path):
+    # Component-exact hidden matching: tests/test_evaluator.py is ordinary
+    # acceptance surface — only a literal evaluator.py basename is oracle.
+    evaluator_test = tmp_path / "tests" / "test_evaluator.py"
+    evaluator_test.parent.mkdir()
+    evaluator_test.write_text("def test_eval():\n    assert True\n")
+    (tmp_path / "hidden_evaluator").mkdir()
+    (tmp_path / "hidden_evaluator" / "seed.py").write_text("x = 1\n")
+    (tmp_path / "evaluator.py").write_text("x = 1\n")
+
+    observed = snapshot(tmp_path)
+    files = set(observed.get("files") or [])
+    assert "tests/test_evaluator.py" in files
+    assert "evaluator.py" not in files
+    assert not any(name.startswith("hidden_evaluator") for name in files)
+
+
+def test_deleted_surface_at_claim_seal_flags_pytest_goal(tmp_path):
+    # Worker deletes the whole tests/ tree before claiming, then a (possibly
+    # fabricated) green run seals an empty baseline at claim time — that IS
+    # the attack the claim-seal flag exists for, even on an empty surface.
+    (tmp_path / "app.py").write_text("print('hi')\n")
+    baseline = {
+        "files": {},
+        "files_complete": True,
+        "sealed_context": "verify",
+    }
+    result = verify_claims(
+        _tests_pass_claims(),
+        _green_pytest_events(),
+        _goal(acceptance_criteria=["pytest exits successfully"]),
+        snapshot(tmp_path),
+        acceptance_baseline=baseline,
+    )
+    assert "acceptance_surface_baseline_at_claim" in result["acceptance_evidence"]
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"failed_count": 1},
+        {"errors": 1},
+        {"error_count": 1},
+        {"failed": 1},
+        {"failures": ["tests/test_x.py::test_y"]},
+        {"errors": "E"},
+        {"error_count": [1]},
+    ],
+)
+def test_green_run_with_failure_fields_stays_uncertain(extra):
+    events = [
+        _event(
+            event_id="pytest",
+            event_type=EventType.SHELL,
+            command="pytest -q",
+            process_state={"pytest": {"ok": True, "exit_code": 0, "passed": 4, **extra}},
+        ),
+        _event(event_id="stop", event_type=EventType.STOP, message_delta="done"),
+    ]
+    result = verify_claims(
+        _tests_pass_claims(),
+        events,
+        _goal(acceptance_criteria=["tests pass"]),
+        _observed_workspace("src/app.py"),
+    )
+    assert result["status"] == "uncertain"
+    assert all(item["status"] != "supported" for item in result["verdicts"])
+
+
+def test_green_run_with_failed_node_is_never_supported():
+    # A named failure with a green exit is contradictory narration: it must
+    # never earn supported (contradicted here via the failing node).
+    events = [
+        _event(
+            event_id="pytest",
+            event_type=EventType.SHELL,
+            command="pytest -q",
+            process_state={
+                "pytest": {
+                    "ok": True,
+                    "exit_code": 0,
+                    "passed": 4,
+                    "failed": "tests/test_x.py::test_y",
+                }
+            },
+        ),
+        _event(event_id="stop", event_type=EventType.STOP, message_delta="done"),
+    ]
+    result = verify_claims(
+        _tests_pass_claims(),
+        events,
+        _goal(acceptance_criteria=["tests pass"]),
+        _observed_workspace("src/app.py"),
+    )
+    assert result["status"] != "supported"
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "echo hi 2> err.txt",
+        "echo hi &> out.txt",
+        "cat <<EOF",
+        "git reset --hard",
+        "git switch main",
+        "git update-index --assume-unchanged foo.py",
+        "git update-ref refs/heads/main abc123",
+        'python -u -c "print(1)"',
+        'python3 -I -c "print(1)"',
+        'py -E -c "print(1)"',
+        'node --eval "1+1"',
+        'node -p "1+1"',
+        "pwsh -EncodedCommand aAB5AHQAZQBzAHQA",
+        "powershell -NoProfile -EncodedCommand aAB5",
+        "iwr http://example.invalid/x -OutFile out.txt",
+        "curl http://example.invalid/x --outfile out.txt",
+        "poetry install",
+        "poetry add foo",
+        "pipenv install",
+        "pipenv add foo",
+        "unlink foo.txt",
+        "shred -u foo.txt",
+        "mkdir newdir",
+        "Clear-Content foo.txt",
+        "Start-Transcript -Path t.log",
+        "msiexec /i foo.msi",
+    ],
+)
+def test_write_capable_shell_covers_new_vectors(command):
+    events = [
+        _green_pytest_events()[0],
+        _event(event_id="mutate", event_type=EventType.SHELL, command=command),
+        _event(event_id="stop", event_type=EventType.STOP, message_delta="done"),
+    ]
+    result = verify_claims(
+        _tests_pass_claims(),
+        events,
+        _goal(acceptance_criteria=["tests pass"]),
+        _observed_workspace("src/app.py"),
+    )
+    assert result["status"] == "uncertain", command
+    assert any("shell command" in str(item) for item in result["verdicts"][0]["evidence"]), command
+
+
+def test_python_m_pytest_truncated_inventory_cannot_support():
+    for workspace in (
+        {
+            "workspace": True,
+            "files": ["src/app.py"],
+            "files_truncated": True,
+            "inventory_reason": "file_bound",
+        },
+        {
+            "workspace": True,
+            "files": ["src/app.py"],
+            "files_truncated": False,
+            "inventory_reason": "entry_bound",
+        },
+    ):
+        result = verify_claims(
+            _tests_pass_claims(),
+            _module_pytest_events(),
+            _goal(acceptance_criteria=["tests pass"]),
+            workspace,
+        )
+        assert result["status"] == "uncertain"
+        assert "module_shadow_uncheckable:inventory_truncated" in result["verdicts"][0]["evidence"]
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        ".coveragerc",
+        ".mocharc",
+        ".mocharc.json",
+        ".mocharc.yml",
+        ".mocharc.yaml",
+        ".mocharc.js",
+        ".mocharc.cjs",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "tox.toml",
+        "pytest.cfg",
+        "requirements/test.txt",
+        "requirements/base.txt",
+    ],
+)
+def test_runner_config_allowlist_covers_new_names(name):
+    assert is_acceptance_config(name) is True
+
+
+def test_dot_config_inventoried_in_snapshot(tmp_path):
+    (tmp_path / ".coveragerc").write_text("[run]\n", encoding="utf-8")
+    (tmp_path / ".mocharc.json").write_text("{}\n", encoding="utf-8")
+    observed = snapshot(tmp_path)
+    files = set(observed.get("files") or [])
+    assert ".coveragerc" in files
+    assert ".mocharc.json" in files
+    assert is_acceptance_config(".coveragerc") is True
+
+
+def test_truncated_surface_propagates_check_incomplete(tmp_path):
+    (tmp_path / "test_core.py").write_text("def test_core():\n    assert True\n")
+    baseline = {
+        "files": acceptance_fingerprints(snapshot(tmp_path)),
+        "files_complete": True,
+    }
+    workspace = snapshot(tmp_path)
+    workspace["surface_complete"] = False
+    result = verify_claims(
+        _tests_pass_claims(),
+        _green_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        workspace,
+        acceptance_baseline=baseline,
+    )
+    assert result["status"] == "uncertain"
+    assert "acceptance_surface_check_incomplete" in result["acceptance_evidence"]
+
+
+def test_deployment_complete_with_files_present_stays_uncertain(tmp_path):
+    (tmp_path / "report.txt").write_text("shipped\n", encoding="utf-8")
+    result = verify_claims(
+        [
+            {
+                "statement": "Deployment complete",
+                "kind": "deployment_complete",
+                "polarity": "asserted",
+                "confidence": 0.9,
+                "source_event_id": "stop",
+            }
+        ],
+        [_event(event_id="stop", event_type=EventType.STOP)],
+        _goal(acceptance_criteria=["report.txt contains shipped"]),
+        snapshot(tmp_path, run_pytest=False),
+    )
+    assert result["status"] == "uncertain"
+    assert "no_external_check" in result["verdicts"][0]["evidence"]
+
+
+def test_visible_goal_path_root_only_evaluator():
+    from pex_supervisor.verify import _visible_goal_path
+
+    assert _visible_goal_path("evaluator.py") is False
+    assert _visible_goal_path("tests/evaluator.py") is True
+    assert _visible_goal_path("tests/test_evaluator.py") is True
+
+
+def test_hidden_root_only_evaluator_surface(tmp_path):
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "evaluator.py").write_text("x = 1\n", encoding="utf-8")
+    (tmp_path / "evaluator.py").write_text("oracle = 1\n", encoding="utf-8")
+    observed = snapshot(tmp_path)
+    files = set(observed.get("files") or [])
+    assert "tests/evaluator.py" in files
+    assert "evaluator.py" not in files
+
+
+def test_git_redaction_keeps_test_evaluator_lines():
+    from pex_supervisor.workspace import (
+        _git_diff_header_is_hidden,
+        _git_line_refers_to_hidden,
+    )
+
+    assert _git_line_refers_to_hidden(" M tests/test_evaluator.py") is False
+    assert _git_line_refers_to_hidden(" M evaluator.py") is True
+    assert (
+        _git_diff_header_is_hidden("diff --git a/tests/test_evaluator.py b/tests/test_evaluator.py")
+        is False
+    )
+    assert _git_diff_header_is_hidden("diff --git a/evaluator.py b/evaluator.py") is True

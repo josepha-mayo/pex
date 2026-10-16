@@ -9,6 +9,7 @@ from pex_bridge.store import (
     MCP_VERIFY_CLAIM_TOOL,
     Store,
     claim_verification_request_fingerprint,
+    claim_verification_subject_fingerprint,
     utcnow,
 )
 from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
@@ -136,6 +137,12 @@ def _verification_artifacts(
             "verified": False,
         },
     )
+    subject_fingerprint = claim_verification_subject_fingerprint(
+        session_id=session.id,
+        goal_id=goal.id,
+        project_id=session.project_id or goal.project_id,
+        claim=statement,
+    )
     receipt = ContextItem(
         id=f"receipt-verify-{suffix}",
         project_id=session.project_id or goal.project_id,
@@ -156,6 +163,10 @@ def _verification_artifacts(
             "verified": False,
             "evidence": [],
             "correction": None,
+            "claim_fingerprint": subject_fingerprint,
+            "valid_as_of": now.isoformat(),
+            "superseded": False,
+            "superseded_by": None,
         },
     )
     results = [receipt]
@@ -180,6 +191,10 @@ def _verification_artifacts(
                     "evidence": ["pytest_ok=True"],
                     "claim": extracted,
                     "source_session_id": session.id,
+                    "claim_fingerprint": subject_fingerprint,
+                    "valid_as_of": now.isoformat(),
+                    "superseded": False,
+                    "superseded_by": None,
                 },
             )
         )
@@ -240,6 +255,7 @@ def _verification_artifacts(
         "raw_status": outcome,
         "outcome": outcome,
         "verified": outcome == "supported",
+        "valid_as_of": now.isoformat(),
         "claims": [extracted],
         "evidence": [],
         "correction": None,
@@ -626,5 +642,231 @@ async def test_verified_workspace_result_is_bound_to_canonical_snapshot_receipt(
         assert stored is not None
         assert stored.provenance == SourceKind.WORKSPACE
         assert stored.source_refs == workspace_result.source_refs
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_uncertain_does_not_supersede_standing_supported_receipt(tmp_path):
+    store, session, goal, principal = await _bound_store(tmp_path)
+    try:
+        principal_id = principal["principal_id"]
+        proof = _pytest_event("pytest-proof-uncertain-guard", session, goal_id=goal.id)
+        await store.add_event(proof)
+        evidence_ids = (proof.event_id,)
+        supported = _verification_artifacts(
+            "supported-stands",
+            session,
+            goal,
+            principal_id=principal_id,
+            evidence_ids=evidence_ids,
+        )
+        await _commit(store, principal_id, "verify-stands-0001", evidence_ids, supported)
+        supported_receipt_id = supported[2][0].id
+        supported_verified_id = supported[2][1].id
+
+        uncertain = _verification_artifacts(
+            "uncertain-no-supersede",
+            session,
+            goal,
+            principal_id=principal_id,
+            evidence_ids=(),
+            outcome="uncertain",
+        )
+        await _commit(store, principal_id, "verify-uncertain-0001", (), uncertain)
+
+        stale_receipt = await store.get_context(supported_receipt_id)
+        assert stale_receipt is not None
+        assert stale_receipt.metadata["superseded"] is False
+        assert stale_receipt.metadata["superseded_by"] is None
+        stale_verified = await store.get_context(supported_verified_id)
+        assert stale_verified is not None
+        assert stale_verified.metadata["superseded"] is False
+        assert stale_verified.metadata["superseded_by"] is None
+        new_receipt = await store.get_context(uncertain[2][0].id)
+        assert new_receipt is not None
+        assert new_receipt.metadata["superseded"] is False
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_contradicted_supersedes_with_temporal_guard_and_timestamp(tmp_path):
+    store, session, goal, principal = await _bound_store(tmp_path)
+    try:
+        principal_id = principal["principal_id"]
+        proof = _pytest_event("pytest-proof-temporal", session, goal_id=goal.id)
+        await store.add_event(proof)
+        evidence_ids = (proof.event_id,)
+        supported = _verification_artifacts(
+            "supported-temporal",
+            session,
+            goal,
+            principal_id=principal_id,
+            evidence_ids=evidence_ids,
+        )
+        await _commit(store, principal_id, "verify-temporal-0001", evidence_ids, supported)
+        supported_receipt_id = supported[2][0].id
+        supported_valid = supported[2][0].metadata["valid_as_of"]
+
+        failed = _pytest_event("pytest-failed-temporal", session, goal_id=goal.id)
+        failed.process_state = {"pytest": {"ok": False, "exit_code": 1}}
+        await store.add_event(failed)
+        contradicted = _verification_artifacts(
+            "contradicted-temporal",
+            session,
+            goal,
+            principal_id=principal_id,
+            evidence_ids=(failed.event_id,),
+            outcome="contradicted",
+        )
+        await _commit(store, principal_id, "verify-temporal-0002", (failed.event_id,), contradicted)
+        new_receipt_id = contradicted[2][0].id
+        new_valid = contradicted[2][0].metadata["valid_as_of"]
+        assert supported_valid <= new_valid
+
+        stale = await store.get_context(supported_receipt_id)
+        assert stale is not None
+        assert stale.metadata["superseded"] is True
+        assert stale.metadata["superseded_by"] == new_receipt_id
+        assert isinstance(stale.metadata.get("superseded_at"), str)
+        # Commit-time retirement cannot precede the retiring receipt's validity.
+        assert stale.metadata["superseded_at"] >= new_valid
+        # Superseded receipts leave the handoff read path.
+        listed = await store.list_context_for_authority(
+            session.project_id or goal.project_id,
+            goal_id=goal.id,
+            observed_at=utcnow(),
+            limit=1000,
+        )
+        listed_ids = {item.id for item in listed}
+        assert supported_receipt_id not in listed_ids
+        assert new_receipt_id in listed_ids
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_subject_fingerprint_normalization_and_isolation(tmp_path):
+    store, session, goal, principal = await _bound_store(tmp_path)
+    try:
+        project = session.project_id or goal.project_id
+        base = claim_verification_subject_fingerprint(
+            session_id=session.id,
+            goal_id=goal.id,
+            project_id=project,
+            claim="All tests passed.",
+        )
+        for variant in (
+            "all tests passed",
+            "ALL  TESTS   PASSED!",
+            "  All Tests Passed...  ",
+            "all tests passed?",
+        ):
+            assert (
+                claim_verification_subject_fingerprint(
+                    session_id=session.id,
+                    goal_id=goal.id,
+                    project_id=project,
+                    claim=variant,
+                )
+                == base
+            )
+        other = claim_verification_subject_fingerprint(
+            session_id=session.id,
+            goal_id=goal.id,
+            project_id=project,
+            claim="The deployment is complete.",
+        )
+        assert other != base
+        other_session = claim_verification_subject_fingerprint(
+            session_id="codex:other",
+            goal_id=goal.id,
+            project_id=project,
+            claim="All tests passed.",
+        )
+        assert other_session != base
+        # Principal rotation must not fork the subject trail.
+        request_a = claim_verification_request_fingerprint(
+            principal_id="mcp-verify-principal",
+            tool=MCP_VERIFY_CLAIM_TOOL,
+            session_id=session.id,
+            goal_id=goal.id,
+            project_id=project,
+            claim="All tests passed.",
+        )
+        request_b = claim_verification_request_fingerprint(
+            principal_id="mcp-rotated-principal",
+            tool=MCP_VERIFY_CLAIM_TOOL,
+            session_id=session.id,
+            goal_id=goal.id,
+            project_id=project,
+            claim="All tests passed.",
+        )
+        assert request_a != request_b
+        assert base == claim_verification_subject_fingerprint(
+            session_id=session.id,
+            goal_id=goal.id,
+            project_id=project,
+            claim="All tests passed.",
+        )
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_commit_refuses_not_live_control_session(tmp_path):
+    for seal_key in ("not_live_control", "observe_only", "replay"):
+        store, session, goal, principal = await _bound_store(tmp_path / seal_key)
+        try:
+            principal_id = principal["principal_id"]
+            sealed = session.model_copy(deep=True)
+            sealed.metadata = {**(sealed.metadata or {}), seal_key: True}
+            await store.upsert_session(sealed)
+            artifacts = _verification_artifacts(
+                f"sealed-{seal_key}",
+                sealed,
+                goal,
+                principal_id=principal_id,
+                outcome="uncertain",
+            )
+            with pytest.raises(ValueError, match="no live worker"):
+                await _commit(store, principal_id, f"verify-sealed-{seal_key}", (), artifacts)
+        finally:
+            await store.close()
+
+
+@pytest.mark.asyncio
+async def test_pipeline_verify_refuses_not_live_control_session(tmp_path):
+    from pex_bridge.adapters import AdapterRegistry
+    from pex_bridge.bus import EventBus
+    from pex_bridge.config import Settings
+    from pex_bridge.mcp_auth import MCPPrincipal
+    from pex_bridge.pipeline import Pipeline
+    from pex_protocol.context import ClaimVerificationRequest
+
+    store, session, goal, record = await _bound_store(tmp_path)
+    try:
+        pipeline = Pipeline(
+            store,
+            AdapterRegistry(),
+            EventBus(),
+            Settings.for_test(home=tmp_path, require_auth=False, autonomy="observe"),
+            model=None,
+        )
+        now = utcnow()
+        principal = MCPPrincipal.from_store_record(record, now=now)
+        sealed = session.model_copy(deep=True)
+        sealed.metadata = {**(sealed.metadata or {}), "not_live_control": True}
+        await store.upsert_session(sealed)
+        with pytest.raises(ValueError, match="no live worker"):
+            await pipeline.verify_reported_claim(
+                sealed,
+                principal=principal,
+                request=ClaimVerificationRequest(
+                    idempotency_key="verify-pipeline-sealed-0001",
+                    claim="All tests passed.",
+                ),
+            )
     finally:
         await store.close()
