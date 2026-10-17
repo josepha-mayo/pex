@@ -227,10 +227,10 @@ all callable in-page) and a scoped MCP tool surface at `/mcp/`.
   [collection receipt](evidence/pytest-collect-2026-10-15.json)
   re-verified 2026-10-15.
   `uv run python scripts/eval_replays.py` scores the
-  shipped fixture suite against its declared supervision arcs — 19/19,
-  re-verified 2026-10-16 twice with identical verdicts
-  ([receipt](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-16.json) —
-  [readable form](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-16.html) with the
+  shipped fixture suite against its declared supervision arcs — 21/21,
+  re-verified 2026-10-17 twice with identical verdicts
+  ([receipt](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-17.json) —
+  [readable form](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-17.html) with the
   same JSON embedded; `--repeat 2` determinism runs on every push in CI).
   The demo evidence directory is catalogued with
   per-artifact re-verify commands in

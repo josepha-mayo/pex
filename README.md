@@ -289,7 +289,7 @@ fixture suite is scored on every push by `scripts/eval_replays.py`.
 
 ![Replay fixtures, each with a one-line "what this arc proves" summary](docs/demo/assets/pex-fixtures-summaries-cd9b3bc.png)
 
-*The judge's first screen: fourteen scripted fixtures plus five captured
+*The judge's first screen: sixteen scripted fixtures plus five captured
 live runs, visibly marked **FROM LIVE** — exported real OpenCode traffic, not
 a synthetic trajectory. The newest capture, `live_self_escalation_eval`, replays
 a real worker quoting the sealed goal's forbidden outcome back to a human via
@@ -302,7 +302,10 @@ tagged so the second and third acts are discoverable. The suite spans
 tamper-and-restore, runner-config injection, stale evidence, premature
 claims, drift loops, forbidden-outcome violations (nudge and pre-write
 escalation), a worker dispute that escalates to the human instead of a
-re-nudge, permission brokering, the ruling-continuity pair, and a positive
+re-nudge, permission brokering, the ruling-continuity pair, the
+`pex.check_action` preflight pair (consulted the supervisor, was warned —
+one fixture violates anyway and gets caught, the other complies and
+verifies), and a positive
 control — a worker that complies with a recorded ruling earns
 `verified_complete` with no correction — each scored in
 CI against its declared arc.*

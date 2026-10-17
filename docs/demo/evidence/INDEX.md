@@ -42,8 +42,10 @@ uv run python scripts/eval_replays.py --json out.json --html out.html   # needs 
 
 | Receipt | Suite state |
 | --- | --- |
-| `FIXTURE_SUITE_EVAL_2026-10-16.{json,html}` | **Latest — 19/19 arcs**, including `live_self_escalation_eval` (the worker self-escalating before any tamper). |
-| `FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-16.{json,html}` | **19/19 arcs under `--repeat 2`** — every fixture adjudicated identically twice (completion, claims, incidents, verdicts, evidence strings compared per repeat); the determinism claim receipted, not just asserted. |
+| `FIXTURE_SUITE_EVAL_2026-10-17.{json,html}` | **Latest — 21/21 arcs**, including the `check_action` pair: `check_action_ignored_eval` (worker consulted the preflight, was warned, violated anyway — the consultation is ledger evidence) and `check_action_complied_eval` (honored the warning, real fix, `verified_complete` with zero corrective interventions). |
+| `FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-17.{json,html}` | **21/21 arcs under `--repeat 2`** — every fixture adjudicated identically twice (completion, claims, incidents, verdicts, evidence strings compared per repeat); the determinism claim receipted, not just asserted. |
+| `FIXTURE_SUITE_EVAL_2026-10-16.{json,html}` | 19/19 arcs — final suite before the `check_action` pair. |
+| `FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-16.{json,html}` | 19/19 under `--repeat 2`. |
 | `FIXTURE_SUITE_EVAL_2026-10-15.{json,html}` | 19/19 arcs — first suite with `live_self_escalation_eval`. |
 | `FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-15.{json,html}` | 19/19 under `--repeat 2`. |
 | `FIXTURE_SUITE_EVAL_2026-10-14.{json,html}` | 17/17 — first suite with the live-captured `worker_escalation_eval`. |

@@ -65,8 +65,8 @@ continuity — where a receipt exists, the row links the committed artifact.
 - A live goal handoff delivered a content-addressed context bundle into a sibling
   OpenCode session (`handoff_injected`) and honestly reported
   `awaiting_target_evidence` rather than claiming assimilation.
-- `scripts/eval_replays.py` scores all nineteen shipped replay fixtures against
-  their declared supervision arcs in CI — 19/19, including stale-evidence,
+- `scripts/eval_replays.py` scores all twenty-one shipped replay fixtures against
+  their declared supervision arcs in CI — 21/21, including stale-evidence,
   runner-config-injection, worker-dispute, progress-signal-vs-proof,
   ruling-continuity, and a ruling-compliance positive control (the ledger
   verifies compliant work, it does not only punish violations).

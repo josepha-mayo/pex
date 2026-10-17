@@ -15,10 +15,25 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SUITE = ROOT / "docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-16.json"
-DETERMINISM = ROOT / "docs/demo/evidence/FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-16.json"
+EVIDENCE_DIR = ROOT / "docs/demo/evidence"
 EVIDENCE = ROOT / "docs/evidence"
 OUT = ROOT / "docs/demo/verdict.json"
+
+
+def _latest_receipt(prefix: str) -> Path:
+    candidates = sorted(
+        path
+        for path in EVIDENCE_DIR.glob(f"{prefix}_*.json")
+        if not path.stem.startswith(f"{prefix}_DETERMINISM")
+    )
+    if not candidates:
+        raise SystemExit(f"no {prefix}_* receipt under docs/demo/evidence")
+    return candidates[-1]
+
+
+SUITE = _latest_receipt("FIXTURE_SUITE_EVAL")
+_det_candidates = sorted(EVIDENCE_DIR.glob("FIXTURE_SUITE_EVAL_DETERMINISM_*.json"))
+DETERMINISM = _det_candidates[-1] if _det_candidates else None
 
 # Receipt files named <slug>-YYYY-MM-DD.json with schema_version + a live
 # provider call are surfaced so the scraped page reports live verification
@@ -78,7 +93,7 @@ def main() -> int:
         ],
     }
 
-    if DETERMINISM.exists():
+    if DETERMINISM is not None:
         det = json.loads(DETERMINISM.read_text(encoding="utf-8"))
         det_fixtures = det.get("fixtures", [])
         repeat = max((int(row.get("runs") or 1) for row in det_fixtures), default=1)

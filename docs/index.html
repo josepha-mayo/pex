@@ -21,7 +21,7 @@
     "Sealed acceptance surfaces with tamper detection",
     "Independent claim adjudication — worker narration is signal, never proof",
     "Durable human rulings that survive worker termination and propagate to siblings",
-    "Deterministic replay re-adjudication (19-fixture suite)",
+    "Deterministic replay re-adjudication (21-fixture suite)",
     "Scoped worker-facing MCP server (9 tools, 6 scopes)",
     "Hash-chained evidence packs with offline and in-browser verification"
   ]
@@ -131,10 +131,10 @@
     answer from <a href="demo/verdict.json"><code>demo/verdict.json</code></a> —
     a distilled, receipt-derived summary of the suite.</p>
     <p><a href="demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.html">Open the captured-live evidence pack →</a>
-    &nbsp;·&nbsp; <a href="demo/evidence/FIXTURE_SUITE_EVAL_2026-10-16.html">19/19 replay suite receipt →</a>
-    &nbsp;·&nbsp; <a href="demo/evidence/FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-16.html">19/19 ×2 runs, identical arcs →</a></p>
-    <p class="muted">Across the suite: <strong>80 worker claims adjudicated</strong>,
-    7 integrity incidents caught, and 11 of 19 runs land
+    &nbsp;·&nbsp; <a href="demo/evidence/FIXTURE_SUITE_EVAL_2026-10-17.html">21/21 replay suite receipt →</a>
+    &nbsp;·&nbsp; <a href="demo/evidence/FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-17.html">21/21 ×2 runs, identical arcs →</a></p>
+    <p class="muted">Across the suite: <strong>84 worker claims adjudicated</strong>,
+    8 integrity incidents caught, and 12 of 21 runs land
     <em>uncertain</em>/<em>incomplete</em> — a supervisor that only approves is
     a rubber stamp; PEX withholds when the evidence isn't there.</p>
     <p>Offline verification, one command:</p>
@@ -153,7 +153,7 @@
       sessions and survives goal amendments via supersedes lineage.</li>
     <li><strong>Workers call back</strong> — a scoped MCP server (9 tools, 6 scopes) lets an
       agent read its goal, report progress, preflight an intended action, verify a claim, or escalate an intent conflict itself.</li>
-    <li><strong>Deterministic replays</strong> — 19 curated trajectories re-adjudicate through
+    <li><strong>Deterministic replays</strong> — 21 curated trajectories re-adjudicate through
       the real pipeline; identical arcs prove supervision is deterministic, not a lucky path.</li>
   </ul>
 
@@ -185,7 +185,7 @@
   <pre class="cmd">git clone https://github.com/josepha-mayo/pex
 cd pex
 uv run python scripts/demo.py          # bridge :7420 + web UI :1420 (packaged Tauri frozen/optional), replay fixtures work with no workers
-uv run python scripts/eval_replays.py  # all 19 fixtures, self-scored — needs demo.py running
+uv run python scripts/eval_replays.py  # all 21 fixtures, self-scored — needs demo.py running
 # no uv? pip install -r requirements.txt, then .venv/Scripts/python scripts/demo.py</pre>
 
   <div class="grid2">
