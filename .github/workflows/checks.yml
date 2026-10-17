@@ -58,18 +58,15 @@ jobs:
           tests/unit/test_codex_shared_transport.py::test_native_private_leaf_does_not_bypass_unsafe_ancestor_acl
       - name: Backend, adapters, policy and persistence
         run: uv run --frozen pytest -q -m "not live_llm and not live_codex and not live_opencode and not live_agentcore and not live_contree" --junitxml=build/test-results.xml
-      - name: Desktop behavior
-        # WEB-FIRST freeze: the packaged Tauri desktop is frozen/optional and
-        # the web UI is the default judge path, so CI skips the desktop suite
-        # for now. The step stays (with its lockfile) so revive is one revert.
-        if: false
+      - name: Web UI behavior
+        # The web UI is the default judge path. `node --test` runs the plain
+        # TypeScript suite (viewModel, demoReplay, startupRecovery, ...) — no
+        # Tauri involved, so it still gates the surface judges actually see.
         working-directory: apps/desktop
         run: npm test
-      - name: Desktop production build
-        # WEB-FIRST freeze: the packaged Tauri desktop is frozen/optional and
-        # the web UI is the default judge path, so CI skips the desktop suite
-        # for now. The step stays (with its lockfile) so revive is one revert.
-        if: false
+      - name: Web UI production build
+        # `tsc && vite build` typechecks and bundles the same web surface the
+        # judge path serves (vite dev/`vite preview`) — this is the TS gate.
         working-directory: apps/desktop
         run: npm run build
       - name: Retain test report
