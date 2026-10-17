@@ -72,8 +72,9 @@ caching the answer. PEX is built for exactly that failure class: it caught
 a real OpenCode worker claiming done on a decoy checker, and disputed a
 weakened acceptance test with named evidence. One more thing, for the
 judges reading this: the hackathon's own evaluation pipeline — automated
-evidence gates, a Nemotron judgment pass, humans on the calls that matter —
-is the architecture PEX ships. This submission is, in a real sense,
+evidence gates in a Nebius Sandbox, an NVIDIA Nemotron judgment pass, humans
+on the calls that matter (documented at roundone.dev) — is the architecture
+PEX ships. This submission is, in a real sense,
 judged by our thesis.
 
 ## The live story (for the "story" field / video)
@@ -167,7 +168,7 @@ uv run python scripts/demo.py        # bridge :7420 + web UI :1420, no keys need
 # open http://127.0.0.1:1420 → "Recorded replays" → run premature_stop_eval
 # (tagged "start here") — then worker_escalation_eval, or any of the 19
 # fixtures; each replays a recorded trajectory through the
-# real adjudication pipeline — four were exported from real live worker
+# real adjudication pipeline — five were exported from real live worker
 # sessions — and shows its verdict.
 uv run python scripts/eval_replays.py   # second terminal, while demo.py runs;
 #                                        scores all 19 (prints a table;
@@ -186,9 +187,10 @@ by ~18 hours. The work submitted here was built during the window. Substantially
 new since it opened:
 
 - The entire worker↔PEX MCP supervision loop (session-bound credentials,
-  eight session-bound tools behind five scopes — one read, four write —
+  nine session-bound tools behind six scopes — one read, five write —
   with a flat+nested arg contract) — including the worker-initiated
-  escalation captured live into `worker_escalation_eval`.
+  escalation captured live into `worker_escalation_eval` and the
+  preflight `pex.check_action` consultation.
 - Durable human rulings: journaled rulings distinct from editable goal
   text, surviving worker termination, propagating to sibling workers.
 - The deterministic replay system: 19-fixture suite, evaluator, replay

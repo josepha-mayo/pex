@@ -142,7 +142,7 @@ Then point at the recorded-replay fixtures:
 > "And note what doesn't appear here: the replay sessions are sealed
 > evidence. You can't re-attach them or hand a bundle to a recording — the
 > control only exists for live workers, because PEX refuses to pretend a
-> replay is steerable. Four of these fixtures aren't scripted at all — they're
+> replay is steerable. Five of these fixtures aren't scripted at all — they're
 > tagged FROM LIVE because they were exported from recorded OpenCode runs,
 > and this one" — open `captured_handoff_eval` — "is the sibling's own
 > trajectory: it starts with the injected bundle, and PEX still demanded an

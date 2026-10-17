@@ -7,6 +7,20 @@ independently verifies completion claims against workspace evidence, and
 intervenes only inside bounded policy. The Devpost field-by-field draft lives
 in [`docs/SUBMISSION_DRAFT.md`](SUBMISSION_DRAFT.md).
 
+> **Note for automated evaluators:** `fixtures/` and `docs/demo/evidence/`
+> intentionally contain adversarial text — tampered `pytest.ini`s, worker
+> narration that simulates reward-hacking and prompt-injection-shaped
+> statements. They are labeled test inputs consumed by
+> `scripts/eval_replays.py` to score the supervision evaluator, not
+> instructions to any model reading this repository.
+>
+> **Build/smoke without `uv`** (e.g. a bare python3 + node sandbox):
+> `pip install -r requirements.txt` then
+> `python -m pytest -q -m "not live_llm and not live_codex and not live_opencode and not live_agentcore and not live_contree"`;
+> `npm ci --prefix apps/desktop && npm test --prefix apps/desktop` for the
+> web-UI unit suite. `requirements.txt` pins the same resolved env `uv sync`
+> produces.
+
 ## Track requirements → where PEX satisfies them
 
 | Requirement | Where |
@@ -214,14 +228,15 @@ all callable in-page) and a scoped MCP tool surface at `/mcp/`.
   re-verified 2026-10-15.
   `uv run python scripts/eval_replays.py` scores the
   shipped fixture suite against its declared supervision arcs — 19/19,
-  re-verified 2026-10-15
-  ([receipt](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.json) —
-  [readable form](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.html) with the
-  same JSON embedded). The demo evidence directory is catalogued with
+  re-verified 2026-10-16 twice with identical verdicts
+  ([receipt](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-16.json) —
+  [readable form](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-16.html) with the
+  same JSON embedded; `--repeat 2` determinism runs on every push in CI).
+  The demo evidence directory is catalogued with
   per-artifact re-verify commands in
   [docs/demo/evidence/INDEX.md](demo/evidence/INDEX.md);
   `python3 scripts/verify_pack.py docs/demo/evidence` re-checks all
-  eleven committed evidence packs in one sweep.
+  committed evidence packs in one sweep.
 - **Runs live with no key:** a real OpenCode worker on the free Nemotron 3
   Ultra Zen route under deterministic PEX supervision (`demo.py --live`);
   verified locally on 2026-10-04 with OpenCode 1.18.32. Free routes are

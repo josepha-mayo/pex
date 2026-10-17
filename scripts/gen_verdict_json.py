@@ -107,13 +107,28 @@ def main() -> int:
         slug = receipt.stem.rsplit("-", 3)[0]
         if slug not in _LIVE_RECEIPTS:
             continue
+        provider = body.get("provider")
         live.append(
             {
                 "receipt": f"evidence/{receipt.name}",
                 "date": body.get("observed_date"),
-                "provider": body.get("provider"),
-                "model": body.get("supervisor_model")
-                or (body.get("supervisor") or {}).get("model"),
+                "provider": provider,
+                # The recorded model is the configured default; with no
+                # provider the run never called it — report it as null so a
+                # scraper cannot count a Nemotron call that never happened.
+                "model": (
+                    body.get("supervisor_model") or (body.get("supervisor") or {}).get("model")
+                )
+                if provider
+                else None,
+                "supervision": (
+                    "provider_llm"
+                    if provider
+                    in {"nebius", "openai", "anthropic", "gemini", "moonshot", "glm", "muse"}
+                    else "provider_tool"
+                    if provider
+                    else "deterministic"
+                ),
                 "worker": body.get("worker_harness") or (body.get("worker") or {}).get("harness"),
             }
         )

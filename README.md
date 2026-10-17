@@ -27,7 +27,8 @@ a suggested model as available to an account.
 
 ```bash
 # needs Node + uv (astral.sh) — uv resolves the pinned workspace env itself
-npm install --prefix apps/desktop && npm i -g opencode-ai   # once — web UI bundle (vite only, no Rust/Tauri)
+npm install --prefix apps/desktop   # once — the web UI bundle (vite only, no Rust/Tauri)
+npm i -g opencode-ai                # once — the worker CLI PEX supervises
 uv run python scripts/demo.py --live
 ```
 
@@ -290,9 +291,10 @@ fixture suite is scored on every push by `scripts/eval_replays.py`.
 
 *The judge's first screen: fourteen scripted fixtures plus five captured
 live runs, visibly marked **FROM LIVE** — exported real OpenCode traffic, not
-a synthetic trajectory. The newest capture, `worker_escalation_eval`, replays
-a real worker escalating a task-vs-goal conflict through `pex_request_decision`
-instead of complying — and the adjudication honestly ends `incomplete`.
+a synthetic trajectory. The newest capture, `live_self_escalation_eval`, replays
+a real worker quoting the sealed goal's forbidden outcome back to a human via
+`pex_request_decision` — escalating itself *before* touching the test file —
+and the adjudication honestly ends `incomplete`.
 A **start here** tag marks the most legible first run
 and the grid is ordered as a narrative: cheats first, then the
 durable-ruling act, then captured-live provenance. Attach-aware fixtures are

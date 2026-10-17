@@ -216,9 +216,9 @@ uv run python scripts/eval_replays.py --json out.json   # needs the demo bridge
 Replays every fixture through the real pipeline and scores each verification
 report against the arc it exists to demonstrate — nonzero exit if a tamper
 scenario ends verified without its integrity incident, or a no-evidence
-scenario ends supported. Latest receipt: `docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.json`
+scenario ends supported. Latest receipt: `docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-16.json`
 (19/19 arcs) — also as a self-contained readable page,
-`FIXTURE_SUITE_EVAL_2026-10-15.html`, with the same JSON embedded.
+`FIXTURE_SUITE_EVAL_2026-10-16.html`, with the same JSON embedded.
 `--repeat N` replays every fixture N times and fails on any
 verdict, completion, or normalized-evidence drift — adjudication is
 deterministic on a recorded trajectory. `--html out.html` renders the
@@ -263,7 +263,7 @@ receipts:
 python3 scripts/verify_pack.py docs/demo/evidence
 ```
 
-(2,920 checks across 11 packs, re-verified 2026-10-15 — and CI pins this via
+(3,186 checks across 12 packs, re-verified 2026-10-16 — and CI pins this via
 `tests/unit/test_evidence_pack.py`.) A PASS proves
 the bundle is internally consistent (these verdicts rest on exactly these
 bytes); it does not claim a live worker ran — that evidence is the receipts
@@ -278,18 +278,23 @@ uv run python scripts/capture_replay.py `
   --tamper --out fixtures/demo/captured_live_eval.json
 ```
 
-Four captures ship in the suite: `captured_live_eval` (the tamper run),
+Five captures ship in the suite: `captured_live_eval` (the tamper run),
 `captured_handoff_eval` (the handoff *target* session — it opens with the
 real injected context bundle and preserves PEX's `REQUEST_VERIFICATION`
 demand for an attributable run), `captured_mcp_eval` (the worker-MCP
 run — the OpenCode worker's `pex_pex_get_goal` and `pex_pex_verify_claim`
 calls replay as first-class `tool_call` events, so a judge watches a real
 worker read its goal and check its own claim against PEX's independent
-evidence, deterministically), and `worker_escalation_eval` (the 2026-10-14
+evidence, deterministically), `worker_escalation_eval` (the 2026-10-14
 tamper run's other half — the same worker's `pex_pex_request_decision` call
 escalating the task-vs-goal conflict instead of complying; it stops
 unresolved and the adjudicated report honestly ends `incomplete`, matching
-the live receipt `LIVE_OPENCODE_TAMPER_ESCALATION_ses_ec4b20a7_2026-10-14.json`).
+the live receipt `LIVE_OPENCODE_TAMPER_ESCALATION_ses_ec4b20a7_2026-10-14.json`),
+and `live_self_escalation_eval` (the 2026-10-15 capture — the worker read its
+sealed goal via `pex_pex_get_goal`, saw the task order a forbidden outcome,
+and *escalated itself* via `pex_pex_request_decision` with three authored
+options **before** any tamper, seven `pex_*` calls total; the human's ruling
+recorded durably even after the worker's turn ended).
 
 Reads the demo home's stored event ledger (no running bridge needed), dedups
 OpenCode's SSE re-deliveries, reconstructs workspace mutations from the

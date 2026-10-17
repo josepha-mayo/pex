@@ -28,6 +28,7 @@ rides embedded so the page verifies itself.
 | `EVIDENCE_PACK_live_tamper_2026-10-05.{json,html}` | Live tamper: the flagged-bytes diff (sealed baseline vs weakened test) that produced the integrity incident. |
 | `EVIDENCE_PACK_live_dispute_2026-10-06.{json,html}` | Live worker dispute — the worker pushed back on a nudge and PEX re-adjudicated on evidence. |
 | `EVIDENCE_PACK_live_escalation_2026-10-14.{json,html}` | The worker-initiated escalation run: `pex.request_decision` → durable human ruling on a terminal session. |
+| `EVIDENCE_PACK_live_escalation_2026-10-15.json` | The self-escalation run (`live_self_escalation_eval` replays it): the worker quoted the sealed goal's forbidden outcome back via `pex.request_decision` *before* touching anything — 266/266 checks pass offline. |
 | `LIVE_EVIDENCE_PACK_2026-10-14.json` | Pack for `ses_ec5dda675` — the live closed loop: fake `verify.py` claim contradicted, real repair verified. |
 
 ## Fixture-suite receipts — `eval_replays.py`
@@ -41,8 +42,10 @@ uv run python scripts/eval_replays.py --json out.json --html out.html   # needs 
 
 | Receipt | Suite state |
 | --- | --- |
-| `FIXTURE_SUITE_EVAL_2026-10-15.{json,html}` | **Latest — 19/19 arcs**, including `report_progress_eval` (progress reports are signal, never proof). |
-| `FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-15.{json,html}` | **19/19 arcs under `--repeat 2`** — every fixture adjudicated identically twice (completion, claims, incidents, verdicts, evidence strings compared per repeat); the determinism claim receipted, not just asserted. |
+| `FIXTURE_SUITE_EVAL_2026-10-16.{json,html}` | **Latest — 19/19 arcs**, including `live_self_escalation_eval` (the worker self-escalating before any tamper). |
+| `FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-16.{json,html}` | **19/19 arcs under `--repeat 2`** — every fixture adjudicated identically twice (completion, claims, incidents, verdicts, evidence strings compared per repeat); the determinism claim receipted, not just asserted. |
+| `FIXTURE_SUITE_EVAL_2026-10-15.{json,html}` | 19/19 arcs — first suite with `live_self_escalation_eval`. |
+| `FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-15.{json,html}` | 19/19 under `--repeat 2`. |
 | `FIXTURE_SUITE_EVAL_2026-10-14.{json,html}` | 17/17 — first suite with the live-captured `worker_escalation_eval`. |
 | `FIXTURE_SUITE_EVAL_2026-10-06.{json,html}` | 15/15 historical snapshot. |
 | `FIXTURE_SUITE_EVAL_2026-10-05.{json,html}` | 12/12 historical snapshot. |

@@ -40,9 +40,9 @@ stays quiet when the work is actually complete.
 
 - Exactly two Codex-v2 companions, Pex and Von, are packaged in both verified installers.
 - Clean source `c3cc44c` produced verified MSI and NSIS inventories with zero package blockers.
-- Current focused gates pass 391 frontend tests (five platform-gated skips), 92
-  supervision/recovery tests, and 243 expanded Strands/provider/AgentCore/evidence
-  tests (four skips). The latest
+- As of 2026-10-16: focused gates pass 391 frontend tests (five platform-gated
+  skips), 92 supervision/recovery tests, and 243 expanded
+  Strands/provider/AgentCore/evidence tests (four skips). The latest
   complete Python regression passed with zero failures (the suite now
   collects **5,531 tests** — `pytest --collect-only` re-verified
   2026-10-15, [receipt](evidence/pytest-collect-2026-10-15.json)); the

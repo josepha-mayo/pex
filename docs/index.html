@@ -22,7 +22,7 @@
     "Independent claim adjudication — worker narration is signal, never proof",
     "Durable human rulings that survive worker termination and propagate to siblings",
     "Deterministic replay re-adjudication (19-fixture suite)",
-    "Scoped worker-facing MCP server (8 tools, 5 scopes)",
+    "Scoped worker-facing MCP server (9 tools, 6 scopes)",
     "Hash-chained evidence packs with offline and in-browser verification"
   ]
 }
@@ -111,9 +111,9 @@
       Same words, different verdicts — because evidence, not narration, decides.
       A real adjudication from the recorded replay suite; run it yourself below.
     </p>
-    <img src="demo/assets/pex-verdict-card.png" alt="The PEX verdict card — every worker claim beside its adjudicated verdict: 'All tests passed' contradicted on a premature stop, then supported after a real pytest run" style="width:100%;border-radius:10px;margin-top:14px;border:1px solid var(--line)" />
-    <video src="demo/assets/pex-claim-ledger-a6ada5f.mp4" muted loop autoplay playsinline poster="demo/assets/pex-verdict-card.png" style="width:100%;border-radius:10px;margin-top:14px;border:1px solid var(--line)"></video>
-    <p class="muted" style="margin-top:6px">Live capture of a deterministic replay adjudicating — the claim rows land as the real pipeline rules on them.
+    <img src="demo/assets/pex-verdict-card.png" alt="The PEX verdict card — every worker claim beside its adjudicated verdict: 'All tests passed' contradicted on a premature stop, then supported after a real pytest run" style="width:100%;border-radius:10px;margin-top:14px;border:1px solid var(--edge)" />
+    <video src="demo/assets/pex-claim-ledger-a6ada5f.mp4" muted loop autoplay playsinline poster="demo/assets/pex-verdict-card.png" style="width:100%;border-radius:10px;margin-top:14px;border:1px solid var(--edge)"></video>
+    <p class="muted" style="margin-top:6px">Real-time capture of a deterministic replay adjudicating — the claim rows land as the real pipeline rules on them.
     Full 96-second storyboard cut (all beats, narrated captions):
     <a href="demo/assets/pex-demo-roughcut.mp4"><code>pex-demo-roughcut.mp4</code></a>.</p>
     <p style="margin:8px 0 0;color:var(--muted);font-size:11.5px">
@@ -131,8 +131,8 @@
     answer from <a href="demo/verdict.json"><code>demo/verdict.json</code></a> —
     a distilled, receipt-derived summary of the suite.</p>
     <p><a href="demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.html">Open the captured-live evidence pack →</a>
-    &nbsp;·&nbsp; <a href="demo/evidence/FIXTURE_SUITE_EVAL_2026-10-15.html">19/19 replay suite receipt →</a>
-    &nbsp;·&nbsp; <a href="demo/evidence/FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-15.html">19/19 ×2 runs, identical arcs →</a></p>
+    &nbsp;·&nbsp; <a href="demo/evidence/FIXTURE_SUITE_EVAL_2026-10-16.html">19/19 replay suite receipt →</a>
+    &nbsp;·&nbsp; <a href="demo/evidence/FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-16.html">19/19 ×2 runs, identical arcs →</a></p>
     <p class="muted">Across the suite: <strong>80 worker claims adjudicated</strong>,
     7 integrity incidents caught, and 11 of 19 runs land
     <em>uncertain</em>/<em>incomplete</em> — a supervisor that only approves is
@@ -151,8 +151,8 @@
       Unresolved conflicts escalate to a durable human ruling, never an unbounded loop.</li>
     <li><strong>Rulings outlive sessions</strong> — a human's answer propagates to sibling
       sessions and survives goal amendments via supersedes lineage.</li>
-    <li><strong>Workers call back</strong> — a scoped MCP server (8 tools, 5 scopes) lets an
-      agent read its goal, report progress, verify a claim, or escalate an intent conflict itself.</li>
+    <li><strong>Workers call back</strong> — a scoped MCP server (9 tools, 6 scopes) lets an
+      agent read its goal, report progress, preflight an intended action, verify a claim, or escalate an intent conflict itself.</li>
     <li><strong>Deterministic replays</strong> — 19 curated trajectories re-adjudicate through
       the real pipeline; identical arcs prove supervision is deterministic, not a lucky path.</li>
   </ul>
@@ -185,19 +185,20 @@
   <pre class="cmd">git clone https://github.com/josepha-mayo/pex
 cd pex
 uv run python scripts/demo.py          # bridge :7420 + web UI :1420 (packaged Tauri frozen/optional), replay fixtures work with no workers
-uv run python scripts/eval_replays.py  # all 19 fixtures, self-scored — needs demo.py running</pre>
+uv run python scripts/eval_replays.py  # all 19 fixtures, self-scored — needs demo.py running
+# no uv? pip install -r requirements.txt, then .venv/Scripts/python scripts/demo.py</pre>
 
   <div class="grid2">
     <div class="card">
       <h3>Repository</h3>
       <p><a href="https://github.com/josepha-mayo/pex">github.com/josepha-mayo/pex</a></p>
-      <p>MIT license · full test suite · CI green on Linux.</p>
+      <p>MIT license · full test suite · CI green on Windows + Linux.</p>
     </div>
     <div class="card">
       <h3>Judge path</h3>
-      <p><a href="HACKATHON.md">docs/HACKATHON.md</a> — the five-minute path;
-      <a href="demo/RUNBOOK.md">RUNBOOK</a> — live and replay demos;
-      <a href="demo/evidence/INDEX.md">receipt index</a>.</p>
+      <p><a href="https://github.com/josepha-mayo/pex/blob/main/docs/HACKATHON.md">docs/HACKATHON.md</a> — the five-minute path;
+      <a href="https://github.com/josepha-mayo/pex/blob/main/docs/demo/RUNBOOK.md">RUNBOOK</a> — live and replay demos;
+      <a href="https://github.com/josepha-mayo/pex/blob/main/docs/demo/evidence/INDEX.md">receipt index</a>.</p>
     </div>
   </div>
 

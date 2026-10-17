@@ -267,6 +267,7 @@
       "date": "2026-09-24",
       "provider": "nebius",
       "model": "nvidia/nemotron-3-super-120b-a12b",
+      "supervision": "provider_llm",
       "worker": "codex"
     },
     {
@@ -274,13 +275,15 @@
       "date": "2026-10-15",
       "provider": "nebius",
       "model": "nvidia/nemotron-3-super-120b-a12b",
+      "supervision": "provider_llm",
       "worker": "opencode (in-memory transport, real OpenCode event shapes)"
     },
     {
       "receipt": "evidence/opencode-tamper-escalation-2026-10-15.json",
       "date": "2026-10-15",
       "provider": null,
-      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "model": null,
+      "supervision": "deterministic",
       "worker": "opencode"
     },
     {
@@ -288,6 +291,7 @@
       "date": "2026-10-15",
       "provider": "tavily",
       "model": null,
+      "supervision": "provider_tool",
       "worker": null
     },
     {
@@ -295,6 +299,7 @@
       "date": "2026-10-15",
       "provider": "nebius",
       "model": "nvidia/nemotron-3-super-120b-a12b",
+      "supervision": "provider_llm",
       "worker": null
     }
   ]

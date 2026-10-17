@@ -45,7 +45,7 @@ flowchart TB
   evidence -.->|isolated public pytest| contree
   strands -.->|bounded web evidence tools| tavily
 
-  mcpserver[MCP server /mcp — 8 tools, 5 scopes]
+  mcpserver[MCP server /mcp — 9 tools, 6 scopes]
   bridge --> mcpserver
   worker2[Worker/agent MCP clients]
   mcpserver <-->|session-bound scoped credentials| worker2

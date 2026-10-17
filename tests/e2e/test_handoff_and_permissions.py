@@ -3112,6 +3112,13 @@ async def test_requested_pytest_receipt_requires_matching_execution_then_stop(
 ):
     worker = tmp_path / "verification-worker"
     worker.mkdir()
+    # A real goal-workspace carries its test files; an empty surface sealed at
+    # claim time cannot prove the suite's provenance. Seed one so the verdict
+    # exercises probe-matching, not the empty-surface flag.
+    (worker / "tests").mkdir()
+    (worker / "tests" / "test_parser.py").write_text(
+        "def test_parser():\n    assert True\n", encoding="utf-8"
+    )
     adapter = state.adapters.synthetic
     session = adapter.seed_session(vendor_id="verification-worker", cwd=str(worker))
     await state.store.upsert_session(session)
@@ -3128,6 +3135,18 @@ async def test_requested_pytest_receipt_requires_matching_execution_then_stop(
         )
     ).json()
     await client.post(f"/v1/sessions/{session.id}/attach", json={"goal_id": goal["id"]})
+
+    # The acceptance baseline must precede the claim to mean anything; a first
+    # goal-bound observation seals it at event:shell instead of verify-time.
+    pre_claim = await client.post(
+        "/v1/synthetic/events",
+        json={
+            "session_id": session.id,
+            "event_type": EventType.SHELL.value,
+            "command": "ls -la",
+        },
+    )
+    assert pre_claim.status_code == 200
 
     first_stop = await client.post(
         "/v1/synthetic/events",

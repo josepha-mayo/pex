@@ -62,7 +62,7 @@
 
   <rect x="936" y="380" width="224" height="100" rx="16" class="core"/>
   <text x="1048" y="412" text-anchor="middle" class="h">MCP server /mcp/</text>
-  <text x="1048" y="440" text-anchor="middle" class="b">8 tools · 5 scopes</text>
+  <text x="1048" y="440" text-anchor="middle" class="b">9 tools · 6 scopes</text>
   <text x="1048" y="468" text-anchor="middle" class="b">session-bound credentials</text>
 
   <rect x="448" y="564" width="224" height="100" rx="16" class="core"/>
@@ -126,7 +126,7 @@
   <text x="880" y="149" text-anchor="middle" class="small">observed events</text>
   <path d="M1402 336V430H1160" class="accent" marker-end="url(#arrowAccent)"/>
   <rect x="1191" y="409" width="188" height="26" rx="5" class="labelbg"/>
-  <text x="1285" y="427" text-anchor="middle" class="small green">8 tools · session-bound</text>
+  <text x="1285" y="427" text-anchor="middle" class="small green">9 tools · session-bound</text>
   <path d="M560 664V722H1210V290H1252" class="accent" marker-end="url(#arrowAccent)"/>
   <rect x="793" y="701" width="174" height="26" rx="5" class="labelbg"/>
   <text x="880" y="719" text-anchor="middle" class="small green">authorized correction</text>

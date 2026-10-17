@@ -13,7 +13,7 @@ flowchart LR
     supervisor["<b>Strands supervisor</b><br/>semantic proposal over redacted<br/>evidence · independent verifier agent"]
     policy["<b>Local policy guard</b><br/>nudge · ask human · noop"]
     ledger[("<b>Audit ledger</b><br/>goal · claims · interventions · rulings")]
-    mcp["<b>MCP server /mcp/</b><br/>8 tools · 5 scopes · session-bound<br/>expiring credentials"]
+    mcp["<b>MCP server /mcp/</b><br/>9 tools · 6 scopes · session-bound<br/>expiring credentials"]
     replay["<b>Replay pipeline</b><br/>deterministic recorded trajectories<br/>replay:true · not_live_control:true"]
 
     bridge --> seal --> claims --> verifier --> supervisor --> policy
