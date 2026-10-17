@@ -400,7 +400,7 @@ Open **Settings → Supervisor**:
 The key field is write-only and the credential is stored in the operating-system
 vault. Saving configuration does not test the key or prove inference. Confirm a
 successful receipt in Inspector and retain its exact provider and model identity.
-PEX never silently changes to another model ID.
+PEX never silently changes to another model ID. If `scripts/check_token_factory.py --infer` answers 401 with a fresh `NEBIUS_API_KEY`, look for a stale `PEX_SUPERVISOR_API_KEY` in the environment — it shadows `NEBIUS_API_KEY` (same order as `providers.py`), so unset the override for `provider=nebius`.
 
 ## What to verify
 

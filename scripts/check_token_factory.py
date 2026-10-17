@@ -83,6 +83,12 @@ def main() -> int:
         elapsed = time.monotonic() - started
         if models.status_code != 200:
             print(f"FAIL models: HTTP {models.status_code} - {models.text[:300]}")
+            if models.status_code == 401 and os.environ.get("PEX_SUPERVISOR_API_KEY", "").strip():
+                print(
+                    "hint: PEX_SUPERVISOR_API_KEY is set and shadows NEBIUS_API_KEY "
+                    "(same override order as providers.py) - if that override is "
+                    "stale, unset it for provider=nebius and retry."
+                )
             return 1
         catalog = [m.get("id", "") for m in models.json().get("data", [])]
         nemotron = [m for m in catalog if "nemotron" in m.lower() or "nvidia/" in m.lower()]

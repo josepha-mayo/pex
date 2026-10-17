@@ -423,6 +423,13 @@ def _without_cwd_unverified_test_support(
     execution_cwd. Strip the terminal verdict here so the receipt stays
     uncertain and a supervisor-run probe is requested instead. The marker is
     kept for audit; only the mintable claim is removed.
+
+    Every typed count/failure key the shell parser can emit is stripped, not
+    just ok/exit_code/passed/failed: errors/skipped/xfailed and their siblings
+    (failed_count, collected, xpassed, deselected, node ids) are count evidence
+    a support check reads, so leaving them would leak a partial support path
+    to a future check that trusts counts. Free-text output is kept for audit;
+    alone it cannot support (support requires ok True plus a terminal exit).
     """
 
     sanitized: list[HarnessEvent] = []
@@ -441,7 +448,28 @@ def _without_cwd_unverified_test_support(
                 kept = {
                     k: v
                     for k, v in value.items()
-                    if k not in ("ok", "exit_code", "passed", "failed", "failure_node")
+                    if k
+                    not in (
+                        "ok",
+                        "exit_code",
+                        "passed",
+                        "failed",
+                        "failure_node",
+                        # Count/failure evidence a support check reads: none
+                        # of these may survive without an observed cwd.
+                        "failed_count",
+                        "failures",
+                        "errors",
+                        "error_count",
+                        "nodeid",
+                        "failed_tests",
+                        "collected",
+                        "skipped",
+                        "xfailed",
+                        "xpassed",
+                        "deselected",
+                        "warnings",
+                    )
                 }
                 kept["cwd_unverified"] = True
                 cleaned_state[key] = kept

@@ -59,9 +59,17 @@ jobs:
       - name: Backend, adapters, policy and persistence
         run: uv run --frozen pytest -q -m "not live_llm and not live_codex and not live_opencode and not live_agentcore and not live_contree" --junitxml=build/test-results.xml
       - name: Desktop behavior
+        # WEB-FIRST freeze: the packaged Tauri desktop is frozen/optional and
+        # the web UI is the default judge path, so CI skips the desktop suite
+        # for now. The step stays (with its lockfile) so revive is one revert.
+        if: false
         working-directory: apps/desktop
         run: npm test
       - name: Desktop production build
+        # WEB-FIRST freeze: the packaged Tauri desktop is frozen/optional and
+        # the web UI is the default judge path, so CI skips the desktop suite
+        # for now. The step stays (with its lockfile) so revive is one revert.
+        if: false
         working-directory: apps/desktop
         run: npm run build
       - name: Retain test report
@@ -118,6 +126,12 @@ jobs:
           uv run --frozen python scripts/verify_pack.py docs/demo/evidence/EVIDENCE_PACK_drift_loop_2026-10-05.json
           uv run --frozen python scripts/verify_pack.py docs/demo/evidence/EVIDENCE_PACK_live_tamper_2026-10-05.json
           uv run --frozen python scripts/verify_pack.py docs/demo/evidence/EVIDENCE_PACK_live_dispute_2026-10-06.json
+      - name: Verify verdict.json freshness
+        # verdict.json is derived, never hand-written: regenerate it from the
+        # committed suite receipt and fail if it drifted.
+        run: |
+          uv run --frozen python scripts/gen_verdict_json.py
+          git diff --exit-code -- docs/demo/verdict.json
       - name: Retain fixture-eval receipt
         if: always() && inputs.retain_artifacts
         uses: actions/upload-artifact@v7

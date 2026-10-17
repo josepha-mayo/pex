@@ -139,14 +139,33 @@ _ACCEPTANCE_NAME_RE = re.compile(
 )
 _ACCEPTANCE_CONFIG_RE = re.compile(
     r"(?:babel\.config\.[^./]+|cypress\.config\.[^./]+"
-    r"|requirements[^./]*\.txt|pipfile(?:\.lock)?|poetry\.lock|uv\.lock"
+    r"|requirements[^./]*\.(?:txt|in)|pipfile(?:\.lock)?|poetry\.lock|uv\.lock"
     r"|package-lock\.json|yarn\.lock|pnpm-lock\.ya?ml|tox\.toml|pytest\.cfg)$",
     re.I,
 )
 
 
+def _is_requirements_dir(relpath: str) -> bool:
+    """Whether a path lives under a requirements-style dependency directory.
+
+    Covers ``requirements/`` as well as ``requirements-dev/``,
+    ``requirements_prod/``-style suffixed variants (``-``, ``_``, or ``.``
+    separator). Basename-only matching sees ``test.txt``/``base.in`` and
+    misses the runner-config signal; the parent directory restores it.
+    """
+
+    parts = [part for part in str(relpath).replace("\\", "/").split("/") if part]
+    if not parts:
+        return False
+    return any(
+        part.casefold() == "requirements"
+        or re.fullmatch(r"requirements[-_.][a-z0-9_.~-]+", part.casefold()) is not None
+        for part in parts[:-1]
+    )
+
+
 def _is_requirements_dir_txt(relpath: str) -> bool:
-    """requirements/test.txt is a dependency pin despite its generic basename.
+    """requirements/test.txt (or .in) is a dependency pin despite its generic basename.
 
     Basename-only matching sees ``test.txt`` and misses the runner-config
     signal; the parent ``requirements`` directory restores it.
@@ -155,9 +174,7 @@ def _is_requirements_dir_txt(relpath: str) -> bool:
     parts = [part for part in str(relpath).replace("\\", "/").split("/") if part]
     if not parts:
         return False
-    return parts[-1].casefold().endswith(".txt") and any(
-        part.casefold() == "requirements" for part in parts[:-1]
-    )
+    return parts[-1].casefold().endswith((".txt", ".in")) and _is_requirements_dir(relpath)
 
 
 def is_acceptance_config(relpath: str) -> bool:
@@ -469,7 +486,7 @@ def _bounded_limit(value: object, maximum: int) -> int:
 
 def _workspace_inventory(
     root: Path,
-) -> tuple[list[str], list[dict[str, Any]], bool, str | None]:
+) -> tuple[list[str], list[dict[str, Any]], bool, str | None, bool, list[str]]:
     """Build a deterministic, cooperative, mutation-aware workspace inventory."""
 
     files: list[str] = []
@@ -479,6 +496,11 @@ def _workspace_inventory(
     deadline = time.monotonic() + MAX_INVENTORY_SECONDS
     incomplete_reason: str | None = None
     files_capped = False
+    # Pruned dependency directories (.venv, node_modules, ...) are invisible
+    # to the inventory by design, which also hides entry-point shims inside
+    # them. Record which ones were present so the blind spot is explicit in
+    # the receipt instead of silent. Bounded by the prune set itself.
+    pruned: set[str] = set()
     # Surface completeness is tracked separately from the inventory cap: the
     # walk continues past MAX_INVENTORY_FILES, but only far enough to
     # fingerprint acceptance-surface files. A truncated general listing must
@@ -487,7 +509,7 @@ def _workspace_inventory(
 
     while pending:
         if time.monotonic() >= deadline:
-            return files, file_meta, True, "time_bound", False
+            return files, file_meta, True, "time_bound", False, sorted(pruned)
         directory = pending.pop()
         try:
             before = directory.stat(follow_symlinks=False)
@@ -496,21 +518,23 @@ def _workspace_inventory(
                 or directory.resolve(strict=True) != directory
                 or not directory.is_relative_to(root)
             ):
-                return files, file_meta, True, "directory_identity_changed", False
+                return files, file_meta, True, "directory_identity_changed", False, sorted(pruned)
             directories: list[Path] = []
             filenames: list[tuple[str, os.stat_result]] = []
             with os.scandir(directory) as entries:
                 for entry in entries:
                     if time.monotonic() >= deadline:
-                        return files, file_meta, True, "time_bound", False
+                        return files, file_meta, True, "time_bound", False, sorted(pruned)
                     entries_seen += 1
                     if entries_seen > MAX_INVENTORY_ENTRIES:
-                        return files, file_meta, True, "entry_bound", False
+                        return files, file_meta, True, "entry_bound", False, sorted(pruned)
                     path = directory / entry.name
                     is_junction = getattr(entry, "is_junction", lambda: False)()
                     if entry.is_symlink() or is_junction:
                         continue
                     if entry.is_dir(follow_symlinks=False):
+                        if entry.name in PRUNED_DIRECTORIES:
+                            pruned.add(entry.name)
                         if (
                             entry.name not in PRUNED_DIRECTORIES
                             and not _hidden(path, root)
@@ -549,14 +573,21 @@ def _workspace_inventory(
                 or before.st_mtime_ns != after.st_mtime_ns
                 or directory.resolve(strict=True) != directory
             ):
-                return files, file_meta, True, "directory_changed_during_scan", False
+                return (
+                    files,
+                    file_meta,
+                    True,
+                    "directory_changed_during_scan",
+                    False,
+                    sorted(pruned),
+                )
         except OSError:
-            return files, file_meta, True, "directory_unavailable", False
+            return files, file_meta, True, "directory_unavailable", False, sorted(pruned)
 
         pending.extend(sorted(directories, key=lambda item: item.name.casefold(), reverse=True))
         for filename, expected_file in sorted(filenames, key=lambda item: item[0].casefold()):
             if time.monotonic() >= deadline:
-                return files, file_meta, True, "time_bound", False
+                return files, file_meta, True, "time_bound", False, sorted(pruned)
             path = directory / filename
             rel = str(path.relative_to(root)).replace("\\", "/")
             surface = is_acceptance_surface(rel)
@@ -574,9 +605,9 @@ def _workspace_inventory(
                     or expected_file.st_mtime_ns != observed.st_mtime_ns
                     or path.resolve(strict=True) != path
                 ):
-                    return files, file_meta, True, "file_changed_during_scan", False
+                    return files, file_meta, True, "file_changed_during_scan", False, sorted(pruned)
             except OSError:
-                return files, file_meta, True, "file_metadata_unavailable", False
+                return files, file_meta, True, "file_metadata_unavailable", False, sorted(pruned)
             meta: dict[str, Any] = {
                 "path": rel,
                 "bytes": observed.st_size,
@@ -585,9 +616,9 @@ def _workspace_inventory(
             if surface:
                 digest, problem = _fingerprint_observed_file(path, expected_file)
                 if problem == "changed":
-                    return files, file_meta, True, "file_changed_during_scan", False
+                    return files, file_meta, True, "file_changed_during_scan", False, sorted(pruned)
                 if problem == "unreadable":
-                    return files, file_meta, True, "fingerprint_unreadable", False
+                    return files, file_meta, True, "fingerprint_unreadable", False, sorted(pruned)
                 meta["sha256"] = digest
                 if problem == "size_cap":
                     incomplete_reason = incomplete_reason or "fingerprint_size_cap"
@@ -601,6 +632,7 @@ def _workspace_inventory(
         files_capped or incomplete_reason is not None,
         "file_bound" if files_capped else incomplete_reason,
         surface_complete,
+        sorted(pruned),
     )
 
 
@@ -608,8 +640,8 @@ def snapshot(workspace: str | Path, *, run_pytest: bool = False) -> dict[str, An
     root = Path(workspace).resolve()
     if not root.is_dir():
         return {"workspace": str(root), "files": [], "pytest": None, "error": "cwd missing"}
-    files, file_meta, files_truncated, inventory_reason, surface_complete = _workspace_inventory(
-        root
+    files, file_meta, files_truncated, inventory_reason, surface_complete, pruned = (
+        _workspace_inventory(root)
     )
     result: dict[str, Any] = {
         "workspace": str(root),
@@ -618,6 +650,7 @@ def snapshot(workspace: str | Path, *, run_pytest: bool = False) -> dict[str, An
         "files_truncated": files_truncated,
         "inventory_reason": inventory_reason,
         "surface_complete": surface_complete,
+        "pruned_directories": pruned,
         "pytest": None,
         "git": git_snapshot(root),
         "artifacts": artifact_tails(root),
@@ -927,12 +960,18 @@ def _artifact_row_count_from_handle(
             for line in payload.split(b"\n"):
                 if not line.strip():
                     continue
-                json.loads(
+                row = json.loads(
                     line,
                     parse_constant=_reject_nonfinite_json_constant,
                     parse_float=_finite_json_float,
                     object_pairs_hook=_unique_json_object,
                 )
+                # A row requirement counts records. Scalar lines (``0``,
+                # ``"x"``, ``null``) parse as JSON but carry no per-row
+                # content, so a worker padding a file with them must not
+                # produce a complete count. Stay fail-closed: unknown, not zero.
+                if not isinstance(row, dict):
+                    return None, False
                 count += 1
             return count, True
         data = json.loads(
@@ -944,9 +983,14 @@ def _artifact_row_count_from_handle(
     except (OSError, UnicodeError, ValueError, RecursionError):
         return None, False
     if isinstance(data, list):
+        # Same record rule as JSONL above: scalar elements are not rows.
+        if not all(isinstance(item, dict) for item in data):
+            return None, False
         return len(data), True
     if isinstance(data, dict):
         for key in ("rows", "items", "records", "results", "data"):
             if isinstance(data.get(key), list):
+                if not all(isinstance(item, dict) for item in data[key]):
+                    return None, False
                 return len(data[key]), True
     return None, False

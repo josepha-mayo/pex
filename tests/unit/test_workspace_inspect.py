@@ -511,3 +511,61 @@ def test_sealed_acceptance_contents_skips_binary_and_missing(tmp_path: Path):
     digest = hashlib.sha256(binary.read_bytes()).hexdigest()
     sealed = sealed_acceptance_contents(tmp_path, {"test_bin.py": digest, "test_gone.py": "0" * 64})
     assert sealed == {}
+
+
+@pytest.mark.parametrize(
+    "name,payload",
+    [
+        ("results.jsonl", b"0\n" * 30),
+        ("results.jsonl", b'{"id": 1}\n0\n{"id": 2}\n'),
+        ("results.jsonl", b'"row"\n' * 30),
+        ("results.json", b"[0, 1, 2]"),
+        ("results.json", b'[{"id": 1}, 0]'),
+        ("results.json", b'{"rows": [{"id": 1}, 0]}'),
+    ],
+)
+def test_scalar_artifact_rows_do_not_produce_a_complete_row_receipt(
+    tmp_path: Path, name: str, payload: bytes
+):
+    (tmp_path / name).write_bytes(payload)
+
+    artifact = snapshot(tmp_path)["artifacts"][0]
+
+    assert artifact["row_count"] is None
+    assert artifact["row_count_complete"] is False
+
+
+def test_object_artifact_rows_still_produce_a_complete_row_receipt(tmp_path: Path):
+    (tmp_path / "results.jsonl").write_text('{"id": 1}\n{"id": 2}\n', encoding="utf-8")
+    (tmp_path / "nested_ok.json").write_text('[{"id": 1}]', encoding="utf-8")
+
+    seen = snapshot(tmp_path)
+
+    assert seen["artifacts"][0]["row_count"] == 2
+    assert seen["artifacts"][0]["row_count_complete"] is True
+    assert artifact_row_count(tmp_path / "nested_ok.json") == (1, True)
+
+
+def test_snapshot_reports_pruned_dependency_directories_without_listing_them(tmp_path: Path):
+    venv = tmp_path / ".venv" / "Scripts"
+    venv.mkdir(parents=True)
+    (venv / "pytest.exe").write_text("shim\n", encoding="utf-8")
+    nested = tmp_path / "sub" / "node_modules" / "pkg"
+    nested.mkdir(parents=True)
+    (nested / "index.js").write_text("vendor\n", encoding="utf-8")
+    (tmp_path / "app.py").write_text("print(1)\n", encoding="utf-8")
+
+    seen = snapshot(tmp_path, run_pytest=False)
+
+    assert seen["pruned_directories"] == [".venv", "node_modules"]
+    assert seen["files"] == ["app.py"]
+    assert all(not path.startswith(".venv/") for path in seen["files"])
+    assert all("node_modules" not in str(entry.get("path")) for entry in seen["file_meta"])
+
+
+def test_snapshot_reports_no_pruned_directories_when_none_present(tmp_path: Path):
+    (tmp_path / "app.py").write_text("print(1)\n", encoding="utf-8")
+
+    seen = snapshot(tmp_path, run_pytest=False)
+
+    assert seen["pruned_directories"] == []

@@ -22,6 +22,7 @@ or ``PEX_OPENCODE_BIN``.
 ``--bridge-only`` starts only the bridge (no web UI process).
 ``--prebuilt`` serves the prebuilt web UI from ``apps/desktop/dist``
 (``npm run build`` once) via ``vite preview`` instead of the vite dev server.
+It is ignored with ``--bridge-only`` — no web UI is started to serve.
 
 This launches the same processes the demo runbook lists separately; it adds
 no supervision behavior of its own. Environment variables documented in
@@ -183,7 +184,8 @@ def _parse(argv: list[str] | None) -> argparse.Namespace:
         "--prebuilt",
         action="store_true",
         help="serve the prebuilt web UI from apps/desktop/dist via vite preview "
-        "instead of the vite dev server (run `npm run build` under apps/desktop once)",
+        "instead of the vite dev server (run `npm run build` under apps/desktop once). "
+        "Ignored with --bridge-only (no web UI is started)",
     )
     parser.add_argument(
         "--worker-model",

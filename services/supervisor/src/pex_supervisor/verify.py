@@ -203,6 +203,12 @@ def _pytest_info(event: HarnessEvent) -> tuple[dict[str, Any], PytestInvocation]
     state = event.process_state if isinstance(event.process_state, dict) else {}
     info = state.get("pytest") if isinstance(state.get("pytest"), dict) else None
     payload = dict(info or {})
+    # The pipeline sanitizer (a stopgap owned by another agent) strips the
+    # terminal verdict from cwd-unverified runs but keeps this marker. Surface
+    # it here so support is withheld natively whether or not the strip ran:
+    # an unobserved OpenCode cwd never proved which directory ran the suite.
+    if isinstance(info, dict) and info.get("cwd_unverified") is True:
+        payload["cwd_unverified"] = True
     if event.error and "error" not in payload:
         payload["error"] = event.error
     if "ok" not in payload and event.error:
@@ -233,6 +239,11 @@ def _unittest_info(event: HarnessEvent) -> tuple[dict[str, Any], UnittestInvocat
     state = event.process_state if isinstance(event.process_state, dict) else {}
     info = state.get("unittest") if isinstance(state.get("unittest"), dict) else None
     payload = dict(info or {})
+    # Same native cwd-unverified handling as `_pytest_info`: the marker is
+    # kept for audit by the pipeline stopgap, and support is withheld here
+    # whether or not that strip ran.
+    if isinstance(info, dict) and info.get("cwd_unverified") is True:
+        payload["cwd_unverified"] = True
     if event.error and "error" not in payload:
         payload["error"] = event.error
     if "ok" not in payload and event.error:
@@ -281,7 +292,9 @@ def _unittest_supports_goal(
         or isinstance(exit_code, bool)
         or exit_code != 0
         or edits
+        or info.get("cwd_unverified") is True
         or _module_shadow_evidence(invocation.argv, workspace)
+        or _entry_point_evidence(invocation.argv, workspace)
     ):
         return False
     required_targets = _goal_unittest_targets(goal)
@@ -316,8 +329,12 @@ def _failed_node(info: dict[str, Any], event: HarnessEvent) -> str | None:
 # dual-use commands (curl -o writes; git stash reverts) because the cost of a
 # false negative here is a fabricated verification.
 _WRITE_CAPABLE_SHELL = re.compile(
+    # `2>file` / `2>>file` redirect test output into a file (a workspace
+    # write); a bare `2>&1` / `2>&-` merely duplicates the stderr fd onto
+    # stdout and writes nothing by itself. The `(?!&)` guard keeps the
+    # former flagged while letting fd-duplication-only commands through.
     r"(?<![0-9&|>])>{1,2}(?![0-9&|])"
-    r"|[0-9]+\s*>\s*\S"
+    r"|[0-9]+\s*>>?\s*(?!&)\S"
     r"|&\s*>\s*\S"
     r"|<<-?"
     r"|\bsed\b[^\n]*?\s-i\b"
@@ -326,11 +343,17 @@ _WRITE_CAPABLE_SHELL = re.compile(
     r"|\bapply_patch\b"
     r"|\b(?:cp|mv|rm|rmdir|tee|dd|patch|truncate|install|rsync|ln|touch|unlink|shred|"
     r"mkdir)\b"
+    # `md` is the cmd/PowerShell alias for `mkdir`. The `(?<!\.)` guard keeps
+    # a `.md` file extension (e.g. `cat README.md`) from matching as a
+    # directory-creation command.
+    r"|(?<!\.)\bmd\b"
     r"|\b(?:python|python3|py|pypy)(?:[\d.]+)?(?:\.exe)?"
     r"(?:\s+-[A-Za-z0-9_=-]+)*\s+-[a-zA-Z]*c\b"
     r"|\b(?:node|deno|bun)(?:\.exe)?\s+-[a-zA-Z]*e\b"
     r"|\b(?:node|deno|bun)(?:\.exe)?\b[^\n]*?\s--eval\b"
     r"|\b(?:node|deno|bun)(?:\.exe)?\b[^\n]*?\s-p\b"
+    # `node --print` is the long form of `node -p` (evaluate and print).
+    r"|\b(?:node|deno|bun)(?:\.exe)?\b[^\n]*?\s--print\b"
     r"|\bperl(?:\.exe)?\s+-[a-zA-Z]*[epi]\b"
     r"|\bwget\b"
     r"|\b(?:curl|iwr|invoke-webrequest)\b[^\n]*?(?:\s-[oOTFd]\b|--output\b|--outfile\b|"
@@ -399,6 +422,105 @@ def _module_shadow_evidence(
     return shadows
 
 
+# A workspace virtualenv is pruned from the inventory by design, but an
+# activated one still controls which `pytest`/`python` actually runs: PATH
+# puts its bin/Scripts first, so a worker can hide a same-named shim inside
+# it that prints a passing summary. `uv run` resolves the project env — a
+# `.venv` is exactly what it executes — and a venv site-packages can host a
+# sitecustomize.py the inventory never sees. When the snapshot reports a
+# pruned env dir, a name-resolved launcher cannot prove which binary ran.
+_ENV_PRUNE_NAMES = frozenset({".venv", "venv"})
+_SHIMMABLE_LAUNCHER = re.compile(
+    r"^(?:pytest|py\.test|python(?:\d+(?:\.\d+)*)?|py|pypy(?:\d+(?:\.\d+)*)?"
+    r"|uv|poetry|pipenv)(?:\.exe)?$",
+    re.IGNORECASE,
+)
+
+
+def _entry_point_evidence(
+    argv: Sequence[str],
+    workspace: dict[str, Any] | None,
+) -> list[str]:
+    if not argv:
+        return []
+    launcher = str(argv[0]).replace("\\", "/")
+    name = launcher.rsplit("/", 1)[-1]
+    if _SHIMMABLE_LAUNCHER.fullmatch(name) is None:
+        return []
+    pruned = workspace.get("pruned_directories") if isinstance(workspace, dict) else None
+    if not isinstance(pruned, list):
+        # Legacy snapshots predate prune reporting: the pruned set itself is
+        # unknown, so the entry-point question is simply unasked — the
+        # module-shadow check already fails closed on unobserved inventories.
+        return []
+    lowered_launcher = launcher.casefold()
+    if lowered_launcher.startswith("./"):
+        lowered_launcher = lowered_launcher[2:]
+    flags: list[str] = []
+    for directory in sorted({str(item).casefold() for item in pruned} & _ENV_PRUNE_NAMES):
+        if lowered_launcher.startswith(f"{directory}/") or f"/{directory}/" in lowered_launcher:
+            flags.append(f"entry_point_inside_pruned_dir:{directory}")
+        else:
+            flags.append(f"entry_point_workspace_controlled:{directory}")
+    return flags
+
+
+# Bytecode/test-cache directories whose removal cannot weaken the suite a
+# green run just proved. The exemption is deliberately narrow: only a single
+# direct removal whose every non-flag target resolves inside one of these
+# directory names is excused. Anything composed (`;`, `&&`, `|`, redirects,
+# substitutions), any non-cache target, and any non-removal executable
+# (including `python -c`, which stays fail-closed) still voids the run.
+_CACHE_CLEANUP_DIR_NAMES = frozenset({"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache"})
+_REMOVAL_EXECUTABLES = frozenset({"rm", "rmdir", "remove-item", "ri"})
+_SHELL_COMPOSITION_CHARS = frozenset({";", "|", ">", "<", "`", "$", "&", "\r", "\n"})
+
+
+def _is_pure_cache_cleanup(command: str) -> bool:
+    """Whether a shell command only removes bytecode/test-cache directories."""
+    if not command or len(command) > 4_096:
+        return False
+    if any(char in command for char in _SHELL_COMPOSITION_CHARS) or "&&" in command:
+        return False
+    try:
+        import shlex as _shlex
+
+        tokens = [
+            token.strip("'\"") for token in _shlex.split(command, posix=True) if token.strip("'\"")
+        ]
+    except ValueError:
+        return False
+    if not tokens:
+        return False
+    executable = tokens[0].replace("\\", "/").rsplit("/", 1)[-1].removesuffix(".exe")
+    if executable.casefold() not in _REMOVAL_EXECUTABLES:
+        return False
+    # Skip option tokens: `-r`/`--recurse` style and cmd-style `/s` (a bare
+    # `/name` with no further slash; deeper absolute paths stay targets).
+    targets = [
+        token
+        for token in tokens[1:]
+        if token != "--" and not token.startswith("-") and not re.fullmatch(r"/[A-Za-z]+", token)
+    ]
+    # `Remove-Item a, b` separates targets with commas; a bare flag list
+    # with no targets proves nothing about the workspace.
+    flattened: list[str] = []
+    for target in targets:
+        flattened.extend(part for part in (piece.strip() for piece in target.split(",")) if part)
+    if not flattened:
+        return False
+    for target in flattened:
+        normalized = target.replace("\\", "/").rstrip("/")
+        while normalized.endswith("/*"):
+            normalized = normalized[:-2].rstrip("/")
+        parts = [part for part in normalized.split("/") if part not in {"", "."}]
+        if not parts or any(part == ".." for part in parts):
+            return False
+        if not any(part.casefold() in _CACHE_CLEANUP_DIR_NAMES for part in parts):
+            return False
+    return True
+
+
 def _later_edits(events: list[HarnessEvent], after: int) -> list[str]:
     """Describe subsequent mutations, retaining events whose path was not reported."""
     paths: list[str] = []
@@ -413,6 +535,7 @@ def _later_edits(events: list[HarnessEvent], after: int) -> list[str]:
             and not shell_mutation_seen
             and isinstance(event.command, str)
             and _WRITE_CAPABLE_SHELL.search(event.command)
+            and not _is_pure_cache_cleanup(event.command)
         ):
             # The label stays generic: command text can carry secrets and the
             # event ledger already holds the full command for audit.
@@ -605,7 +728,12 @@ def _pytest_supports_goal(
         or exit_code != 0
         or invocation.scope != PytestInvocationScope.FULL_SUITE
         or edits
+        # Native cwd-unverified withhold: an unobserved execution directory
+        # never proved which suite ran, so it cannot earn support — whether
+        # or not the pipeline stopgap already stripped the terminal verdict.
+        or info.get("cwd_unverified") is True
         or _module_shadow_evidence(invocation.argv, workspace)
+        or _entry_point_evidence(invocation.argv, workspace)
     ):
         return False
     deselected = info.get("deselected")
@@ -639,16 +767,22 @@ def _count_rows(text: str, path: str) -> int | None:
     if path.endswith(".jsonl"):
         lines = [line for line in stripped.splitlines() if line.strip()]
         try:
-            for line in lines:
+            rows = [
                 json.loads(
                     line,
                     parse_constant=_reject_nonfinite_json_constant,
                     parse_float=_finite_json_float,
                     object_pairs_hook=_unique_json_object,
                 )
+                for line in lines
+            ]
         except (ValueError, RecursionError):
             return None
-        return len(lines)
+        # Row requirements count records; scalar lines are not evaluation
+        # rows (mirrors the workspace receipt rule). Unknown, not zero.
+        if not all(isinstance(row, dict) for row in rows):
+            return None
+        return len(rows)
     try:
         data = json.loads(
             stripped,
@@ -661,10 +795,14 @@ def _count_rows(text: str, path: str) -> int | None:
         # as a row; keep the verdict uncertain rather than overclaiming.
         return None
     if isinstance(data, list):
+        if not all(isinstance(item, dict) for item in data):
+            return None
         return len(data)
     if isinstance(data, dict):
         for key in ("rows", "items", "records", "results", "data"):
             if isinstance(data.get(key), list):
+                if not all(isinstance(item, dict) for item in data[key]):
+                    return None
                 return len(data[key])
     return None
 
@@ -748,7 +886,9 @@ def acceptance_surface_delta(
     surface_files = sorted(current) if current is not None else []
     surface_complete = workspace.get("surface_complete") if isinstance(workspace, dict) else None
     # Explicit False means the scan truncated the acceptance surface itself;
-    # True/None means complete or unknown (legacy dicts without the flag).
+    # True/None means complete or unknown. Legacy workspace dicts without the
+    # flag predate surface tracking and are treated as complete (fail-open
+    # for that legacy shape only); only an explicit False reports incomplete.
     surface_incomplete = surface_complete is False
     empty: dict[str, Any] = {
         "baselined": False,
@@ -960,26 +1100,27 @@ def _single_tests_pass_verdict(
                 "evidence": [*evidence, "unittest_ok=false"],
                 "correction": f"You said the tests pass. {detail} Continue from that failure.",
             }
-        if _unittest_supports_goal(info, invocation, edits=edits, goal=goal, workspace=workspace):
-            shadow = _module_shadow_evidence(invocation.argv, workspace)
-            if not shadow:
-                return {
-                    "claim": claim,
-                    "status": "supported",
-                    "evidence": [*evidence, "unittest_ok=true"],
-                    "correction": None,
-                }
+        shadow = _module_shadow_evidence(invocation.argv, workspace)
+        entry_point = _entry_point_evidence(invocation.argv, workspace)
+        if shadow or entry_point:
             return {
                 "claim": claim,
                 "status": "uncertain",
-                "evidence": [*evidence, "unittest_ok=true", *shadow],
+                "evidence": [*evidence, "unittest_ok=true", *shadow, *entry_point],
                 "correction": None,
                 "probe": (
                     "The observed unittest result ran under `python -m`, which imports "
-                    "from the worker workspace; a same-named module there could have "
-                    "produced this output. Remove the shadow file or observe a "
-                    "supervisor-run suite before trusting it."
+                    "from the worker workspace; a same-named module or a pruned-env "
+                    "launcher shim there could have produced this output. Remove the "
+                    "shadow file or observe a supervisor-run suite before trusting it."
                 ),
+            }
+        if _unittest_supports_goal(info, invocation, edits=edits, goal=goal, workspace=workspace):
+            return {
+                "claim": claim,
+                "status": "supported",
+                "evidence": [*evidence, "unittest_ok=true"],
+                "correction": None,
             }
         return {
             "claim": claim,
@@ -1129,6 +1270,7 @@ def _single_tests_pass_verdict(
                 ),
             }
         shadow = _module_shadow_evidence(invocation.argv, workspace)
+        entry_point = _entry_point_evidence(invocation.argv, workspace)
         nonpassing = [
             f"pytest_nonpassing:{key}={info.get(key)}"
             for key in ("skipped", "xfailed", "xpassed")
@@ -1137,11 +1279,17 @@ def _single_tests_pass_verdict(
             and info.get(key) > 0
         ]
         nonpassing.extend(_pytest_failure_signals(info))
-        if shadow or nonpassing:
+        if shadow or entry_point or nonpassing:
             return {
                 "claim": claim,
                 "status": "uncertain",
-                "evidence": [*provenance, "pytest_ok=true", *shadow, *nonpassing],
+                "evidence": [
+                    *provenance,
+                    "pytest_ok=true",
+                    *shadow,
+                    *entry_point,
+                    *nonpassing,
+                ],
                 "correction": None,
                 "probe": (
                     "The run exited green, but "
@@ -1150,6 +1298,14 @@ def _single_tests_pass_verdict(
                             *(
                                 ["the `python -m` launch can import a workspace-root module"]
                                 if shadow
+                                else []
+                            ),
+                            *(
+                                [
+                                    "a pruned workspace env dir can host a same-named "
+                                    "launcher shim the inventory never sees"
+                                ]
+                                if entry_point
                                 else []
                             ),
                             *(
@@ -1883,6 +2039,7 @@ def verify_claims(
                 pytest_evidence.append("pytest_ok=true")
             else:
                 pytest_evidence.extend(_module_shadow_evidence(pytest_invocation.argv, workspace))
+                pytest_evidence.extend(_entry_point_evidence(pytest_invocation.argv, workspace))
                 pytest_evidence.extend(
                     f"pytest_nonpassing:{key}={pytest_info.get(key)}"
                     for key in ("skipped", "xfailed", "xpassed")

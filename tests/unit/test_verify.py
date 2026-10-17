@@ -2150,6 +2150,89 @@ def test_console_pytest_unaffected_by_root_shadow():
     assert result["status"] == "supported"
 
 
+def _observed_workspace_with_pruned(files: list[str], pruned: list[str]) -> dict:
+    workspace = _observed_workspace(*files)
+    workspace["pruned_directories"] = list(pruned)
+    return workspace
+
+
+def test_console_pytest_flagged_when_venv_pruned():
+    # `.venv` is pruned from the inventory, so a same-named launcher inside it
+    # is invisible: the green `pytest` run cannot prove which binary answered.
+    result = verify_claims(
+        _tests_pass_claims(),
+        _green_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        _observed_workspace_with_pruned(["src/app.py"], [".venv"]),
+    )
+    assert result["status"] == "uncertain"
+    assert "entry_point_workspace_controlled:.venv" in result["verdicts"][0]["evidence"]
+
+
+def test_uv_run_pytest_flagged_when_venv_pruned():
+    # `uv run` resolves the project env — a `.venv` is exactly what executes.
+    events = _module_pytest_events(command="uv run --frozen pytest -q")
+    result = verify_claims(
+        _tests_pass_claims(),
+        events,
+        _goal(acceptance_criteria=["tests pass"]),
+        _observed_workspace_with_pruned(["src/app.py"], [".venv"]),
+    )
+    assert result["status"] == "uncertain"
+    assert "entry_point_workspace_controlled:.venv" in result["verdicts"][0]["evidence"]
+
+
+def test_python_m_flagged_when_venv_pruned_even_with_clean_inventory():
+    # The workspace inventory is clean (no module shadow), but the `python`
+    # binary itself may resolve inside the pruned venv.
+    result = verify_claims(
+        _tests_pass_claims(),
+        _module_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        _observed_workspace_with_pruned(["src/app.py", "tests/test_app.py"], ["venv"]),
+    )
+    assert result["status"] == "uncertain"
+    assert "entry_point_workspace_controlled:venv" in result["verdicts"][0]["evidence"]
+
+
+def test_entry_point_inside_pruned_dir_is_named():
+    # Launching the env's own binary is the strongest form of the same blind
+    # spot: the shim path is literally inside the pruned directory.
+    events = _module_pytest_events(command="./.venv/bin/pytest -q")
+    result = verify_claims(
+        _tests_pass_claims(),
+        events,
+        _goal(acceptance_criteria=["tests pass"]),
+        _observed_workspace_with_pruned(["src/app.py"], [".venv"]),
+    )
+    assert result["status"] == "uncertain"
+    assert "entry_point_inside_pruned_dir:.venv" in result["verdicts"][0]["evidence"]
+
+
+def test_console_pytest_supported_when_no_env_dir_pruned():
+    # Prune reporting present, only non-env dirs recorded: nothing on PATH is
+    # workspace-controlled, so the green console run still supports.
+    result = verify_claims(
+        _tests_pass_claims(),
+        _green_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        _observed_workspace_with_pruned(["src/app.py"], ["__pycache__", "node_modules"]),
+    )
+    assert result["status"] == "supported"
+
+
+def test_legacy_snapshot_without_pruned_key_still_supports():
+    # Snapshots older than prune reporting carry no key at all — the
+    # entry-point question is simply unasked, matching pre-feature behavior.
+    result = verify_claims(
+        _tests_pass_claims(),
+        _green_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        _observed_workspace("src/app.py"),
+    )
+    assert result["status"] == "supported"
+
+
 def test_shell_mutation_after_green_run_breaks_support():
     # git checkout / restore / stash and friends emit SHELL, not FILE_EDIT —
     # a fix-then-revert TOCTOU is invisible to the file-edit ledger alone.
@@ -2446,6 +2529,13 @@ def test_python_m_pytest_truncated_inventory_cannot_support():
         "pytest.cfg",
         "requirements/test.txt",
         "requirements/base.txt",
+        "requirements-dev/test.txt",
+        "requirements_prod/base.txt",
+        "requirements/test.in",
+        "requirements-dev/test.in",
+        "requirements.in",
+        "requirements-dev.in",
+        "requirements-dev.txt",
     ],
 )
 def test_runner_config_allowlist_covers_new_names(name):
@@ -2532,3 +2622,227 @@ def test_git_redaction_keeps_test_evaluator_lines():
         is False
     )
     assert _git_diff_header_is_hidden("diff --git a/evaluator.py b/evaluator.py") is True
+
+
+def test_scalar_row_artifact_cannot_support_evaluation_completion(tmp_path):
+    (tmp_path / "results.jsonl").write_text("0\n" * 30, encoding="utf-8")
+    workspace = snapshot(tmp_path, run_pytest=False)
+
+    result = verify_claims(
+        [
+            {
+                "statement": "The evaluation is complete",
+                "kind": "evaluation_complete",
+                "polarity": "asserted",
+                "source_event_id": "stop",
+            }
+        ],
+        [_event(event_id="stop", event_type=EventType.STOP)],
+        _goal(acceptance_criteria=["results.jsonl has 30 rows"]),
+        workspace,
+    )
+
+    assert workspace["artifacts"][0]["row_count"] is None
+    assert workspace["artifacts"][0]["row_count_complete"] is False
+    assert result["status"] == "uncertain"
+    assert result["acceptance_status"] == "uncertain"
+    assert result["correction"] is None
+
+
+def test_mixed_scalar_and_record_rows_cannot_support_evaluation_completion(tmp_path):
+    (tmp_path / "results.json").write_text('[{"id": 1}, 0]', encoding="utf-8")
+    workspace = snapshot(tmp_path, run_pytest=False)
+
+    result = verify_claims(
+        [
+            {
+                "statement": "The evaluation is complete",
+                "kind": "evaluation_complete",
+                "polarity": "asserted",
+                "source_event_id": "stop",
+            }
+        ],
+        [_event(event_id="stop", event_type=EventType.STOP)],
+        _goal(acceptance_criteria=["results.json has 2 rows"]),
+        workspace,
+    )
+
+    assert workspace["artifacts"][0]["row_count"] is None
+    assert result["status"] == "uncertain"
+    assert result["acceptance_status"] == "uncertain"
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "rm -rf __pycache__",
+        "rm -rf __pycache__ .pytest_cache",
+        "rm -rf src/__pycache__ .pytest_cache/v",
+        "rm -rf .ruff_cache",
+        "rmdir /s __pycache__",
+        "Remove-Item -Recurse -Force __pycache__",
+        "Remove-Item .pytest_cache, .mypy_cache",
+    ],
+)
+def test_pure_cache_cleanup_after_green_run_keeps_support(command):
+    # Bytecode/test-cache removals cannot weaken the suite a green run proved;
+    # only removals whose every target lives under a cache directory excuse.
+    events = [
+        _green_pytest_events()[0],
+        _event(event_id="cache", event_type=EventType.SHELL, command=command),
+        _event(event_id="stop", event_type=EventType.STOP, message_delta="done"),
+    ]
+    result = verify_claims(
+        _tests_pass_claims(),
+        events,
+        _goal(acceptance_criteria=["tests pass"]),
+        _observed_workspace("src/app.py"),
+    )
+    assert result["status"] == "supported", command
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "rm -rf __pycache__ src/app.py",
+        "Remove-Item __pycache__, src/app.py",
+        "Remove-Item *",
+        "rm __pycache__; echo done",
+        "rm __pycache__ > log.txt",
+        "python -c \"import shutil; shutil.rmtree('__pycache__')\"",
+    ],
+)
+def test_mixed_or_composed_cache_command_after_green_run_breaks_support(command):
+    # Anything beyond a pure cache removal — a real target, shell
+    # composition, or an inline interpreter that can do anything — stays
+    # fail-closed and voids the run.
+    events = [
+        _green_pytest_events()[0],
+        _event(event_id="mutate", event_type=EventType.SHELL, command=command),
+        _event(event_id="stop", event_type=EventType.STOP, message_delta="done"),
+    ]
+    result = verify_claims(
+        _tests_pass_claims(),
+        events,
+        _goal(acceptance_criteria=["tests pass"]),
+        _observed_workspace("src/app.py"),
+    )
+    assert result["status"] == "uncertain", command
+    assert any("shell command" in str(item) for item in result["verdicts"][0]["evidence"]), command
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "echo hi 2> err.txt",
+        "echo hi 2>> err.txt",
+        'node --print "1+1"',
+        "md newdir",
+        "MD newdir",
+        'python -- -c "print(1)"',
+    ],
+)
+def test_b1_write_vectors_after_green_run_break_support(command):
+    events = [
+        _green_pytest_events()[0],
+        _event(event_id="mutate", event_type=EventType.SHELL, command=command),
+        _event(event_id="stop", event_type=EventType.STOP, message_delta="done"),
+    ]
+    result = verify_claims(
+        _tests_pass_claims(),
+        events,
+        _goal(acceptance_criteria=["tests pass"]),
+        _observed_workspace("src/app.py"),
+    )
+    assert result["status"] == "uncertain", command
+    assert any("shell command" in str(item) for item in result["verdicts"][0]["evidence"]), command
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "pytest -q 2>&1",
+        "pytest -q 2>&1 | cat",
+        "cat README.md",
+    ],
+)
+def test_fd_dup_and_md_extension_read_after_green_run_keep_support(command):
+    # `2>&1` duplicates stderr onto stdout without writing a file, and a
+    # `.md` extension is not the `md` (mkdir) alias — neither voids the run.
+    events = [
+        _green_pytest_events()[0],
+        _event(event_id="ro", event_type=EventType.SHELL, command=command),
+        _event(event_id="stop", event_type=EventType.STOP, message_delta="done"),
+    ]
+    result = verify_claims(
+        _tests_pass_claims(),
+        events,
+        _goal(acceptance_criteria=["tests pass"]),
+        _observed_workspace("src/app.py"),
+    )
+    assert result["status"] == "supported", command
+
+
+def test_legacy_workspace_without_surface_flag_treated_as_complete():
+    # Workspace dicts predating surface tracking carry no `surface_complete`
+    # flag; they are treated as complete (only an explicit False is
+    # incomplete), so a green run on a legacy dict still verifies.
+    surface = acceptance_surface_delta(None, {"workspace": "x", "files": [], "file_meta": []})
+    assert surface["surface_complete"] is True
+    assert surface["reason"] == "no_baseline"
+    result = verify_claims(
+        _tests_pass_claims(),
+        _green_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        _observed_workspace("src/app.py"),
+    )
+    assert result["status"] == "supported"
+    assert "acceptance_surface_check_incomplete" not in result["acceptance_evidence"]
+
+
+def test_cwd_unverified_pytest_green_run_withholds_support_without_stripping():
+    # Native handling: a green run that never observed its cwd cannot support,
+    # whether the pipeline stopgap already stripped the terminal verdict or
+    # the raw marker arrives intact.
+    for process_state in (
+        {"pytest": {"ok": True, "exit_code": 0, "passed": 4, "cwd_unverified": True}},
+        {"pytest": {"cwd_unverified": True}},
+    ):
+        events = [
+            _event(
+                event_id="pytest",
+                event_type=EventType.SHELL,
+                command="pytest -q",
+                process_state=process_state,
+            ),
+            _event(event_id="stop", event_type=EventType.STOP, message_delta="done"),
+        ]
+        goal = _goal(acceptance_criteria=["tests pass"])
+        result = verify_claims(
+            _tests_pass_claims(), events, goal, _observed_workspace("src/app.py")
+        )
+        assert result["status"] == "uncertain", process_state
+        assert required_verification_probe_kind(_tests_pass_claims(), events, goal, result) == (
+            "pytest"
+        ), process_state
+
+
+def test_cwd_unverified_unittest_green_run_withholds_support_without_stripping():
+    for process_state in (
+        {"unittest": {"ok": True, "exit_code": 0, "cwd_unverified": True}},
+        {"unittest": {"cwd_unverified": True}},
+    ):
+        events = [
+            _event(
+                event_id="unittest",
+                event_type=EventType.SHELL,
+                command="python -m unittest",
+                process_state=process_state,
+            ),
+            _event(event_id="stop", event_type=EventType.STOP, message_delta="done"),
+        ]
+        goal = _goal(acceptance_criteria=["python -m unittest exits successfully"])
+        result = verify_claims(
+            _tests_pass_claims(), events, goal, _observed_workspace("src/app.py")
+        )
+        assert result["status"] == "uncertain", process_state

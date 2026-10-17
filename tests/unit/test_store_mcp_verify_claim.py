@@ -747,6 +747,118 @@ async def test_contradicted_supersedes_with_temporal_guard_and_timestamp(tmp_pat
 
 
 @pytest.mark.asyncio
+async def test_unicode_rephrased_contradiction_retires_same_subject_trail(tmp_path):
+    """A unicode-punctuated restatement must supersede the standing receipt.
+
+    Exercises the extended subject normalization and the in-txn subject
+    fingerprint recompute: both commits pass through the live-row assertion,
+    and the contradicted unicode restatement retires the ASCII receipt.
+    """
+    store, session, goal, principal = await _bound_store(tmp_path)
+    try:
+        principal_id = principal["principal_id"]
+        proof = _pytest_event("pytest-proof-unicode-trail", session, goal_id=goal.id)
+        await store.add_event(proof)
+        evidence_ids = (proof.event_id,)
+        supported = _verification_artifacts(
+            "supported-unicode-trail",
+            session,
+            goal,
+            principal_id=principal_id,
+            evidence_ids=evidence_ids,
+            statement="All tests passed.",
+        )
+        await _commit(store, principal_id, "verify-unicode-trail-0001", evidence_ids, supported)
+        supported_receipt_id = supported[2][0].id
+
+        failed = _pytest_event("pytest-failed-unicode-trail", session, goal_id=goal.id)
+        failed.process_state = {"pytest": {"ok": False, "exit_code": 1}}
+        await store.add_event(failed)
+        contradicted = _verification_artifacts(
+            "contradicted-unicode-trail",
+            session,
+            goal,
+            principal_id=principal_id,
+            evidence_ids=(failed.event_id,),
+            statement="All tests passed\u2026",
+            outcome="contradicted",
+        )
+        await _commit(
+            store,
+            principal_id,
+            "verify-unicode-trail-0002",
+            (failed.event_id,),
+            contradicted,
+        )
+
+        stale = await store.get_context(supported_receipt_id)
+        assert stale is not None
+        assert stale.metadata["superseded"] is True
+        assert stale.metadata["superseded_by"] == contradicted[2][0].id
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_handoff_read_path_excludes_claim_superseded_receipts(tmp_path):
+    """Pin the idle-sibling handoff read path against retired receipts.
+
+    ``Pipeline._maybe_auto_handoff`` lists context with include_project_wide
+    and an observation time; a claim-superseded receipt must never re-enter
+    selection there, mirroring the goal-succession exclusion.
+    """
+    store, session, goal, principal = await _bound_store(tmp_path)
+    try:
+        principal_id = principal["principal_id"]
+        proof = _pytest_event("pytest-proof-handoff-path", session, goal_id=goal.id)
+        await store.add_event(proof)
+        evidence_ids = (proof.event_id,)
+        supported = _verification_artifacts(
+            "supported-handoff-path",
+            session,
+            goal,
+            principal_id=principal_id,
+            evidence_ids=evidence_ids,
+        )
+        await _commit(store, principal_id, "verify-handoff-path-0001", evidence_ids, supported)
+        supported_receipt_id = supported[2][0].id
+
+        failed = _pytest_event("pytest-failed-handoff-path", session, goal_id=goal.id)
+        failed.process_state = {"pytest": {"ok": False, "exit_code": 1}}
+        await store.add_event(failed)
+        contradicted = _verification_artifacts(
+            "contradicted-handoff-path",
+            session,
+            goal,
+            principal_id=principal_id,
+            evidence_ids=(failed.event_id,),
+            outcome="contradicted",
+        )
+        await _commit(
+            store,
+            principal_id,
+            "verify-handoff-path-0002",
+            (failed.event_id,),
+            contradicted,
+        )
+        new_receipt_id = contradicted[2][0].id
+
+        listed = await store.list_context_for_authority(
+            session.project_id or goal.project_id,
+            goal_id=goal.id,
+            include_project_wide=True,
+            prioritize_human_commitments=True,
+            observed_at=utcnow(),
+            limit=1000,
+        )
+        listed_ids = {item.id for item in listed}
+        assert supported_receipt_id not in listed_ids
+        assert new_receipt_id in listed_ids
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
 async def test_subject_fingerprint_normalization_and_isolation(tmp_path):
     store, session, goal, principal = await _bound_store(tmp_path)
     try:
@@ -762,6 +874,15 @@ async def test_subject_fingerprint_normalization_and_isolation(tmp_path):
             "ALL  TESTS   PASSED!",
             "  All Tests Passed...  ",
             "all tests passed?",
+            # Unicode trailing-punctuation variants retire the same trail.
+            "All tests passed\u2026",
+            "ALL TESTS PASSED\u2026  ",
+            "All tests passed\u2014",
+            "All tests passed \u2013 ",
+            "All tests passed\u2026\u201d",
+            "\u201cAll tests passed.\u201d",
+            "All tests passed. \u2026",
+            "All tests passed\u3002",
         ):
             assert (
                 claim_verification_subject_fingerprint(
@@ -810,6 +931,26 @@ async def test_subject_fingerprint_normalization_and_isolation(tmp_path):
             project_id=project,
             claim="All tests passed.",
         )
+        # The request fingerprint stays exact: cosmetic rephrasing that shares
+        # a subject trail must still mint a distinct idempotent request.
+        exact_a = claim_verification_request_fingerprint(
+            principal_id="mcp-verify-principal",
+            tool=MCP_VERIFY_CLAIM_TOOL,
+            session_id=session.id,
+            goal_id=goal.id,
+            project_id=project,
+            claim="All tests passed.",
+        )
+        exact_b = claim_verification_request_fingerprint(
+            principal_id="mcp-verify-principal",
+            tool=MCP_VERIFY_CLAIM_TOOL,
+            session_id=session.id,
+            goal_id=goal.id,
+            project_id=project,
+            claim="All tests passed\u2026",
+        )
+        assert exact_a != exact_b
+        assert exact_a == request_a
     finally:
         await store.close()
 

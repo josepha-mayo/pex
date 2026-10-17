@@ -288,7 +288,7 @@ fixture suite is scored on every push by `scripts/eval_replays.py`.
 
 ![Replay fixtures, each with a one-line "what this arc proves" summary](docs/demo/assets/pex-fixtures-summaries-cd9b3bc.png)
 
-*The judge's first screen: fourteen scripted fixtures plus four captured
+*The judge's first screen: fourteen scripted fixtures plus five captured
 live runs, visibly marked **FROM LIVE** — exported real OpenCode traffic, not
 a synthetic trajectory. The newest capture, `worker_escalation_eval`, replays
 a real worker escalating a task-vs-goal conflict through `pex_request_decision`

@@ -4503,17 +4503,36 @@ def claim_verification_request_fingerprint(
     return hashlib.sha256(_canonical_json(payload).encode("utf-8")).hexdigest()
 
 
+# Edge punctuation stripped from a claim subject before hashing its
+# supersession identity. ASCII sentence punctuation plus the common unicode
+# variants workers emit: curly/double quotes and guillemets, the ellipsis,
+# em/en dashes, double punctuation, and CJK fullwidth stops. Quote-wrapping a
+# claim ("“All tests passed.”") must not fork the receipt trail, so leading
+# decoration is stripped too. The request fingerprint keeps the exact
+# statement; only this subject is normalized.
+_CLAIM_EDGE_PUNCTUATION = ".!?;:,\"'“”‘’‛‟‚„«»‹›…—–―‼⁉。、？！，；："
+
+
 def _normalize_claim_subject(claim: str) -> str:
     """Normalize one claim for session-bound receipt identity.
 
-    Subject-only normalization: casefold, collapse whitespace, strip trailing
-    punctuation. The request fingerprint keeps the exact statement; only the
-    supersession subject is normalized so "All tests passed." and
-    "all  tests PASSED!" retire the same receipt trail.
+    Subject-only normalization: casefold, collapse whitespace, strip edge
+    punctuation (ASCII plus common unicode variants such as curly quotes, the
+    ellipsis, and em/en dashes) from both ends. The request fingerprint keeps
+    the exact statement; only the supersession subject is normalized so
+    "All tests passed.", "all  tests PASSED!" and "“All tests passed…”"
+    retire the same receipt trail.
     """
 
     collapsed = " ".join(claim.split())
-    stripped = collapsed.strip().rstrip(".!?;:,").strip()
+    stripped = collapsed.strip()
+    # Punctuation and whitespace can alternate at either edge
+    # ("… passed . …"), so strip to a fixed point instead of a single pass.
+    while stripped:
+        candidate = stripped.strip(_CLAIM_EDGE_PUNCTUATION).strip()
+        if candidate == stripped:
+            break
+        stripped = candidate
     return stripped.casefold()
 
 
@@ -4529,7 +4548,8 @@ def claim_verification_subject_fingerprint(
     Unlike the request fingerprint this excludes the principal: rotating a
     session credential must not orphan the claim's receipt trail. The claim
     subject is normalized (casefold, collapsed whitespace, no trailing
-    punctuation) so cosmetic rephrasing cannot fork the receipt trail.
+    ASCII or unicode punctuation such as curly quotes, ellipsis, or
+    em/en dashes) so cosmetic rephrasing cannot fork the receipt trail.
     """
 
     _validate_store_id(session_id, label="claim verification session id")
@@ -8253,6 +8273,18 @@ class Store:
             await self.db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_context_items_binding_supersedes "
                 "ON context_items(project_binding, json_extract(json, '$.supersedes'))"
+            )
+            # Covers the claim-verification supersede scan: it filters
+            # project_binding = ? AND goal_id = ? AND
+            # json_extract(json, '$.metadata.claim_fingerprint') = ? over a
+            # bounded (LIMIT 10001) retirement sweep, so the expression column
+            # keeps the sweep off a full goal-partition scan. The pre-existing
+            # (project_binding, goal_id) prefix alone would still require
+            # filtering every row of a busy goal.
+            await self.db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_context_items_claim_supersede_scan "
+                "ON context_items(project_binding, goal_id, "
+                "json_extract(json, '$.metadata.claim_fingerprint'))"
             )
             bound_context_cursor = await self.db.execute(
                 "SELECT id, project_id, project_binding, goal_id, json FROM context_items "
@@ -16275,6 +16307,19 @@ class Store:
                 )
                 if not hmac.compare_digest(request_fingerprint, expected_fingerprint):
                     raise ValueError("MCP mutation request fingerprint mismatch")
+                # The subject fingerprint above was computed pre-txn from the
+                # caller's event copy. Recompute it from the live txn rows and
+                # fail closed on mismatch so a session/goal/project rebinding
+                # between validation and commit cannot retire the wrong claim
+                # receipt trail.
+                live_claim_fingerprint = claim_verification_subject_fingerprint(
+                    session_id=session.id,
+                    goal_id=goal.id,
+                    project_id=live_project,
+                    claim=statement,
+                )
+                if not hmac.compare_digest(live_claim_fingerprint, claim_fingerprint):
+                    raise ValueError("claim verification subject fingerprint mismatch")
 
                 mutation_cursor = await transaction.execute(
                     "SELECT request_fingerprint, response_json, event_id, context_id, "

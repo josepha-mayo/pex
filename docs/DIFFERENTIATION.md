@@ -23,6 +23,8 @@ stays quiet when the work is actually complete.
 | Productivity claim from a convenient fixture | PexBench requires equivalent prompts/environments, private-evaluator separation, raw evidence, failed-run retention, and a coherent freeze | Integrity contracts pass; manifest remains honestly `frozen: false` and has no score claim |
 | Verification trusts the worker's own host | `PEX_PUBLIC_PYTEST_BACKEND=contree` runs bounded public pytest inside a disposable, network-isolated Nebius ConTree VM, uploaded files bound to the fingerprinted manifest sha256s | Scripted-transport unit coverage; live sandbox execution requires Nebius Sandboxes beta access and reports its own honest `error_type` instead of masquerading as a test result |
 | A green test run ends the audit | PEX seals the acceptance surface at goal attach and shows the byte-exact diff of what the worker weakened; a green run under an edited surface stays `uncertain` | Live-verified tamper scenario on OpenCode 1.18.32 — receipt + UI capture; `GET /v1/goals/{id}/acceptance-diff` serves sealed↔flagged bytes |
+| A green run itself can be fabricated | The runner's own identity is evidence: `python -m pytest` cannot earn `supported` while a workspace-root `pytest.py`, `sitecustomize.py`, a `-p` plugin, uv env/cwd selectors, a pruned `.venv` entry-point shim, an unobserved cwd, nonpassing counts, or a post-run shell mutation leaves the run's provenance unproven — each downgrade names its reason | `module_shadow:*`, `entry_point_*`, `cwd_unverified`, `pytest_nonpassing:*`, `later_edit:shell` evidence strings, unit-pinned; `pytest -p` and `uv run --python/--env-file/--with` can never classify full-suite; shell writes (redirects, `sed -i`, `git restore`, package installs) invalidate post-run support |
+| A verification receipt outlives its truth | `verify_claim` receipts carry `valid_as_of` plus a claim fingerprint; a later non-supported check on the same session-claim retires the stale receipt atomically in the same transaction (`superseded`, `superseded_by`), and the context bundle labels it `superseded` — never `verified` | `claim_verification_subject_fingerprint` + in-transaction supersession with a live-authority fingerprint recheck; normalized claim subjects so rephrasing cannot fork the trail; unit + e2e pins |
 | Evidence can be reused forever | A green result that predates the last edit is downgraded `uncertain` with `later_edit:<path>` until a fresh run exists | `stale_evidence_eval` fixture; its declared arc is scored PASS by `scripts/eval_replays.py` on every push |
 | "Working" means working | An observation gap beyond the configured threshold is reported as observed silence — never as progress | `observation.stalled` on session payloads; unit-covered gap semantics |
 | Handoff means "we pasted some context" | `FRESH_HANDOFF` mints a content-addressed bundle, injects over the real transport, and stays `awaiting_target_evidence` until the target produces observable work | Live `handoff_injected` on OpenCode — `docs/demo/evidence/LIVE_OPENCODE_HANDOFF_*.json` |
@@ -63,7 +65,7 @@ continuity — where a receipt exists, the row links the committed artifact.
 - A live goal handoff delivered a content-addressed context bundle into a sibling
   OpenCode session (`handoff_injected`) and honestly reported
   `awaiting_target_evidence` rather than claiming assimilation.
-- `scripts/eval_replays.py` scores all eighteen shipped replay fixtures against
+- `scripts/eval_replays.py` scores all nineteen shipped replay fixtures against
   their declared supervision arcs in CI — 19/19, including stale-evidence,
   runner-config-injection, worker-dispute, progress-signal-vs-proof,
   ruling-continuity, and a ruling-compliance positive control (the ledger
@@ -82,6 +84,9 @@ continuity — where a receipt exists, the row links the committed artifact.
 - It does not report a stalled worker as "working," reuse a pre-edit green run as
   current evidence, treat a handoff as absorbed without target evidence, or let a
   recorded replay accept live control.
+- It does not call a green test run "verified" while the runner's own identity
+  (module, plugin, cwd, entry point) was never proven — and it does not let an
+  old supported receipt stand once a fresher check contradicts it.
 
 ## The five-minute thesis
 

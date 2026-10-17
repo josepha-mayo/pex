@@ -209,6 +209,51 @@ def test_classifier_rejects_uv_wrappers_with_unparseable_boundaries(command):
     assert classify_pytest_invocation(command) is None
 
 
+@pytest.mark.parametrize(
+    "command",
+    [
+        "poetry run -- pytest -q",
+        "pipenv run -- pytest -q",
+        "poetry run -- python -m pytest -q",
+        "pipenv run -- python -m pytest -q",
+    ],
+)
+def test_classifier_accepts_poetry_pipenv_double_dash_full_suite(command):
+    # `poetry run` / `pipenv run` take no wrapper flags of their own, so the
+    # only trivially safe parity with `uv run` is the `--` separator, which
+    # unambiguously starts the child command.
+    invocation = classify_pytest_invocation(command)
+    assert invocation is not None
+    assert invocation.scope == PytestInvocationScope.FULL_SUITE
+    assert invocation.selectors == ()
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "poetry run -- python -m unittest",
+        "pipenv run -- python -m unittest",
+    ],
+)
+def test_unittest_classifier_accepts_poetry_pipenv_double_dash_full_suite(command):
+    invocation = classify_unittest_invocation(command)
+    assert invocation is not None
+    assert invocation.scope == UnittestInvocationScope.FULL_SUITE
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "poetry --directory other run pytest -q",
+        "pipenv --python 3.12 run pytest -q",
+    ],
+)
+def test_classifier_rejects_pre_run_wrapper_globals(command):
+    # Env/cwd selection before `run` moves the `run` token, so the strict
+    # position check already fails closed without scope-flag parsing.
+    assert classify_pytest_invocation(command) is None
+
+
 def test_classifier_unwraps_only_one_literal_powershell_command_pytest_payload():
     invocation = classify_pytest_invocation(
         r'"C:\runtime\pwsh.exe" -Command '

@@ -322,6 +322,13 @@ def _pytest_arguments(argv: Sequence[str]) -> _UnwrappedArgv | None:
                     index += 2
                     continue
                 return None
+        elif argv[index] == "--":
+            # `poetry run` / `pipenv run` take no wrapper flags of their own
+            # (env/cwd selection lives in pre-`run` globals, which already
+            # fail closed via the strict `run`-position check above), so the
+            # only trivially safe parity with `uv run` is the end-of-options
+            # separator: `poetry run -- pytest -q` runs pytest directly.
+            index += 1
         child = _pytest_arguments(argv[index:])
         if (
             child is not None
@@ -372,6 +379,11 @@ def _unittest_arguments(argv: Sequence[str]) -> _UnwrappedArgv | None:
                     index += 2
                     continue
                 return None
+        elif argv[index] == "--":
+            # Same trivially safe `--` parity as the pytest wrapper above:
+            # `poetry run` / `pipenv run` take no wrapper flags of their own,
+            # so only the end-of-options separator is unwrapped.
+            index += 1
         child = _unittest_arguments(argv[index:])
         if (
             child is not None
