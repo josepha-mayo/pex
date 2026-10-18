@@ -1,9 +1,10 @@
 """Native acceptance regression: explicit LF prose must stay byte-exact."""
 
 import pytest
+from pex_protocol.enums import EventType
 from pex_supervisor.verify import _expected_content, verify_claims
 from pex_supervisor.workspace import snapshot
-from test_verify import _goal
+from test_verify import _event, _goal
 
 
 @pytest.mark.parametrize(
@@ -195,7 +196,7 @@ def test_supported_eval_claim_does_not_hide_missing_file_gap(tmp_path):
     )
     result = verify_claims(
         [{"kind": "evaluation_complete", "statement": "done", "source_event_id": "stop"}],
-        [],
+        [_event(event_type=EventType.FILE_EDIT, file_paths=["results.jsonl"])],
         _goal(
             acceptance_criteria=["results.jsonl has 30 rows"], evidence_requirements=["report.txt"]
         ),

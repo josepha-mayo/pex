@@ -21,6 +21,7 @@ from pathlib import Path
 from sys import platform
 from typing import Any
 from unicodedata import category
+from unicodedata import normalize as _unicodedata_normalize
 from uuid import uuid4
 
 import aiosqlite
@@ -4525,6 +4526,12 @@ def _normalize_claim_subject(claim: str) -> str:
     """
 
     collapsed = " ".join(claim.split())
+    # Format/zero-width code points (ZWSP, ZWNJ, ZWJ, BOM, soft hyphen) are
+    # invisible in the UI but would fork the receipt trail; NFKC folds
+    # confusable homoglyphs and compatibility forms onto the same subject.
+    collapsed = "".join(char for char in collapsed if category(char) not in {"Cf", "Cs", "Co"})
+    collapsed = _unicodedata_normalize("NFKC", collapsed)
+    collapsed = " ".join(collapsed.split())
     stripped = collapsed.strip()
     # Punctuation and whitespace can alternate at either edge
     # ("… passed . …"), so strip to a fixed point instead of a single pass.
@@ -7212,6 +7219,66 @@ async def _require_session_workspace_current(
         raise WorkspaceAuthorityError(
             "workspace authority changed; inspect and attach again"
         ) from exc
+
+
+async def _supersede_supported_claim_items(
+    transaction: aiosqlite.Connection,
+    *,
+    project_binding: str,
+    goal_id: str,
+    claim_fingerprint: str,
+    session_id: str,
+    valid_as_of: str,
+    superseded_by: str,
+    superseded_at: str,
+) -> int:
+    """Retire still-standing supported items for one session claim subject.
+
+    Only supported items on the same normalized claim trail retire — an
+    uncertain observation never supersedes standing support, a newer
+    supported receipt outranks an older contradiction (`valid_as_of` TOCTOU
+    guard), and receipts from sibling sessions are untouched (the receipt
+    trail is session-bound truth). Shared by the MCP claim-verification path
+    and the event-plan path so a STOP-time contradicted verdict can retire
+    what a prior STOP verified.
+    """
+
+    cursor = await transaction.execute(
+        "SELECT id, json FROM context_items "
+        "WHERE project_binding = ? AND goal_id = ? "
+        "AND json_extract(json, '$.metadata.claim_fingerprint') = ? "
+        "AND json_extract(json, '$.metadata.source_session_id') = ? "
+        "AND json_extract(json, '$.metadata.status') = 'supported' "
+        "AND COALESCE(json_extract(json, '$.metadata.superseded'), 0) = 0 "
+        "AND (json_extract(json, '$.metadata.valid_as_of') IS NULL "
+        "OR json_extract(json, '$.metadata.valid_as_of') <= ?) "
+        "AND (json_extract(json, '$.metadata.receipt_type') = "
+        "'mcp_claim_verification' "
+        "OR json_extract(json, '$.metadata.verified') = 1) "
+        "ORDER BY id LIMIT 10001",
+        (project_binding, goal_id, claim_fingerprint, session_id, valid_as_of),
+    )
+    rows = await cursor.fetchall()
+    if len(rows) > 10_000:
+        raise RuntimeError("claim verification supersession scan is bounded")
+    for row in rows:
+        stale_item = ContextItem.model_validate_json(row["json"])
+        stale_item.metadata = {
+            **stale_item.metadata,
+            "superseded": True,
+            "superseded_by": superseded_by,
+            "superseded_at": superseded_at,
+        }
+        updated = await transaction.execute(
+            "UPDATE context_items SET json = ? WHERE id = ? "
+            "AND project_binding = ? AND goal_id = ? "
+            "AND (json_extract(json, '$.metadata.valid_as_of') IS NULL "
+            "OR json_extract(json, '$.metadata.valid_as_of') <= ?)",
+            (_dump(stale_item), stale_item.id, project_binding, goal_id, valid_as_of),
+        )
+        if updated.rowcount != 1:
+            raise RuntimeError("claim verification supersession was lost")
+    return len(rows)
 
 
 async def _require_processing_workspace_current(
@@ -16493,54 +16560,16 @@ class Store:
                     # uncertain observation never supersedes standing support,
                     # and the reverse never resurrects one. Covers the PEX
                     # receipt and any verified items minted beside it.
-                    superseded_cursor = await transaction.execute(
-                        "SELECT id, json FROM context_items "
-                        "WHERE project_binding = ? AND goal_id = ? "
-                        "AND json_extract(json, '$.metadata.claim_fingerprint') = ? "
-                        "AND json_extract(json, '$.metadata.source_session_id') = ? "
-                        "AND json_extract(json, '$.metadata.status') = 'supported' "
-                        "AND COALESCE(json_extract(json, '$.metadata.superseded'), 0) = 0 "
-                        "AND (json_extract(json, '$.metadata.valid_as_of') IS NULL "
-                        "OR json_extract(json, '$.metadata.valid_as_of') <= ?) "
-                        "AND (json_extract(json, '$.metadata.receipt_type') = "
-                        "'mcp_claim_verification' "
-                        "OR json_extract(json, '$.metadata.verified') = 1) "
-                        "ORDER BY id LIMIT 10001",
-                        (
-                            goal_binding.project_binding,
-                            goal.id,
-                            claim_fingerprint,
-                            session.id,
-                            valid_as_of,
-                        ),
+                    await _supersede_supported_claim_items(
+                        transaction,
+                        project_binding=goal_binding.project_binding,
+                        goal_id=goal.id,
+                        claim_fingerprint=claim_fingerprint,
+                        session_id=session.id,
+                        valid_as_of=valid_as_of,
+                        superseded_by=receipt_item.id,
+                        superseded_at=_utc_iso(now),
                     )
-                    superseded_rows = await superseded_cursor.fetchall()
-                    if len(superseded_rows) > 10_000:
-                        raise RuntimeError("claim verification supersession scan is bounded")
-                    superseded_at = _utc_iso(now)
-                    for superseded_row in superseded_rows:
-                        stale_item = ContextItem.model_validate_json(superseded_row["json"])
-                        stale_item.metadata = {
-                            **stale_item.metadata,
-                            "superseded": True,
-                            "superseded_by": receipt_item.id,
-                            "superseded_at": superseded_at,
-                        }
-                        updated = await transaction.execute(
-                            "UPDATE context_items SET json = ? WHERE id = ? "
-                            "AND project_binding = ? AND goal_id = ? "
-                            "AND (json_extract(json, '$.metadata.valid_as_of') IS NULL "
-                            "OR json_extract(json, '$.metadata.valid_as_of') <= ?)",
-                            (
-                                _dump(stale_item),
-                                stale_item.id,
-                                goal_binding.project_binding,
-                                goal.id,
-                                valid_as_of,
-                            ),
-                        )
-                        if updated.rowcount != 1:
-                            raise RuntimeError("claim verification supersession was lost")
                 await _require_session_workspace_current(transaction, session)
                 await transaction.commit()
             except aiosqlite.IntegrityError as exc:
@@ -23531,6 +23560,7 @@ class Store:
         followup_kinds: tuple[str, ...] | list[str] = (),
         receipt: dict[str, Any] | None = None,
         reconcile_uncertain: bool = False,
+        claim_supersessions: list[dict[str, str]] | tuple[dict[str, str], ...] = (),
     ) -> dict[str, Any]:
         """Commit a deterministic plan and every local projection atomically."""
 
@@ -23813,6 +23843,49 @@ class Store:
                     ):
                         raise ValueError(
                             "event plan context id collision contains different content"
+                        )
+
+                if claim_supersessions:
+                    if not processing["goal_id"] or not processing["project_id"]:
+                        raise ValueError("event plan claim supersession needs a bound goal")
+                    supersession_binding = await _project_binding_snapshot(
+                        transaction,
+                        str(processing["project_id"]),
+                    )
+                    if len(claim_supersessions) > 256:
+                        raise ValueError("event plan claim supersession bound exceeded")
+                    for supersession in claim_supersessions:
+                        if not isinstance(supersession, dict):
+                            raise ValueError("event plan claim supersession is invalid")
+                        fingerprint = supersession.get("claim_fingerprint")
+                        sup_session = supersession.get("session_id")
+                        sup_goal = supersession.get("goal_id")
+                        sup_as_of = supersession.get("valid_as_of")
+                        sup_by = supersession.get("superseded_by")
+                        if (
+                            not isinstance(fingerprint, str)
+                            or len(fingerprint) != 64
+                            or not all(char in "0123456789abcdef" for char in fingerprint)
+                            or not isinstance(sup_session, str)
+                            or sup_session != processing["session_id"]
+                            or sup_goal != processing["goal_id"]
+                            or not isinstance(sup_as_of, str)
+                            or not sup_as_of
+                            or len(sup_as_of) > 64
+                            or not isinstance(sup_by, str)
+                            or not sup_by
+                            or len(sup_by) > 256
+                        ):
+                            raise ValueError("event plan claim supersession is invalid")
+                        await _supersede_supported_claim_items(
+                            transaction,
+                            project_binding=supersession_binding,
+                            goal_id=sup_goal,
+                            claim_fingerprint=fingerprint,
+                            session_id=sup_session,
+                            valid_as_of=sup_as_of,
+                            superseded_by=sup_by,
+                            superseded_at=_utc_iso(datetime.now(UTC)),
                         )
 
                 for decision in decisions:

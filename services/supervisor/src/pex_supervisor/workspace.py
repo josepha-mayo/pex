@@ -486,16 +486,26 @@ def _bounded_limit(value: object, maximum: int) -> int:
 
 def _workspace_inventory(
     root: Path,
-) -> tuple[list[str], list[dict[str, Any]], bool, str | None, bool, list[str]]:
+) -> tuple[list[str], list[dict[str, Any]], bool, str | None, bool, list[str], list[str]]:
     """Build a deterministic, cooperative, mutation-aware workspace inventory."""
 
     files: list[str] = []
     file_meta: list[dict[str, Any]] = []
+    # Symlinked/junctioned entries are never followed (a `tests -> /tmp/fake`
+    # swap must not read as the real suite), but they are not invisible
+    # either — the verifier flags them when they shadow the surface.
+    symlinks: list[str] = []
     pending = [root]
     entries_seen = 0
     deadline = time.monotonic() + MAX_INVENTORY_SECONDS
     incomplete_reason: str | None = None
     files_capped = False
+
+    def _incomplete(
+        reason: str,
+    ) -> tuple[list[str], list[dict[str, Any]], bool, str, bool, list[str], list[str]]:
+        return files, file_meta, True, reason, False, sorted(pruned), sorted(symlinks)
+
     # Pruned dependency directories (.venv, node_modules, ...) are invisible
     # to the inventory by design, which also hides entry-point shims inside
     # them. Record which ones were present so the blind spot is explicit in
@@ -509,7 +519,7 @@ def _workspace_inventory(
 
     while pending:
         if time.monotonic() >= deadline:
-            return files, file_meta, True, "time_bound", False, sorted(pruned)
+            return _incomplete("time_bound")
         directory = pending.pop()
         try:
             before = directory.stat(follow_symlinks=False)
@@ -518,19 +528,22 @@ def _workspace_inventory(
                 or directory.resolve(strict=True) != directory
                 or not directory.is_relative_to(root)
             ):
-                return files, file_meta, True, "directory_identity_changed", False, sorted(pruned)
+                return _incomplete("directory_identity_changed")
             directories: list[Path] = []
             filenames: list[tuple[str, os.stat_result]] = []
             with os.scandir(directory) as entries:
                 for entry in entries:
                     if time.monotonic() >= deadline:
-                        return files, file_meta, True, "time_bound", False, sorted(pruned)
+                        return _incomplete("time_bound")
                     entries_seen += 1
                     if entries_seen > MAX_INVENTORY_ENTRIES:
-                        return files, file_meta, True, "entry_bound", False, sorted(pruned)
+                        return _incomplete("entry_bound")
                     path = directory / entry.name
                     is_junction = getattr(entry, "is_junction", lambda: False)()
                     if entry.is_symlink() or is_junction:
+                        if len(symlinks) < MAX_INVENTORY_FILES:
+                            rel_link = str(path.relative_to(root)).replace("\\", "/")
+                            symlinks.append(rel_link)
                         continue
                     if entry.is_dir(follow_symlinks=False):
                         if entry.name in PRUNED_DIRECTORIES:
@@ -573,21 +586,14 @@ def _workspace_inventory(
                 or before.st_mtime_ns != after.st_mtime_ns
                 or directory.resolve(strict=True) != directory
             ):
-                return (
-                    files,
-                    file_meta,
-                    True,
-                    "directory_changed_during_scan",
-                    False,
-                    sorted(pruned),
-                )
+                return _incomplete("directory_changed_during_scan")
         except OSError:
-            return files, file_meta, True, "directory_unavailable", False, sorted(pruned)
+            return _incomplete("directory_unavailable")
 
         pending.extend(sorted(directories, key=lambda item: item.name.casefold(), reverse=True))
         for filename, expected_file in sorted(filenames, key=lambda item: item[0].casefold()):
             if time.monotonic() >= deadline:
-                return files, file_meta, True, "time_bound", False, sorted(pruned)
+                return _incomplete("time_bound")
             path = directory / filename
             rel = str(path.relative_to(root)).replace("\\", "/")
             surface = is_acceptance_surface(rel)
@@ -605,9 +611,9 @@ def _workspace_inventory(
                     or expected_file.st_mtime_ns != observed.st_mtime_ns
                     or path.resolve(strict=True) != path
                 ):
-                    return files, file_meta, True, "file_changed_during_scan", False, sorted(pruned)
+                    return _incomplete("file_changed_during_scan")
             except OSError:
-                return files, file_meta, True, "file_metadata_unavailable", False, sorted(pruned)
+                return _incomplete("file_metadata_unavailable")
             meta: dict[str, Any] = {
                 "path": rel,
                 "bytes": observed.st_size,
@@ -616,9 +622,9 @@ def _workspace_inventory(
             if surface:
                 digest, problem = _fingerprint_observed_file(path, expected_file)
                 if problem == "changed":
-                    return files, file_meta, True, "file_changed_during_scan", False, sorted(pruned)
+                    return _incomplete("file_changed_during_scan")
                 if problem == "unreadable":
-                    return files, file_meta, True, "fingerprint_unreadable", False, sorted(pruned)
+                    return _incomplete("fingerprint_unreadable")
                 meta["sha256"] = digest
                 if problem == "size_cap":
                     incomplete_reason = incomplete_reason or "fingerprint_size_cap"
@@ -633,6 +639,7 @@ def _workspace_inventory(
         "file_bound" if files_capped else incomplete_reason,
         surface_complete,
         sorted(pruned),
+        sorted(symlinks),
     )
 
 
@@ -640,9 +647,15 @@ def snapshot(workspace: str | Path, *, run_pytest: bool = False) -> dict[str, An
     root = Path(workspace).resolve()
     if not root.is_dir():
         return {"workspace": str(root), "files": [], "pytest": None, "error": "cwd missing"}
-    files, file_meta, files_truncated, inventory_reason, surface_complete, pruned = (
-        _workspace_inventory(root)
-    )
+    (
+        files,
+        file_meta,
+        files_truncated,
+        inventory_reason,
+        surface_complete,
+        pruned,
+        symlinks,
+    ) = _workspace_inventory(root)
     result: dict[str, Any] = {
         "workspace": str(root),
         "files": files,
@@ -651,6 +664,7 @@ def snapshot(workspace: str | Path, *, run_pytest: bool = False) -> dict[str, An
         "inventory_reason": inventory_reason,
         "surface_complete": surface_complete,
         "pruned_directories": pruned,
+        "symlinks": symlinks,
         "pytest": None,
         "git": git_snapshot(root),
         "artifacts": artifact_tails(root),

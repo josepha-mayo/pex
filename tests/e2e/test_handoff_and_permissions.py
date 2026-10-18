@@ -2288,9 +2288,16 @@ async def test_auto_handoff_uses_target_prompt_to_exclude_other_goal_phase_conte
 
 
 @pytest.mark.asyncio
-async def test_auto_handoff_promotes_only_supported_test_result(client: AsyncClient):
+async def test_auto_handoff_promotes_only_supported_test_result(client: AsyncClient, tmp_path):
     adapter = state.adapters.synthetic
-    source = adapter.seed_session(vendor_id="verified-source")
+    # A supported verdict needs an observable launcher — seed the source
+    # onto a real workspace so verify sees files/pruned/file_meta.
+    source_ws = tmp_path / "verified-source"
+    (source_ws / "tests").mkdir(parents=True)
+    (source_ws / "tests" / "test_parser.py").write_text(
+        "def test_parser():\n    assert True\n", encoding="utf-8"
+    )
+    source = adapter.seed_session(vendor_id="verified-source", cwd=str(source_ws))
     target = adapter.seed_session(vendor_id="verified-target")
     await state.store.upsert_session(source)
     await state.store.upsert_session(target)

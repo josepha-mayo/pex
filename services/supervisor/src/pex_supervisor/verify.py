@@ -29,11 +29,14 @@ from pex_protocol.verification import (
 )
 
 from pex_supervisor.workspace import (
+    _ACCEPTANCE_DIR_NAMES,
+    _ACCEPTANCE_FILE_NAMES,
     HIDDEN_DIR_NAMES,
     HIDDEN_FILE_NAMES,
     acceptance_fingerprints,
     artifact_row_count,
     is_acceptance_config,
+    is_acceptance_surface,
 )
 
 FILE_TOKEN = re.compile(
@@ -364,6 +367,14 @@ _WRITE_CAPABLE_SHELL = re.compile(
     r"|\b(?:pip|pip3|npm|yarn|pnpm|uv|poetry|pipenv)\b[^\n]*?\b(?:install|add|remove|"
     r"uninstall|sync|ci)\b"
     r"|\b(?:docker|podman)\b[^\n]*?\b(?:run|cp|exec|build|compose)\b"
+    # Windows/PowerShell file ops: same write surface as cp/mv/rm, different
+    # vocabulary. A `.py`/`.sh` file *invoked* (not `-c` evaled) can also
+    # write — the source is already on disk either way.
+    r"|\b(?:del|erase|rd|ren|rename|move|copy|xcopy|robocopy|replace)\b"
+    r"(?:\.exe)?\s+\S"
+    r"|\b(?:python|python3|py|pypy)(?:[\d.]+)?(?:\.exe)?\s+[^\n]*?\.py\b"
+    r"|\b(?:ba|z|fi|da|c)?sh(?:\.exe)?\s+[^\n]*?\.sh\b"
+    r"|\b(?:move|copy|rename|remove|set|new|out|add|clear|start)-(?:item|content|file)\b"
     r"|\b(?:set|add|out|copy|move|remove|rename|new|clear)-(?:content|file|item)\b"
     r"|\bClear-Content\b"
     r"|\bStart-Transcript\b"
@@ -395,6 +406,36 @@ def _module_invocation_modules(argv: Sequence[str]) -> tuple[str, ...]:
     return tuple(found)
 
 
+def _surface_symlink_evidence(workspace: dict[str, Any] | None) -> list[str]:
+    """Symlinks shadowing the acceptance surface leave no file trace.
+
+    The inventory never follows a link, so `tests -> /tmp/fake` produces an
+    empty modified/deleted delta while the suite that ran is whatever the
+    link pointed at. Only links touching surface names flag — stray links
+    elsewhere stay invisible but harmless.
+    """
+
+    if not isinstance(workspace, dict):
+        return []
+    links = workspace.get("symlinks")
+    if not isinstance(links, list):
+        return []
+    flags: set[str] = set()
+    for link in links:
+        rel = str(link).replace("\\", "/")
+        parts = [part for part in rel.split("/") if part]
+        if not parts:
+            continue
+        if (
+            parts[-1].casefold() in _ACCEPTANCE_DIR_NAMES
+            or parts[-1].casefold() in _ACCEPTANCE_FILE_NAMES
+            or any(part.casefold() in _ACCEPTANCE_DIR_NAMES for part in parts[:-1])
+            or is_acceptance_surface(rel)
+        ):
+            flags.add(f"acceptance_surface_symlink:{rel}")
+    return sorted(flags)
+
+
 def _module_shadow_evidence(
     argv: Sequence[str],
     workspace: dict[str, Any] | None,
@@ -419,7 +460,44 @@ def _module_shadow_evidence(
             shadows.append(f"module_shadow:{module}")
     for hook in sorted(_MODULE_SHADOW_HOOKS & observed):
         shadows.append(f"module_shadow_hook:{hook}")
+    shadows.extend(_external_site_shadow_evidence())
     return shadows
+
+
+def _external_site_shadow_evidence() -> list[str]:
+    """Probe the import hooks `python -m` consults *outside* the workspace.
+
+    `site` imports `sitecustomize`/`usercustomize` from the interpreter's
+    site dirs — including the per-user site — before `-m` resolves the
+    module. Those files live outside the workspace inventory and baseline.
+    Only the hooks are probed: `pytest`/`unittest` inside site-packages is
+    the legitimate install location, not a shadow.
+    """
+
+    import site
+    from pathlib import Path as _Path
+
+    candidates: list[str] = []
+    try:
+        candidates.append(site.getusersitepackages())
+    except Exception:
+        pass
+    try:
+        candidates.extend(site.getsitepackages())
+    except Exception:
+        pass
+    flags: set[str] = set()
+    for directory in dict.fromkeys(candidates):
+        if not directory:
+            continue
+        root = _Path(directory)
+        for probe in sorted(_MODULE_SHADOW_HOOKS):
+            try:
+                if (root / probe).exists():
+                    flags.add(f"module_shadow_external:{probe}")
+            except OSError:
+                continue
+    return sorted(flags)
 
 
 # A workspace virtualenv is pruned from the inventory by design, but an
@@ -437,32 +515,97 @@ _SHIMMABLE_LAUNCHER = re.compile(
 )
 
 
+def _launcher_is_absolute(launcher: str) -> bool:
+    return (
+        launcher.startswith(("/", "~/", "~\\", "\\\\"))
+        or re.match(r"^[a-zA-Z]:[/\\]", launcher) is not None
+    )
+
+
+def _foreign_observation(workspace: dict[str, Any] | None) -> bool:
+    """A dict that lists files but is not a supervisor `snapshot()` payload.
+
+    Public-observation workspaces carry `files`/`file_manifest` under their
+    own provenance contract (plus `public_test_integrity` et al.) — they are
+    a different evidence type, not a degraded snapshot. The launcher/entry
+    checks only answer questions a supervisor snapshot was built to answer;
+    applying them to a foreign dict is type confusion, not fail-closed.
+    `snapshot()` always emits the `workspace` key; its absence on a
+    files-bearing dict marks the foreign shape.
+    """
+
+    if not isinstance(workspace, dict):
+        return False
+    # `file_manifest` (path/sha256/size, no mtimes) is the benchmark's own
+    # observation contract — a `snapshot()` emits `file_meta`, never this
+    # key, so its presence marks foreign provenance even when the caller
+    # also set a `workspace` path.
+    if "file_manifest" in workspace:
+        return True
+    return "workspace" not in workspace and "files" in workspace
+
+
 def _entry_point_evidence(
     argv: Sequence[str],
     workspace: dict[str, Any] | None,
 ) -> list[str]:
-    if not argv:
+    if not argv or _foreign_observation(workspace):
         return []
     launcher = str(argv[0]).replace("\\", "/")
     name = launcher.rsplit("/", 1)[-1]
     if _SHIMMABLE_LAUNCHER.fullmatch(name) is None:
         return []
-    pruned = workspace.get("pruned_directories") if isinstance(workspace, dict) else None
-    if not isinstance(pruned, list):
-        # Legacy snapshots predate prune reporting: the pruned set itself is
-        # unknown, so the entry-point question is simply unasked — the
-        # module-shadow check already fails closed on unobserved inventories.
-        return []
+    flags: list[str] = []
     lowered_launcher = launcher.casefold()
     if lowered_launcher.startswith("./"):
         lowered_launcher = lowered_launcher[2:]
-    flags: list[str] = []
-    for directory in sorted({str(item).casefold() for item in pruned} & _ENV_PRUNE_NAMES):
-        if lowered_launcher.startswith(f"{directory}/") or f"/{directory}/" in lowered_launcher:
-            flags.append(f"entry_point_inside_pruned_dir:{directory}")
+    workspace = workspace if isinstance(workspace, dict) else {}
+    root = str(workspace.get("workspace") or "").replace("\\", "/").rstrip("/").casefold()
+    if "/" in launcher:
+        if not _launcher_is_absolute(launcher):
+            # A relative launcher resolves inside the workspace by
+            # definition — `./pytest`, `tools/pytest`, `env/bin/pytest` can
+            # all be same-named shims printing a green summary.
+            flags.append(f"entry_point_workspace_controlled:{lowered_launcher or name.casefold()}")
+        elif root and lowered_launcher.startswith(f"{root}/"):
+            flags.append(f"entry_point_workspace_controlled:{lowered_launcher}")
+        elif not root:
+            # Absolute launch path with no observed root: cannot classify
+            # whether it lives inside the workspace.
+            flags.append("entry_point_uncheckable:workspace_root_unobserved")
+        # Absolute paths outside the observed root are the system-path case
+        # and stay unflagged.
+    else:
+        # A bare-name launch resolves through PATH, which is unobservable —
+        # a same-named file at the workspace root is a provable shadow
+        # candidate (cwd-first resolution on Windows, '.'-in-PATH shells).
+        files = workspace.get("files")
+        if isinstance(files, list):
+            stem = name.casefold().removesuffix(".exe")
+            observed = {
+                str(item).replace("\\", "/").casefold() for item in files if isinstance(item, str)
+            }
+            # Only bare-name-invocable forms: `.py`/`.sh` sources do not
+            # answer a bare `pytest` (they matter to `-m` imports instead,
+            # which the module-shadow check covers).
+            for candidate in (stem, f"{stem}.exe", f"{stem}.bat", f"{stem}.cmd", f"{stem}.com"):
+                if candidate in observed:
+                    flags.append(f"entry_point_workspace_controlled:{candidate}")
+                    break
         else:
-            flags.append(f"entry_point_workspace_controlled:{directory}")
-    return flags
+            flags.append("entry_point_uncheckable:inventory_unobserved")
+    pruned = workspace.get("pruned_directories")
+    if not isinstance(pruned, list):
+        # Without the prune inventory the env-dir question is unanswerable:
+        # a `.venv` could host the real entry point with no trace in files.
+        flags.append("entry_point_uncheckable:pruned_inventory_unobserved")
+    else:
+        for directory in sorted({str(item).casefold() for item in pruned} & _ENV_PRUNE_NAMES):
+            if lowered_launcher.startswith(f"{directory}/") or f"/{directory}/" in lowered_launcher:
+                flags.append(f"entry_point_inside_pruned_dir:{directory}")
+            else:
+                flags.append(f"entry_point_workspace_controlled:{directory}")
+    return sorted(set(flags))
 
 
 # Bytecode/test-cache directories whose removal cannot weaken the suite a
@@ -542,6 +685,59 @@ def _later_edits(events: list[HarnessEvent], after: int) -> list[str]:
             paths.append("a shell command that can modify workspace files")
             shell_mutation_seen = True
     return paths
+
+
+def _post_run_workspace_mutation(
+    workspace: dict[str, Any] | None,
+    run_epoch: float | None,
+) -> list[str]:
+    """Flag observed files modified after the green run's event time.
+
+    `_later_edits` only sees harness-emitted writes; shell-side mutation
+    leaves no FILE_EDIT event and a command-text denylist cannot enumerate
+    every writer (`del`, `xcopy`, `python x.py`, `bash x.sh`, `>|`, quoted
+    names). The claim-time snapshot's mtimes are the durable record — a
+    file observed newer than the run cannot be part of what the run proved.
+    Deletions of non-surface files remain undetectable here (no earlier
+    inventory to diff); the acceptance-surface delta covers surface ones.
+    """
+    if not isinstance(workspace, dict) or run_epoch is None or _foreign_observation(workspace):
+        return []
+    meta = workspace.get("file_meta")
+    if not isinstance(meta, list):
+        # A files-listing without mtimes is an internally incomplete
+        # observation — the post-run-mutation question is unanswerable and
+        # must not default to clean. A fully unobserved workspace is the
+        # launcher/module gates' problem, not this check's.
+        if isinstance(workspace.get("files"), list):
+            return ["post_run_mutation_uncheckable:inventory_missing"]
+        return []
+    flags: list[str] = []
+    for entry in meta:
+        if not isinstance(entry, dict):
+            continue
+        path = entry.get("path")
+        mtime = entry.get("mtime")
+        if isinstance(path, str) and isinstance(mtime, (int, float)) and mtime > run_epoch:
+            flags.append(f"post_run_mutation:{path}")
+    if workspace.get("files_truncated") is True or workspace.get("inventory_reason"):
+        flags.append("post_run_mutation_uncheckable:inventory_truncated")
+    return sorted(flags)
+
+
+def _post_run_edits(
+    events: list[HarnessEvent],
+    index: int,
+    workspace: dict[str, Any] | None,
+) -> list[str]:
+    """Later-edits list extended with the structural post-run mtime check.
+
+    Mutation flags precede witnessed edits so `edits[-1]` stays the most
+    actionable entry (a concrete path or the shell-write description).
+    """
+    ts = getattr(events[index], "ts", None)
+    run_epoch = ts.timestamp() if hasattr(ts, "timestamp") else None
+    return [*_post_run_workspace_mutation(workspace, run_epoch), *_later_edits(events, index)]
 
 
 def _expected_rows(goal: Goal | None) -> int | None:
@@ -1076,7 +1272,7 @@ def _single_tests_pass_verdict(
         event, info, index, invocation = latest_unittest
         exit_code = info.get("exit_code")
         valid_exit = isinstance(exit_code, int) and not isinstance(exit_code, bool)
-        edits = _later_edits(events, index)
+        edits = _post_run_edits(events, index, workspace)
         evidence = [
             f"unittest_event_id={event.event_id}",
             f"unittest_scope={invocation.scope.value}",
@@ -1143,7 +1339,7 @@ def _single_tests_pass_verdict(
     count_requirement = _test_count_requirement(goal)
     observed_count = _observed_pytest_count(info)
     node = _failed_node(info, event)
-    edits = _later_edits(events, index)
+    edits = _post_run_edits(events, index, workspace)
     provenance = [
         f"pytest_event_id={event.event_id}",
         f"pytest_scope={invocation.scope.value}",
@@ -1159,6 +1355,19 @@ def _single_tests_pass_verdict(
         if constraint.metric == "passed" and constraint.comparator == "eq":
             provenance.append(f"pytest_expected_passed={constraint.count}")
     decisively_failed = (valid_exit and exit_code != 0) or bool(event.error or node)
+    # Launcher-shadow, entry-point, and nonpassing checks are computed once
+    # so a post-run-edit return still reports every independent disqualifier
+    # — flag masking would otherwise hide the more actionable signal.
+    shadow = _module_shadow_evidence(invocation.argv, workspace)
+    entry_point = _entry_point_evidence(invocation.argv, workspace)
+    nonpassing = [
+        f"pytest_nonpassing:{key}={info.get(key)}"
+        for key in ("skipped", "xfailed", "xpassed")
+        if isinstance(info.get(key), int)
+        and not isinstance(info.get(key), bool)
+        and info.get(key) > 0
+    ]
+    nonpassing.extend(_pytest_failure_signals(info))
     if decisively_failed:
         if edits:
             return {
@@ -1198,7 +1407,14 @@ def _single_tests_pass_verdict(
         return {
             "claim": claim,
             "status": "uncertain",
-            "evidence": [*provenance, "pytest_ok=true", f"later_edit:{edits[-1]}"],
+            "evidence": [
+                *provenance,
+                "pytest_ok=true",
+                f"later_edit:{edits[-1]}",
+                *shadow,
+                *entry_point,
+                *nonpassing,
+            ],
             "correction": None,
         }
     if ok is True and (not valid_exit or exit_code != 0):
@@ -1269,16 +1485,6 @@ def _single_tests_pass_verdict(
                     "Verify collection and satisfy the declared test count."
                 ),
             }
-        shadow = _module_shadow_evidence(invocation.argv, workspace)
-        entry_point = _entry_point_evidence(invocation.argv, workspace)
-        nonpassing = [
-            f"pytest_nonpassing:{key}={info.get(key)}"
-            for key in ("skipped", "xfailed", "xpassed")
-            if isinstance(info.get(key), int)
-            and not isinstance(info.get(key), bool)
-            and info.get(key) > 0
-        ]
-        nonpassing.extend(_pytest_failure_signals(info))
         if shadow or entry_point or nonpassing:
             return {
                 "claim": claim,
@@ -1339,10 +1545,39 @@ def _single_tests_pass_verdict(
     }
 
 
+def _artifact_producer_witnessed(events: list[HarnessEvent], artifact: str) -> bool:
+    """Whether some ledger event plausibly produced the declared artifact.
+
+    A file_edit/tool event carrying the path is a write witness; a shell
+    command naming it (redirect, flag, arg) is a producer witness. Worker
+    narration alone does not count — producing is an act, not a claim.
+    """
+
+    target = str(artifact).replace("\\", "/")
+    base = target.rsplit("/", 1)[-1]
+    if not base:
+        return False
+    for event in events:
+        if event.event_type == EventType.SHELL and isinstance(event.command, str):
+            if base in event.command:
+                return True
+        for path in event.file_paths or []:
+            normalized = str(path).replace("\\", "/")
+            if (
+                normalized == target
+                or normalized.endswith(f"/{target}")
+                or target.endswith(f"/{normalized}")
+                or normalized.rsplit("/", 1)[-1] == base
+            ):
+                return True
+    return False
+
+
 def _evaluation_verdict(
     claim: dict[str, Any],
     goal: Goal | None,
     workspace: dict[str, Any],
+    events: list[HarnessEvent] | None = None,
 ) -> dict[str, Any]:
     expected = _expected_rows(goal)
     files = _observed_files(workspace)
@@ -1405,6 +1640,20 @@ def _evaluation_verdict(
                 f"You marked the task complete, but acceptance requires {expected} "
                 f"evaluation rows. {path} currently contains {count}. Resume the "
                 "evaluation and verify the final row count before stopping."
+            ),
+        }
+    if events is not None and not _artifact_producer_witnessed(events, path):
+        # The count is right but nobody watched it be produced — a single
+        # fabricated write of dict rows is indistinguishable from a real
+        # evaluation. Row counts can corroborate, not carry, a claim.
+        return {
+            "claim": claim,
+            "status": "uncertain",
+            "evidence": [f"{path}_rows={count}", f"rows_unwitnessed:{path}"],
+            "correction": None,
+            "probe": (
+                f"Show the command or edit that produced {path} — the row "
+                "count alone cannot prove the evaluation ran."
             ),
         }
     return {
@@ -1553,6 +1802,7 @@ def _goal_file_verdict(
     claim: dict[str, Any] | None,
     goal: Goal | None,
     workspace: dict[str, Any],
+    events: list[HarnessEvent] | None = None,
 ) -> dict[str, Any]:
     if goal is None:
         return {
@@ -1706,6 +1956,19 @@ def _goal_file_verdict(
             evidence.extend([f"expected_rows={expected_rows}", f"{path}_rows={count}"])
             continue
         evidence.append(f"{path}_rows={count}")
+        if events is not None and not _artifact_producer_witnessed(events, path):
+            evidence.append(f"rows_unwitnessed:{path}")
+            if deferred_uncertain is None:
+                deferred_uncertain = {
+                    "claim": claim,
+                    "status": "uncertain",
+                    "evidence": [f"{path}_rows={count}", f"rows_unwitnessed:{path}"],
+                    "correction": None,
+                    "probe": (
+                        f"Show the command or edit that produced {path} — "
+                        "the row count alone cannot prove the evaluation ran."
+                    ),
+                }
     if fragments:
         return {
             "claim": claim,
@@ -1763,7 +2026,7 @@ def _effective_verdicts(verdicts: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _unfinished_pytest_verdict(
-    events: list[HarnessEvent], goal: Goal | None
+    events: list[HarnessEvent], goal: Goal | None, workspace: dict[str, Any] | None = None
 ) -> dict[str, Any] | None:
     """A STOP with a still-failing pytest is unfinished work, even without a tests-pass claim."""
     latest = _latest_pytest(events)
@@ -1772,7 +2035,7 @@ def _unfinished_pytest_verdict(
     event, info, index, invocation = latest
     ok = info.get("ok")
     node = _failed_node(info, event)
-    if _later_edits(events, index):
+    if _post_run_edits(events, index, workspace):
         return None
     exit_code = info.get("exit_code")
     failed_exit = type(exit_code) is int and exit_code != 0
@@ -1910,7 +2173,7 @@ def required_verification_probe_kind(
         if _unittest_supports_goal(
             info,
             invocation,
-            edits=_later_edits(events, index),
+            edits=_post_run_edits(events, index, workspace),
             goal=goal,
             workspace=workspace,
         ):
@@ -1928,7 +2191,7 @@ def required_verification_probe_kind(
         if latest is None:
             return VerificationProbeKind.PYTEST
         _event, info, index, invocation = latest
-        edits = _later_edits(events, index)
+        edits = _post_run_edits(events, index, workspace)
         if _pytest_supports_goal(info, invocation, edits=edits, goal=goal, workspace=workspace):
             return None
         return VerificationProbeKind.PYTEST
@@ -1970,9 +2233,9 @@ def verify_claims(
         if kind == "tests_pass":
             verdicts.append(_tests_pass_verdict(claim, events, goal, workspace))
         elif kind in {"evaluation_complete", "complete"}:
-            eval_verdict = _evaluation_verdict(claim, goal, workspace)
+            eval_verdict = _evaluation_verdict(claim, goal, workspace, events)
             verdicts.append(
-                _goal_file_verdict(claim, goal, workspace)
+                _goal_file_verdict(claim, goal, workspace, events)
                 if eval_verdict["status"] == "uncertain"
                 else eval_verdict
             )
@@ -1981,7 +2244,7 @@ def verify_claims(
                 # Deployment needs an external health/exit check: file presence
                 # alone never supports it. Missing-file contradictions still
                 # stand; anything else stays uncertain with no_external_check.
-                file_verdict = _goal_file_verdict(claim, goal, workspace)
+                file_verdict = _goal_file_verdict(claim, goal, workspace, events)
                 if file_verdict.get("status") == "contradicted":
                     verdicts.append(file_verdict)
                 else:
@@ -1994,7 +2257,7 @@ def verify_claims(
                         }
                     )
             else:
-                file_verdict = _goal_file_verdict(claim, goal, workspace)
+                file_verdict = _goal_file_verdict(claim, goal, workspace, events)
                 if file_verdict["status"] == "uncertain":
                     file_verdict = {
                         "claim": claim,
@@ -2016,7 +2279,7 @@ def verify_claims(
                     "correction": None,
                 }
             )
-    acceptance_gap = _goal_file_verdict(None, goal, workspace)
+    acceptance_gap = _goal_file_verdict(None, goal, workspace, events)
     goal_requires_pytest = _PYTEST_REQUIREMENT.search(_goal_requirement_text(goal)) is not None
     latest_pytest = _latest_pytest(events)
     if goal_requires_pytest:
@@ -2027,7 +2290,7 @@ def verify_claims(
             pytest_supported = _pytest_supports_goal(
                 pytest_info,
                 pytest_invocation,
-                edits=_later_edits(events, pytest_index),
+                edits=_post_run_edits(events, pytest_index, workspace),
                 goal=goal,
                 workspace=workspace,
             )
@@ -2074,7 +2337,7 @@ def verify_claims(
         )
         if not covered:
             verdicts.append(acceptance_gap)
-    pytest_gap = _unfinished_pytest_verdict(events, goal)
+    pytest_gap = _unfinished_pytest_verdict(events, goal, workspace)
     if pytest_gap and not any(
         str(item).startswith("pytest_ok=")
         for verdict in verdicts
@@ -2090,6 +2353,7 @@ def verify_claims(
         *(f"acceptance_surface_deleted:{path}" for path in surface["deleted"]),
         *(f"acceptance_surface_unhashed:{path}" for path in surface["unhashed"]),
         *(f"acceptance_surface_config_added:{path}" for path in surface["added_config"]),
+        *_surface_symlink_evidence(workspace),
     ]
     goal_requires_tests = goal_requires_pytest or (
         _UNITTEST_REQUIREMENT.search(_goal_requirement_text(goal)) is not None

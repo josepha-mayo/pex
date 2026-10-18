@@ -89,7 +89,7 @@ def test_verified_tests_pass_is_not_blocked_by_same_event_generic_done():
             ),
         ],
         _goal(acceptance_criteria=["tests pass"]),
-        {},
+        {"files": [], "file_meta": [], "pruned_directories": []},
     )
 
     assert result["status"] == "supported"
@@ -126,7 +126,7 @@ def test_opencode_scoped_test_command_is_validated_as_direct_pytest():
         _goal(acceptance_criteria=["python -m pytest -q exits successfully"]),
         # `python -m` launches import from the worker cwd: a supported verdict
         # requires an observed inventory that rules out a root module shadow.
-        {"workspace": True, "files": ["src/app.py", "tests/test_app.py"]},
+        _observed_workspace(*["src/app.py", "tests/test_app.py"]),
     )
 
     assert result["status"] == "supported"
@@ -163,7 +163,7 @@ def test_goal_required_unittest_pass_is_supported_without_pytest_nag():
 
     # `python -m` launches import from the worker cwd: supported requires an
     # observed inventory that rules out a root `unittest.py`/hook shadow.
-    observed = {"workspace": True, "files": ["test_timeline.py", "src/app.py"]}
+    observed = _observed_workspace(*["test_timeline.py", "src/app.py"])
     result = verify_claims(claims, events, goal, observed)
 
     assert result["status"] == "supported"
@@ -218,7 +218,7 @@ def test_explicit_both_framework_goal_needs_independent_results(runs, status, pr
         )
         for index, (framework, code) in enumerate(runs)
     ]
-    observed = {"workspace": True, "files": ["src/app.py", "tests/test_app.py"]}
+    observed = _observed_workspace(*["src/app.py", "tests/test_app.py"])
     result = verify_claims(claims, events, goal, observed)
     assert result["status"] == status
     assert required_verification_probe_kind(claims, events, goal, result, observed) == probe
@@ -246,7 +246,7 @@ def test_goal_required_unittest_pass_needs_no_probe_when_claim_extraction_is_emp
         _event(event_id="stop", event_type=EventType.STOP),
     ]
 
-    observed = {"workspace": True, "files": ["test_timeline.py", "src/app.py"]}
+    observed = _observed_workspace(*["test_timeline.py", "src/app.py"])
     result = verify_claims([], events, goal, observed)
 
     assert result["status"] == "no_claims"
@@ -559,7 +559,7 @@ def test_failed_pytest_on_stop_is_acceptance_gap_without_tests_pass_claim():
             )
         ],
         _goal(acceptance_criteria=["tests pass"]),
-        {"workspace": "C:/public/workspace", "files": ["slugify.py", "test_public.py"]},
+        _observed_workspace("slugify.py", "test_public.py"),
     )
     assert result["status"] == "acceptance_gap"
     assert "test_slugify" in (result["correction"] or "")
@@ -658,9 +658,11 @@ def test_invalid_artifact_count_is_not_completion_evidence(count, tmp_path):
 
 @pytest.mark.parametrize("count,expected", [(0, "contradicted"), (1, "supported")])
 def test_valid_artifact_count_remains_usable(count, expected, tmp_path):
+    # A satisfied row count needs a witnessed producer — the ledger event
+    # that wrote results.jsonl, not just the file's current bytes.
     result = verify_claims(
         [{"kind": "evaluation_complete", "statement": "Evaluation complete"}],
-        [],
+        [_event(event_type=EventType.FILE_EDIT, file_paths=["results.jsonl"])],
         _goal(acceptance_criteria=["results.jsonl has 1 rows"]),
         {
             "workspace": str(tmp_path),
@@ -691,7 +693,10 @@ def test_large_jsonl_row_count_uses_complete_file_not_preview(tmp_path):
                 "source_event_id": "stop",
             }
         ],
-        [_event(event_id="stop", event_type=EventType.STOP)],
+        [
+            _event(event_type=EventType.FILE_EDIT, file_paths=["results.jsonl"]),
+            _event(event_id="stop", event_type=EventType.STOP),
+        ],
         _goal(acceptance_criteria=["results.jsonl has 30 rows"]),
         workspace,
     )
@@ -1437,7 +1442,12 @@ def test_exact_expected_pytest_count_with_exit_zero_supports_without_probe():
     ]
     goal = _goal(acceptance_criteria=["4 tests pass"])
 
-    result = verify_claims(claims, events, goal, {})
+    result = verify_claims(
+        claims,
+        events,
+        goal,
+        _observed_workspace("src/app.py", "tests/test_app.py"),
+    )
 
     assert result["status"] == "supported"
     assert "pytest_exit_code=0" in result["verdicts"][0]["evidence"]
@@ -1468,7 +1478,12 @@ def test_minimum_pytest_count_is_not_collapsed_to_no_requirement(observed, expec
     ]
     goal = _goal(acceptance_criteria=["at least 4 tests pass"])
 
-    result = verify_claims(claims, events, goal, {})
+    result = verify_claims(
+        claims,
+        events,
+        goal,
+        _observed_workspace("src/app.py", "tests/test_app.py"),
+    )
 
     assert result["status"] == expected_status
 
@@ -1622,7 +1637,12 @@ def test_deselected_tests_block_generic_all_tests_support():
         _event(event_id="stop", event_type=EventType.STOP),
     ]
 
-    result = verify_claims(claims, events, _goal(acceptance_criteria=["tests pass"]), {})
+    result = verify_claims(
+        claims,
+        events,
+        _goal(acceptance_criteria=["tests pass"]),
+        _observed_workspace("src/app.py", "tests/test_app.py"),
+    )
 
     assert result["status"] == "uncertain"
     assert "pytest_evidence_inconsistent" in result["verdicts"][0]["evidence"]
@@ -1983,7 +2003,9 @@ def test_unobserved_workspace_with_baseline_cannot_support_claim(tmp_path):
     surface = result["acceptance_surface"]
     assert surface["baselined"] is True and surface["checked"] is False
     verdict_evidence = [item for verdict in result["verdicts"] for item in verdict["evidence"]]
-    assert "acceptance_surface_check_incomplete" in verdict_evidence
+    # An error-shaped snapshot cannot answer the launcher question either —
+    # the uncheckable flag is what keeps this claim uncertain.
+    assert "entry_point_uncheckable:inventory_unobserved" in verdict_evidence
 
 
 def test_oversized_acceptance_file_is_flagged_unhashed(tmp_path, monkeypatch):
@@ -2095,7 +2117,18 @@ def _module_pytest_events(command: str = "python -m pytest -q") -> list[HarnessE
 
 
 def _observed_workspace(*files: str) -> dict:
-    return {"workspace": True, "files": list(files)}
+    # Mirrors a real `snapshot()` shape: the post-run mtime check needs
+    # file_meta, the entry-point check needs pruned_directories, and the
+    # symlink audit needs symlinks — an observed workspace carries all three.
+    return {
+        "workspace": True,
+        "files": list(files),
+        "file_meta": [
+            {"path": name, "bytes": 1, "mtime": 1_700_000_000, "sha256": "x"} for name in files
+        ],
+        "pruned_directories": [],
+        "symlinks": [],
+    }
 
 
 def test_python_m_pytest_shadow_module_cannot_support():
@@ -2221,16 +2254,25 @@ def test_console_pytest_supported_when_no_env_dir_pruned():
     assert result["status"] == "supported"
 
 
-def test_legacy_snapshot_without_pruned_key_still_supports():
-    # Snapshots older than prune reporting carry no key at all — the
-    # entry-point question is simply unasked, matching pre-feature behavior.
+def test_snapshot_without_pruned_inventory_cannot_support():
+    # A workspace that cannot enumerate its pruned env dirs cannot prove the
+    # entry point was clean — the question is unanswerable, not unasked.
     result = verify_claims(
         _tests_pass_claims(),
         _green_pytest_events(),
         _goal(acceptance_criteria=["tests pass"]),
-        _observed_workspace("src/app.py"),
+        {
+            "workspace": True,
+            "files": ["src/app.py"],
+            "file_meta": [
+                {"path": "src/app.py", "bytes": 1, "mtime": 1_700_000_000, "sha256": "x"}
+            ],
+        },
     )
-    assert result["status"] == "supported"
+    assert result["status"] == "uncertain"
+    assert (
+        "entry_point_uncheckable:pruned_inventory_unobserved" in result["verdicts"][0]["evidence"]
+    )
 
 
 def test_shell_mutation_after_green_run_breaks_support():
@@ -2264,6 +2306,122 @@ def test_shell_mutation_after_green_run_breaks_support():
         assert any("shell command" in str(item) for item in result["verdicts"][0]["evidence"]), (
             command
         )
+
+
+def test_post_run_file_mutation_breaks_support():
+    # A file whose observed mtime postdates the green run cannot be part of
+    # what the run proved — the claim-time snapshot is the durable record for
+    # shell-side writes that emit no FILE_EDIT event.
+    run_ts = _green_pytest_events()[0].ts.timestamp()
+    workspace = _observed_workspace("src/app.py", "tests/test_app.py")
+    workspace["file_meta"] = [
+        {"path": "src/app.py", "bytes": 1, "mtime": run_ts + 120, "sha256": "x"},
+        {"path": "tests/test_app.py", "bytes": 1, "mtime": 1_700_000_000, "sha256": "x"},
+    ]
+    result = verify_claims(
+        _tests_pass_claims(),
+        [*_green_pytest_events(), _event(event_id="stop", event_type=EventType.STOP)],
+        _goal(acceptance_criteria=["tests pass"]),
+        workspace,
+    )
+    assert result["status"] == "uncertain"
+    assert any(
+        "post_run_mutation:src/app.py" in str(item) for item in result["verdicts"][0]["evidence"]
+    )
+
+
+def test_pre_run_file_mtime_keeps_support():
+    run_ts = _green_pytest_events()[0].ts.timestamp()
+    workspace = _observed_workspace("src/app.py", "tests/test_app.py")
+    workspace["file_meta"] = [
+        {"path": "src/app.py", "bytes": 1, "mtime": run_ts - 120, "sha256": "x"},
+        {"path": "tests/test_app.py", "bytes": 1, "mtime": 1_700_000_000, "sha256": "x"},
+    ]
+    result = verify_claims(
+        _tests_pass_claims(),
+        [*_green_pytest_events(), _event(event_id="stop", event_type=EventType.STOP)],
+        _goal(acceptance_criteria=["tests pass"]),
+        workspace,
+    )
+    assert result["status"] == "supported"
+
+
+def test_relative_workspace_launcher_is_workspace_controlled():
+    # `./pytest`, `tools/pytest`, `env/bin/pytest` resolve inside the worker
+    # workspace — a same-named shim can print the green summary itself.
+    for argv0 in ("./pytest -q", "tools/pytest -q", "env/bin/pytest -q"):
+        events = [
+            _event(
+                event_id="pytest",
+                event_type=EventType.SHELL,
+                command=argv0,
+                process_state={"pytest": {"ok": True, "exit_code": 0, "passed": 4}},
+            ),
+            _event(event_id="stop", event_type=EventType.STOP),
+        ]
+        result = verify_claims(
+            _tests_pass_claims(),
+            events,
+            _goal(acceptance_criteria=["tests pass"]),
+            _observed_workspace("src/app.py"),
+        )
+        assert result["status"] == "uncertain", argv0
+        assert any(
+            item.startswith("entry_point_workspace_controlled")
+            for item in result["verdicts"][0]["evidence"]
+        ), argv0
+
+
+def test_workspace_root_executable_shadows_bare_launcher():
+    # A root `pytest.exe` answers a bare `pytest` on cwd-first resolution —
+    # the launcher question is unanswerable without PATH provenance.
+    result = verify_claims(
+        _tests_pass_claims(),
+        _green_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        _observed_workspace("src/app.py", "pytest.exe"),
+    )
+    assert result["status"] == "uncertain"
+    assert "entry_point_workspace_controlled:pytest.exe" in result["verdicts"][0]["evidence"]
+
+
+def test_symlinked_acceptance_dir_is_flagged():
+    # `tests -> /tmp/fake` leaves no modified/deleted delta — the link itself
+    # is the tamper, recorded by the inventory walk.
+    workspace = _observed_workspace("src/app.py")
+    workspace["symlinks"] = ["tests", "docs/guide"]
+    result = verify_claims(
+        _tests_pass_claims(),
+        _green_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        workspace,
+    )
+    assert result["status"] == "uncertain"
+    assert any(
+        item.startswith("acceptance_surface_symlink")
+        for verdict in result["verdicts"]
+        for item in verdict["evidence"]
+    )
+
+
+def test_unwitnessed_row_artifact_cannot_support():
+    # results.json rows that no ledger event produced could be one fabricated
+    # write — the count corroborates, it cannot carry the claim alone.
+    rows = [{"row": index} for index in range(30)]
+    result = verify_claims(
+        [{"kind": "evaluation_complete", "statement": "Evaluation complete"}],
+        [],
+        _goal(acceptance_criteria=["results.jsonl has 1 rows"]),
+        {
+            "workspace": True,
+            "files": ["results.jsonl"],
+            "artifacts": [
+                {"path": "results.jsonl", "row_count_complete": True, "row_count": len(rows)}
+            ],
+        },
+    )
+    assert result["status"] == "uncertain"
+    assert "rows_unwitnessed:results.jsonl" in result["verdicts"][0]["evidence"]
 
 
 def test_readonly_shell_after_green_run_keeps_support():

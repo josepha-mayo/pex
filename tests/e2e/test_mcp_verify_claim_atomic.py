@@ -53,8 +53,20 @@ async def _create_goal(client: AsyncClient, title: str) -> dict:
     return response.json()
 
 
-async def _seed_attached_session(client: AsyncClient, goal_id: str) -> str:
-    created = await client.post("/v1/synthetic/sessions")
+def _observed_worker_workspace(root) -> str:
+    """A real session workspace: verify_claim can only support a tests_pass
+    claim it can independently observe — a real dir beats a synthetic None."""
+    (root / "tests").mkdir(parents=True, exist_ok=True)
+    (root / "tests" / "test_core.py").write_text(
+        "def test_core():\n    assert True\n", encoding="utf-8"
+    )
+    (root / "src.py").write_text("VALUE = 1\n", encoding="utf-8")
+    return str(root)
+
+
+async def _seed_attached_session(client: AsyncClient, goal_id: str, cwd=None) -> str:
+    payload = {"cwd": str(cwd)} if cwd is not None else None
+    created = await client.post("/v1/synthetic/sessions", json=payload)
     assert created.status_code == 200
     session_id = created.json()["id"]
     goal = await state.store.get_goal_intent_view(goal_id)
@@ -146,7 +158,11 @@ async def test_typed_verify_claim_exact_retry_and_changed_payload_are_atomic(tmp
                 headers={"Authorization": f"Bearer {operator_token}"},
             ) as operator:
                 goal = await _create_goal(operator, "Atomic verification")
-                session_id = await _seed_attached_session(operator, goal["id"])
+                session_id = await _seed_attached_session(
+                    operator,
+                    goal["id"],
+                    cwd=_observed_worker_workspace(tmp_path / "worker"),
+                )
                 await _seed_passing_pytest(
                     store,
                     session_id,
@@ -302,7 +318,11 @@ async def test_contradicted_claim_is_durable_but_never_mints_verified_context(tm
                 headers={"Authorization": f"Bearer {operator_token}"},
             ) as operator:
                 goal = await _create_goal(operator, "Contradicted verification")
-                session_id = await _seed_attached_session(operator, goal["id"])
+                session_id = await _seed_attached_session(
+                    operator,
+                    goal["id"],
+                    cwd=_observed_worker_workspace(tmp_path / "worker"),
+                )
                 session = await store.get_session(session_id)
                 assert session is not None
                 failed_pytest_id = new_id("pytest_failed_")
@@ -377,7 +397,11 @@ async def test_later_contradiction_supersedes_standing_supported_receipt(tmp_pat
                 headers={"Authorization": f"Bearer {operator_token}"},
             ) as operator:
                 goal = await _create_goal(operator, "Superseding verification")
-                session_id = await _seed_attached_session(operator, goal["id"])
+                session_id = await _seed_attached_session(
+                    operator,
+                    goal["id"],
+                    cwd=_observed_worker_workspace(tmp_path / "worker"),
+                )
                 await _seed_passing_pytest(store, session_id, new_id("pytest_passing_"))
                 worker_token = await _issue_worker_token(operator, session_id)
 
@@ -546,7 +570,11 @@ async def test_uncertain_does_not_supersede_standing_supported_receipt(tmp_path)
                 headers={"Authorization": f"Bearer {operator_token}"},
             ) as operator:
                 goal = await _create_goal(operator, "Uncertain guard")
-                session_id = await _seed_attached_session(operator, goal["id"])
+                session_id = await _seed_attached_session(
+                    operator,
+                    goal["id"],
+                    cwd=_observed_worker_workspace(tmp_path / "worker"),
+                )
                 await _seed_passing_pytest(store, session_id, new_id("pytest_passing_"))
                 worker_token = await _issue_worker_token(operator, session_id)
 

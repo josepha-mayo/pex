@@ -2861,6 +2861,7 @@ class Pipeline:
 
         project_key = session.project_id or session.cwd
         plan_contexts: list[ContextItem] = []
+        claim_supersessions: list[dict[str, str]] = []
         event_item: ContextItem | None = None
         if project_key and processing.get("project_id") and session.goal_id:
             event_item = item_from_event(project_key, session.goal_id, event)
@@ -3020,6 +3021,35 @@ class Pipeline:
             verification["flagged_content"] = await self._flagged_surface_contents(
                 verification, workspace
             )
+            # A contradicted STOP verdict retires standing supported receipts
+            # on the same normalized claim subject — the receipt trail cannot
+            # keep a stale "verified" item alive past a later disproof.
+            for verdict in verification.get("verdicts") or []:
+                if not isinstance(verdict, dict) or verdict.get("status") != "contradicted":
+                    continue
+                superseded_claim = (
+                    verdict.get("claim") if isinstance(verdict.get("claim"), dict) else {}
+                )
+                superseded_statement = str(superseded_claim.get("statement") or "").strip()
+                if not superseded_statement or not project_key or not session.goal_id:
+                    continue
+                try:
+                    claim_supersessions.append(
+                        {
+                            "claim_fingerprint": claim_verification_subject_fingerprint(
+                                session_id=session.id,
+                                goal_id=session.goal_id,
+                                project_id=project_key,
+                                claim=superseded_statement,
+                            ),
+                            "session_id": session.id,
+                            "goal_id": session.goal_id,
+                            "valid_as_of": event.ts.isoformat(),
+                            "superseded_by": f"stop_verdict:{event.event_id}",
+                        }
+                    )
+                except (TypeError, ValueError):
+                    continue
             probe_kind = required_verification_probe_kind(
                 claims,
                 recent,
@@ -3292,6 +3322,7 @@ class Pipeline:
                 intervention_updates=intervention_updates,
                 receipt=receipt,
                 reconcile_uncertain=reconcile_uncertain,
+                claim_supersessions=claim_supersessions,
             )
             await self._publish_event_plan_commit(
                 intervention_updates=intervention_updates,
@@ -3803,6 +3834,7 @@ class Pipeline:
             followup_kinds=followup_kinds,
             receipt=receipt,
             reconcile_uncertain=reconcile_plan,
+            claim_supersessions=claim_supersessions,
         )
         await self._publish_event_plan_commit(
             intervention_updates=intervention_updates,

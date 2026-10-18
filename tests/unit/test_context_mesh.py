@@ -657,6 +657,12 @@ def test_supported_verification_becomes_traceable_test_evidence() -> None:
     assert items[0].provenance == SourceKind.TEST
     assert items[0].source_refs == ["stop-event", "pytest-event"]
     assert items[0].metadata["verified"] is True
+    # STOP-minted receipts carry the same claim fingerprint as the MCP
+    # verify path — without one they were immortal stale proofs a later
+    # contradiction could never retire.
+    assert items[0].metadata["claim_fingerprint"]
+    assert items[0].metadata["superseded"] is False
+    assert items[0].metadata["valid_as_of"]
     bundle = build_bundle(_goal(now), _target(task="parser tests"), items, [], [])
     assert bundle.direct_evidence == [items[0].content]
 

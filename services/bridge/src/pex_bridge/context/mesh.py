@@ -16,7 +16,7 @@ from pex_protocol.project_binding import project_binding_key
 from pex_protocol.session import HarnessEvent, HarnessSession
 
 from pex_bridge.secrets import redact_text
-from pex_bridge.store import new_id
+from pex_bridge.store import claim_verification_subject_fingerprint, new_id
 
 _WORD = re.compile(r"[a-z0-9][a-z0-9._/-]*", re.I)
 _STOP_WORDS = {
@@ -617,6 +617,15 @@ def items_from_verification(
         elif not is_test:
             source_refs.append(f"workspace_snapshot:{event.event_id}")
         source_refs = list(dict.fromkeys(source_refs))
+        try:
+            claim_fingerprint = claim_verification_subject_fingerprint(
+                session_id=event.session_id,
+                goal_id=goal_id,
+                project_id=project_id,
+                claim=statement,
+            )
+        except (TypeError, ValueError):
+            claim_fingerprint = None
         items.append(
             ContextItem(
                 id=new_id("result_"),
@@ -640,6 +649,13 @@ def items_from_verification(
                     "evidence": evidence,
                     "claim": claim,
                     "source_session_id": event.session_id,
+                    # A supported receipt is not immortal: a later
+                    # contradicted verdict on the same normalized subject
+                    # retires it through the supersede scan.
+                    "claim_fingerprint": claim_fingerprint,
+                    "valid_as_of": event.ts.isoformat(),
+                    "superseded": False,
+                    "superseded_by": None,
                 },
             )
         )

@@ -1,6 +1,6 @@
 {
   "schema": "pex.pages-verdict-summary/v1",
-  "generated_from": "docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-17.json",
+  "generated_from": "docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-18.json",
   "scope": "curated_replay_fixture_suite_not_a_benchmark",
   "suite": {
     "fixtures_total": 21,
@@ -23,7 +23,7 @@
     "determinism": {
       "repeat": 2,
       "identical_arcs": 21,
-      "receipt": "demo/evidence/FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-17.html",
+      "receipt": "demo/evidence/FIXTURE_SUITE_EVAL_DETERMINISM_2026-10-18.html",
       "note": "Every fixture adjudicated identically across repeats \u2014 completion, claims, incidents, verdicts, and normalized evidence strings compared."
     }
   },
@@ -183,7 +183,7 @@
       "completion_status": "verified_complete",
       "claims_adjudicated": 3,
       "interventions": [
-        "SEND_NUDGE",
+        "REQUEST_VERIFICATION",
         "RESPOND_PERMISSION",
         "NOOP"
       ],
@@ -194,7 +194,7 @@
       "completion_status": "verified_complete",
       "claims_adjudicated": 3,
       "interventions": [
-        "SEND_NUDGE",
+        "REQUEST_VERIFICATION",
         "RESPOND_PERMISSION",
         "NOOP"
       ],

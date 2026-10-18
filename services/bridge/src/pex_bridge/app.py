@@ -5397,6 +5397,23 @@ def create_app() -> FastAPI:
         canonical = result.get("session")
         if not isinstance(canonical, HarnessSession):
             raise HTTPException(500, "session attachment receipt is invalid")
+        # Seal the acceptance surface at bind time, not at the first
+        # goal-bound event — a worker's write that lands before its first
+        # observed event would otherwise poison the "clean" baseline itself.
+        # Failures only defer the seal to the event path.
+        try:
+            attach_goal = await state.store.get_goal(body.goal_id)
+            if attach_goal is not None and canonical.cwd:
+                attach_workspace = await state.pipeline._snapshot_for_session(canonical)
+                if attach_workspace:
+                    await state.pipeline._acceptance_baseline_for(
+                        canonical,
+                        attach_goal,
+                        attach_workspace,
+                        sealed_context="attach",
+                    )
+        except Exception:
+            pass
         operation = result.get("operator_operation")
         if operation is not None:
             public = state.store.session_goal_attachment_public_response(result)

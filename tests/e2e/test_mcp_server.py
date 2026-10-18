@@ -83,8 +83,9 @@ async def _make_app(tmp_path, *, require_auth: bool = False, token: str | None =
     return create_app(), store
 
 
-async def _seed_attached_session(client: AsyncClient) -> tuple[str, str]:
-    session = (await client.post("/v1/synthetic/sessions")).json()
+async def _seed_attached_session(client: AsyncClient, cwd=None) -> tuple[str, str]:
+    payload = {"cwd": str(cwd)} if cwd is not None else None
+    session = (await client.post("/v1/synthetic/sessions", json=payload)).json()
     goal = (
         await client.post(
             "/v1/goals",
@@ -344,7 +345,12 @@ async def test_mcp_mutation_tools_use_canonical_pipeline_paths(tmp_path):
                 base_url="http://127.0.0.1",
                 headers={"Authorization": f"Bearer {operator_token}"},
             ) as http:
-                source_id, goal_id = await _seed_attached_session(http)
+                worker_ws = tmp_path / "worker"
+                (worker_ws / "tests").mkdir(parents=True)
+                (worker_ws / "tests" / "test_core.py").write_text(
+                    "def test_core():\n    assert True\n", encoding="utf-8"
+                )
+                source_id, goal_id = await _seed_attached_session(http, cwd=worker_ws)
                 target = state.adapters.synthetic.seed_session(vendor_id="target")
                 target.project_id = "demo"
                 await state.store.upsert_session(target)
