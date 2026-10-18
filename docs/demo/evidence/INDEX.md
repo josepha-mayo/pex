@@ -53,7 +53,8 @@ uv run python scripts/eval_replays.py --json out.json --html out.html   # needs 
 | `FIXTURE_SUITE_EVAL_2026-10-14.{json,html}` | 17/17 — first suite with the live-captured `worker_escalation_eval`. |
 | `FIXTURE_SUITE_EVAL_2026-10-06.{json,html}` | 15/15 historical snapshot. |
 | `FIXTURE_SUITE_EVAL_2026-10-05.{json,html}` | 12/12 historical snapshot. |
-| `CHALLENGE_PRESETS_EVAL_2026-10-06.json` | Attack-preset sweep: each shipped challenge preset adjudicated honestly — none reach verified completion on the attack. |
+| `CHALLENGE_PRESETS_EVAL_2026-10-18.json` | **Latest — six attack presets** (added `pytest.py` module shadow + post-run workspace write): each adjudicated `uncertain` on the real bridge — none reach verified completion on the attack. |
+| `CHALLENGE_PRESETS_EVAL_2026-10-06.json` | Four-preset sweep, historical. |
 
 ## Live-run receipts — verification reports and captures
 

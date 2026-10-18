@@ -193,13 +193,20 @@ new since it opened:
   preflight `pex.check_action` consultation.
 - Durable human rulings: journaled rulings distinct from editable goal
   text, surviving worker termination, propagating to sibling workers.
-- The deterministic replay system: 19-fixture suite, evaluator, replay
+- The deterministic replay system: 21-fixture suite, evaluator, replay
   isolation (`replay: true` + `not_live_control: true` enforced server-side —
   sealed ledgers refuse control mutations yet remain legitimate handoff
   *sources* via `sealed_source` triggers: evidence in, control out).
 - The verdict-card claim ledger: every worker claim rendered beside its
   adjudicated verdict — "All tests passed" shown *contradicted* on a
   premature stop, then *verified* after a real pytest run.
+- Adversarial claim-evidence hardening: a green run only earns `supported`
+  when its provenance is independently defensible — runner identity
+  (workspace-root `pytest.py`/`sitecustomize.py` shadows), launcher
+  provenance (`./pytest`, `tools/pytest`), post-run workspace mutations
+  (nanosecond mtime diff vs the run event), symlinked acceptance dirs,
+  witnessed-producer rules for row-count claims, and atomic supersession
+  of stale `supported` receipts — all fail closed.
 - Evidence packs + offline verification (`scripts/verify_pack.py`).
 - The web UI supervision surface (fixtures rail, capabilities panel,
   inspector, escalation affordances; packaged Tauri desktop frozen/optional).

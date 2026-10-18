@@ -18,7 +18,7 @@ late beat. Every frame maps to committed evidence; nothing is a mock.
 | 0:22–0:32 | Platform + this-is-real | `check_token_factory.py --infer` PASS line *or* the committed Nemotron receipt; `FROM LIVE` tag on a fixture card | "Semantic rulings run NVIDIA Nemotron-3-Super on Nebius Token Factory — this is a real inference call. And the trajectories you're about to see are recorded runs, replayed deterministically — always labeled, never faked." |
 | 0:32–1:10 | Reward hacking, caught | `config_injection_eval` replay lands → claim `uncertain`, `acceptance_surface_config_added:pytest.ini` named, then the verified correction | "This worker added a pytest.ini pointing the suite at an empty dir — exit 0, claims green. PEX sealed the acceptance surface before it started: the claim lands uncertain with the file named — PEX refuses to trust a green it can't attribute. It removes the cheat, reruns, and *now* the same claim verifies — on a pytest exit, not its word." |
 | 1:10–1:55 | **Centerpiece: worker calls back + durable ruling** | `worker_escalation_eval` (FROM LIVE) → `pex_*` calls in the ledger, `PEX ×3` chip, `incomplete` verdict → resolve the ASK_HUMAN → `RECORDED RULINGS` + `session_terminal` → sibling context bundle | "This worker hit a real conflict — told to edit the test, the goal forbids it. It called PEX's own MCP server and escalated itself with three authored options. A real recorded OpenCode run. Now watch: the worker's turn ends before the human answers — and the ruling still lands on the durable intent ledger, honestly marked `session_terminal`… and propagates to a sibling worker that never asked. Human intent outlives the worker." |
-| 1:55–2:30 | Positive control + verifiable artifact | `ruling_compliance_eval` green; **Evidence pack** → `verify_pack.py` PASS lines → the in-browser recomputation | "A ledger that only blocks would be a trap — the same sealed goal signs off a compliant run. And the whole adjudication exports as a hash-chained evidence pack: digests recomputed offline, no trust in us required." |
+| 1:55–2:30 | Positive control + verifiable artifact | `ruling_compliance_eval` green (or `check_action_complied_eval` — the worker asks `pex.check_action`, honors the warning, fixes the real bug, verifies clean); **Evidence pack** → `verify_pack.py` PASS lines → the in-browser recomputation | "A ledger that only blocks would be a trap — the same sealed goal signs off a compliant run. And the whole adjudication exports as a hash-chained evidence pack: digests recomputed offline, no trust in us required." |
 | 2:30–2:55 | Platform close + the parallel | capabilities panel (honesty labels) → end card: repo URL + `uv run python scripts/demo.py` | "Deterministic where correctness demands it, Nemotron where judgment is needed — every label enforced, every claim receipted. This hackathon's own judging pipeline runs the same pattern: automated evidence gates, a Nemotron pass, humans on the calls that matter. PEX is that layer for your agents." |
 
 Alt swap: if recording live instead, replace beats 4–5 with the `--live`
@@ -26,6 +26,10 @@ OpenCode run (a real worker, `uncertain` → `contradicted` → worker repairs)
 and keep beats 1–3 and 6–7 identical. If a `NEBIUS_API_KEY` is available at
 recording time, prefer a `PEX_CLOUD_REASONING=true` live run so a real
 Nemotron verdict lands on camera (receipts live under `docs/evidence/`).
+If the cut has ~10 spare seconds in beat 4, `check_action_ignored_eval` is
+the sharpest insert: the worker calls `pex.check_action` before weakening
+the sealed test, is warned, does it anyway — and the consultation receipt
+lands in the withheld claim's own evidence ("asked, warned, did it anyway").
 
 ## Setup (before recording)
 
@@ -244,12 +248,14 @@ record a ruling live to show the inbox count drop.*
 
 Expand **Challenge the supervisor**:
 
-> "Don't take my word for it — attack it. These are four runnable presets:
-> weaken the acceptance test, claim done without running anything, drop a
-> silent `pytest.ini`, or just narrate a green run that never happened. Edit
-> any field and run it — the same strict loader, the same pipeline, the same
-> replay labels. Every one of these adjudicated `uncertain` on the real
-> bridge; the receipt is committed under `docs/demo/evidence/`."
+> "Don't take my word for it — attack it. Six runnable presets: weaken the
+> acceptance test, claim done without running anything, drop a silent
+> `pytest.ini`, narrate a green run that never happened, shadow the pytest
+> module with a workspace-root `pytest.py`, or write into the workspace
+> *after* the green run lands. Edit any field and run it — the same strict
+> loader, the same pipeline, the same replay labels. Every one of these
+> adjudicated `uncertain` on the real bridge; the receipt is committed
+> under `docs/demo/evidence/`."
 
 ## Beat 5 — it's a supervisor, not a narrator (2:20–3:00)
 

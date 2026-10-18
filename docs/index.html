@@ -20,6 +20,7 @@
   "featureList": [
     "Sealed acceptance surfaces with tamper detection",
     "Independent claim adjudication — worker narration is signal, never proof",
+    "Fail-closed evidence provenance — runner identity, post-run mutations, symlink audits",
     "Durable human rulings that survive worker termination and propagate to siblings",
     "Deterministic replay re-adjudication (21-fixture suite)",
     "Scoped worker-facing MCP server (9 tools, 6 scopes)",
@@ -137,6 +138,12 @@
     8 integrity incidents caught, and 12 of 21 runs land
     <em>uncertain</em>/<em>incomplete</em> — a supervisor that only approves is
     a rubber stamp; PEX withholds when the evidence isn't there.</p>
+    <p class="muted">Attack it yourself: the app's <strong>Challenge the
+    supervisor</strong> panel ships six runnable attack presets — weakened
+    tests, fabricated green output, a workspace-root <code>pytest.py</code>
+    shadow, writes after the green run — all adjudicated
+    <em>uncertain</em> on the real bridge
+    (<a href="demo/evidence/CHALLENGE_PRESETS_EVAL_2026-10-18.json">receipt</a>).</p>
     <p>Offline verification, one command:</p>
     <pre class="cmd">python3 scripts/verify_pack.py docs/demo/evidence/  # stdlib-only, no install</pre>
   </div>

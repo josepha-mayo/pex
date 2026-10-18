@@ -575,6 +575,7 @@ def _workspace_inventory(
                                         "path": rel_probe,
                                         "bytes": expected_file.st_size,
                                         "mtime": int(expected_file.st_mtime),
+                                        "mtime_ns": expected_file.st_mtime_ns,
                                         "sha256": None,
                                     }
                                 )
@@ -618,6 +619,7 @@ def _workspace_inventory(
                 "path": rel,
                 "bytes": observed.st_size,
                 "mtime": int(observed.st_mtime),
+                "mtime_ns": observed.st_mtime_ns,
             }
             if surface:
                 digest, problem = _fingerprint_observed_file(path, expected_file)

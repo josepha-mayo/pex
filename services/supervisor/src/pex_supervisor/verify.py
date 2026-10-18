@@ -700,6 +700,9 @@ def _post_run_workspace_mutation(
     file observed newer than the run cannot be part of what the run proved.
     Deletions of non-surface files remain undetectable here (no earlier
     inventory to diff); the acceptance-surface delta covers surface ones.
+    An adversary can also backdate `mtime` (`touch -d`, `os.utime`) — that is
+    the same no-cryptographic-isolation boundary the threat model states;
+    this gate catches the unforged case, which is the common one.
     """
     if not isinstance(workspace, dict) or run_epoch is None or _foreign_observation(workspace):
         return []
@@ -713,10 +716,21 @@ def _post_run_workspace_mutation(
             return ["post_run_mutation_uncheckable:inventory_missing"]
         return []
     flags: list[str] = []
+    # Prefer nanosecond precision: a whole-second `mtime` ties a fast
+    # adversary's write against the run event's own second and misses a
+    # mutation that real telemetry ordered after it. int() keeps the
+    # comparison in integer nanoseconds — the float product carries only
+    # the input timestamp's own sub-microsecond error.
+    run_ns = int(run_epoch * 1_000_000_000)
     for entry in meta:
         if not isinstance(entry, dict):
             continue
         path = entry.get("path")
+        mtime_ns = entry.get("mtime_ns")
+        if isinstance(path, str) and isinstance(mtime_ns, (int, float)):
+            if mtime_ns > run_ns:
+                flags.append(f"post_run_mutation:{path}")
+            continue
         mtime = entry.get("mtime")
         if isinstance(path, str) and isinstance(mtime, (int, float)) and mtime > run_epoch:
             flags.append(f"post_run_mutation:{path}")

@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from pex_protocol.enums import EventType, HarnessType
@@ -16,7 +16,7 @@ from pex_supervisor.workspace import acceptance_fingerprints, is_acceptance_conf
 def _event(**kwargs) -> HarnessEvent:
     return HarnessEvent(
         event_id=kwargs.pop("event_id", "e"),
-        ts=datetime.now(UTC),
+        ts=kwargs.pop("ts", datetime.now(UTC)),
         harness_type=HarnessType.SYNTHETIC,
         session_id="synthetic:s",
         event_type=kwargs.pop("event_type", EventType.AGENT_RESPONSE),
@@ -1158,9 +1158,14 @@ def test_full_suite_pytest_requirement_is_first_class_acceptance_evidence(tmp_pa
             event_id="pytest-pass",
             event_type=EventType.SHELL,
             command="python -m pytest -q",
+            ts=datetime.now(UTC) + timedelta(seconds=1),
             process_state={"pytest": {"ok": True, "exit_code": 0, "passed": 1}},
         ),
-        _event(event_id="stop", event_type=EventType.STOP),
+        _event(
+            event_id="stop",
+            event_type=EventType.STOP,
+            ts=datetime.now(UTC) + timedelta(seconds=1),
+        ),
     ]
 
     result = verify_claims(
@@ -1778,14 +1783,24 @@ def test_uncertain_script_requirement_selects_command_exit_probe():
 
 
 def _green_pytest_events() -> list[HarnessEvent]:
+    # Stamp the run firmly after the test's file writes: file mtimes come
+    # from the filesystem clock and can skew sub-microsecond amounts past a
+    # same-instant datetime.now(), which the post-run-mutation gate reads as
+    # a write-after-run at nanosecond precision.
     return [
         _event(
             event_id="pytest",
             event_type=EventType.SHELL,
             command="pytest -q",
+            ts=datetime.now(UTC) + timedelta(seconds=1),
             process_state={"pytest": {"ok": True, "exit_code": 0, "passed": 4}},
         ),
-        _event(event_id="stop", event_type=EventType.STOP, message_delta="done"),
+        _event(
+            event_id="stop",
+            event_type=EventType.STOP,
+            message_delta="done",
+            ts=datetime.now(UTC) + timedelta(seconds=1),
+        ),
     ]
 
 
@@ -2087,9 +2102,15 @@ def test_tampered_surface_does_not_hide_contradicted_verdict(tmp_path):
             event_id="pytest",
             event_type=EventType.SHELL,
             command="pytest -q",
+            ts=datetime.now(UTC) + timedelta(seconds=1),
             process_state={"pytest": {"ok": False, "exit_code": 1}},
         ),
-        _event(event_id="stop", event_type=EventType.STOP, message_delta="done"),
+        _event(
+            event_id="stop",
+            event_type=EventType.STOP,
+            message_delta="done",
+            ts=datetime.now(UTC) + timedelta(seconds=1),
+        ),
     ]
 
     result = verify_claims(
@@ -2321,6 +2342,35 @@ def test_post_run_file_mutation_breaks_support():
     result = verify_claims(
         _tests_pass_claims(),
         [*_green_pytest_events(), _event(event_id="stop", event_type=EventType.STOP)],
+        _goal(acceptance_criteria=["tests pass"]),
+        workspace,
+    )
+    assert result["status"] == "uncertain"
+    assert any(
+        "post_run_mutation:src/app.py" in str(item) for item in result["verdicts"][0]["evidence"]
+    )
+
+
+def test_post_run_mutation_uses_nanosecond_mtime():
+    # Whole-second `mtime` cannot distinguish a write that lands within the
+    # run event's own second — fast adversaries (and replay mutations applied
+    # per event) fit that window. `mtime_ns` carries the real ordering.
+    events = [*_green_pytest_events(), _event(event_id="stop", event_type=EventType.STOP)]
+    run_ts = events[0].ts.timestamp()
+    workspace = _observed_workspace("src/app.py", "tests/test_app.py")
+    workspace["file_meta"] = [
+        {
+            "path": "src/app.py",
+            "bytes": 1,
+            "mtime": int(run_ts),  # same whole second — int precision ties
+            "mtime_ns": int(run_ts * 1_000_000_000) + 50_000_000,
+            "sha256": "x",
+        },
+        {"path": "tests/test_app.py", "bytes": 1, "mtime": 1_700_000_000, "sha256": "x"},
+    ]
+    result = verify_claims(
+        _tests_pass_claims(),
+        events,
         _goal(acceptance_criteria=["tests pass"]),
         workspace,
     )

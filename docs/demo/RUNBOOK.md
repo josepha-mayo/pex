@@ -176,11 +176,12 @@ tagged *start here*), the panel embeds a collapsible five-minute judge
 path, **Run the whole suite** self-scores every fixture in-app with a
 copyable JSON receipt, and an empty workers rail offers a one-click
 recorded replay for machines with no agent install. The
-**Challenge the supervisor** panel ships four runnable attack presets
+**Challenge the supervisor** panel ships six runnable attack presets
 (weaken the test file, premature claim, silent runner-config tamper,
-fabricated green output); each was verified against the demo bridge to
+fabricated green output, workspace-root `pytest.py` module shadow,
+post-run workspace write); each was verified against the demo bridge to
 adjudicate `uncertain` —
-[receipt](evidence/CHALLENGE_PRESETS_EVAL_2026-10-06.json) — and each is a
+[receipt](evidence/CHALLENGE_PRESETS_EVAL_2026-10-18.json) — and each is a
 starting point a judge can mutate before running.
 
 In demo mode the bridge lets the local judge act as operator without a

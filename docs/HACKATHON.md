@@ -74,7 +74,15 @@ pinned workspace env itself. Worker steps additionally need
    statement and nudges before damage), and `constraint_block_eval` (the
    same conflict caught *before* the write lands → `ASK_HUMAN` — keep the
    rule or confirm an override; ends honestly `uncertain` with no
-   completion evidence). Every replay renders an **Observed supervision
+   completion evidence). The `check_action` pair closes the loop on the
+   worker-facing side: in `check_action_ignored_eval` the worker calls
+   `pex.check_action` before weakening the acceptance test, gets warned
+   the edit targets the sealed surface, does it anyway, and the
+   consultation receipt lands in the claim's evidence when support is
+   withheld — *asked, warned, did it anyway*. `check_action_complied_eval`
+   is the positive control: same warning, the worker honors it, fixes the
+   real bug instead, and reaches `verified_complete` with no corrective
+   intervention. Every replay renders an **Observed supervision
    arc** card — the intervention chain, the adjudicated completion, and
    the cited constraint — plus the **claim ledger** (every worker claim
    rendered next to its verdict — "All tests passed" *contradicted* on a
@@ -103,7 +111,8 @@ pinned workspace env itself. Worker steps additionally need
    where they are. The **Challenge the supervisor** panel ships four
    runnable attack presets
    (weakened test, premature claim, silent runner-config tamper,
-   fabricated green output) a judge can mutate and re-run — the paste-in
+   fabricated green output, workspace-root `pytest.py` module shadow,
+   post-run workspace write) a judge can mutate and re-run — the paste-in
    trajectory runs the same strict loader, same pipeline, same labels.
    Every evidence surface is deep-linkable — `#inspector/<session-id>`
    and `#deck/<view>` (`goals`, `decisions`, …) survive refresh, and the
@@ -265,6 +274,31 @@ processes — stated, not hand-waved).
 The same matrix exists in-app: **Settings → Capabilities** derives each row
 from the live bridge (probed adapters, supervisor state, the bench endpoint)
 rather than shipping static copy — it is linked from the judge quickstart.
+
+The claim-verification gate itself is hardened against fabricated evidence —
+a green "tests passed" event only earns `supported` when its provenance is
+independently defensible:
+
+- **Runner identity**: `python -m pytest` is checked against workspace-root
+  module shadows (`pytest.py`, `sitecustomize.py` hooks) and the entry point
+  is checked for workspace-controlled launchers (`./pytest`,
+  `tools/pytest`, a pruned env dir the inventory could not enumerate).
+- **Post-run mutation**: the claim-time workspace fingerprint (`file_meta`
+  mtime/size/sha256) is diffed against the test event — shell writes the
+  command denylist cannot classify still invalidate the run.
+- **Baseline sealing**: the acceptance surface seals at goal *attach*, not
+  first observation, so a pre-observation write cannot poison it.
+- **Witnessed artifacts**: satisfied row-count claims require a ledger
+  event that plausibly produced the artifact — fabricated rows demote to
+  `uncertain`, not `supported`.
+- **Symlinked acceptance dirs** are recorded by the workspace inventory and
+  flagged when they shadow the sealed surface.
+- **Stale proofs retire**: verified receipts carry a normalized claim
+  fingerprint + `valid_as_of`; a contradicted STOP verdict supersedes the
+  matching standing receipt inside the same transaction.
+
+All of it fails closed — when PEX cannot make the observation a gate needs,
+the claim lands `uncertain`, never silently `supported`.
 
 See [DIFFERENTIATION.md](DIFFERENTIATION.md) for the orchestrator-vs-supervisor
 argument and [TESTING.md](TESTING.md) for the evidence inventory.

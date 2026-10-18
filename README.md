@@ -186,6 +186,13 @@ it verifies the *acceptance surface*, not just the reported exit code:
   /v1/goals/{id}/acceptance-diff?path=<file>` returns the sealed text, the
   flagged bytes, and what's on disk now — so a judge sees `- assert
   add(1,1)==2` → `+ pass`, not just a filename.
+- The run's own **provenance** is evidence too: `python -m pytest` under a
+  workspace-root `pytest.py`/`sitecustomize.py` shadow, a workspace-controlled
+  launcher (`./pytest`, `tools/pytest`), a file written *after* the green
+  event (nanosecond mtime diff), a symlinked acceptance dir, or an
+  artifact row-count with no witnessing producer event all withhold
+  support and name the reason — every gate fails closed when the
+  observation can't be made.
 - `GET /v1/claims/metrics` reports the durable ledger: verdict counts, sealed
   baselines, integrity incidents, and corrective nudges issued.
 
@@ -198,7 +205,7 @@ web UI (:1420) together, then the Recorded-replay card in the app walks
 own — goal, optional workspace files, and a recorded event stream — and it
 runs through the same strict loader and real pipeline under the same replay
 labels. Try to make PEX accept a tampered test or a premature claim — or
-start from one of four runnable attack presets and mutate it. Every run
+start from one of six runnable attack presets and mutate it. Every run
 renders an **Observed supervision arc** card: the intervention chain, the
 adjudicated completion status, the constraint a contradiction nudge
 cited (on a goal-attached run, that citation is the journaled human

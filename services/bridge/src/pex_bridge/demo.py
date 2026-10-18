@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import re
+from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -124,13 +126,26 @@ def _workspace_target(base: Path, relpath: str) -> Path:
 
 
 def materialize_workspace(root: Path, files: dict[str, str]) -> None:
-    """Write validated fixture files under a replay workspace root."""
+    """Write validated fixture files under a replay workspace root.
+
+    Each write is re-stamped with the process clock (`os.utime`) — the same
+    clock that stamps replay event `ts`. The filesystem's own timestamps can
+    skew milliseconds ahead of `datetime.now()` on Windows, and replay event
+    spacing is itself milliseconds: without normalization a fixture write
+    that declares "before the run" can observe an `mtime_ns` that lands
+    after the run event and trip the post-run-mutation gate.
+    """
 
     base = root.resolve()
     for relpath, content in files.items():
         target = _workspace_target(base, relpath)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
+        # Stamp on the same clock as emitted event `ts` (datetime.now(UTC)):
+        # time.time_ns() runs ~µs ahead of it on Windows, which would fake a
+        # post-run mutation against the nanosecond mtime gate.
+        now_ns = int(datetime.now(UTC).timestamp() * 1_000_000_000)
+        os.utime(target, ns=(now_ns, now_ns))
 
 
 def remove_workspace_files(root: Path, relpaths: list[str]) -> None:
