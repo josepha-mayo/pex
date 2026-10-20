@@ -70,12 +70,12 @@ METR found 39 of 128 unprompted frontier-model runs on RE-Bench attempted
 reward hacking (~30%) — modifying the tests, monkey-patching the evaluator,
 caching the answer. PEX is built for exactly that failure class: it caught
 a real OpenCode worker claiming done on a decoy checker, and disputed a
-weakened acceptance test with named evidence. One more thing, for the
-judges reading this: the hackathon's own evaluation pipeline — automated
-evidence gates in a Nebius Sandbox, an NVIDIA Nemotron judgment pass, humans
-on the calls that matter (documented at roundone.dev) — is the architecture
-PEX ships. This submission is, in a real sense,
-judged by our thesis.
+weakened acceptance test with named evidence. Notably, the hackathon's own
+evaluation pipeline — automated evidence gates in a Nebius Sandbox, an
+NVIDIA Nemotron judgment pass, humans on the calls that matter (documented
+at roundone.dev) — mirrors the architecture PEX ships: deterministic
+evidence first, model judgment second, humans deciding the calls that
+matter. This submission is evaluated by the same thesis it ships.
 
 ## The live story (for the "story" field / video)
 
@@ -181,7 +181,7 @@ NEBIUS_API_KEY=... uv run python scripts/check_token_factory.py --infer
 ## Built during the submission period (pre-existing-project note)
 
 This repository predates the submission window in part — the window opened
-August 26, 2026, and 1,388 of the project's 1,389 commits land inside it;
+August 26, 2026, and 1,411 of the project's 1,412 commits land inside it;
 the single earlier commit (`d138f4a`, the initial tree publish) predates it
 by ~18 hours. The work submitted here was built during the window. Substantially
 new since it opened:
@@ -244,6 +244,10 @@ new since it opened:
   which is exactly the split a supervisor needs.
 
 ## Strategy notes (verified against official rules + RoundOne docs)
+
+*Internal working notes for preparing the Devpost form — not part of the
+project description. Verify every field against the live form at submission
+time; none of this text is submitted verbatim unless marked for pasting.*
 
 - **Award stacking**: a submission can win one Overall award OR one Track
   award + one Bonus award — not Overall + Bonus. PEX's natural play is Track
