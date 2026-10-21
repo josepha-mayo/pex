@@ -1,0 +1,27 @@
+# Browser-only preview. The Python replay backend is configured separately.
+# Never proxy the operator /v1 API from this public application.
+[build]
+  base = "apps/desktop"
+  command = "npm run build:hosted"
+  publish = "dist-web"
+
+[[redirects]]
+  from = "/"
+  to = "/hosted.html"
+  status = 200
+
+# No catch-all rewrite: missing API routes must remain missing, not return HTML
+# with a successful status or pretend that a replay backend is connected.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+    X-Frame-Options = "DENY"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
+
+[[headers]]
+  for = "/hosted.html"
+  [headers.values]
+    Cache-Control = "no-cache"

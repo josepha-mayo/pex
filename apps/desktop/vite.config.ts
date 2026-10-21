@@ -1,7 +1,9 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  // The hosted-only build never copies desktop public assets or pet sprites.
+  publicDir: mode === "hosted" ? false : "public",
   plugins: [react()],
   clearScreen: false,
   // WEB-ONLY default: `uv run python scripts/demo.py` serves this web UI via
@@ -21,6 +23,10 @@ export default defineConfig({
     // origin — acceptable on require_auth=False dev bridges, which only exist
     // behind Settings.for_test.
     proxy: {
+      // Isolated hosted replay service only; never forward this entry to /v1.
+      ...(process.env.PEX_REPLAY_URL ? {
+        "/api/replay": { target: process.env.PEX_REPLAY_URL, changeOrigin: true },
+      } : {}),
       "/v1": {
         // demo.py moves the bridge when PEX_DEMO_PORT is set — the proxy must
         // follow, or the UI renders a different bridge's canonical state.
@@ -32,11 +38,13 @@ export default defineConfig({
     },
   },
   build: {
+    outDir: mode === "hosted" ? "dist-web" : "dist",
     rollupOptions: {
-      input: {
+      input: mode === "hosted" ? { hosted: "hosted.html" } : {
         main: "index.html",
+        hosted: "hosted.html",
         pet: "pet.html",
       },
     },
   },
-});
+}));

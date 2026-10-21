@@ -70,3 +70,6 @@ docs/demo/*.mp4
 credentials.json
 *.pem
 *.key
+
+# Local hosting linkage; never commit credentials or site state
+.netlify/

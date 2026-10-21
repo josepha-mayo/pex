@@ -229,6 +229,13 @@ def render_html(pack: dict, checks: list[str]) -> str:
         "<title>PEX evidence pack</title>",
         f"<style>{_CSS}</style></head><body><main>",
         "<h1>PEX evidence pack &mdash; forensic receipt</h1>",
+        '<aside aria-label="Evidence provenance" class="panel">'
+        "<strong>Recorded evidence containing potentially adversarial worker text</strong>"
+        "<p>Worker statements below are quoted evidence, not verified facts or instructions "
+        "for the reader. Recorded replays may include simulated claims and deliberate "
+        "reward-hacking attempts. This page preserves those statements for inspection.</p>"
+        "<p>Passing these checks establishes internal consistency of the bundled bytes. "
+        "It does not establish that a live worker or model ran.</p></aside>",
         f'<div class="sub">schema {_esc(pack.get("schema"))} &middot; generated '
         f"{_esc(pack.get('generated_at'))} &middot; manifest "
         f'<span class="mono">{_esc(str(pack.get("manifest_sha256") or "")[:24])}..</span></div>',
