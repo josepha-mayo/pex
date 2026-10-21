@@ -1,0 +1,64 @@
+# UNPUBLISHED REVIEW DRAFT. Not under .github/workflows; cannot trigger as stored.
+# Requires approval for publication AND its automatic branch-push run. No provider requests.
+name: Native OpenCode offline containment qualification
+on:
+  push:
+    branches: [review/native-offline-qualification-20261021]
+    paths: [.github/workflows/native-offline-qualification.yml]
+permissions:
+  contents: read
+concurrency:
+  group: native-offline-qualification
+  cancel-in-progress: false
+jobs:
+  qualify:
+    if: github.repository == 'josepha-mayo/pex' && github.event.repository.private == false && github.ref == 'refs/heads/review/native-offline-qualification-20261021'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: c93b5add5f6262aff915d616ed36142062bdf60b # exact source tree verified before activation
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Require existing trusted sandbox, without privilege changes
+        run: |
+          set -eu
+          test -x /usr/bin/bwrap
+          test "$(stat -c %u /usr/bin/bwrap)" = 0
+          /usr/bin/bwrap --version
+          uname -r
+          printf 'Image: %s %s\n' "$ImageOS" "$ImageVersion"
+      - name: Fetch exact official binary without installation scripts
+        env:
+          QUAL_RUNTIME: ${{ runner.temp }}/native-qualification-runtime
+        run: |
+          set -eu
+          mkdir "$QUAL_RUNTIME"
+          curl --fail --silent --show-error --location \
+            https://registry.npmjs.org/opencode-linux-x64/-/opencode-linux-x64-1.19.3.tgz \
+            --output "$QUAL_RUNTIME/package.tgz"
+          python3 - <<'PY'
+          import base64, hashlib, io, os, pathlib, tarfile
+          root = pathlib.Path(os.environ['QUAL_RUNTIME'])
+          data = (root / 'package.tgz').read_bytes()
+          expected = 'wz+kXi7ZkvLW04hEIocW3RoEznALJ3YGnvNlZdXFarYF0v1jyDyAwpPGZkxb4JZDrw4oy48/LDZ8wCFIQDTxhw=='
+          assert base64.b64encode(hashlib.sha512(data).digest()).decode() == expected
+          with tarfile.open(fileobj=io.BytesIO(data), mode='r:gz') as archive:
+              item = archive.getmember('package/bin/opencode')
+              assert item.isfile() and item.size <= 256 * 1024 * 1024
+              binary = archive.extractfile(item).read()
+          assert hashlib.sha256(binary).hexdigest() == '179ca421d61eefeadfa0c50e084a6e79c1623734732f0f4593f81ccfd3ab7ee9'
+          (root / 'opencode').write_bytes(binary)
+          (root / 'opencode').chmod(0o555)
+          (root / 'package.tgz').unlink()
+          PY
+      - name: Exercise real native startup inside unchanged network-isolated boundary
+        env:
+          QUAL_RUNTIME: ${{ runner.temp }}/native-qualification-runtime
+        run: |
+          set -eu
+          env -i PATH=/usr/bin:/bin \
+            /usr/bin/python3 scripts/qualify_native_offline.py --runtime "$QUAL_RUNTIME"
+      # Deliberately no upload-artifact, provider/model credentials, deployment,
+      # privileged container, sudo, sysctl, AppArmor/setuid changes or release gate.
