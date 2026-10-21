@@ -1,5 +1,5 @@
-# UNPUBLISHED REVIEW DRAFT. Not under .github/workflows; cannot trigger as stored.
-# Requires approval for publication AND its automatic branch-push run. No provider requests.
+# Third separately approved offline check; executable-only provisioning.
+# No package installation scripts or system policy files. No provider requests.
 name: Native OpenCode offline containment qualification
 on:
   push:
@@ -21,58 +21,81 @@ jobs:
           ref: c93b5add5f6262aff915d616ed36142062bdf60b # exact source tree verified before activation
           persist-credentials: false
           fetch-depth: 1
-      - name: Diagnose and audit official Ubuntu bubblewrap before ordinary installation
+      - name: Provision only verified official unprivileged sandbox executable
         run: |
           set -eu
-          if test -e /usr/bin/bwrap; then
-            stat -c 'bwrap owner=%u mode=%a type=%F' /usr/bin/bwrap
-            test -x /usr/bin/bwrap || { echo 'BLOCKED: bwrap not executable'; exit 1; }
-          else
-            echo 'DIAGNOSIS: /usr/bin/bwrap absent'
+          if test -e /usr/bin/bwrap || test -L /usr/bin/bwrap; then
+            stat -c 'existing bwrap owner=%u mode=%a type=%F' /usr/bin/bwrap
+            echo 'Refusing to replace an existing binary; fresh-runner premise changed'
+            exit 1
           fi
+          echo 'Verified /usr/bin/bwrap absent'
           sudo apt-get -o APT::Update::Error-Mode=any update
           apt-cache policy bubblewrap
-          mkdir -p "$RUNNER_TEMP/bubblewrap-audit"
-          cd "$RUNNER_TEMP/bubblewrap-audit"
-          apt-get --print-uris download bubblewrap > uris.txt
+          mkdir "$RUNNER_TEMP/bubblewrap-executable-only"
+          cd "$RUNNER_TEMP/bubblewrap-executable-only"
+          apt-get --print-uris download bubblewrap=0.9.0-1ubuntu0.3 > uris.txt
           cat uris.txt
-          python3 - <<'PY'
-          import shlex, urllib.parse
-          lines=open('uris.txt').read().splitlines()
-          assert len(lines)==1, 'unexpected package URI count'
-          host=urllib.parse.urlparse(shlex.split(lines[0])[0]).hostname
-          assert host in {'archive.ubuntu.com','security.ubuntu.com'} or host.endswith('.archive.ubuntu.com'), host
-          PY
-          apt-get download bubblewrap
-          set -- ./*.deb
-          test "$#" = 1
-          DEB="$1"
-          dpkg-deb --control "$DEB" control
-          dpkg-deb --fsys-tarfile "$DEB" > payload.tar
-          python3 - <<'PY'
-          import pathlib,tarfile
-          allowed={'control','md5sums'}
-          assert {p.name for p in pathlib.Path('control').iterdir()} <= allowed, 'maintainer scripts or triggers require further review'
-          with tarfile.open('payload.tar') as archive:
-           for m in archive:
-            p=m.name.removeprefix('./')
-            assert p in {'','usr','usr/bin','usr/share'} or p.startswith(('usr/bin/','usr/share/')), 'unexpected package path: '+p
-            assert not m.mode & 0o6000, 'setuid/setgid payload refused'
-            assert not (m.ischr() or m.isblk() or m.isfifo()), 'special file refused'
-          PY
-          sudo apt-get --simulate --no-install-recommends install "$PWD/$DEB" > simulation.txt
-          cat simulation.txt
-          python3 - <<'PY'
-          lines=open('simulation.txt').read().splitlines()
-          for line in lines:
-           if line.startswith(('Inst ','Remv ')):
-            assert line.startswith('Inst bubblewrap '), 'additional package mutation refused: '+line
-          PY
-          sha256sum "$DEB"
-          /usr/bin/sudo apt-get -y --no-install-recommends --no-remove install "$PWD/$DEB"
-          stat -c 'bwrap owner=%u mode=%a type=%F' /usr/bin/bwrap
-          test -x /usr/bin/bwrap
-          test "$(stat -c %u /usr/bin/bwrap)" = 0
+          apt-get download bubblewrap=0.9.0-1ubuntu0.3
+          cat > validate.py <<'PYVALIDATE'
+          """Pure validation and extraction only. Never installs or executes package code."""
+          import hashlib, io, pathlib, shlex, stat, subprocess, tarfile, urllib.parse
+          PACKAGE_SHA512='16cad315aa5a302ee8573c8ccb7e6adcdf5bd10dd29adeed0f7f061f39f7b52159d4020b2db1b1dde88fa7f7a3f54522d83037266c956a346882e234247c790b'
+          BINARY_SHA256='e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71'
+          FILENAME='bubblewrap_0.9.0-1ubuntu0.3_amd64.deb'
+          def official(uri):
+           p=urllib.parse.urlparse(uri);h=p.hostname
+           return p.scheme in {'http','https'} and not p.username and not p.password and p.port in {None,80,443} and h is not None and (h in {'archive.ubuntu.com','security.ubuntu.com'} or h.endswith('.archive.ubuntu.com'))
+          def receipt(text,mirror_text=None):
+           lines=text.strip().splitlines()
+           if len(lines)!=1: raise ValueError('unexpected URI count')
+           fields=shlex.split(lines[0])
+           if len(fields)!=4 or fields[1:]!=[FILENAME,'50436','SHA512:'+PACKAGE_SHA512]: raise ValueError('receipt does not match reviewed package')
+           uri=fields[0]
+           prefix='mirror+file:/etc/apt/apt-mirrors.txt/'
+           if uri.startswith(prefix):
+            if uri[len(prefix):]!='pool/main/b/bubblewrap/'+FILENAME: raise ValueError('unexpected mirror path')
+            entries=[line.split()[0] for line in (mirror_text or '').splitlines() if line.strip() and not line.lstrip().startswith('#')]
+            if not entries or not all(official(v) for v in entries): raise ValueError('unreviewed mirror list')
+           elif not official(uri): raise ValueError('unreviewed package URI')
+           return fields
+          
+          def extract(data):
+           if len(data)!=50436 or hashlib.sha512(data).hexdigest()!=PACKAGE_SHA512: raise ValueError('package mismatch')
+           # dpkg-deb reads the archive only; no package scripts or executable run.
+           result=subprocess.run(['dpkg-deb','--fsys-tarfile','-'],input=data,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True,timeout=15)
+           with tarfile.open(fileobj=io.BytesIO(result.stdout)) as archive:
+            matches=[m for m in archive.getmembers() if m.name=='./usr/bin/bwrap']
+            if len(matches)!=1: raise ValueError('binary entry count')
+            item=matches[0]
+            if not item.isfile() or item.mode!=0o755 or item.uid!=0 or item.gid!=0 or item.pax_headers: raise ValueError('unexpected executable metadata')
+            binary=archive.extractfile(item).read()
+           if hashlib.sha256(binary).hexdigest()!=BINARY_SHA256: raise ValueError('binary mismatch')
+           return binary
+          if __name__=='__main__':
+           lines=pathlib.Path('uris.txt').read_text()
+           mirror=pathlib.Path('/etc/apt/apt-mirrors.txt')
+           mirror_text=None
+           if 'mirror+file:' in lines:
+            info=mirror.lstat()
+            if not stat.S_ISREG(info.st_mode) or info.st_uid!=0 or info.st_mode & 0o022: raise ValueError('untrusted mirror list file')
+            mirror_text=mirror.read_text()
+           receipt(lines,mirror_text)
+           pathlib.Path('bwrap').write_bytes(extract(pathlib.Path(FILENAME).read_bytes()))
+           print('Exact authenticated package and executable verified; no maintainer scripts or policy files extracted')
+          PYVALIDATE
+          python3 validate.py
+          # Install only this vetted regular executable. No dpkg/apt install or postinst.
+          sudo install -o root -g root -m 0755 -- bwrap /usr/bin/bwrap
+          python3 - <<'PYCHECK'
+          import hashlib,os,pathlib,stat
+          p=pathlib.Path('/usr/bin/bwrap');m=p.lstat()
+          assert stat.S_ISREG(m.st_mode) and m.st_uid==0 and m.st_gid==0
+          assert stat.S_IMODE(m.st_mode)==0o755
+          assert 'security.capability' not in os.listxattr(p)
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=='e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71'
+          print('root-owned0755 binary verified; no capabilities')
+          PYCHECK
           /usr/bin/bwrap --version
           uname -r
       - name: Fetch exact official binary without installation scripts
@@ -108,4 +131,5 @@ jobs:
             /usr/bin/python3 scripts/qualify_native_offline.py --runtime "$QUAL_RUNTIME"
       # Deliberately no upload-artifact, provider/model credentials, deployment,
       # privileged container, sysctl, AppArmor/setuid changes or release gate.
-      # One separately approved ordinary Ubuntu package installation uses sudo.
+      # Explicitly approved copy of one vetted executable uses sudo; no package installation.
+
