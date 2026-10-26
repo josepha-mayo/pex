@@ -1,0 +1,18 @@
+# Read-only owner workspace qualification
+
+2026-10-26 23:56 UTC. Current application source checkpoint 274dcb160942677a006b35b19e70981cfe8c4060. This supersedes auth-only/current-build assertions in earlier reports; historical browser receipt is explicitly scoped to its earlier bytes.
+
+## Verified current bytes
+- Full frontend npm test:482 passing, zero failures (453 pre-existing +29 owner). TypeScript and isolated Vite build pass. Owner tests comprise15 auth-controller,5 workspace-controller and9 built-JS DOM tests with authored responses.
+- Combined Python owner suite:62 passing (33 auth-core,16 auth ASGI,13 workspace SQLite/ASGI),1.579s. Ruff check passes all6 Python source/test files. Real temporary SQLite/WAL is used, with authored records, not actual workers or provider inference.
+- GET /owner/workspace accepts only an explicitly injected server-selected reader; no query/body, no client path, no generic SQL, no bearer forwarding. Defaults503 when absent. It authorizes before reading and revalidates after awaits and before releasing a private response body. Revocation during response-start releases no private body; actual HTTP server/TLS behavior still requires qualification.
+- Reader opens URI mode=ro and query_only=ON. It never calls Store.connect, migrations, legacy app startup, or session discovery/refresh. Existing goal intent/freshness completion logic is reused. Existing schema/quarantine errors fail closed; raw metadata, prompts, paths, events and evidence packs are not returned.
+- Bounded20 sessions/goals,32KiB serialized output, read timeout and SQLite instruction budget. Separate reads are observations, not an atomic cross-row snapshot. Recorded working/stopped state is not proof a worker is connected. Completion comes from the existing current-intent projection, never inferred from narration.
+- SQLite tests establish committed WAL reads, exclusion of uncommitted data, no missing DB creation, attempted DB writes denied even with query_only disabled, quarantine not migrated, and field/row bounds. mode=ro can still involve WAL/SHM/locking sidecar filesystem activity: this is no DB-content mutation, not a universal zero-filesystem-write claim.
+- HTTP tests cover missing auth, unavailable reader, expiry/logout during slow read, revocation after response headers, timeout, malformed stored JSON, oversized output and query/body/mutation rejection. Errors reveal no exception/path/title.
+- Clean web UI manually loads goals and sessions, displays recorded completion reason/time, distinguishes unavailable/empty/truncated state, uses text-only rendering, and clears prior rows on refresh/error/logout/hidden/expired auth. No poller, worker controls or provider calls.
+
+## Reproduce and limits
+Run npm test from apps/desktop using the unchanged lockfile dependencies. From repository root, PYTHONPATH=services/bridge/src:packages/protocol/src:packages/supervisor/src python -m unittest discover -s tests/unit -p 'test_web_owner_*.py' with existing project Python dependencies. Standard-library auth tests can still run separately without Store dependencies.
+
+No real/private database was connected. No actual owner credential, successful browser authentication, HTTPS/proxy qualification, deployment, payment, or real worker-plus-supervisor benchmark. Current changed UI awaits refreshed actual browser checks; BROWSER_QUALIFICATION.md applies only to pre-workspace source d20bac5. Source remains a historical-base delta, not recovered latest code or complete standalone app. Original model-only admission gates remain closed. Generated build files are identified but not pushed.

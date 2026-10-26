@@ -7,15 +7,15 @@
   },
   {
     "path": "apps/desktop/package.json",
-    "size": 2340,
-    "sha256": "51d0ccc06db991fc9fcf70b287381407074e5831193ce3b974822290ca60b175",
-    "git_blob_sha": "e07e6243af5c141df6ab89b56aa8bd81a6531fdd"
+    "size": 2368,
+    "sha256": "8f34bb3e5fe3cfe13b31955532421fe7e07b99d45f517d26542b6c7d4a093665",
+    "git_blob_sha": "a7ad4950cd054a9a94b8dd62f28dda9cf7ac6c89"
   },
   {
     "path": "apps/desktop/owner.html",
-    "size": 1884,
-    "sha256": "a65a2c8518890189ebbe039bd07d21bfb8826a1e0771f68322286975c30e45c6",
-    "git_blob_sha": "0dff019a2ddf9d21a6076077e1cbf50ec18f41e0"
+    "size": 1988,
+    "sha256": "87820cc128b618bc10db1e212233c0ff1149549fb10a3e9fbe1fae6feb395a22",
+    "git_blob_sha": "ad26b9efedcd0b666ed0dd013824ef2562f298f7"
   },
   {
     "path": "apps/desktop/vite.owner.config.ts",
@@ -31,15 +31,15 @@
   },
   {
     "path": "apps/desktop/src/owner/main.ts",
-    "size": 2393,
-    "sha256": "ca29c9c46733cb9f245f5ef8ee287039ecc6fd897b2cf80cd4c4673367f13029",
-    "git_blob_sha": "7bbb75508ec1ce32339c59226e0a7cf2c3dbdf15"
+    "size": 4725,
+    "sha256": "fa99b46dbf5dd44b2c2a6c9cdee64441e61b77ad233700a48f4a003ded28cee3",
+    "git_blob_sha": "4f19a4ac4e83d18f3aac9672142885accf683d3a"
   },
   {
     "path": "apps/desktop/src/owner/owner.css",
-    "size": 1778,
-    "sha256": "28a075391dd2bcdce452f1ad09914cd3bde2627b2685e9b345fe41ccba2efab9",
-    "git_blob_sha": "52fbf83dda3c22aededdfac118d9fdb0ce20e2f0"
+    "size": 2032,
+    "sha256": "c69c29136f99e3f987a03faaa3e3d05b582496d99f322f50c0811be59b1cfb05",
+    "git_blob_sha": "744f5ed1f7567bf7a870bc3ac8194391d543c1a8"
   },
   {
     "path": "apps/desktop/src/owner/client.test.ts",
@@ -48,10 +48,28 @@
     "git_blob_sha": "ae8c7923d8fa6b2bbfdccffa1e7631e52f349e1c"
   },
   {
+    "path": "apps/desktop/src/owner/workspace.ts",
+    "size": 5528,
+    "sha256": "44368af640a60eb4d38fc5698b55b7862876cb8605062cc32b0ecb69b2a907ab",
+    "git_blob_sha": "4f9a4b39c4b5f111b61a3311ed6c164e621eac9f"
+  },
+  {
+    "path": "apps/desktop/src/owner/workspace.test.ts",
+    "size": 3982,
+    "sha256": "91bfdd1ab26cfee254f32bff1710e62a569918a9f4417788b9f6a48f95a2bdb4",
+    "git_blob_sha": "1c38782dfee12ee3151c568db1f11370c080b5c6"
+  },
+  {
     "path": "apps/desktop/tests/ownerAuth.dom.test.mjs",
-    "size": 5248,
-    "sha256": "e5db0c1bb48b586f8fe64faa7755d47319cd4a14d4bd816690505d627b88e11b",
-    "git_blob_sha": "691fbe7bc8e454562ebdfd8d3875ca0b3669a101"
+    "size": 6813,
+    "sha256": "b034f4d8314910eb8f69ddc2c98e4585517ced7bf632f7c4e7dd1396e85c3c28",
+    "git_blob_sha": "2cc6a51effdac98f5c3e33956f1cd5b95680fec2"
+  },
+  {
+    "path": "apps/desktop/tests/manual/owner-narrow.html",
+    "size": 603,
+    "sha256": "fd41421a92e608aa566b27b69a6f2a3d847ef760ccfc346c965e9331028854a7",
+    "git_blob_sha": "e963e2ca2f4b9dfbcf7d4a7f1906ec6fbc6f4480"
   },
   {
     "path": "services/bridge/src/pex_bridge/web_owner_auth.py",
@@ -61,9 +79,15 @@
   },
   {
     "path": "services/bridge/src/pex_bridge/web_owner_http.py",
-    "size": 9243,
-    "sha256": "d622fceade9a24fafb95d1b6ce7204753e317811126e36b41e04588b81290883",
-    "git_blob_sha": "69d4b70fefddd823ae900b2da1e000d8be2f118a"
+    "size": 11309,
+    "sha256": "3d4b400e54132861361d65c828e4206996cac2ceb094a05a0d561d2515b90ca1",
+    "git_blob_sha": "df92388aa51eed19f6fca7db6b722c08411dd1ed"
+  },
+  {
+    "path": "services/bridge/src/pex_bridge/web_owner_workspace.py",
+    "size": 6301,
+    "sha256": "073f1299c45c441c8c77db7e9b1acdd818080565717090cf42ca62611fed0a5e",
+    "git_blob_sha": "21bbcb56fa56c7261c90890406439edd8f4c834d"
   },
   {
     "path": "tests/unit/test_web_owner_auth.py",
@@ -78,9 +102,9 @@
     "git_blob_sha": "0cc18ce2be7e11fcc6a4058c1545e528b14c4ca6"
   },
   {
-    "path": "apps/desktop/tests/manual/owner-narrow.html",
-    "size": 603,
-    "sha256": "fd41421a92e608aa566b27b69a6f2a3d847ef760ccfc346c965e9331028854a7",
-    "git_blob_sha": "e963e2ca2f4b9dfbcf7d4a7f1906ec6fbc6f4480"
+    "path": "tests/unit/test_web_owner_workspace.py",
+    "size": 11593,
+    "sha256": "837297aa0f47d5a19f6ea6b2ddb1ac9d1815a296fb584b63d8d89279d84455d4",
+    "git_blob_sha": "de1277bc97a2a371a69fd582a14b579e08aa30bd"
   }
 ]
