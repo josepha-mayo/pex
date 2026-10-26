@@ -1,5 +1,5 @@
-# Web-owner core — test-first WIP
+# Web-owner core — locally tested, still unwired
 
-The standalone core remains unwired and not deployable. Synthetic stdlib tests:33 total,27 passed,1 failure and5 missing-contract errors. The six red cases specify immutable/revoking reconfiguration and stable reload-recoverable CSRF; their core implementation is the next increment. No HTTP routes, UI, real TLS/proxy or active WebSocket lifecycle is qualified.
+Standalone stdlib core:33/33 synthetic tests pass with zero network attempts; lint/format pass. Configuration is read-only; actual reconfiguration revokes all sessions under the shared lock. Authenticated status can recover stable session-bound CSRF without exposing the opaque cookie token, rotating sibling-tab CSRF or extending expiry.
 
-Only authored fixture verifier/tokens and fake clock are used. No real credentials, environment loading, provider/network calls or deployment. Existing native bearer/MCP/hook lanes and model-only deny-all are unchanged. Do not use this as a public owner boundary.
+No HTTP routes, UI, actual TLS/proxy or active WebSocket lifecycle is implemented or qualified. Only authored verifier/tokens/fake clock were used. No real credentials, environment loading, provider calls or deployment. Existing native bearer/MCP/hook lanes and model-only deny-all are unchanged. This is not a public-ready web boundary or recovered full V14.

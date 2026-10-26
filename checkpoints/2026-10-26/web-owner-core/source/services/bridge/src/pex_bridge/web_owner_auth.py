@@ -9,7 +9,9 @@ remain unimplemented. Native bearer auth and model-only admission are untouched.
 
 from __future__ import annotations
 
+import base64
 import hashlib
+import hmac
 import math
 import re
 import secrets
@@ -153,8 +155,18 @@ class LoginResult:
 
 
 @dataclass(frozen=True)
+class SessionStatus:
+    """Safe explicit status fields; no cookie token and no renewal on reads."""
+
+    principal_id: str
+    csrf_token: str = field(repr=False)
+    expires_in_seconds: int
+
+
+@dataclass(frozen=True)
 class _Session:
     csrf_digest: str = field(repr=False)
+    csrf_seed_digest: str = field(repr=False)
     expires_at: float
 
 
@@ -174,13 +186,40 @@ class OwnerSessions:
         clock: Callable[[], float] = time.monotonic,
         token_factory: Callable[[], str] = lambda: secrets.token_urlsafe(32),
     ) -> None:
-        self.config = config
+        if type(config) is not WebOwnerConfig:
+            raise ValueError("owner config must be explicitly constructed")
+        self._lock = threading.RLock()
+        self._config = config
         self._clock = clock
         self._token_factory = token_factory
         self._sessions: dict[str, _Session] = {}
         self._attempts: deque[float] = deque()
-        self._lock = threading.RLock()
         self._last_now = 0.0
+
+    @property
+    def config(self) -> WebOwnerConfig:
+        with self._lock:
+            return self._config
+
+    def reconfigure(self, config: WebOwnerConfig) -> None:
+        """Replace configuration atomically; any actual change revokes sessions."""
+        if type(config) is not WebOwnerConfig:
+            raise ValueError("owner config must be explicitly constructed")
+        with self._lock:
+            if config != self._config:
+                self._sessions.clear()
+                self._attempts.clear()
+                self._config = config
+
+    @staticmethod
+    def _csrf_value(token: str, seed_digest: str) -> str:
+        # The opaque cookie is a server-issued 256-bit secret, not a public
+        # session ID. Only an authenticated cookie plus this session's stored
+        # random seed digest can recover its CSRF value. This distinct domain
+        # must never be reused for authentication or another token purpose.
+        message = b"PEX/web-owner/session-csrf/v1\x00" + seed_digest.encode("ascii")
+        value = hmac.new(token.encode("ascii"), message, hashlib.sha256).digest()
+        return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
 
     def _now(self) -> float:
         try:
@@ -196,6 +235,8 @@ class OwnerSessions:
         return now
 
     def _headers(self, headers: RawHeaders, *, origin_required: bool) -> dict[bytes, list[str]]:
+        # Internal helper: every caller holds the same reconfiguration lock
+        # through request-boundary validation and the resulting state action.
         if not self.config.configured:
             raise OwnerAuthError(503, "owner_auth_not_configured")
         values: dict[bytes, list[str]] = {}
@@ -242,8 +283,8 @@ class OwnerSessions:
 
     def login(self, headers: RawHeaders, owner_secret: object) -> LoginResult:
         """Future POST login only; exact Host/Origin checked before verification."""
-        self._headers(headers, origin_required=True)
         with self._lock:
+            self._headers(headers, origin_required=True)
             now = self._now()
             if len(self._attempts) >= self.config.max_login_attempts:
                 raise OwnerAuthError(429, "owner_login_rate_limited")
@@ -253,15 +294,19 @@ class OwnerSessions:
             if len(self._sessions) >= self.config.max_sessions:
                 raise OwnerAuthError(429, "owner_session_capacity")
             try:
-                token, csrf = self._token_factory(), self._token_factory()
+                token, seed = self._token_factory(), self._token_factory()
             except Exception:
                 raise OwnerAuthError(503, "owner_entropy_unavailable") from None
-            if not _valid_token(token) or not _valid_token(csrf) or token == csrf:
+            if not _valid_token(token) or not _valid_token(seed) or token == seed:
                 raise OwnerAuthError(503, "owner_entropy_unavailable")
             digest = _digest(token)
             if digest in self._sessions:
                 raise OwnerAuthError(503, "owner_entropy_unavailable")
-            self._sessions[digest] = _Session(_digest(csrf), now + self.config.ttl_seconds)
+            seed_digest = _digest(seed)
+            csrf = self._csrf_value(token, seed_digest)
+            self._sessions[digest] = _Session(
+                _digest(csrf), seed_digest, now + self.config.ttl_seconds
+            )
             return LoginResult(
                 set_cookie=(
                     f"{COOKIE_NAME}={token}; Path=/; Max-Age={self.config.ttl_seconds}; "
@@ -274,11 +319,11 @@ class OwnerSessions:
     def authorize(
         self, method: str, headers: RawHeaders, *, websocket: bool = False
     ) -> OwnerPrincipal:
-        if method not in _METHODS or (websocket and method != "GET"):
-            raise OwnerAuthError(405, "owner_method_denied")
-        values = self._headers(headers, origin_required=method in _MUTATIONS or websocket)
-        token = self._session_token(values)
         with self._lock:
+            if method not in _METHODS or (websocket and method != "GET"):
+                raise OwnerAuthError(405, "owner_method_denied")
+            values = self._headers(headers, origin_required=method in _MUTATIONS or websocket)
+            token = self._session_token(values)
             self._now()
             digest = _digest(token)
             row = self._sessions.get(digest)
@@ -294,11 +339,27 @@ class OwnerSessions:
                     raise OwnerAuthError(403, "owner_csrf_denied")
             return OwnerPrincipal("web-owner", digest, row.expires_at)
 
+    def session_status(self, headers: RawHeaders) -> SessionStatus:
+        """Recover stable CSRF after reload, without renewing or rotating a session."""
+        with self._lock:
+            principal = self.authorize("GET", headers)
+            values = self._headers(headers, origin_required=False)
+            token = self._session_token(values)
+            now = self._now()
+            row = self._sessions.get(principal.session_digest)
+            if row is None:
+                raise OwnerAuthError(401, "owner_session_invalid")
+            return SessionStatus(
+                principal_id=principal.principal_id,
+                csrf_token=self._csrf_value(token, row.csrf_seed_digest),
+                expires_in_seconds=math.ceil(row.expires_at - now),
+            )
+
     def revalidate(self, principal: OwnerPrincipal) -> None:
         """Call again after awaits, before a future write admission/socket send."""
-        if not self.config.configured:
-            raise OwnerAuthError(503, "owner_auth_not_configured")
         with self._lock:
+            if not self.config.configured:
+                raise OwnerAuthError(503, "owner_auth_not_configured")
             self._now()
             row = self._sessions.get(principal.session_digest)
             if (
