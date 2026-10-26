@@ -1,5 +1,5 @@
-# WIP: web owner authentication delta
+# WIP: isolated owner-auth web surface
 
-Core and unwired auth-only ASGI factory: 33 core +16 authored in-process ASGI tests pass, zero network attempts; all four Python files lint/format clean. Parent independently reran49 tests. See HTTP_QUALIFICATION.md and SOURCE_SHA256.json for exact scope and identities.
+Source d20bac5dc7d8e3b10fa5e8fb7e033d9bc6d79d37:475 frontend tests pass (453 existing +22 owner), typecheck and isolated build pass. Owner backend core33 +authored ASGI16 tests pass, zero network attempts. Exact source/build manifests and separate HTTP/UI qualification reports are included.
 
-Not mounted into PEX; no UI/private-data control, actual browser/TLS/proxy or live inference qualification. No credentials provisioned, deployment or change to production model-only denial. Historical-base delta only, not recovered latest code or complete application.
+Dark owner sign-in/session/logout shell implemented and mock/DOM-tested; not mounted to a production service or private agent data. No real browser/TLS/proxy qualification, credential provisioning, provider calls, inference benchmark or deployment. Historical-base delta, not latest-source recovery or complete app. All production model-only admission gates stay closed.

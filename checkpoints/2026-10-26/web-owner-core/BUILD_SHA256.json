@@ -1,0 +1,20 @@
+[
+  {
+    "path": "apps/desktop/dist-owner/assets/owner-Dse0ioT_.css",
+    "size": 1778,
+    "sha256": "28a075391dd2bcdce452f1ad09914cd3bde2627b2685e9b345fe41ccba2efab9",
+    "git_blob_sha": "52fbf83dda3c22aededdfac118d9fdb0ce20e2f0"
+  },
+  {
+    "path": "apps/desktop/dist-owner/assets/owner-r8G7Nwgc.js",
+    "size": 5666,
+    "sha256": "a51f294f30739ad1d5af1cfb292ffe9925c6fc54290ffa525a5b1c0b95ddc415",
+    "git_blob_sha": "dca587c310353e965d2aaabdd431b99d0e6c3fe1"
+  },
+  {
+    "path": "apps/desktop/dist-owner/owner.html",
+    "size": 1978,
+    "sha256": "e63c9f9325d7ef5bb55189a04ca9a5ddf55f46f01e311f02175544c181c2493f",
+    "git_blob_sha": "e50e5463ca081ef096a4fe66a96e79525d7ae9c7"
+  }
+]
