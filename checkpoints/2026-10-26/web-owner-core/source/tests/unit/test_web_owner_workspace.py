@@ -85,13 +85,14 @@ class WorkspaceTests(unittest.IsolatedAsyncioTestCase):
             await _ReadView(self.path).connect()
 
     async def test_quarantined_or_corrupt_intent_fails_closed(self):
-        await self.seed()
-        await self.writer.db.execute("UPDATE goals SET intent_revision=NULL,intent_hash=NULL")
-        await self.writer.db.commit()
+        legacy = Path(self.directory.name) / "legacy-authored.sqlite"
+        with sqlite3.connect(legacy) as db:
+            db.execute("CREATE TABLE goals(id TEXT,intent_revision INTEGER,intent_hash TEXT,json TEXT)")
+            db.execute("INSERT INTO goals VALUES ('g1',NULL,NULL,'{}')")
         with self.assertRaises(ValueError):
-            await self.reader.read_workspace()
-        row = await (await self.writer.db.execute("SELECT intent_revision,intent_hash FROM goals")).fetchone()
-        self.assertEqual(tuple(row), (None, None))
+            await OwnerWorkspaceReader(legacy).read_workspace()
+        with sqlite3.connect(legacy) as db:
+            self.assertEqual(db.execute("SELECT intent_revision,intent_hash FROM goals").fetchone(), (None, None))
 
     async def test_twenty_row_bound_and_truncation(self):
         await self.seed()
