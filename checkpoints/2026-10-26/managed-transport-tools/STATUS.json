@@ -1,12 +1,15 @@
 {
-  "status": "WIP untested contract/serializer increment",
+  "status": "WIP contract tests added; fixture identity repair pending",
   "baseline_commit": "92d550afb3374b97a6ba3fecc29514c41624712f",
   "baseline_149_test_qualification_inherited": false,
-  "tool_protocol_tests_run": false,
+  "tool_protocol_tests_run": true,
   "tool_response_transport_implemented": false,
   "strands_bridge_implemented": false,
   "provider_calls": 0,
   "public_live_invoke_enabled": false,
   "production_integration": false,
-  "public_deployment": false
+  "public_deployment": false,
+  "tests_passed": 162,
+  "tests_failed": 43,
+  "known_failure": "Authored test helper attaches a goal without matching session.goal_id/project_id; existing PEX identity validator correctly refuses it"
 }

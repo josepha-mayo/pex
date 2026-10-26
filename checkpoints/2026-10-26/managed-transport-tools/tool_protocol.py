@@ -4,13 +4,14 @@ The public live transport remains denied. This module binds the COMPLETE prompt
 and authoritative schemas from the installed PEX source; it does not replace
 PEX owner, workspace, evidence, action or budget admission.
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
 import math
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from importlib.metadata import version
 from typing import Literal
 
@@ -21,12 +22,24 @@ from managed_chat import Refusal, Role, _strict_json
 
 _NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_-]{0,63}\Z")
 _CALL_ID = re.compile(r"[A-Za-z0-9_-]{1,128}\Z")
-_EVIDENCE_NAMES = frozenset({
-    "get_goal", "get_session_state", "get_recent_events", "get_scores",
-    "inspect_acceptance", "get_context", "get_context_items", "get_decisions",
-    "inspect_workspace", "inspect_git", "inspect_file", "inspect_artifact",
-    "inspect_process", "run_verification",
-})
+_EVIDENCE_NAMES = frozenset(
+    {
+        "get_goal",
+        "get_session_state",
+        "get_recent_events",
+        "get_scores",
+        "inspect_acceptance",
+        "get_context",
+        "get_context_items",
+        "get_decisions",
+        "inspect_workspace",
+        "inspect_git",
+        "inspect_file",
+        "inspect_artifact",
+        "inspect_process",
+        "run_verification",
+    }
+)
 _FINAL = {"planner": "SupervisorDecision", "verifier": "IndependentVerifierDecision"}
 _MAX_TOOLS = 15
 _MAX_CALLS = 16
@@ -47,6 +60,7 @@ def _text(value, maximum, *, empty=False):
 
 def _bounded_json(value, *, max_depth=12, max_nodes=4096):
     nodes = 0
+
     def visit(item, depth):
         nonlocal nodes
         nodes += 1
@@ -69,13 +83,16 @@ def _bounded_json(value, *, max_depth=12, max_nodes=4096):
                 visit(child, depth + 1)
         else:
             raise Refusal("unsupported_protocol_json_type")
+
     visit(value, 0)
 
 
 def _canonical(value, maximum=65536):
     _bounded_json(value, max_depth=24, max_nodes=8192)
     try:
-        rendered = json.dumps(value, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":"))
+        rendered = json.dumps(
+            value, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":")
+        )
     except (ValueError, TypeError, UnicodeEncodeError):
         raise Refusal("invalid_protocol_json") from None
     return _text(rendered, maximum)
@@ -83,10 +100,13 @@ def _canonical(value, maximum=65536):
 
 def _schema_safety(schema):
     _bounded_json(schema, max_depth=24, max_nodes=8192)
+
     def visit(value):
         if type(value) is dict:
             for key, child in value.items():
-                if key == "$ref" and (type(child) is not str or not child.startswith(("#/$defs/", "#/definitions/"))):
+                if key == "$ref" and (
+                    type(child) is not str or not child.startswith(("#/$defs/", "#/definitions/"))
+                ):
                     raise Refusal("external_or_unsupported_schema_reference")
                 if key in {"$id", "$dynamicRef", "$recursiveRef"}:
                     raise Refusal("external_or_unsupported_schema_reference")
@@ -94,6 +114,7 @@ def _schema_safety(schema):
         elif type(value) is list:
             for child in value:
                 visit(child)
+
     visit(schema)
     if type(schema) is not dict or schema.get("type") != "object":
         raise Refusal("tool_schema_must_be_object")
@@ -103,11 +124,13 @@ def _schema_safety(schema):
         raise Refusal("invalid_tool_schema") from None
 
 
-_STRICT_TYPES = Draft202012Validator.TYPE_CHECKER.redefine_many({
-    "integer": lambda _, value: type(value) is int,
-    "boolean": lambda _, value: type(value) is bool,
-    "number": lambda _, value: type(value) in (int, float) and math.isfinite(value),
-})
+_STRICT_TYPES = Draft202012Validator.TYPE_CHECKER.redefine_many(
+    {
+        "integer": lambda _, value: type(value) is int,
+        "boolean": lambda _, value: type(value) is bool,
+        "number": lambda _, value: type(value) in (int, float) and math.isfinite(value),
+    }
+)
 StrictValidator = validators.extend(Draft202012Validator, type_checker=_STRICT_TYPES)
 
 
@@ -130,10 +153,14 @@ class ToolDefinition:
             raise Refusal("invalid_tool_kind")
 
     def wire_spec(self):
-        return {"type": "function", "function": {
-            "name": self.name, "description": self.description,
-            "parameters": _strict_json(self.authoritative_schema_json.encode()),
-        }}
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": _strict_json(self.authoritative_schema_json.encode()),
+            },
+        }
 
     def validate_arguments(self, raw):
         _text(raw, 16384 if self.final else 4096)
@@ -158,19 +185,29 @@ class ProtocolContract:
     role: Role
     invocation_id: str
     request_digest: str
-    system_prompt: str
-    definitions: tuple[ToolDefinition, ...]
+    system_prompt: str = field(repr=False)
+    initial_prompt: str = field(repr=False)
+    forced_final_prompt: str = field(repr=False)
+    definitions: tuple[ToolDefinition, ...] = field(repr=False)
     max_rounds: int = 3
 
     def __post_init__(self):
-        if self.role not in _FINAL or type(self.definitions) is not tuple:
+        if (
+            type(self.role) is not str
+            or self.role not in _FINAL
+            or type(self.definitions) is not tuple
+        ):
             raise Refusal("invalid_protocol_contract")
         _text(self.invocation_id, 128)
         _text(self.request_digest, 128)
         _text(self.system_prompt, 65536)
+        _text(self.initial_prompt, 131072)
+        _text(self.forced_final_prompt, 1024)
         if type(self.max_rounds) is not int or self.max_rounds != 3:
             raise Refusal("unsupported_round_budget")
-        if not 1 <= len(self.definitions) <= _MAX_TOOLS or any(type(item) is not ToolDefinition for item in self.definitions):
+        if not 1 <= len(self.definitions) <= _MAX_TOOLS or any(
+            type(item) is not ToolDefinition for item in self.definitions
+        ):
             raise Refusal("invalid_tool_catalog")
         names = tuple(item.name for item in self.definitions)
         if len(names) != len(set(names)):
@@ -187,8 +224,25 @@ class ProtocolContract:
 
     @property
     def fingerprint(self):
-        data = [self.role, self.invocation_id, self.request_digest, self.system_prompt,
-                [[item.name, item.description, item.authoritative_schema_json, item.advertised_spec_json, item.final] for item in self.definitions], self.max_rounds]
+        data = [
+            self.role,
+            self.invocation_id,
+            self.request_digest,
+            self.system_prompt,
+            self.initial_prompt,
+            self.forced_final_prompt,
+            [
+                [
+                    item.name,
+                    item.description,
+                    item.authoritative_schema_json,
+                    item.advertised_spec_json,
+                    item.final,
+                ]
+                for item in self.definitions
+            ],
+            self.max_rounds,
+        ]
         return hashlib.sha256(_canonical(data, 262144).encode()).hexdigest()
 
     def definition(self, name):
@@ -215,13 +269,20 @@ class ProtocolContract:
         return tuple(names)
 
     def tool_choice(self, choice, offered):
-        if choice is None or choice == {"auto": {}}:
+        if choice is None:
             return "auto"
-        if choice == {"any": {}}:
-            return "required"
-        if type(choice) is dict and set(choice) == {"tool"} and type(choice["tool"]) is dict and set(choice["tool"]) == {"name"}:
+        if type(choice) is not dict:
+            raise Refusal("unsupported_tool_choice")
+        for tag, wire in (("auto", "auto"), ("any", "required")):
+            if set(choice) == {tag} and type(choice[tag]) is dict and not choice[tag]:
+                return wire
+        if (
+            set(choice) == {"tool"}
+            and type(choice["tool"]) is dict
+            and set(choice["tool"]) == {"name"}
+        ):
             name = choice["tool"]["name"]
-            if name in offered:
+            if type(name) is str and name in offered:
                 return {"type": "function", "function": {"name": name}}
         raise Refusal("unsupported_tool_choice")
 
@@ -232,17 +293,39 @@ class ToolCall:
     name: str
     arguments_json: str
 
+    def __post_init__(self):
+        if type(self.call_id) is not str or not _CALL_ID.fullmatch(self.call_id):
+            raise Refusal("invalid_tool_call_id")
+        if type(self.name) is not str or not _NAME.fullmatch(self.name):
+            raise Refusal("invalid_tool_name")
+        _text(self.arguments_json, 16384)
+
 
 @dataclass(frozen=True, slots=True)
 class TextMessage:
     role: Literal["user", "assistant"]
     text: str
 
+    def __post_init__(self):
+        if type(self.role) is not str or self.role not in {"user", "assistant"}:
+            raise Refusal("unsupported_message_role")
+        _text(self.text, 131072)
+
 
 @dataclass(frozen=True, slots=True)
 class AssistantTools:
     calls: tuple[ToolCall, ...]
     text: str | None = None
+
+    def __post_init__(self):
+        if (
+            type(self.calls) is not tuple
+            or not 1 <= len(self.calls) <= _MAX_CALLS
+            or any(type(call) is not ToolCall for call in self.calls)
+        ):
+            raise Refusal("invalid_tool_call_count")
+        if self.text is not None:
+            _text(self.text, 65536, empty=True)
 
 
 @dataclass(frozen=True, slots=True)
@@ -251,13 +334,24 @@ class ToolResult:
     text: str
     status: Literal["success", "error"] = "success"
 
+    def __post_init__(self):
+        if type(self.call_id) is not str or not _CALL_ID.fullmatch(self.call_id):
+            raise Refusal("invalid_tool_call_id")
+        if type(self.status) is not str or self.status not in {"success", "error"}:
+            raise Refusal("invalid_tool_result_status")
+        _text(self.text, 8000)
+
 
 def validate_calls(contract, calls, offered, seen=frozenset()):
     if type(calls) is not tuple or not 1 <= len(calls) <= _MAX_CALLS:
         raise Refusal("invalid_tool_call_count")
     ids = set()
     for call in calls:
-        if type(call) is not ToolCall or type(call.call_id) is not str or not _CALL_ID.fullmatch(call.call_id):
+        if (
+            type(call) is not ToolCall
+            or type(call.call_id) is not str
+            or not _CALL_ID.fullmatch(call.call_id)
+        ):
             raise Refusal("invalid_tool_call_id")
         if call.call_id in ids or call.call_id in seen:
             raise Refusal("duplicate_or_reused_tool_call_id")
@@ -270,22 +364,28 @@ def validate_calls(contract, calls, offered, seen=frozenset()):
     return ids
 
 
-def serialize_history(contract, messages):
+def serialize_history(contract, messages, *, allow_forced_final=False):
     if type(messages) is not tuple or not 1 <= len(messages) <= _MAX_MESSAGES:
         raise Refusal("invalid_message_history")
     if type(messages[0]) is not TextMessage or messages[0].role != "user":
         raise Refusal("history_must_start_with_user")
+    if messages[0].text != contract.initial_prompt:
+        raise Refusal("initial_prompt_changed_after_binding")
+    if type(allow_forced_final) is not bool:
+        raise Refusal("invalid_forced_final_mode")
     output = [{"role": "system", "content": contract.system_prompt}]
     pending, seen = set(), set()
     offered = tuple(item.name for item in contract.definitions)
-    for message in messages:
+    for index, message in enumerate(messages):
         if type(message) is ToolResult:
             if message.call_id not in pending or message.status not in {"success", "error"}:
                 raise Refusal("orphan_or_duplicate_tool_result")
             _text(message.text, 8000)
             # The evidence envelope is already a JSON STRING. Preserve it
             # exactly, not json.loads/json.dumps or a different content block.
-            output.append({"role": "tool", "tool_call_id": message.call_id, "content": message.text})
+            output.append(
+                {"role": "tool", "tool_call_id": message.call_id, "content": message.text}
+            )
             pending.remove(message.call_id)
             continue
         if pending:
@@ -293,17 +393,38 @@ def serialize_history(contract, messages):
         if type(message) is TextMessage:
             if message.role not in {"user", "assistant"}:
                 raise Refusal("unsupported_message_role")
+            if message.role == "user" and index:
+                if (
+                    not allow_forced_final
+                    or index != len(messages) - 1
+                    or message.text != contract.forced_final_prompt
+                    or type(messages[index - 1]) is not TextMessage
+                    or messages[index - 1].role != "assistant"
+                ):
+                    raise Refusal("unowned_user_followup")
             output.append({"role": message.role, "content": _text(message.text, 131072)})
         elif type(message) is AssistantTools:
+            if any(call.name == contract.final_name for call in message.calls):
+                raise Refusal("final_tool_already_terminal")
             ids = validate_calls(contract, message.calls, offered, seen)
             pending.update(ids)
             seen.update(ids)
             if message.text is not None:
                 _text(message.text, 65536, empty=True)
-            output.append({"role": "assistant", "content": message.text, "tool_calls": [
-                {"id": call.call_id, "type": "function", "function": {"name": call.name, "arguments": call.arguments_json}}
-                for call in message.calls
-            ]})
+            output.append(
+                {
+                    "role": "assistant",
+                    "content": message.text,
+                    "tool_calls": [
+                        {
+                            "id": call.call_id,
+                            "type": "function",
+                            "function": {"name": call.name, "arguments": call.arguments_json},
+                        }
+                        for call in message.calls
+                    ],
+                }
+            )
         else:
             raise Refusal("unsupported_message_block")
     if pending:
@@ -320,7 +441,7 @@ class BoundPEXProtocol:
     output_type: type
 
 
-def bind_existing_pex(request, *, role: Role, invocation_id: str):
+def bind_existing_pex(request, *, role: Role, invocation_id: str, proposal=None):
     """Bind actual PEX code-owned tools/prompts, never a supplied custom registry.
 
     This creates closures only; it neither reads a workspace nor calls a tool.
@@ -328,27 +449,81 @@ def bind_existing_pex(request, *, role: Role, invocation_id: str):
     """
     if version("strands-agents") != "1.53.0":
         raise Refusal("unsupported_strands_version")
+    from pex_protocol.actions import ProposedAction
     from pex_protocol.supervisor import SupervisorRequest, supervisor_request_digest
     from pex_supervisor.evidence_observations import EvidenceObservationCollector
     from pex_supervisor.evidence_tools import build_evidence_tools, select_evidence_tool_names
-    from pex_supervisor.loop import IndependentVerifierDecision, SupervisorDecision, _system_prompt, _verifier_system_prompt
+    from pex_supervisor.loop import (
+        IndependentVerifierDecision,
+        SupervisorDecision,
+        _format_user,
+        _format_verifier_user,
+        _system_prompt,
+        _verifier_system_prompt,
+    )
+    from strands.tools.structured_output._structured_output_context import (
+        DEFAULT_STRUCTURED_OUTPUT_PROMPT,
+    )
     from strands.tools.structured_output.structured_output_tool import StructuredOutputTool
 
-    if type(request) is not SupervisorRequest or request.supervisor_decision_mode != "supervisor_model_only" or role not in _FINAL:
+    if (
+        type(request) is not SupervisorRequest
+        or request.supervisor_decision_mode != "supervisor_model_only"
+        or type(role) is not str
+        or role not in _FINAL
+    ):
         raise Refusal("unsupported_pex_binding")
+    # Freeze one request/proposal snapshot BEFORE deriving prompt, closures,
+    # collector digest or tool schemas. Never close over caller-mutable state.
+    request = request.model_copy(deep=True)
+    if role == "verifier":
+        if type(proposal) is not ProposedAction:
+            raise Refusal("verifier_requires_bound_proposal")
+        proposal = proposal.model_copy(deep=True)
+        if proposal.session_id != request.session.id or proposal.goal_id != (
+            request.goal.id if request.goal else None
+        ):
+            raise Refusal("proposal_request_identity_mismatch")
+    elif proposal is not None:
+        raise Refusal("planner_does_not_accept_proposal")
+    initial_prompt = (
+        _format_user(request) if role == "planner" else _format_verifier_user(request, proposal)
+    )
     output_type = SupervisorDecision if role == "planner" else IndependentVerifierDecision
     system_prompt = _system_prompt() if role == "planner" else _verifier_system_prompt()
-    collector = EvidenceObservationCollector(request, stage="main" if role == "planner" else "verifier", invocation_id=invocation_id)
+    collector = EvidenceObservationCollector(
+        request, stage="main" if role == "planner" else "verifier", invocation_id=invocation_id
+    )
     used = []
-    tools = build_evidence_tools(request, used, collector=collector, tool_names=select_evidence_tool_names(request))
+    tools = build_evidence_tools(
+        request, used, collector=collector, tool_names=select_evidence_tool_names(request)
+    )
     definitions = []
     for tool in tools:
         spec = tool.tool_spec
         # Pin this private API to the inspected Strands version. Its authoritative
         # model retains nullable arguments that the advertised schema removes.
         schema = tool._metadata.input_model.model_json_schema()
-        definitions.append(ToolDefinition(spec["name"], spec["description"], _canonical(schema), _canonical(spec)))
+        definitions.append(
+            ToolDefinition(spec["name"], spec["description"], _canonical(schema), _canonical(spec))
+        )
     final = StructuredOutputTool(output_type).tool_spec
-    definitions.append(ToolDefinition(final["name"], final["description"], _canonical(output_type.model_json_schema()), _canonical(final), True))
-    contract = ProtocolContract(role, invocation_id, supervisor_request_digest(request), system_prompt, tuple(definitions))
+    definitions.append(
+        ToolDefinition(
+            final["name"],
+            final["description"],
+            _canonical(output_type.model_json_schema()),
+            _canonical(final),
+            True,
+        )
+    )
+    contract = ProtocolContract(
+        role,
+        invocation_id,
+        supervisor_request_digest(request),
+        system_prompt,
+        initial_prompt,
+        DEFAULT_STRUCTURED_OUTPUT_PROMPT,
+        tuple(definitions),
+    )
     return BoundPEXProtocol(contract, tuple(tools), collector, used, output_type)
