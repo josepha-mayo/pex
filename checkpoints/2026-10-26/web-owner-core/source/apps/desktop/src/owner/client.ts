@@ -6,6 +6,7 @@ export type OwnerView = {
 };
 type AuthReply = { authenticated: true; principal_id: "web-owner"; csrf_token: string; expires_in_seconds: number };
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
+const validToken = (value: string) => value.length === 43 && TOKEN.test(value);
 
 export function createOwnerClient({ origin, send = fetch, changed, now = Date.now }: {
   origin: string; send?: typeof fetch; changed: (view: OwnerView) => void; now?: () => number;
@@ -53,16 +54,23 @@ export function createOwnerClient({ origin, send = fetch, changed, now = Date.no
       return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) as unknown;
     } finally { clearTimeout(timeout); if (active === controller) active = null; }
   }
-  function admit(value: unknown, id: number) {
+  function admit(value: unknown, id: number, startedAt: number) {
     if (!current(id)) return;
     const data = value as Partial<AuthReply> | null;
     if (!data || data.authenticated !== true || data.principal_id !== "web-owner" ||
-      typeof data.csrf_token !== "string" || !TOKEN.test(data.csrf_token) ||
+      typeof data.csrf_token !== "string" || !validToken(data.csrf_token) ||
       !Number.isInteger(data.expires_in_seconds) || data.expires_in_seconds! < 1 || data.expires_in_seconds! > 3600) {
       throw new Error("invalid");
     }
+    // Server status rounds remaining TTL upward. Anchor at request start and
+    // subtract one second so transit delay/rounding never extends this UI lease.
+    // This is only a conservative display lease; the server owns authorization.
+    const receivedAt = now();
+    const expiresAt = startedAt + (data.expires_in_seconds! - 1) * 1000;
+    if (!Number.isFinite(startedAt) || !Number.isFinite(receivedAt) ||
+      receivedAt < startedAt || receivedAt >= expiresAt) throw new Error("denied");
     csrf = data.csrf_token;
-    emit({ phase: "signed-in", message: "Owner session verified.", expiresAt: now() + data.expires_in_seconds! * 1000 });
+    emit({ phase: "signed-in", message: "Owner session verified.", expiresAt });
   }
   function failed(error: unknown, id: number) {
     if (!current(id)) return;
@@ -77,15 +85,16 @@ export function createOwnerClient({ origin, send = fetch, changed, now = Date.no
     state: () => ({ ...view }),
     async check() {
       if (disposed) return;
-      const id = reset(); emit({ phase: "checking", message: "Checking your session…" });
-      try { admit(await request("/owner/auth/session", "GET", undefined), id); } catch (error) { failed(error, id); }
+      const id = reset(); const startedAt = now(); emit({ phase: "checking", message: "Checking your session…" });
+      try { admit(await request("/owner/auth/session", "GET", undefined), id, startedAt); } catch (error) { failed(error, id); }
     },
     async login(secret: string) {
       if (disposed || view.phase === "signing-in" || view.phase === "checking" || view.phase === "signed-in") return;
       const id = reset();
-      if (!TOKEN.test(secret)) { emit({ phase: "signed-out", message: "Enter the separately provisioned owner secret, not a provider API key." }); return; }
+      if (!validToken(secret)) { emit({ phase: "signed-out", message: "Enter the separately provisioned owner secret, not a provider API key." }); return; }
+      const startedAt = now();
       emit({ phase: "signing-in", message: "Verifying owner access…" });
-      try { admit(await request("/owner/auth/login", "POST", JSON.stringify({ owner_secret: secret })), id); }
+      try { admit(await request("/owner/auth/login", "POST", JSON.stringify({ owner_secret: secret })), id, startedAt); }
       catch (error) { failed(error, id); }
     },
     async logout() {

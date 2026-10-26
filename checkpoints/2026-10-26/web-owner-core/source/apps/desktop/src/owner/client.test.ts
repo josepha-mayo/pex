@@ -33,7 +33,7 @@ test("bootstrap then login then logout uses exact same-origin cookie routes once
   const f = fixture([denied(), authenticated(), new Response('{"authenticated":false}')]);
   await f.client.check(); assert.equal(f.client.state().phase, "signed-out");
   await f.client.login(SECRET); assert.equal(f.client.state().phase, "signed-in");
-  assert.equal(f.client.state().expiresAt, 1000000);
+  assert.equal(f.client.state().expiresAt, 999000);
   await f.client.logout(); assert.equal(f.client.state().phase, "signed-out");
   assert.equal(f.calls.length, 3);
   assert.deepEqual(f.calls.map(x => x.url), ["session", "login", "logout"].map(x => ORIGIN + "/owner/auth/" + x));
@@ -108,4 +108,39 @@ test("dispose aborts and suppresses late view updates", async () => {
   f.client.dispose(); const count = f.views.length; response.resolve(authenticated()); await pending;
   await f.client.check(); await f.client.login(SECRET); await f.client.logout();
   assert.equal(f.views.length, count); assert.equal(f.calls.length, 1); assert.equal(f.calls[0].init.signal?.aborted, true);
+});
+
+
+test("delayed status conservatively anchors expiry before the request", async () => {
+  let clock = 100000; const reply = deferred<Response>(); const views: OwnerView[] = [];
+  const client = createOwnerClient({ origin: ORIGIN, now: () => clock, changed: v => views.push(v),
+    send: (async () => reply.promise) as typeof fetch });
+  const pending = client.check(); clock += 5000; reply.resolve(authenticated()); await pending;
+  assert.equal(client.state().phase, "signed-in"); assert.equal(client.state().expiresAt, 999000);
+  assert.equal(client.state().expiresAt! - clock, 894000);
+});
+
+test("already-expired-on-arrival and backward-clock replies never reveal workspace", async () => {
+  for (const arrival of [1000000, 999000, 99000]) {
+    let clock = 100000; const reply = deferred<Response>(); const views: OwnerView[] = [];
+    const client = createOwnerClient({ origin: ORIGIN, now: () => clock, changed: v => views.push(v),
+      send: (async () => reply.promise) as typeof fetch });
+    const pending = client.check(); clock = arrival; reply.resolve(authenticated()); await pending;
+    assert.equal(client.state().phase, "signed-out"); assert.equal(views.some(v => v.phase === "signed-in"), false);
+  }
+});
+
+test("login transit delay cannot extend owner display expiry", async () => {
+  let clock = 100000; const reply = deferred<Response>(); let calls = 0;
+  const client = createOwnerClient({ origin: ORIGIN, now: () => clock, changed() {},
+    send: (async () => ++calls === 1 ? denied() : reply.promise) as typeof fetch });
+  await client.check(); const pending = client.login(SECRET); clock += 6000; reply.resolve(authenticated()); await pending;
+  assert.equal(client.state().expiresAt, 999000);
+});
+
+test("trailing newline cannot turn a 44-character value into an owner or CSRF token", async () => {
+  const f = fixture([denied()]); await f.client.check(); await f.client.login(SECRET + "\n");
+  assert.equal(f.calls.length, 1);
+  const g = fixture([new Response(JSON.stringify({ authenticated:true, principal_id:"web-owner", csrf_token:CSRF + "\n", expires_in_seconds:900 }))]);
+  await g.client.check(); assert.equal(g.client.state().phase, "unavailable");
 });
