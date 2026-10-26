@@ -10,8 +10,8 @@ import unittest
 from dataclasses import replace
 from unittest.mock import patch
 
-from pex_bridge.web_owner_auth import OwnerSessions, ProvisionedOwnerVerifier, WebOwnerConfig
 from pex_bridge import web_owner_http as http
+from pex_bridge.web_owner_auth import OwnerSessions, ProvisionedOwnerVerifier, WebOwnerConfig
 
 SECRET = "S" * 43  # Synthetic fixture, never a deployed credential.
 HOST = b"owner.example.test"
