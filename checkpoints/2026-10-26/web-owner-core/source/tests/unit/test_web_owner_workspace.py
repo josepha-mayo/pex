@@ -7,7 +7,9 @@ import tempfile
 import unittest
 from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
+import test_web_owner_http as authored_http
+from pex_bridge.web_owner_http import create_web_owner_auth_app
 
 from pex_bridge.store import Store
 from pex_bridge.web_owner_workspace import OwnerWorkspaceReader, _ReadView
@@ -109,6 +111,71 @@ class WorkspaceTests(unittest.IsolatedAsyncioTestCase):
     async def test_relative_path_rejected(self):
         with self.assertRaises(ValueError):
             OwnerWorkspaceReader(Path("relative.sqlite"))
+
+
+class WorkspaceHttpTests(unittest.IsolatedAsyncioTestCase):
+    asyncTearDown = WorkspaceTests.asyncTearDown
+    seed = WorkspaceTests.seed
+
+    async def asyncSetUp(self):
+        await WorkspaceTests.asyncSetUp(self)
+        self.http = authored_http.OwnerHttpTests()
+        self.http.setUp()
+        self.http.app = create_web_owner_auth_app(self.http.sessions, workspace=self.reader)
+
+    async def workspace_request(self, cookie=None, **kwargs):
+        return await self.http.request("/owner/workspace", "GET",
+            headers=self.http.auth_headers(cookie) if cookie else [(b"host", authored_http.HOST)], **kwargs)
+
+    async def test_owner_only_real_sqlite_projection(self):
+        await self.seed()
+        self.http.response(await self.workspace_request(), 401)
+        cookie, _ = await self.http.signed_in()
+        _, payload = self.http.response(await self.workspace_request(cookie), 200)
+        self.assertEqual(payload["sessions"][0]["id"], "s1")
+        self.assertNotIn("PRIVATE", json.dumps(payload))
+
+    async def test_unconfigured_and_reader_error_hide_details(self):
+        cookie, _ = await self.http.signed_in()
+        self.http.app = create_web_owner_auth_app(self.http.sessions)
+        self.http.response(await self.workspace_request(cookie), 503)
+        self.http.app = create_web_owner_auth_app(self.http.sessions, workspace=self.reader)
+        with patch.object(self.reader, "read_workspace", AsyncMock(side_effect=RuntimeError("PRIVATE PATH"))):
+            _, payload = self.http.response(await self.workspace_request(cookie), 503)
+            self.assertNotIn("PRIVATE", json.dumps(payload))
+
+    async def test_expiry_or_logout_during_reader_never_releases_rows(self):
+        for action in ("expire", "logout"):
+            cookie, csrf = await self.http.signed_in()
+            async def delayed():
+                if action == "expire": self.http.now += 4000
+                else: self.http.sessions.logout(self.http.auth_headers(cookie, csrf))
+                return {"private": "MUST NOT LEAK"}
+            with patch.object(self.reader, "read_workspace", delayed):
+                _, payload = self.http.response(await self.workspace_request(cookie), 401)
+                self.assertNotIn("MUST NOT LEAK", json.dumps(payload))
+
+    async def test_revocation_during_response_start_sends_no_private_body(self):
+        cookie, csrf = await self.http.signed_in()
+        messages = []
+        async def receive(): return {"type": "http.request", "body": b""}
+        async def send(message):
+            messages.append(message)
+            if message["type"] == "http.response.start":
+                self.http.sessions.logout(self.http.auth_headers(cookie, csrf))
+        scope = {"type":"http", "scheme":"https", "method":"GET", "path":"/owner/workspace",
+                 "raw_path":b"/owner/workspace", "headers":self.http.auth_headers(cookie), "query_string":b""}
+        with patch.object(self.reader, "read_workspace", AsyncMock(return_value={"private":"MUST NOT LEAK"})):
+            await self.http.app(scope, receive, send)
+        self.assertEqual(messages[-1]["body"], b"")
+
+    async def test_mutations_query_and_body_rejected_before_read(self):
+        cookie, _ = await self.http.signed_in()
+        with patch.object(self.reader, "read_workspace", AsyncMock()) as reader:
+            self.http.response(await self.http.request("/owner/workspace", "POST", headers=self.http.auth_headers(cookie)), 405)
+            self.http.response(await self.workspace_request(cookie, scope_changes={"query_string":b"path=private"}), 400)
+            self.http.response(await self.workspace_request(cookie, body=b"x"), 413)
+            reader.assert_not_called()
 
 
 if __name__ == "__main__":
