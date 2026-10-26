@@ -20,6 +20,7 @@ from pex_bridge.web_owner_auth import OwnerAuthError, OwnerSessions, RawHeaders
 MAX_LOGIN_BODY_BYTES = 1024
 MAX_BODY_EVENTS = 128
 BODY_TIMEOUT_SECONDS = 5.0
+WORKSPACE_TIMEOUT_SECONDS = 3.0
 _ROUTES = {
     "/owner/auth/login": "POST",
     "/owner/auth/session": "GET",
@@ -201,8 +202,10 @@ class _OwnerAuthApp:
                 if self._workspace is None:
                     raise OwnerAuthError(503, "owner_workspace_not_configured")
                 try:
-                    async with asyncio.timeout(3.0):
+                    async with asyncio.timeout(WORKSPACE_TIMEOUT_SECONDS):
                         payload = await self._workspace.read_workspace()
+                    if len(json.dumps(payload, ensure_ascii=True, separators=(",", ":")).encode("ascii")) > 32768:
+                        raise ValueError("workspace response limit")
                 except Exception:
                     # Never include SQL, database paths, exception text or stale rows.
                     raise OwnerAuthError(503, "owner_workspace_unavailable") from None

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import asyncio
 import sqlite3
 import tempfile
 import unittest
@@ -168,6 +169,23 @@ class WorkspaceHttpTests(unittest.IsolatedAsyncioTestCase):
         with patch.object(self.reader, "read_workspace", AsyncMock(return_value={"private":"MUST NOT LEAK"})):
             await self.http.app(scope, receive, send)
         self.assertEqual(messages[-1]["body"], b"")
+
+    async def test_timeout_oversize_and_malformed_storage_hide_details(self):
+        await self.seed()
+        cookie, _ = await self.http.signed_in()
+        async def slow():
+            await asyncio.sleep(0.05)
+            return {"private": "PRIVATE PATH"}
+        with patch.object(self.reader, "read_workspace", slow), patch.object(authored_http.http, "WORKSPACE_TIMEOUT_SECONDS", 0.001):
+            _, data = self.http.response(await self.workspace_request(cookie), 503)
+            self.assertEqual(data, {"error": "owner_workspace_unavailable"})
+        with patch.object(self.reader, "read_workspace", AsyncMock(return_value={"private":"X" * 32769})):
+            _, data = self.http.response(await self.workspace_request(cookie), 503)
+            self.assertEqual(data, {"error": "owner_workspace_unavailable"})
+        await self.writer.db.execute("INSERT INTO sessions(id,json) VALUES ('broken','PRIVATE PATH not JSON')")
+        await self.writer.db.commit()
+        _, data = self.http.response(await self.workspace_request(cookie), 503)
+        self.assertEqual(data, {"error": "owner_workspace_unavailable"})
 
     async def test_mutations_query_and_body_rejected_before_read(self):
         cookie, _ = await self.http.signed_in()
