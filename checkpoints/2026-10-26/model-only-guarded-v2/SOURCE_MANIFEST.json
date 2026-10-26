@@ -1,0 +1,80 @@
+{
+  "classification": "DELTA-ONLY exact text source checkpoint; requires historical restored baseline; not self-contained, not V14",
+  "files": {
+    "docs/SUPERVISOR_MODEL_ONLY_RECONSTRUCTION.md": {
+      "bytes": 6568,
+      "git_blob_sha": "9960edbfa26e20d51c32c0b57b2b0ea5ba4a39cb",
+      "sha256": "040b1500007acb099dd1c0be32fc06d2374f7e42986eec60f56f6066e5f68a9f"
+    },
+    "packages/protocol/src/pex_protocol/supervisor.py": {
+      "bytes": 27707,
+      "git_blob_sha": "20cb37da60490bb3abf30972884c0219f3704d8e",
+      "sha256": "9563683abb0ee203dd873cef3b20af4861bb45788bbefe1a41d90cf35637f161"
+    },
+    "services/bridge/src/pex_bridge/agentcore.py": {
+      "bytes": 47234,
+      "git_blob_sha": "da539b08b58608b5a49297dea7c6789d20a61f90",
+      "sha256": "747a2a6992eff9310d5438bbfd0ca68539b9008fe846bdb649357fb6e1118044"
+    },
+    "services/bridge/src/pex_bridge/app.py": {
+      "bytes": 309330,
+      "git_blob_sha": "584d660f17afa028f12a2091c781fa010844a0b1",
+      "sha256": "b91fdbc99fac1b6ee0e5f7285fd2b72908b48b03159220929291bb98ce70d70c"
+    },
+    "services/bridge/src/pex_bridge/config.py": {
+      "bytes": 7692,
+      "git_blob_sha": "abbde6700f7fa5e43ab8e5bda8ab6667bed8e7fc",
+      "sha256": "a8bf8e62c8eabf5f97d7be263dd3408ccffccb43c254953bfeb6d0da5f7a9528"
+    },
+    "services/bridge/src/pex_bridge/pipeline.py": {
+      "bytes": 349787,
+      "git_blob_sha": "1c10dd08613277a7e300da41c3656860563e6604",
+      "sha256": "c22ea6f279950e8b5c6735a419a138877e5aec0d5df1b17b95871d206ced1895"
+    },
+    "services/supervisor/src/pex_supervisor/evidence_tools.py": {
+      "bytes": 46447,
+      "git_blob_sha": "493d5c3bb42f65e672310cbac197ce24bfd90818",
+      "sha256": "681941c259cdfdcea1c24e7eb1ae6acc2dd22838c5df50d80bed2ad44c65c46a"
+    },
+    "services/supervisor/src/pex_supervisor/loop.py": {
+      "bytes": 72586,
+      "git_blob_sha": "ae8b46bd8c75b2f10a855588fa0537b7369671b0",
+      "sha256": "2c62e5b93aba14ff4f6fb7739f574d364dab83a95a77345d8e0bc7f0d5168768"
+    },
+    "services/supervisor/src/pex_supervisor/model_only_transport.py": {
+      "bytes": 861,
+      "git_blob_sha": "bb316e9e8eac64ac5f0794bebca3e59cb8727abe",
+      "sha256": "24aac280cf5301a9f4f7309ad1d77997cf5dd023217e5537d50df95ce67cf766"
+    },
+    "services/supervisor/src/pex_supervisor/runtime.py": {
+      "bytes": 11678,
+      "git_blob_sha": "fc3df5d88b948370d03a964162caf26c53035810",
+      "sha256": "240f8e5583881f5f53817da36fd7bd41b457d32deb92d7916a05760d9ac499c7"
+    },
+    "services/supervisor/src/pex_supervisor/strict_model.py": {
+      "bytes": 2978,
+      "git_blob_sha": "a607bc3639bddfdd453699fee012d2d04dc3b637",
+      "sha256": "2bfdf2afc8ac94103d2d6fe21c78249c67190e45a40d53f01ec5edca57ab94df"
+    },
+    "services/supervisor/src/pex_supervisor/strict_usage.py": {
+      "bytes": 3559,
+      "git_blob_sha": "81b1589091d006fbec60ad9f9ebb390e2f7accca",
+      "sha256": "a12276d5bf58a8d7a67917de7f7ad45fdef8064133fda19cce13abd2e306c514"
+    },
+    "tests/integration/test_model_only_pipeline.py": {
+      "bytes": 18301,
+      "git_blob_sha": "068770f4ce78e121f2588e8931834c682fed7693",
+      "sha256": "3c884bd804a194b294c7712cfabefc20e474e1d3756a38d4362cfe61cccd01ee"
+    },
+    "tests/model_only_support.py": {
+      "bytes": 3376,
+      "git_blob_sha": "5ab0cfee3a63b1d87b5650a6c52e99f9d2e5bb83",
+      "sha256": "7f4c020f64b067fe9d5968ca797e4306e9a0b68d45741c6a8b27ec68eff13fa7"
+    },
+    "tests/unit/test_supervisor_model_only.py": {
+      "bytes": 15399,
+      "git_blob_sha": "25fe63251fb90133664ee7ffd746b3484e8d7661",
+      "sha256": "c3151a394c7b4fcf759c7a63ce22ad0c412c4fdb5a1bda46a3c61d0f9b99df02"
+    }
+  }
+}

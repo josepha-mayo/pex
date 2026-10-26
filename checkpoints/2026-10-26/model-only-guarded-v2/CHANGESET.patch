@@ -1,0 +1,2008 @@
+--- a/docs/SUPERVISOR_MODEL_ONLY_RECONSTRUCTION.md
++++ b/docs/SUPERVISOR_MODEL_ONLY_RECONSTRUCTION.md
+@@ -0,0 +1,105 @@
++# Bounded model-only supervision reconstruction
++
++**Local implementation and authored-model SDK tests, not live inference or a
++qualified autonomous benchmark. Not deployed. Not V14 parity.**
++
++## Guarded v2: live model-only operation is technically unavailable
++
++`model_only_transport.qualified()` refuses **every production model adapter**.
++There is no environment/configuration/provenance flag that can enable one.
++Configuring a real provider yields `model_only_transport_unqualified` before
++inference dispatch, with no model-dispatch reservation or worker feedback.
++The loop, router, SDK wrapper, scheduled dispatch and pending worker-effect
++recovery enforce this boundary. Terminal history still replays truthfully.
++Supervisor startup/saved-choice/configuration preparation is also refused
++before credential-store reads or provider-client construction in this mode.
++AgentCore refuses model-only requests before runtime model loading. This does
++not promise zero network activity for unrelated, configured worker adapters.
++
++Local tests replace this admission function only for their exact authored
++fixture class, under zero-network-attempt sentries. They test the implemented
++decision machinery through the actual SDK, **not production transport
++qualification**. Separate regressions exercise the unchanged deny-all gate,
++including a standard SDK provider class without constructing a client.
++
++The prior dated v1 source is preserved separately. Its documentation excluded
++real BYOK but its code still accepted arbitrary stateless SDK providers; v2
++closes that admission gap rather than rebuilding the missing managed transport.
++Real operation remains blocked until separately reviewed control of provider
++retries, dispatch ambiguity and accounting has been reconstructed.
++
++The mode is an opt-in decision policy, separate from transport:
++`PEX_SUPERVISOR_DECISION_MODE=supervisor_model_only` with
++`PEX_SUPERVISOR_MODE=local`. The default decision policy remains `default`.
++This is a source/configuration surface, not new UI functionality.
++
++## Contract
++
++- Under explicit local-test admission, an eligible STOP/material trajectory
++  review uses the authored configured model through Strands. Production
++  transports are refused. Pause, observation-only work and ineligible events
++  remain silent.
++- Only model-proposed `SEND_NUDGE` or `CONTINUE_SESSION` can authorize worker
++  feedback. A model-selected NOOP stays NOOP. Other actions are vetoed.
++- In particular, `REQUEST_VERIFICATION` is refused: its existing execution
++  binder deliberately substitutes a bridge-authored probe script. That script
++  must not be represented as exclusively model-authored benchmark feedback.
++- Automatic sibling-context handoffs are also suppressed, including delayed
++  followups from frozen model-only history and default-mode automatic effects
++  that encounter a mode switch before worker I/O. Explicit manual operator
++  handoffs are separate authority and remain unchanged.
++- Main and independent-verifier agents must inspect and cite request-bound
++  evidence. Owner/workspace identity, policy, capability, budget, cooldown,
++  current session/goal authority and existing execution guards remain intact.
++- Missing models, setup/call failures, invalid or absent usage, and uncertain
++  transport never produce replacement deterministic feedback.
++- The durable request and plan retain the decision mode. Unsent plans cannot
++  cross decision modes; mode is rechecked after the inference authority await
++  and after worker-effect claim. Completed history remains truthful. A dispatch
++  marker is not a retry lease.
++- Failed/ambiguous model dispatches retain `delivery_uncertain` reservations.
++  Duplicate events and restart recovery do not call the model or resend work.
++  Missing configuration is skipped without consuming a model-dispatch attempt.
++- AgentCore/hybrid and public-web evidence are not enabled in this mode.
++  No bounded-repository/remote-evidence feature is reconstructed here.
++
++## Usage boundary
++
++The local adapter implements the actual Strands `Model` interface and validates
++SDK stream usage before Strands aggregation can coerce values (e.g. `0 + True`).
++**This is not raw provider-wire validation.** Upstream provider SDKs may already
++have normalized values before `Model.stream` emits them; OpenAI SDK 2.54 can
++coerce boolean/string/floating usage values into Python integers. The checks
++here cannot reconstruct those original wire types. A separately reviewed
++managed transport would need validation before that normalization; this is an
++additional reason that production admission stays deny-all in guarded v2.
++Every stream must provide exactly one complete receipt. Missing, duplicate,
++boolean, string, fractional, negative, nonfinite, unknown or oversized counters
++fail closed. Input/output are strictly positive, `totalTokens` must equal their
++sum, and optional cache counters must be nonnegative integers. Per-cycle,
++per-invocation and aggregate input/output/total/cache counters must reconcile.
++This intentionally rejects unsupported accounting shapes, including providers
++whose cache/total semantics differ. It does not estimate missing values.
++
++Main and verifier usage validation are durably recorded separately. Strands
++SDK throttling retries are disabled (`retry_strategy=None`, verified with installed
++1.53.0 and a throttling regression); this does not by itself qualify every SDK
++recovery path (such as context-overflow handling). Provider-internal retries, transport acceptance,
++billing, streaming cancellation and real-provider accounting remain
++**unqualified**. This is not an accounting gateway rebuild.
++
++## Evidence and restrictions
++
++Tests use real Strands Agent/Model interfaces, SQLite and the real PEX pipeline,
++but an authored model and an in-process synthetic worker. Four successful SDK
++streams in a test are **not four external inference calls**. Test network
++sentries block and count DNS/connect APIs, and assert zero attempts at teardown,
++including caught attempts. Test commands use an empty environment, disposable
++HOME, disabled provider loading and disabled AWS metadata discovery.
++
++**Do not expose this recovered baseline publicly or use real BYOK credentials.**
++Later owner/auth/origin/session hardening is missing from the restored source.
++This guard does not restore it. Public deployment, real worker/provider pilots,
++remote evidence, accounting and transport qualification require separate review.
++The full backend suite, native desktop packaging, Windows vault runtime and
++browser behavior are not newly qualified by these changes.
+--- a/packages/protocol/src/pex_protocol/supervisor.py
++++ b/packages/protocol/src/pex_protocol/supervisor.py
+@@ -275,6 +275,11 @@
+         strict=True,
+         exclude_if=lambda value: not value,
+     )
++    # Freeze the decision contract in the durable request, not mutable settings.
++    # Inactive omission preserves historical request/evidence digests.
++    supervisor_decision_mode: Literal["default", "supervisor_model_only"] = Field(
++        default="default", exclude_if=lambda value: value == "default"
++    )
+     notes: str = Field(default="", max_length=65_536)
+ 
+     @model_validator(mode="after")
+@@ -515,6 +520,7 @@
+         strict=True,
+     )
+     latency_ms: int = Field(default=0, ge=0, le=86_400_000, strict=True)
++    usage_validated: bool = Field(default=False, strict=True, exclude_if=lambda value: not value)
+ 
+     @model_validator(mode="after")
+     def validate_observation_lineage(self) -> Self:
+@@ -572,6 +578,8 @@
+     local_invocation_id: str | None = None
+     inference_status: Literal["not_attempted", "completed", "failed", "timeout"] = "not_attempted"
+     model_call_count: int = Field(default=0, ge=0)
++    # True only after strict per-cycle SDK usage validation, never model output.
++    usage_validated: bool = Field(default=False, strict=True, exclude_if=lambda value: not value)
+     runtime: str | None = None
+     runtime_version: str | None = None
+     model_class: str | None = None
+--- a/services/bridge/src/pex_bridge/agentcore.py
++++ b/services/bridge/src/pex_bridge/agentcore.py
+@@ -29,10 +29,12 @@
+     SupervisorResult,
+     supervisor_request_digest,
+ )
++from pex_supervisor import model_only_transport
+ from pex_supervisor.loop import (
+     _action_from_proposal,
+     _preserve_deterministic_truth,
+     decide_async,
++    model_only_noop,
+     needs_semantic_inference,
+ )
+ from pex_supervisor.planner import plan_deterministic
+@@ -999,6 +1001,7 @@
+         agentcore_client: AgentCoreSupervisorClient | None = None,
+     ) -> None:
+         self.mode = settings.supervisor_mode
++        self.decision_mode = settings.supervisor_decision_mode
+         self.agentcore = agentcore_client
+         self._configuration_failed = False
+         if self.mode in {"agentcore", "hybrid"} and self.agentcore is None:
+@@ -1014,6 +1017,12 @@
+         return local_model is not None or os.environ.get("PEX_FORCE_LLM") == "1"
+ 
+     def can_attempt_semantic(self, local_model: object | None) -> bool:
++        if self.decision_mode == "supervisor_model_only":
++            return (
++                self.mode == "local"
++                and local_model is not None
++                and model_only_transport.qualified(local_model)
++            )
+         if self.mode == "agentcore":
+             return self.agentcore is not None
+         if self.mode == "hybrid" and self.agentcore is not None:
+@@ -1075,6 +1084,10 @@
+         *,
+         local_model: object | None,
+     ) -> SupervisorResult:
++        if request.supervisor_decision_mode != self.decision_mode:
++            return model_only_noop(request, "supervisor_decision_mode_changed")
++        if request.supervisor_decision_mode == "supervisor_model_only" and self.mode != "local":
++            return model_only_noop(request, "model_only_remote_transport_unqualified")
+         if self.mode == "local":
+             result = await decide_async(request, local_model)
+             result.execution_mode = result.execution_mode or "local"
+--- a/services/bridge/src/pex_bridge/app.py
++++ b/services/bridge/src/pex_bridge/app.py
+@@ -3353,6 +3353,7 @@
+ ) -> _PreparedSupervisorConfig:
+     """Perform provider/keyring reads and model construction without committing state."""
+ 
++    _require_supervisor_transport_configuration()
+     from pex_supervisor.providers import load_supervisor_model, validate_runtime_config
+ 
+     desired, staged_secret, retire_previous = _supervisor_choice_from_patch(body, current)
+@@ -3447,9 +3448,17 @@
+     """The durable secret reference resolved to no credential."""
+ 
+ 
++def _require_supervisor_transport_configuration() -> None:
++    if state.settings.supervisor_decision_mode == "supervisor_model_only":
++        from pex_supervisor.model_only_transport import ModelOnlyTransportUnqualified
++
++        raise ModelOnlyTransportUnqualified("model_only_transport_unqualified")
++
++
+ def _prepare_saved_supervisor_choice(
+     choice: SupervisorChoice | None,
+ ) -> tuple[Any | None, Any, bool]:
++    _require_supervisor_transport_configuration()
+     from pex_supervisor.providers import (
+         describe_backend,
+         load_supervisor_model,
+@@ -3469,6 +3478,7 @@
+ 
+ 
+ def _activate_supervisor_choice(choice: SupervisorChoice | None) -> tuple[dict[str, Any], Any]:
++    _require_supervisor_transport_configuration()
+     from pex_supervisor.providers import configure_runtime, load_supervisor_model
+ 
+     if choice is None:
+@@ -3485,6 +3495,12 @@
+ ) -> None:
+     """Activate persisted routing without delaying bridge readiness."""
+ 
++    if state.settings.supervisor_decision_mode == "supervisor_model_only":
++        state.pipeline.model = None
++        state.supervisor_api_key_present = False
++        state.supervisor_credential_status = "unavailable"
++        state.supervisor_error = "ModelOnlyTransportUnqualified"
++        return
+     try:
+         runtime, model, api_key_present = await asyncio.wait_for(
+             _run_daemon_call(_prepare_saved_supervisor_choice, choice),
+@@ -4005,6 +4021,8 @@
+ 
+     @app.patch("/v1/supervisor")
+     async def patch_supervisor(body: SupervisorIn, _: None = Depends(_require_token)):
++        if state.settings.supervisor_decision_mode == "supervisor_model_only":
++            raise HTTPException(409, "model_only_transport_unqualified")
+         from pex_supervisor.catalog import catalog as model_catalog
+         from pex_supervisor.providers import (
+             configure_runtime,
+--- a/services/bridge/src/pex_bridge/config.py
++++ b/services/bridge/src/pex_bridge/config.py
+@@ -52,6 +52,8 @@
+     token: str | None = Field(default=None, max_length=512, repr=False, exclude=True)
+     db_path: Path | None = None
+     supervisor_mode: Literal["local", "agentcore", "hybrid"] = "local"
++    # Opt-in decision policy, separate from transport. No deterministic feedback.
++    supervisor_decision_mode: Literal["default", "supervisor_model_only"] = "default"
+     # Counts durable semantic dispatch attempts, not dollars or inner model calls.
+     # A fresh desktop install must never create an unbounded BYOK model loop.
+     # Three durable reservations are enough for the MVP recovery/quiet journey;
+@@ -128,6 +130,11 @@
+         # Remove the inherited source before any adapter or supervisor subprocess
+         # can be created, including direct ASGI factory imports that bypass main().
+         _scrub_operator_token_environment()
++        if (
++            self.supervisor_decision_mode == "supervisor_model_only"
++            and self.supervisor_mode != "local"
++        ):
++            raise ValueError("supervisor_model_only currently requires the local supervisor route")
+         if self.supervisor_mode in {"agentcore", "hybrid"}:
+             if not self.cloud_reasoning:
+                 raise ValueError(
+--- a/services/bridge/src/pex_bridge/pipeline.py
++++ b/services/bridge/src/pex_bridge/pipeline.py
+@@ -59,12 +59,15 @@
+     classify_unittest_invocation,
+     test_observation_issues,
+ )
++from pex_supervisor import model_only_transport
+ from pex_supervisor.background import confirm_abandoned_background, find_abandoned_background
+ from pex_supervisor.drift import duplicate_sibling_work, goal_path_names
+ from pex_supervisor.evidence_tools import workspace_evidence_guard
+ from pex_supervisor.loop import (
+     _action_from_proposal,
+     _preserve_deterministic_truth,
++    enforce_model_only_result,
++    model_only_noop,
+     needs_semantic_inference,
+ )
+ from pex_supervisor.planner import plan_deterministic
+@@ -1518,12 +1521,20 @@
+             owner=followup_owner,
+         )
+         if auto_claim["outcome"] == "claimed":
++            model_only_handoff_blocked = (
++                self.settings.supervisor_decision_mode == "supervisor_model_only"
++                or (
++                    isinstance(plan, dict)
++                    and plan.get("supervisor_decision_mode") == "supervisor_model_only"
++                )
++            )
+             try:
+-                await self._maybe_auto_handoff(
+-                    accepted_session,
+-                    event,
+-                    verification,
+-                )
++                if not model_only_handoff_blocked:
++                    await self._maybe_auto_handoff(
++                        accepted_session,
++                        event,
++                        verification,
++                    )
+             except asyncio.CancelledError:
+                 raise
+             except Exception as exc:
+@@ -1539,7 +1550,11 @@
+                     event_id=event_id,
+                     kind="auto_handoff",
+                     owner=followup_owner,
+-                    result={"status": "complete"},
++                    result=(
++                        {"status": "skipped", "reason": "model_only_automatic_handoff_disabled"}
++                        if model_only_handoff_blocked
++                        else {"status": "complete"}
++                    ),
+                 )
+         if intervention is None:
+             return None
+@@ -1826,6 +1841,10 @@
+         *,
+         reason: str,
+     ) -> SupervisorResult:
++        if request.supervisor_decision_mode == "supervisor_model_only":
++            result = model_only_noop(request, f"model_only_reconciliation:{reason}")
++            result.inference_status = "failed"
++            return result
+         return SupervisorResult(
+             action=plan_deterministic(request),
+             used_llm=False,
+@@ -1958,6 +1977,12 @@
+         witness,
+         deterministic_only: bool = False,
+     ):
++        if (
++            request.supervisor_decision_mode == "supervisor_model_only"
++            and self.settings.supervisor_mode != "local"
++        ):
++            return model_only_noop(request, "model_only_remote_transport_unqualified")
++
+         async def invoke():
+             # wait_for schedules a new task. Recheck in that task, not merely
+             # before it was queued, then enter the provider without another
+@@ -1970,7 +1995,24 @@
+                     require_workspace_sample(*witness, cwd=request.session.cwd)
+             except WorkspaceAuthorityError as exc:
+                 raise _WorkspacePlannerNotStarted(str(exc)) from exc
++            # Settings can change while the authority read awaited. Freeze the
++            # contract, and refuse immediately before any provider boundary.
++            if request.supervisor_decision_mode != self.settings.supervisor_decision_mode:
++                return model_only_noop(request, "supervisor_decision_mode_changed")
++            if (
++                request.supervisor_decision_mode == "supervisor_model_only"
++                and self.settings.supervisor_mode != "local"
++            ):
++                return model_only_noop(request, "model_only_remote_transport_unqualified")
++            if (
++                request.supervisor_decision_mode == "supervisor_model_only"
++                and self.model is not None
++                and not model_only_transport.qualified(self.model)
++            ):
++                return model_only_noop(request, "model_only_transport_unqualified")
+             if deterministic_only:
++                if request.supervisor_decision_mode == "supervisor_model_only":
++                    return model_only_noop(request, "model_only_missing_configured_model")
+                 # Frozen before dispatch: later model configuration cannot turn
+                 # this evidence-only route into an unreserved provider call.
+                 return SupervisorResult(
+@@ -2080,6 +2122,36 @@
+             )
+         if effect["state"] == "dispatching":
+             raise RuntimeError("planner effect dispatch is still active")
++        if request.supervisor_decision_mode != self.settings.supervisor_decision_mode:
++            result = model_only_noop(request, "supervisor_decision_mode_changed")
++            effect = await self.store.finalize_event_effect(
++                event_id=event.event_id,
++                effect_key="planner",
++                state="skipped",
++                result={
++                    "code": "supervisor_decision_mode_changed",
++                    "provider_started": False,
++                    "supervisor_result": result.model_dump(mode="json"),
++                },
++            )
++            return result, effect, planning_snapshot
++        if (
++            request.supervisor_decision_mode == "supervisor_model_only"
++            and self.model is not None
++            and not model_only_transport.qualified(self.model)
++        ):
++            result = model_only_noop(request, "model_only_transport_unqualified")
++            effect = await self.store.finalize_event_effect(
++                event_id=event.event_id,
++                effect_key="planner",
++                state="skipped",
++                result={
++                    "code": "model_only_transport_unqualified",
++                    "provider_started": False,
++                    "supervisor_result": result.model_dump(mode="json"),
++                },
++            )
++            return result, effect, planning_snapshot
+         semantic = needs_semantic_inference(request)
+         from pex_supervisor.trajectory import trajectory_review_candidate
+ 
+@@ -2089,6 +2161,7 @@
+         unavailable = semantic and callable(availability) and availability(self.model) is False
+         deterministic_only = (
+             unavailable
++            and request.supervisor_decision_mode != "supervisor_model_only"
+             and isinstance(self.supervisor, SupervisorRouter)
+             and self.supervisor.mode == "local"
+             and request.event.event_type == EventType.STOP
+@@ -2168,8 +2241,13 @@
+                 )
+             else:
+                 result = await self._invoke_supervisor(request, semantic=semantic, witness=witness)
++            result = enforce_model_only_result(request, result)
+             ambiguous = (
+                 result.inference_status in {"timeout"}
++                or (
++                    request.supervisor_decision_mode == "supervisor_model_only"
++                    and (result.inference_status == "failed" or result.transport_status == "failed")
++                )
+                 or result.execution_mode == "hybrid_local_fallback"
+                 or (
+                     semantic
+@@ -3366,6 +3444,7 @@
+             recent_events=recent,
+             scores=scores,
+             autonomy=self.settings.autonomy,
++            supervisor_decision_mode=self.settings.supervisor_decision_mode,
+             trajectory_review_enabled=(
+                 self.supervisor_dispatch_limit is not None and self.supervisor_dispatch_limit > 0
+             ),
+@@ -3434,6 +3513,7 @@
+             or (planner_effect is not None and planner_effect.get("state") == "delivery_uncertain")
+         )
+         session = request.session.model_copy(deep=True)
++        result = enforce_model_only_result(request, result)
+         action = result.action
+         if action.session_id != session.id or action.goal_id != session.goal_id:
+             result.action = _action_from_proposal(
+@@ -3723,6 +3803,9 @@
+             intervention = None
+             main_effect = None
+         if intervention is not None:
++            if request.supervisor_decision_mode == "supervisor_model_only":
++                intervention.metadata["supervisor_decision_mode"] = "supervisor_model_only"
++                intervention.metadata["usage_validated"] = result.usage_validated
+             intervention.metadata["event_accept_seq"] = int(processing["accept_seq"])
+             intervention.metadata["event_accepted_at"] = processing["accepted_at"]
+             if request.supervisor_context is not None:
+@@ -3791,6 +3874,7 @@
+             details={
+                 **deferred,
+                 "supervisor_result": result.model_dump(mode="json"),
++                "supervisor_decision_mode": request.supervisor_decision_mode,
+                 "planner_effect_id": (
+                     planner_effect.get("effect_id") if planner_effect is not None else None
+                 ),
+@@ -4332,6 +4416,40 @@
+             # recovery turns it into a terminal uncertain effect first.
+             return
+ 
++        if plan.get(
++            "supervisor_decision_mode"
++        ) == "supervisor_model_only" and not model_only_transport.qualified(self.model):
++            await self._seal_main_event_effect(
++                processing=current,
++                effect=effect,
++                reserved=reserved,
++                session=session,
++                outcome="model_only_transport_unqualified",
++                effect_state="skipped",
++                code="model_only_transport_unqualified",
++                publish=True,
++            )
++            return
++
++        # Only undispatched effects are refused. Terminal history above is
++        # replayed exactly; a previous dispatch marker is never retried. A mode
++        # switch cannot turn old deterministic plans into model-authored work.
++        if (
++            plan.get("supervisor_decision_mode", "default")
++            != self.settings.supervisor_decision_mode
++        ):
++            await self._seal_main_event_effect(
++                processing=current,
++                effect=effect,
++                reserved=reserved,
++                session=session,
++                outcome="supervisor_decision_mode_changed",
++                effect_state="skipped",
++                code="supervisor_decision_mode_changed",
++                publish=True,
++            )
++            return
++
+         try:
+             await self.store.require_session_workspace_current(session)
+         except WorkspaceAuthorityError as exc:
+@@ -4398,6 +4516,35 @@
+             return
+ 
+         effect = claim["effect"]
++        if plan.get(
++            "supervisor_decision_mode"
++        ) == "supervisor_model_only" and not model_only_transport.qualified(self.model):
++            await self._durably_settle_main_result(
++                processing=current,
++                reserved=reserved,
++                session=session,
++                outcome="model_only_transport_unqualified",
++                effect_state="failed",
++                code="model_only_transport_unqualified",
++                publish=True,
++            )
++            return
++        if (
++            plan.get("supervisor_decision_mode", "default")
++            != self.settings.supervisor_decision_mode
++        ):
++            # The authority/claim awaits above may span a mode change. The
++            # reservation is now ours, but no worker boundary has been entered.
++            await self._durably_settle_main_result(
++                processing=current,
++                reserved=reserved,
++                session=session,
++                outcome="supervisor_decision_mode_changed",
++                effect_state="failed",
++                code="supervisor_decision_mode_changed",
++                publish=True,
++            )
++            return
+         action = reserved.proposed_action
+         verdict = reserved.policy_verdict
+         worker_delivery_receipt = None
+@@ -6359,6 +6506,20 @@
+         effect = record["effect"]
+         if effect["state"] != "reserved":
+             return await self._operator_handoff_response(record, replayed=replayed)
++
++        def automatic_handoff_blocked() -> bool:
++            return (
++                effect.get("principal_id") == "system_auto_handoff"
++                and self.settings.supervisor_decision_mode == "supervisor_model_only"
++            )
++
++        if automatic_handoff_blocked():
++            final = await self.store.finalize_operator_handoff(
++                effect_id=effect["effect_id"],
++                state="skipped",
++                result={"status": "skipped", "reason": "model_only_automatic_handoff_disabled"},
++            )
++            return await self._operator_handoff_response(final, replayed=replayed)
+         adapter = self.adapters.for_session(str(effect["target_session_id"]))
+         if adapter is None:
+             final = await self.store.finalize_operator_handoff(
+@@ -6397,14 +6558,32 @@
+                 await asyncio.gather(completion)
+                 raise
+ 
++        async def invoke_handoff():
++            # Recheck inside workspace dispatch, after its authority awaits and
++            # immediately before worker I/O. Manual operator requests are unchanged.
++            if automatic_handoff_blocked():
++                raise model_only_transport.ModelOnlyTransportUnqualified(
++                    "model_only_automatic_handoff_disabled"
++                )
++            return await adapter.inject_context(dispatch["target"], dispatch["bundle"])
++
+         try:
+             ok = await asyncio.wait_for(
+                 self.executor._workspace_dispatch(
+                     dispatch["target"],
+-                    lambda: adapter.inject_context(dispatch["target"], dispatch["bundle"]),
++                    invoke_handoff,
+                     sources=(dispatch["source"],),
+                 ),
+                 timeout=HANDOFF_ADAPTER_TIMEOUT_SECONDS,
++            )
++        except model_only_transport.ModelOnlyTransportUnqualified:
++            final = await durable_finalize(
++                "failed",
++                {
++                    "status": "failed",
++                    "reason": "model_only_automatic_handoff_disabled",
++                    "adapter_started": False,
++                },
+             )
+         except _WorkspaceDispatchRefused:
+             final = await durable_finalize(
+@@ -6938,6 +7117,8 @@
+         verification: dict | None = None,
+     ) -> None:
+         """Move each newly relevant observed item once, without transcript dumping."""
++        if self.settings.supervisor_decision_mode == "supervisor_model_only":
++            return
+         live_source = await self.store.get_session_for_authority(
+             session.id,
+             require_goal_binding=True,
+--- a/services/supervisor/src/pex_supervisor/evidence_tools.py
++++ b/services/supervisor/src/pex_supervisor/evidence_tools.py
+@@ -171,7 +171,10 @@
+     # Completion claims are local facts and must not add two public-web schemas
+     # to every STOP. A producer must explicitly classify a public claim before
+     # those tools are exposed.
+-    if features.get("public_claims"):
++    if (
++        features.get("public_claims")
++        and request.supervisor_decision_mode != "supervisor_model_only"
++    ):
+         selected.update(("web_search", "scrape_url"))
+     return tuple(name for name in _EVIDENCE_TOOL_ORDER if name in selected)
+ 
+--- a/services/supervisor/src/pex_supervisor/loop.py
++++ b/services/supervisor/src/pex_supervisor/loop.py
+@@ -25,6 +25,7 @@
+ )
+ from pydantic import BaseModel, ConfigDict, Field
+ 
++from pex_supervisor import model_only_transport
+ from pex_supervisor.evidence_observations import EvidenceObservationCollector
+ from pex_supervisor.evidence_tools import (
+     build_evidence_tools,
+@@ -37,6 +38,89 @@
+ 
+ PROMPT_PATH = Path(__file__).parent / "prompts" / "supervisor.md"
+ VERIFIER_PROMPT_PATH = Path(__file__).parent / "prompts" / "verifier.md"
++
++
++def model_only_noop(request: SupervisorRequest, reason: str) -> SupervisorResult:
++    """A safety veto, never replacement feedback or a claim that a model ran."""
++    return SupervisorResult(
++        action=_action_from_proposal(
++            request, {"type": "NOOP", "rationale": reason, "evidence": [reason]}
++        ),
++        diagnosis=reason,
++        traces=[reason],
++        execution_mode="supervisor_model_only",
++    )
++
++
++def enforce_model_only_result(
++    request: SupervisorRequest,
++    result: SupervisorResult,
++    *,
++    require_verifier: bool = True,
++) -> SupervisorResult:
++    """Allow only completed model-authored feedback; all guards may only veto."""
++    if request.supervisor_decision_mode != "supervisor_model_only":
++        return result
++    reason = None
++    if result.action.type == InterventionType.NOOP:
++        return result
++    if (
++        result.used_llm is not True
++        or result.inference_status != "completed"
++        or not result.local_invocation_id
++        or result.model_call_count < 1
++        or result.usage_validated is not True
++    ):
++        reason = "model_only_incomplete_or_invalid_usage"
++    elif result.transport_status != "not_attempted" or result.transport is not None:
++        reason = "model_only_remote_transport_unqualified"
++    elif result.action.type not in {
++        InterventionType.SEND_NUDGE,
++        InterventionType.CONTINUE_SESSION,
++    }:
++        # REQUEST_VERIFICATION deliberately binds bridge-authored command text.
++        # Do not mislabel that scripted probe as exclusively model feedback.
++        reason = "model_only_action_not_supported"
++    else:
++        try:
++            validate_evidence_observation_bindings(
++                result.evidence_observations,
++                result.evidence_refs,
++                stage="main",
++                request_digest=supervisor_request_digest(request),
++                session_id=request.session.id,
++                goal_id=request.goal.id if request.goal else None,
++                event_id=request.event.event_id,
++                invocation_id=result.local_invocation_id,
++            )
++            if not result.evidence_refs:
++                raise ValueError("main evidence missing")
++            if require_verifier:
++                verifier = result.independent_verifier
++                if (
++                    verifier is None
++                    or not verifier.authorizes_intervention()
++                    or not verifier.usage_validated
++                    or verifier.invocation_id == result.local_invocation_id
++                ):
++                    raise ValueError("independent authorization missing")
++                validate_evidence_observation_bindings(
++                    verifier.evidence_observations,
++                    verifier.evidence_refs,
++                    stage="verifier",
++                    request_digest=supervisor_request_digest(request),
++                    session_id=request.session.id,
++                    goal_id=request.goal.id if request.goal else None,
++                    event_id=request.event.event_id,
++                    invocation_id=verifier.invocation_id,
++                )
++        except ValueError:
++            reason = "model_only_evidence_not_authorized"
++    if reason:
++        result.action = model_only_noop(request, reason).action
++        result.diagnosis = f"{result.diagnosis}:{reason}"[-2000:]
++        result.traces = [*result.traces[-255:], reason]
++    return result
+ 
+ 
+ class SupervisorDecision(BaseModel):
+@@ -287,7 +371,16 @@
+     )
+     rendered = (
+         "Normalized supervision request.\n"
+-        f"Harness: {request.session.harness_type}\n"
++        + (
++            "Decision contract: supervisor_model_only. Choose NOOP, SEND_NUDGE, or "
++            "CONTINUE_SESSION only. Any worker feedback must be your own "
++            "evidence-grounded assessment, not a canned verification script. "
++            "REQUEST_VERIFICATION and other actions are unavailable in this mode. "
++            "If evidence does not authorize feedback, choose NOOP.\n"
++            if request.supervisor_decision_mode == "supervisor_model_only"
++            else ""
++        )
++        + f"Harness: {request.session.harness_type}\n"
+         f"Session: {request.session.id}\n"
+         f"Status: {request.session.status}\n"
+         f"Event: {request.event.event_type} {event_text}\n"
+@@ -560,6 +653,11 @@
+     }
+     if model is not None:
+         kwargs["model"] = model
++    if request.supervisor_decision_mode == "supervisor_model_only":
++        from pex_supervisor.strict_model import UsageCheckedModel
++
++        kwargs["model"] = UsageCheckedModel(model)
++        kwargs["retry_strategy"] = None
+     return Agent(**kwargs)
+ 
+ 
+@@ -573,6 +671,12 @@
+     """Create a fresh agent that can only inspect the same bounded evidence."""
+     from strands import Agent
+ 
++    kwargs = {}
++    if request.supervisor_decision_mode == "supervisor_model_only":
++        from pex_supervisor.strict_model import UsageCheckedModel
++
++        model = UsageCheckedModel(model)
++        kwargs["retry_strategy"] = None
+     return Agent(
+         system_prompt=_verifier_system_prompt(),
+         tools=build_evidence_tools(
+@@ -583,6 +687,7 @@
+         ),
+         callback_handler=None,
+         model=model,
++        **kwargs,
+     )
+ 
+ 
+@@ -917,6 +1022,19 @@
+         evidence_refs=evidence_refs,
+     )
+     input_tokens, output_tokens = _usage(result)
++    if request.supervisor_decision_mode == "supervisor_model_only":
++        usage = agent.model.validated_usage(result)
++        if usage is None:
++            meta["inference_status"] = "failed"
++            return SupervisorResult(
++                action=model_only_noop(request, "model_only_invalid_sdk_usage").action,
++                used_llm=True,
++                diagnosis="model_only_invalid_sdk_usage",
++                latency_ms=int((time.perf_counter() - started) * 1000),
++                **meta,
++            )
++        meta["model_call_count"], input_tokens, output_tokens = usage
++        meta["usage_validated"] = True
+     if not isinstance(structured, SupervisorDecision):
+         return SupervisorResult(
+             action=_action_from_proposal(
+@@ -1080,6 +1198,19 @@
+     metrics = getattr(result, "metrics", None)
+     structured = getattr(result, "structured_output", None)
+     input_tokens, output_tokens = _usage(result)
++    if request.supervisor_decision_mode == "supervisor_model_only":
++        usage = agent.model.validated_usage(result)
++        if usage is None:
++            return {
++                "approved": False,
++                "status": "invalid_sdk_usage",
++                "rationale": "Independent verifier usage is missing or invalid.",
++                "model_call_count": _model_call_count(metrics),
++                "input_tokens": 0,
++                "output_tokens": 0,
++                "latency_ms": int((time.perf_counter() - started) * 1000),
++            }
++        _, input_tokens, output_tokens = usage
+     if not isinstance(structured, IndependentVerifierDecision):
+         return {
+             "approved": False,
+@@ -1173,12 +1304,15 @@
+         "input_tokens": input_tokens,
+         "output_tokens": output_tokens,
+         "latency_ms": int((time.perf_counter() - started) * 1000),
++        "usage_validated": request.supervisor_decision_mode == "supervisor_model_only",
+     }
+ 
+ 
+ def run_strands(request: SupervisorRequest, model=None) -> SupervisorResult:
+     """Compatibility entry point for synchronous callers and tests."""
+ 
++    if request.supervisor_decision_mode == "supervisor_model_only":
++        return decide(request, model=model)
+     if model is None:
+         model = load_supervisor_model()
+     if model is None:
+@@ -1234,7 +1368,9 @@
+         return False
+     if request.event.event_type == EventType.STOP and _observation_only_goal(request):
+         return False
+-    if force_llm or os.environ.get("PEX_FORCE_LLM") == "1":
++    if request.supervisor_decision_mode != "supervisor_model_only" and (
++        force_llm or os.environ.get("PEX_FORCE_LLM") == "1"
++    ):
+         return True
+     if request.event.event_type != EventType.STOP:
+         return trajectory_review_candidate(request) is not None
+@@ -1429,6 +1565,7 @@
+         input_tokens=verifier_input_tokens,
+         output_tokens=verifier_output_tokens,
+         latency_ms=verifier_latency_ms,
++        usage_validated=receipt.get("usage_validated") is True,
+     )
+     semantic.model_call_count = _bounded_nonnegative_int(
+         semantic.model_call_count + verifier_model_call_count,
+@@ -1455,6 +1592,12 @@
+         traces.append(f"independent_verifier_rationale={rationale}")
+     traces.extend(f"independent_verifier_evidence={item}" for item in verifier_evidence)
+     semantic.traces = [_clip(item, 4_000) for item in traces[-256:]]
++    if request.supervisor_decision_mode == "supervisor_model_only" and (
++        status in {"timeout", "invalid_sdk_usage", "missing_structured_output"}
++        or status.startswith("failed")
++    ):
++        semantic.inference_status = "timeout" if status == "timeout" else "failed"
++        semantic.usage_validated = False
+     if semantic.independent_verifier.authorizes_intervention():
+         semantic.diagnosis = f"{semantic.diagnosis}:independent_verifier_approved"
+         return semantic
+@@ -1463,7 +1606,10 @@
+     # verifier mistakes untrusted worker narration for proof. A rejected
+     # correction remains unauthorized until the worker returns an observable
+     # receipt.
+-    if deterministic.type == InterventionType.REQUEST_VERIFICATION:
++    if (
++        request.supervisor_decision_mode != "supervisor_model_only"
++        and deterministic.type == InterventionType.REQUEST_VERIFICATION
++    ):
+         semantic.action = deterministic
+         semantic.diagnosis = f"{semantic.diagnosis}:verification_request_preserved"
+         semantic.traces.append("verification_request_preserved")
+@@ -1502,6 +1648,17 @@
+             diagnosis="supervision_paused",
+             inference_status="not_attempted",
+         )
++    model_only = request.supervisor_decision_mode == "supervisor_model_only"
++    if model_only:
++        # No environment force flag may manufacture eligibility or load an
++        # implicit provider. Only the already-configured model is eligible.
++        if not needs_semantic_inference(request):
++            return model_only_noop(request, "model_only_review_not_eligible")
++        if model is None:
++            return model_only_noop(request, "model_only_missing_configured_model")
++        if not model_only_transport.qualified(model):
++            return model_only_noop(request, "model_only_transport_unqualified")
++        allow_deterministic_fast_path = False
+     deterministic = plan_deterministic(request)
+     verification = (request.scores.features or {}).get("verification") or {}
+     gathering = verification.get("evidence_gathering") or {}
+@@ -1615,6 +1772,7 @@
+         )
+     try:
+         semantic = _preserve_deterministic_truth(request, deterministic, semantic)
++        semantic = enforce_model_only_result(request, semantic, require_verifier=False)
+         if _needs_independent_verifier(request, deterministic, semantic):
+             try:
+                 receipt = await run_independent_verifier_async(
+@@ -1637,7 +1795,7 @@
+                     "latency_ms": 0,
+                 }
+             semantic = _apply_verifier_receipt(request, semantic, deterministic, receipt)
+-        return semantic
++        return enforce_model_only_result(request, semantic)
+     except Exception as exc:
+         detail = type(exc).__name__
+         semantic.action = _action_from_proposal(
+--- a/services/supervisor/src/pex_supervisor/model_only_transport.py
++++ b/services/supervisor/src/pex_supervisor/model_only_transport.py
+@@ -0,0 +1,20 @@
++"""Admission boundary for reconstructed model-only supervision.
++
++NO production transport is qualified in this historical-source reconstruction.
++Disabling Strands retries alone does not control provider-internal retries,
++transport ambiguity, or billing. No environment flag, model config/provenance,
++provider name, URL or credential may promote a transport through this boundary.
++
++Local authored-model tests replace this function for their exact fixture class,
++under zero-network-attempt sentries. That test injection is not a live transport
++implementation or deployment capability.
++"""
++
++
++class ModelOnlyTransportUnqualified(ValueError):
++    """The reconstructed mode has no production transport admission."""
++
++
++def qualified(model: object | None) -> bool:
++    """Refuse all production adapters until transport control is separately rebuilt."""
++    return False
+--- a/services/supervisor/src/pex_supervisor/runtime.py
++++ b/services/supervisor/src/pex_supervisor/runtime.py
+@@ -126,6 +126,8 @@
+ @lru_cache(maxsize=1)
+ def _runtime_model() -> object:
+     """Construct one explicitly configured model or fail runtime startup."""
++    if os.environ.get("PEX_SUPERVISOR_DECISION_MODE") == "supervisor_model_only":
++        raise RuntimeError("model_only_remote_transport_unqualified")
+     provider = (os.environ.get("PEX_SUPERVISOR_PROVIDER") or "").strip()
+     model_id = (os.environ.get("PEX_SUPERVISOR_MODEL") or "").strip()
+     if not provider or not model_id:
+@@ -153,6 +155,8 @@
+         # Keep the public runtime error fixed while retaining the exception chain.
+         raise ValueError("AgentCore request failed protocol validation") from exc
+     _validate_request_binding(request)
++    if request.supervisor_decision_mode == "supervisor_model_only":
++        raise ValueError("model_only_remote_transport_unqualified")
+     configured_model = _runtime_model() if model is _UNSET else model
+     result = decide(
+         request,
+--- a/services/supervisor/src/pex_supervisor/strict_model.py
++++ b/services/supervisor/src/pex_supervisor/strict_model.py
+@@ -0,0 +1,73 @@
++"""Local Strands model adapter: validate SDK stream usage before aggregation.
++
++Not a provider transport or billing gateway. Inner provider retries remain
++unqualified. An upstream provider SDK can normalize wire values before this
++adapter sees them; this is not raw-wire validation. No external model is
++exercised by this feature's local tests.
++"""
++
++from strands.models.model import Model
++
++from pex_supervisor import model_only_transport
++from pex_supervisor.strict_usage import _usage, validated_sdk_usage
++
++
++class InvalidModelUsage(ValueError):
++    pass
++
++
++class UsageCheckedModel(Model):
++    def __init__(self, model: Model):
++        if not model_only_transport.qualified(model):
++            raise ValueError("model_only_transport_unqualified")
++        if not isinstance(model, Model) or model.stateful:
++            raise ValueError("model-only mode requires a stateless Strands Model")
++        self.inner = model
++        self.receipts: list[tuple[int, int, int]] = []
++        self.started = 0
++        self.failed = False
++
++    def get_config(self):
++        return self.inner.get_config()
++
++    def update_config(self, **kwargs):
++        self.inner.update_config(**kwargs)
++
++    async def structured_output(self, *args, **kwargs):
++        # The supported SDK emits structured-output tools through stream().
++        # Do not authorize an older side channel with unaudited usage.
++        raise InvalidModelUsage("unqualified structured-output transport")
++        yield  # pragma: no cover - implements the SDK async-generator interface
++
++    async def stream(self, *args, **kwargs):
++        if not model_only_transport.qualified(self.inner):
++            raise InvalidModelUsage("model_only_transport_unqualified")
++        if self.failed:
++            raise InvalidModelUsage("prior model call failed; retry refused")
++        self.started += 1
++        receipt = None
++        try:
++            async for event in self.inner.stream(*args, **kwargs):
++                if "metadata" in event and "usage" in event["metadata"]:
++                    raw = _usage(event["metadata"]["usage"])
++                    if receipt is not None or raw is None or raw[0] <= 0 or raw[1] <= 0:
++                        raise InvalidModelUsage("missing, duplicate or invalid SDK stream usage")
++                    receipt = raw
++                yield event
++            if receipt is None:
++                raise InvalidModelUsage("model returned no SDK stream usage receipt")
++            self.receipts.append(receipt)
++        except BaseException:
++            self.failed = True
++            raise
++
++    def validated_usage(self, result):
++        observed = validated_sdk_usage(result)
++        if self.failed or observed is None or self.started != len(self.receipts):
++            return None
++        expected = (
++            len(self.receipts),
++            sum(item[0] for item in self.receipts),
++            sum(item[1] for item in self.receipts),
++        )
++        return observed if observed == expected else None
+--- a/services/supervisor/src/pex_supervisor/strict_usage.py
++++ b/services/supervisor/src/pex_supervisor/strict_usage.py
+@@ -0,0 +1,80 @@
++"""Fail-closed SDK accounting checks for the opt-in model-only decision policy.
++
++This validates the documented Strands metrics shape, not provider billing or
++hidden SDK/transport retries. Unsupported or incomplete shapes are rejected.
++"""
++
++from __future__ import annotations
++
++from typing import Any
++
++_MAX_TOKENS = 1_000_000_000_000
++_MAX_CYCLES = 64
++
++
++def _usage(value: Any) -> tuple[int, int, int] | None:
++    if not isinstance(value, dict):
++        return None
++    keys = ("inputTokens", "outputTokens", "totalTokens")
++    if not all(key in value for key in keys):
++        return None
++    if set(value) - {*keys, "cacheReadInputTokens", "cacheWriteInputTokens"}:
++        return None
++    # Validate every present counter, including cache counters. No bool/string/
++    # float coercion and no zero substitution for missing per-cycle receipts.
++    if any(type(count) is not int or not 0 <= count <= _MAX_TOKENS for count in value.values()):
++        return None
++    input_tokens, output_tokens, total_tokens = (value[key] for key in keys)
++    if total_tokens != input_tokens + output_tokens:
++        return None
++    return input_tokens, output_tokens, total_tokens
++
++
++def _full_usage(value: Any) -> tuple[int, ...] | None:
++    counts = _usage(value)
++    if counts is None:
++        return None
++    return (*counts, value.get("cacheReadInputTokens", 0), value.get("cacheWriteInputTokens", 0))
++
++
++def validated_sdk_usage(result: object) -> tuple[int, int, int] | None:
++    """Return (cycles, input, output) only for complete, consistent SDK-observed metrics."""
++    try:
++        metrics = getattr(result, "metrics", None)
++        invocations = getattr(metrics, "agent_invocations", None)
++        if not isinstance(invocations, (list, tuple)) or not 1 <= len(invocations) <= _MAX_CYCLES:
++            return None
++        totals = [0, 0, 0, 0, 0]
++        cycle_count = 0
++        for invocation in invocations:
++            cycles = getattr(invocation, "cycles", None)
++            if not isinstance(cycles, (list, tuple)) or not cycles:
++                return None
++            subtotal = [0, 0, 0, 0, 0]
++            for cycle in cycles:
++                cycle_count += 1
++                if cycle_count > _MAX_CYCLES:
++                    return None
++                usage = _full_usage(getattr(cycle, "usage", None))
++                if usage is None or usage[0] <= 0 or usage[1] <= 0:
++                    return None
++                subtotal = [left + right for left, right in zip(subtotal, usage, strict=True)]
++            if _full_usage(getattr(invocation, "usage", None)) != tuple(subtotal):
++                return None
++            totals = [left + right for left, right in zip(totals, subtotal, strict=True)]
++        if any(count > _MAX_TOKENS for count in totals):
++            return None
++        if _full_usage(getattr(metrics, "accumulated_usage", None)) != tuple(totals):
++            return None
++        reported_cycles = getattr(metrics, "cycle_count", None)
++        if type(reported_cycles) is not int or reported_cycles != cycle_count:
++            return None
++        # Some SDK versions expose the same counters on AgentResult too. If
++        # present, they must agree; never choose the more convenient aggregate.
++        for name in ("accumulated_usage", "usage"):
++            reported = getattr(result, name, None)
++            if reported is not None and _full_usage(reported) != tuple(totals):
++                return None
++        return cycle_count, totals[0], totals[1]
++    except (AttributeError, TypeError, ValueError, OverflowError):
++        return None
+--- a/tests/integration/test_model_only_pipeline.py
++++ b/tests/integration/test_model_only_pipeline.py
+@@ -0,0 +1,428 @@
++"""Real SQLite/pipeline/Strands + authored model + synthetic worker. NOT inference."""
++
++import json
++import socket
++
++import pytest
++from pex_bridge.agentcore import SupervisorRouter
++from pex_bridge.bus import EventBus
++from pex_bridge.config import Settings
++from pex_bridge.pipeline import Pipeline
++from pex_bridge.store import Store
++from pex_protocol.actions import InterventionType
++from pex_protocol.capabilities import AdapterCapabilities
++from pex_protocol.context import ContextHandoffRequest
++from pex_protocol.enums import EventType, PolicyVerdict
++from pex_supervisor import model_only_transport
++
++from tests.model_only_support import AuthoredSupervisorModel
++from tests.unit.test_event_processing_pipeline import (
++    _event,
++    _followup_row,
++    _pipeline,
++    _SimulatedCrash,
++)
++from tests.unit.test_operator_handoff_effects import _artifacts
++
++_PRODUCTION_ADMISSION = model_only_transport.qualified
++
++
++@pytest.fixture(autouse=True)
++def no_network(monkeypatch):
++    attempts = []
++
++    def forbidden(*args, **kwargs):
++        attempts.append("network call")
++        raise AssertionError("local pipeline test attempted network access")
++
++    monkeypatch.setattr(socket.socket, "connect", forbidden)
++    monkeypatch.setattr(socket.socket, "connect_ex", forbidden)
++    monkeypatch.setattr(socket, "create_connection", forbidden)
++    monkeypatch.setattr(socket, "getaddrinfo", forbidden)
++    monkeypatch.setattr(
++        model_only_transport, "qualified", lambda model: type(model) is AuthoredSupervisorModel
++    )
++    yield
++    assert attempts == [], "even caught network attempts invalidate this test"
++
++
++async def setup(tmp_path, model=None, *, mode="supervisor_model_only"):
++    store, adapters, session, pipeline = await _pipeline(tmp_path)
++    pipeline.settings.supervisor_decision_mode = mode
++    pipeline.supervisor = SupervisorRouter(pipeline.settings)
++    pipeline.model = model
++    session.cwd = str(tmp_path)
++    await store.upsert_session(session)
++    goal = await store.get_goal(session.goal_id)
++    goal.acceptance_criteria = ["report.txt exists"]
++    goal.evidence_requirements = ["report.txt"]
++    await store.upsert_goal(goal)
++    return store, adapters, session, pipeline
++
++
++async def close(store, pipeline):
++    await pipeline.close_presentations()
++    await store.close()
++
++
++@pytest.mark.asyncio
++async def test_actual_pipeline_delivers_model_text_once_and_preserves_terminal_history(tmp_path):
++    model = AuthoredSupervisorModel()
++    store, adapters, session, pipeline = await setup(tmp_path, model)
++    event = _event(session, "model-only-success", event_type=EventType.STOP, message="Done.")
++    try:
++        result = await pipeline.ingest_event(event, session)
++        assert result.action_taken == "SEND_NUDGE", result.model_dump()
++        assert result.result == "sent"
++        assert model.calls == 4
++        planner = await store.get_event_effect(event.event_id, "planner")
++        assert planner["payload"]["request"]["supervisor_decision_mode"] == "supervisor_model_only"
++        assert planner["result"]["supervisor_result"]["usage_validated"] is True
++        assert len(adapters.synthetic.inbox[session.id]) == 1
++        assert adapters.synthetic.inbox[session.id][0] == result.proposed_action.payload["text"]
++        pipeline.settings.supervisor_decision_mode = "default"
++        replay = await pipeline.ingest_event(event, session)
++        assert replay.id == result.id
++        assert replay.result == "sent"
++        assert len(adapters.synthetic.inbox[session.id]) == 1
++        assert model.calls == 4
++    finally:
++        await close(store, pipeline)
++
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize("failure", ["missing", "invalid_main", "invalid_verifier", "exception"])
++async def test_failed_model_never_sends_or_retries_same_durable_event(tmp_path, failure):
++    model = (
++        None
++        if failure == "missing"
++        else AuthoredSupervisorModel(failure=RuntimeError("authored transport failure"))
++        if failure == "exception"
++        else AuthoredSupervisorModel(
++            bad_usage=True, bad_call=3 if failure == "invalid_verifier" else 1
++        )
++    )
++    store, adapters, session, pipeline = await setup(tmp_path, model)
++    event = _event(session, "model-only-failure", event_type=EventType.STOP, message="Done.")
++    try:
++        result = await pipeline.ingest_event(event, session)
++        assert result.proposed_action.type == InterventionType.NOOP
++        planner = await store.get_event_effect(event.event_id, "planner")
++        assert planner["state"] == ("skipped" if failure == "missing" else "delivery_uncertain")
++        counts = await store.supervisor_dispatch_counts([session.id])
++        assert counts[session.id] == (0 if failure == "missing" else 1)
++        assert await store.get_event_effect(event.event_id, "main") is None
++        calls = model.calls if model else 0
++        await pipeline.ingest_event(event, session)
++        await pipeline.recover_unfinished_events()
++        assert await store.supervisor_dispatch_counts([session.id]) == counts
++        assert (model.calls if model else 0) == calls
++        assert adapters.synthetic.inbox[session.id] == []
++    finally:
++        await close(store, pipeline)
++
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize("gate", ["budget", "pause", "policy", "capability"])
++async def test_existing_hard_vetoes_remain_authoritative(tmp_path, gate, monkeypatch):
++    model = AuthoredSupervisorModel()
++    store, adapters, session, pipeline = await setup(tmp_path, model)
++    if gate == "budget":
++        pipeline.settings.supervisor_max_dispatches_per_session = 0
++    elif gate == "pause":
++        pipeline.supervision_paused = True
++    elif gate == "policy":
++        monkeypatch.setattr(pipeline.policy, "decide", lambda *a, **k: PolicyVerdict.DENY)
++    elif gate == "capability":
++
++        async def no_capabilities():
++            return AdapterCapabilities(send_message=False)
++
++        monkeypatch.setattr(adapters.synthetic, "probe", no_capabilities)
++    event = _event(session, "model-only-veto", event_type=EventType.STOP, message="Done.")
++    try:
++        await pipeline.ingest_event(event, session)
++        assert adapters.synthetic.inbox[session.id] == []
++        assert await store.get_event_effect(event.event_id, "main") is None
++        assert model.calls == (0 if gate in {"budget", "pause"} else 4)
++    finally:
++        await close(store, pipeline)
++
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize("initial_mode", ["default", "supervisor_model_only"])
++async def test_undispatched_plan_cannot_cross_decision_modes(tmp_path, initial_mode, monkeypatch):
++    model = AuthoredSupervisorModel()
++    store, adapters, session, pipeline = await setup(tmp_path, model, mode=initial_mode)
++    event = _event(session, "model-only-mode-switch", event_type=EventType.STOP, message="Done.")
++    original_resume = pipeline._resume_planned_event
++
++    async def defer(*args, **kwargs):
++        raise _SimulatedCrash("plan persisted, dispatch not started")
++
++    monkeypatch.setattr(pipeline, "_resume_planned_event", defer)
++    try:
++        with pytest.raises(_SimulatedCrash):
++            await pipeline.ingest_event(event, session)
++        processing = await store.get_event_processing(event.event_id)
++        assert processing["state"] == "planned"
++        calls = model.calls
++        pipeline.settings.supervisor_decision_mode = (
++            "supervisor_model_only" if initial_mode == "default" else "default"
++        )
++        monkeypatch.setattr(pipeline, "_resume_planned_event", original_resume)
++        await original_resume(processing, owner=processing["lease_owner"])
++        main = await store.get_event_effect(event.event_id, "main")
++        assert main["state"] == "skipped"
++        assert main["result"]["code"] == "supervisor_decision_mode_changed"
++        assert model.calls == calls
++        assert adapters.synthetic.inbox[session.id] == []
++    finally:
++        await close(store, pipeline)
++
++
++@pytest.mark.asyncio
++async def test_restart_after_ambiguous_model_boundary_does_not_infer_or_send(tmp_path):
++    model = AuthoredSupervisorModel(failure=_SimulatedCrash("authored process loss"))
++    store, adapters, session, pipeline = await setup(tmp_path, model)
++    event = _event(session, "model-only-restart", event_type=EventType.STOP, message="Done.")
++    try:
++        with pytest.raises(_SimulatedCrash):
++            await pipeline.ingest_event(event, session)
++        effect = await store.get_event_effect(event.event_id, "planner")
++        assert effect["state"] == "dispatching"
++        assert model.calls == 1
++    finally:
++        await close(store, pipeline)
++    recovery = Store(tmp_path / "pex.sqlite", process_boot_id="model-only-restart")
++    await recovery.connect()
++    replacement = AuthoredSupervisorModel()
++    resumed = Pipeline(
++        recovery,
++        adapters,
++        EventBus(),
++        Settings.for_test(
++            require_auth=False, home=tmp_path, supervisor_decision_mode="supervisor_model_only"
++        ),
++        model=replacement,
++    )
++    try:
++        await resumed.recover_unfinished_events()
++        effect = await recovery.get_event_effect(event.event_id, "planner")
++        assert effect["state"] == "delivery_uncertain"
++        assert replacement.calls == 0
++        assert await recovery.get_event_effect(event.event_id, "main") is None
++        await resumed.ingest_event(event, session)
++        assert replacement.calls == 0
++        assert adapters.synthetic.inbox[session.id] == []
++    finally:
++        await close(recovery, resumed)
++
++
++@pytest.mark.asyncio
++async def test_model_only_compaction_does_not_send_deterministic_contract(tmp_path):
++    model = AuthoredSupervisorModel()
++    store, adapters, session, pipeline = await setup(tmp_path, model)
++    event = _event(session, "model-only-compaction", event_type=EventType.COMPACTION)
++    try:
++        await pipeline.ingest_event(event, session)
++        assert model.calls == 0
++        assert adapters.synthetic.inbox[session.id] == []
++    finally:
++        await close(store, pipeline)
++
++
++@pytest.mark.asyncio
++async def test_route_change_during_authority_await_never_reaches_remote(tmp_path, monkeypatch):
++    from tests.unit.test_supervisor_model_only import request
++
++    store, adapters, session, pipeline = await setup(tmp_path, AuthoredSupervisorModel())
++    calls = []
++
++    class Remote:
++        async def decide(self, value):
++            calls.append(value)
++            raise AssertionError("unqualified remote must not run")
++
++    async def change_route(value):
++        pipeline.settings.supervisor_mode = "agentcore"
++        return None
++
++    pipeline.supervisor.agentcore = Remote()
++    monkeypatch.setattr(store, "require_session_workspace_current", change_route)
++    try:
++        result = await pipeline._invoke_supervisor(request(), semantic=True, witness=None)
++        assert result.action.type == InterventionType.NOOP
++        assert calls == []
++        assert pipeline.model.calls == 0
++    finally:
++        await close(store, pipeline)
++
++
++@pytest.mark.asyncio
++async def test_mode_change_during_main_effect_claim_never_enters_worker(tmp_path, monkeypatch):
++    model = AuthoredSupervisorModel()
++    store, adapters, session, pipeline = await setup(tmp_path, model, mode="default")
++    original = store.claim_main_event_effect
++
++    async def change_mode(**kwargs):
++        claim = await original(**kwargs)
++        pipeline.settings.supervisor_decision_mode = "supervisor_model_only"
++        return claim
++
++    monkeypatch.setattr(store, "claim_main_event_effect", change_mode)
++    event = _event(session, "model-only-claim-race", event_type=EventType.STOP, message="Done.")
++    try:
++        await pipeline.ingest_event(event, session)
++        effect = await store.get_event_effect(event.event_id, "main")
++        assert effect["state"] == "failed"
++        assert effect["result"]["code"] == "supervisor_decision_mode_changed"
++        assert adapters.synthetic.inbox[session.id] == []
++    finally:
++        await close(store, pipeline)
++
++
++@pytest.mark.asyncio
++async def test_production_transport_refusal_precedes_durable_dispatch(tmp_path, monkeypatch):
++    model = AuthoredSupervisorModel()
++    store, adapters, session, pipeline = await setup(tmp_path, model)
++    monkeypatch.setattr(model_only_transport, "qualified", _PRODUCTION_ADMISSION)
++    event = _event(session, "transport-unqualified", event_type=EventType.STOP, message="Done.")
++    try:
++        result = await pipeline.ingest_event(event, session)
++        assert result.diagnosis == "model_only_transport_unqualified"
++        effect = await store.get_event_effect(event.event_id, "planner")
++        assert effect["state"] == "skipped"
++        assert effect["result"]["provider_started"] is False
++        assert (await store.supervisor_dispatch_counts([session.id]))[session.id] == 0
++        assert model.calls == 0
++        assert adapters.synthetic.inbox[session.id] == []
++        await pipeline.ingest_event(event, session)
++        assert model.calls == 0
++    finally:
++        await close(store, pipeline)
++
++
++@pytest.mark.asyncio
++async def test_pending_model_only_effect_cannot_outlive_test_transport_admission(
++    tmp_path, monkeypatch
++):
++    model = AuthoredSupervisorModel()
++    store, adapters, session, pipeline = await setup(tmp_path, model)
++    event = _event(
++        session, "transport-no-longer-qualified", event_type=EventType.STOP, message="Done."
++    )
++    original = pipeline._resume_planned_event
++
++    async def defer(*args, **kwargs):
++        raise _SimulatedCrash("effect persisted under test-only admission")
++
++    monkeypatch.setattr(pipeline, "_resume_planned_event", defer)
++    try:
++        with pytest.raises(_SimulatedCrash):
++            await pipeline.ingest_event(event, session)
++        processing = await store.get_event_processing(event.event_id)
++        assert processing["state"] == "planned"
++        monkeypatch.setattr(model_only_transport, "qualified", _PRODUCTION_ADMISSION)
++        await original(processing, owner=processing["lease_owner"])
++        effect = await store.get_event_effect(event.event_id, "main")
++        assert effect["state"] == "skipped"
++        assert effect["result"]["code"] == "model_only_transport_unqualified"
++        assert adapters.synthetic.inbox[session.id] == []
++        assert model.calls == 4
++    finally:
++        await close(store, pipeline)
++
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize("defer_until_default", [False, True])
++async def test_automatic_handoff_is_not_model_feedback_even_on_history_replay(
++    tmp_path, monkeypatch, defer_until_default
++):
++    store, adapters, session, pipeline = await setup(tmp_path)
++    event = _event(session, "no-scripted-handoff", event_type=EventType.STOP, message="Done.")
++    calls = []
++    original_claim = store.claim_event_followup
++
++    async def handoff(*args, **kwargs):
++        calls.append("automatic handoff")
++
++    async def defer_auto(*args, **kwargs):
++        if kwargs["kind"] == "auto_handoff":
++            return {"outcome": "busy"}
++        return await original_claim(*args, **kwargs)
++
++    monkeypatch.setattr(pipeline, "_maybe_auto_handoff", handoff)
++    if defer_until_default:
++        monkeypatch.setattr(store, "claim_event_followup", defer_auto)
++    try:
++        await pipeline.ingest_event(event, session)
++        if defer_until_default:
++            pipeline.settings.supervisor_decision_mode = "default"
++            monkeypatch.setattr(store, "claim_event_followup", original_claim)
++            await pipeline.ingest_event(event, session)
++        receipt = await _followup_row(store, event.event_id, "auto_handoff")
++        assert json.loads(receipt["result_json"]) == {
++            "status": "skipped",
++            "reason": "model_only_automatic_handoff_disabled",
++        }
++        assert calls == []
++        assert adapters.synthetic.inbox[session.id] == []
++    finally:
++        await close(store, pipeline)
++
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize("boundary", ["before_claim", "after_workspace_await", "manual"])
++async def test_automatic_operator_effect_cannot_send_across_mode_switch(
++    tmp_path, monkeypatch, boundary
++):
++    store, adapters, source, pipeline = await setup(tmp_path, mode="default")
++    target = adapters.synthetic.seed_session(vendor_id="handoff-target")
++    target.project_id, target.goal_id = source.project_id, source.goal_id
++    target.cwd = source.cwd
++    target.capabilities = (await adapters.synthetic.probe()).model_dump()
++    await store.upsert_session(target)
++    goal = await store.get_goal(source.goal_id)
++    item, bundle, _, _ = _artifacts(goal, source, target)
++    await store.add_context(item)
++    manual = boundary == "manual"
++    try:
++        record = await pipeline._reserve_context_handoff_locked(
++            source=source,
++            target=target,
++            goal=goal,
++            bundle=bundle,
++            principal_id="local_bridge_operator" if manual else "system_auto_handoff",
++            request=ContextHandoffRequest(
++                target_session_id=target.id,
++                idempotency_key="mode-switch-handoff",
++                token_budget=2000,
++            ),
++            human_requested=manual,
++            actor_assurance="bridge_bearer" if manual else None,
++            diagnosis="test local handoff boundary",
++        )
++        if boundary == "after_workspace_await":
++            original = store.require_session_workspace_current
++
++            async def switch(*args, **kwargs):
++                value = await original(*args, **kwargs)
++                pipeline.settings.supervisor_decision_mode = "supervisor_model_only"
++                return value
++
++            monkeypatch.setattr(store, "require_session_workspace_current", switch)
++        else:
++            pipeline.settings.supervisor_decision_mode = "supervisor_model_only"
++        response = await pipeline._dispatch_operator_handoff(record, replayed=False)
++        if manual:
++            assert response["status"] == "delivered"
++            assert len(adapters.synthetic.inbox[target.id]) == 1
++        else:
++            assert response["status"] == ("skipped" if boundary == "before_claim" else "failed")
++            assert response["effect"]["result"]["reason"] == (
++                "model_only_automatic_handoff_disabled"
++            )
++            assert adapters.synthetic.inbox[target.id] == []
++    finally:
++        await close(store, pipeline)
+--- a/tests/model_only_support.py
++++ b/tests/model_only_support.py
+@@ -0,0 +1,88 @@
++"""Authored local Model for SDK contract tests; never performs inference or I/O."""
++
++import json
++import re
++
++from strands.models.model import Model
++
++
++class AuthoredSupervisorModel(Model):
++    def __init__(self, *, action="SEND_NUDGE", failure=None, bad_usage=None, bad_call=1):
++        self.action = action
++        self.failure = failure
++        self.bad_usage = bad_usage
++        self.bad_call = bad_call
++        self.calls = 0
++        self.inputs = []
++
++    def get_config(self):
++        return {"model_id": "local-authored-test-not-inference"}
++
++    def update_config(self, **kwargs):
++        pass
++
++    async def structured_output(self, *args, **kwargs):
++        raise AssertionError("Strands must use its actual structured-output tool interface")
++        yield
++
++    async def stream(self, messages, tool_specs=None, system_prompt=None, **kwargs):
++        self.calls += 1
++        self.inputs.append(messages)
++        if self.failure:
++            raise self.failure
++        names = {spec["name"] for spec in tool_specs}
++        is_verifier = "IndependentVerifierDecision" in names
++        refs = []
++        for message in messages:
++            for item in message.get("content", []):
++                if "toolResult" in item:
++                    refs.extend(re.findall(r"pexobs_[a-f0-9]{32}", json.dumps(item)))
++        refs = list(dict.fromkeys(refs))
++        if not refs:
++            tool_name, payload = (
++                ("get_scores" if "get_scores" in names else "inspect_acceptance"),
++                {},
++            )
++        elif is_verifier:
++            tool_name = "IndependentVerifierDecision"
++            payload = {
++                "approved": True,
++                "rationale": "Authored verifier accepts the observed gap for this test.",
++                "evidence": ["The request-bound score receipt was inspected."],
++                "evidence_refs": refs,
++            }
++        else:
++            tool_name = "SupervisorDecision"
++            payload = {
++                "action_type": self.action,
++                "rationale": "Authored test decision after observing request-bound evidence.",
++                "evidence": ["The request-bound score receipt was inspected."],
++                "evidence_refs": refs,
++                "message": (
++                    "Inspect the unresolved acceptance evidence, then choose your own next step."
++                ),
++                "risk": "low",
++                "confidence": 0.9,
++            }
++        yield {"messageStart": {"role": "assistant"}}
++        yield {
++            "contentBlockStart": {
++                "contentBlockIndex": 0,
++                "start": {"toolUse": {"toolUseId": f"authored-{self.calls}", "name": tool_name}},
++            }
++        }
++        yield {
++            "contentBlockDelta": {
++                "contentBlockIndex": 0,
++                "delta": {"toolUse": {"input": json.dumps(payload)}},
++            }
++        }
++        yield {"contentBlockStop": {"contentBlockIndex": 0}}
++        yield {"messageStop": {"stopReason": "tool_use"}}
++        usage = {"inputTokens": 20, "outputTokens": 10, "totalTokens": 30}
++        if self.calls == self.bad_call:
++            if self.bad_usage == "missing":
++                return
++            if self.bad_usage is not None:
++                usage["inputTokens"] = self.bad_usage
++        yield {"metadata": {"usage": usage, "metrics": {"latencyMs": 1}}}
+--- a/tests/unit/test_supervisor_model_only.py
++++ b/tests/unit/test_supervisor_model_only.py
+@@ -0,0 +1,374 @@
++"""Local actual-SDK/authored-model tests, not provider or autonomous benchmarks."""
++
++import socket
++from types import SimpleNamespace
++from unittest.mock import patch
++
++import pytest
++from pex_bridge.agentcore import SupervisorRouter
++from pex_bridge.config import Settings
++from pex_protocol.actions import InterventionType
++from pex_protocol.enums import EventType
++from pex_protocol.supervisor import SupervisorRequest, supervisor_request_digest
++from pex_supervisor import loop, model_only_transport
++from pex_supervisor.strict_usage import validated_sdk_usage
++from strands.types.exceptions import ModelThrottledException
++
++from tests.model_only_support import AuthoredSupervisorModel
++from tests.unit.test_supervisor_loop import _request
++
++_PRODUCTION_ADMISSION = model_only_transport.qualified
++
++
++@pytest.fixture(autouse=True)
++def no_network_or_ambient_model(monkeypatch):
++    attempts = []
++
++    def forbidden(*args, **kwargs):
++        attempts.append("forbidden call")
++        raise AssertionError("local authored-model test attempted a network call")
++
++    monkeypatch.setattr(socket.socket, "connect", forbidden)
++    monkeypatch.setattr(socket.socket, "connect_ex", forbidden)
++    monkeypatch.setattr(socket, "create_connection", forbidden)
++    monkeypatch.setattr(socket, "getaddrinfo", forbidden)
++    monkeypatch.setattr(loop, "load_supervisor_model", forbidden)
++    monkeypatch.delenv("PEX_FORCE_LLM", raising=False)
++    # Test-only dependency injection; production admission refuses every model.
++    monkeypatch.setattr(
++        model_only_transport, "qualified", lambda model: type(model) is AuthoredSupervisorModel
++    )
++    yield
++    assert attempts == [], "even caught network/model-loader attempts invalidate this test"
++
++
++def request():
++    value = _request(0.95)
++    value.supervisor_decision_mode = "supervisor_model_only"
++    value.scores.features["verification"] = {
++        "status": "acceptance_gap",
++        "acceptance_status": "unsatisfied",
++    }
++    return value
++
++
++def test_default_request_digest_and_serialization_stay_unchanged():
++    default = _request(0.95)
++    old = default.model_dump(mode="json")
++    assert "supervisor_decision_mode" not in old
++    assert SupervisorRequest.model_validate(old).model_dump(mode="json") == old
++    before = supervisor_request_digest(default)
++    default.supervisor_decision_mode = "supervisor_model_only"
++    assert supervisor_request_digest(default) != before
++    restored = SupervisorRequest.model_validate(default.model_dump(mode="json"))
++    assert restored.supervisor_decision_mode == "supervisor_model_only"
++
++
++def test_missing_model_and_force_flag_never_load_or_nudge(monkeypatch):
++    monkeypatch.setenv("PEX_FORCE_LLM", "1")
++    for entry in (loop.decide, loop.run_strands):
++        result = entry(request())
++        assert result.action.type == InterventionType.NOOP
++        assert result.used_llm is False
++        assert result.inference_status == "not_attempted"
++    quiet = request()
++    quiet.event.event_type = EventType.COMPACTION
++    model = AuthoredSupervisorModel()
++    assert loop.decide(quiet, model=model).action.type == InterventionType.NOOP
++    assert model.calls == 0
++
++
++def test_model_only_actual_sdk_uses_observed_evidence_and_two_independent_agents():
++    model = AuthoredSupervisorModel()
++    result = loop.decide(request(), model=model)
++    assert result.action.type == InterventionType.SEND_NUDGE, result.model_dump()
++    assert result.inference_status == "completed"
++    assert result.usage_validated is True
++    assert model.calls == result.model_call_count == 4
++    assert (result.input_tokens, result.output_tokens) == (80, 40)
++    assert result.independent_verifier.authorizes_intervention()
++    assert result.local_invocation_id != result.independent_verifier.invocation_id
++    assert result.action.payload["text"] == (
++        "Inspect the unresolved acceptance evidence, then choose your own next step."
++    )
++
++
++@pytest.mark.parametrize("action", ["NOOP", "REQUEST_VERIFICATION"])
++def test_model_noop_or_scripted_probe_never_becomes_feedback(action):
++    model = AuthoredSupervisorModel(action=action)
++    result = loop.decide(request(), model=model)
++    assert result.action.type == InterventionType.NOOP
++    assert model.calls == 2
++    assert result.independent_verifier is None
++
++
++@pytest.mark.parametrize("bad", [True, "20", 20.5, -1, float("nan"), "missing"])
++@pytest.mark.parametrize("call", [1, 2, 3, 4])
++def test_invalid_or_missing_sdk_usage_fails_closed_in_every_round(bad, call):
++    model = AuthoredSupervisorModel(bad_usage=bad, bad_call=call)
++    result = loop.decide(request(), model=model)
++    assert result.action.type == InterventionType.NOOP
++    assert result.inference_status == "failed"
++    assert model.calls == call  # Neither SDK retry nor verifier replacement.
++
++
++def test_sdk_throttling_is_not_retried():
++    model = AuthoredSupervisorModel(failure=ModelThrottledException("authored failure"))
++    result = loop.decide(request(), model=model)
++    assert result.action.type == InterventionType.NOOP
++    assert result.inference_status == "failed"
++    assert model.calls == 1
++
++
++def test_paused_hard_veto_never_calls_model():
++    value = request()
++    value.session.supervision_paused = True
++    model = AuthoredSupervisorModel()
++    assert loop.decide(value, model=model).action.type == InterventionType.NOOP
++    assert model.calls == 0
++
++
++def test_deterministic_candidate_cannot_replace_model_noop_or_verifier_failure():
++    value = request()
++    deterministic = loop._action_from_proposal(
++        value,
++        {"type": "REQUEST_VERIFICATION", "rationale": "test", "evidence": ["test"]},
++    )
++    with patch.object(loop, "plan_deterministic", return_value=deterministic):
++        result = loop.decide(value, model=AuthoredSupervisorModel(action="NOOP"))
++        assert result.action.type == InterventionType.NOOP
++        failed = loop.decide(value, model=AuthoredSupervisorModel(bad_usage=True, bad_call=3))
++        assert failed.action.type == InterventionType.NOOP
++        assert "verification_request_preserved" not in failed.traces
++
++
++def test_sdk_cycle_cannot_hide_missing_usage_behind_positive_aggregate():
++    good = {"inputTokens": 20, "outputTokens": 10, "totalTokens": 30}
++    metrics = SimpleNamespace(
++        cycle_count=2,
++        accumulated_usage=good,
++        agent_invocations=[
++            SimpleNamespace(
++                usage=good,
++                cycles=[SimpleNamespace(usage=good), SimpleNamespace(usage={})],
++            )
++        ],
++    )
++    assert validated_sdk_usage(SimpleNamespace(metrics=metrics)) is None
++
++
++def test_cache_usage_must_reconcile_at_every_level():
++    good = {"inputTokens": 20, "outputTokens": 10, "totalTokens": 30, "cacheReadInputTokens": 7}
++    metrics = SimpleNamespace(
++        cycle_count=1,
++        accumulated_usage=dict(good),
++        agent_invocations=[
++            SimpleNamespace(usage=dict(good), cycles=[SimpleNamespace(usage=dict(good))])
++        ],
++    )
++    result = SimpleNamespace(metrics=metrics)
++    assert validated_sdk_usage(result) == (1, 20, 10)
++    metrics.agent_invocations[0].cycles[0].usage["cacheReadInputTokens"] = 6
++    assert validated_sdk_usage(result) is None
++
++
++def test_model_only_remote_configuration_refused(tmp_path):
++    with pytest.raises(ValueError, match="requires the local"):
++        Settings.for_test(
++            require_auth=False,
++            home=tmp_path,
++            supervisor_mode="hybrid",
++            supervisor_decision_mode="supervisor_model_only",
++        )
++    settings = Settings.for_test(
++        require_auth=False, home=tmp_path, supervisor_decision_mode="supervisor_model_only"
++    )
++    router = SupervisorRouter(settings)
++    assert router.can_attempt_semantic(None) is False
++
++
++def test_model_only_does_not_expose_unqualified_remote_evidence():
++    from pex_supervisor.evidence_tools import select_evidence_tool_names
++
++    value = request()
++    value.scores.features["public_claims"] = True
++    assert not {"web_search", "scrape_url"} & set(select_evidence_tool_names(value))
++    value.supervisor_decision_mode = "default"
++    assert {"web_search", "scrape_url"} <= set(select_evidence_tool_names(value))
++
++
++@pytest.mark.parametrize("provider_kind", ["bedrock", "openai"])
++def test_production_admission_refuses_standard_sdk_provider_before_any_call(
++    monkeypatch, tmp_path, provider_kind
++):
++    from importlib import import_module
++
++    from pex_supervisor.strict_model import UsageCheckedModel
++
++    module, name = (
++        ("strands.models.bedrock", "BedrockModel")
++        if provider_kind == "bedrock"
++        else ("strands.models.openai", "OpenAIModel")
++    )
++    provider_type = getattr(import_module(module), name)
++    monkeypatch.setattr(model_only_transport, "qualified", _PRODUCTION_ADMISSION)
++    # Allocate the real SDK adapter type without constructing a client, reading
++    # credentials, or requesting metadata. Admission must precede all of that.
++    provider = object.__new__(provider_type)
++    calls = []
++
++    async def forbidden_stream(*args, **kwargs):
++        calls.append("stream")
++        raise AssertionError("unqualified provider invoked")
++        yield
++
++    monkeypatch.setattr(provider_type, "stream", forbidden_stream)
++    monkeypatch.setenv("PEX_FORCE_LLM", "1")
++    for entry in (loop.decide, loop.run_strands):
++        result = entry(request(), model=provider)
++        assert result.action.type == InterventionType.NOOP
++        assert result.diagnosis == "model_only_transport_unqualified"
++        assert result.inference_status == "not_attempted"
++        assert result.used_llm is False
++    with pytest.raises(ValueError, match="model_only_transport_unqualified"):
++        UsageCheckedModel(provider)
++    settings = Settings.for_test(
++        require_auth=False, home=tmp_path, supervisor_decision_mode="supervisor_model_only"
++    )
++    assert SupervisorRouter(settings).can_attempt_semantic(provider) is False
++    assert _PRODUCTION_ADMISSION(AuthoredSupervisorModel()) is False
++    assert calls == []
++
++
++def test_default_mode_still_invokes_authored_model_under_production_admission(monkeypatch):
++    monkeypatch.setattr(model_only_transport, "qualified", _PRODUCTION_ADMISSION)
++    value = request()
++    value.supervisor_decision_mode = "default"
++    model = AuthoredSupervisorModel()
++    result = loop.decide(value, model=model)
++    assert result.action.type == InterventionType.SEND_NUDGE
++    assert model.calls == 4
++
++
++@pytest.mark.asyncio
++async def test_router_mode_cannot_be_downgraded_by_default_request(tmp_path):
++    settings = Settings.for_test(
++        require_auth=False, home=tmp_path, supervisor_decision_mode="supervisor_model_only"
++    )
++    value = request()
++    value.supervisor_decision_mode = "default"
++    model = AuthoredSupervisorModel()
++    result = await SupervisorRouter(settings).decide(value, local_model=model)
++    assert result.action.type == InterventionType.NOOP
++    assert result.diagnosis == "supervisor_decision_mode_changed"
++    assert model.calls == 0
++
++
++@pytest.mark.asyncio
++async def test_sdk_wrapper_rechecks_admission_before_stream(monkeypatch):
++    from pex_supervisor.strict_model import InvalidModelUsage, UsageCheckedModel
++
++    model = AuthoredSupervisorModel()
++    checked = UsageCheckedModel(model)
++    monkeypatch.setattr(model_only_transport, "qualified", _PRODUCTION_ADMISSION)
++    with pytest.raises(InvalidModelUsage, match="model_only_transport_unqualified"):
++        async for _ in checked.stream([]):
++            raise AssertionError("unqualified stream yielded")
++    assert model.calls == 0
++
++
++def test_app_preparation_refuses_before_secret_read_or_provider_construction(monkeypatch, tmp_path):
++    from pex_bridge import app as bridge_app
++    from pex_supervisor import providers
++    from pex_supervisor.model_only_transport import ModelOnlyTransportUnqualified
++
++    settings = Settings.for_test(
++        require_auth=False, home=tmp_path, supervisor_decision_mode="supervisor_model_only"
++    )
++    monkeypatch.setattr(bridge_app.state, "settings", settings)
++    calls = []
++
++    def forbidden(*args, **kwargs):
++        calls.append("credential or model preparation")
++        raise AssertionError("model-only preparation crossed the admission boundary")
++
++    monkeypatch.setattr(providers, "load_supervisor_model", forbidden)
++    monkeypatch.setattr(bridge_app, "_resolve_choice_secret", forbidden)
++    for prepare in (
++        lambda: bridge_app._prepare_saved_supervisor_choice(None),
++        lambda: bridge_app._activate_supervisor_choice(None),
++        lambda: bridge_app._prepare_supervisor_config(None, None, None),
++    ):
++        with pytest.raises(ModelOnlyTransportUnqualified):
++            prepare()
++    assert calls == []
++
++
++@pytest.mark.asyncio
++async def test_saved_activation_records_unsupported_without_provider_work(monkeypatch, tmp_path):
++    from pex_bridge import app as bridge_app
++
++    settings = Settings.for_test(
++        require_auth=False, home=tmp_path, supervisor_decision_mode="supervisor_model_only"
++    )
++    monkeypatch.setattr(bridge_app.state, "settings", settings)
++    monkeypatch.setattr(bridge_app.state, "pipeline", SimpleNamespace(model=object()))
++    monkeypatch.setattr(bridge_app.state, "supervisor_api_key_present", True)
++    monkeypatch.setattr(bridge_app.state, "supervisor_credential_status", "configured")
++    monkeypatch.setattr(bridge_app.state, "supervisor_error", None)
++    calls = []
++
++    def forbidden(*args, **kwargs):
++        calls.append("preparation")
++        raise AssertionError("activation must not schedule provider preparation")
++
++    monkeypatch.setattr(bridge_app, "_prepare_saved_supervisor_choice", forbidden)
++    await bridge_app._activate_saved_supervisor_choice(None, 0)
++    assert bridge_app.state.pipeline.model is None
++    assert bridge_app.state.supervisor_error == "ModelOnlyTransportUnqualified"
++    assert bridge_app.state.supervisor_api_key_present is False
++    assert calls == []
++
++
++@pytest.mark.asyncio
++async def test_configuration_endpoint_reports_unsupported_before_preparation(monkeypatch, tmp_path):
++    from fastapi import HTTPException
++    from pex_bridge import app as bridge_app
++
++    monkeypatch.setattr(
++        bridge_app.state,
++        "settings",
++        Settings.for_test(
++            require_auth=False, home=tmp_path, supervisor_decision_mode="supervisor_model_only"
++        ),
++    )
++    app = bridge_app.create_app()
++    endpoint = next(
++        route.endpoint
++        for route in app.routes
++        if getattr(route, "path", None) == "/v1/supervisor"
++        and "PATCH" in getattr(route, "methods", set())
++    )
++    with pytest.raises(HTTPException) as caught:
++        await endpoint(bridge_app.SupervisorIn(), None)
++    assert caught.value.status_code == 409
++    assert caught.value.detail == "model_only_transport_unqualified"
++
++
++def test_remote_request_is_refused_before_runtime_model_loading(monkeypatch):
++    from pex_supervisor import runtime
++
++    from tests.unit.test_agentcore_runtime import _payload, _request
++
++    value = _request()
++    value.supervisor_decision_mode = "supervisor_model_only"
++    calls = []
++
++    def forbidden(*args, **kwargs):
++        calls.append("runtime model")
++        raise AssertionError("remote model-only request must not load a model")
++
++    monkeypatch.setattr(runtime, "_runtime_model", forbidden)
++    with pytest.raises(ValueError, match="model_only_remote_transport_unqualified"):
++        runtime.handle_payload(_payload(value))
++    assert calls == []

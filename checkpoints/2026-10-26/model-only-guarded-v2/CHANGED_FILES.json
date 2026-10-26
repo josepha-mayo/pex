@@ -1,0 +1,62 @@
+{
+  "docs/SUPERVISOR_MODEL_ONLY_RECONSTRUCTION.md": {
+    "after": "040b1500007acb099dd1c0be32fc06d2374f7e42986eec60f56f6066e5f68a9f",
+    "before": null
+  },
+  "packages/protocol/src/pex_protocol/supervisor.py": {
+    "after": "9563683abb0ee203dd873cef3b20af4861bb45788bbefe1a41d90cf35637f161",
+    "before": "4b42fd1496b43a4ff6ce4aa7194a6f804d04f0b07fec88e7aac93fb6329f38c6"
+  },
+  "services/bridge/src/pex_bridge/agentcore.py": {
+    "after": "747a2a6992eff9310d5438bbfd0ca68539b9008fe846bdb649357fb6e1118044",
+    "before": "f56194efda03ce5a7a63f2dc2431e089cbd3fc33feda651da7d4e3b72bc5922b"
+  },
+  "services/bridge/src/pex_bridge/app.py": {
+    "after": "b91fdbc99fac1b6ee0e5f7285fd2b72908b48b03159220929291bb98ce70d70c",
+    "before": "8091b0c95e76138ec9277669b78db11535b44903727ec90cb247613feada303f"
+  },
+  "services/bridge/src/pex_bridge/config.py": {
+    "after": "a8bf8e62c8eabf5f97d7be263dd3408ccffccb43c254953bfeb6d0da5f7a9528",
+    "before": "f3a8d52ec4d5d490ce42e5a1428e85c2bfd552dda535ef6e681446c2ba93237a"
+  },
+  "services/bridge/src/pex_bridge/pipeline.py": {
+    "after": "c22ea6f279950e8b5c6735a419a138877e5aec0d5df1b17b95871d206ced1895",
+    "before": "31f31f2a98198a9bc186ec4ea4acfdf28e1f2fba39c5f9e093ea53ccff1664d6"
+  },
+  "services/supervisor/src/pex_supervisor/evidence_tools.py": {
+    "after": "681941c259cdfdcea1c24e7eb1ae6acc2dd22838c5df50d80bed2ad44c65c46a",
+    "before": "d21dd7c280b2f84de7c86870c2eb027b87cd4d9bb4b7f1725ce7738978a91ca6"
+  },
+  "services/supervisor/src/pex_supervisor/loop.py": {
+    "after": "2c62e5b93aba14ff4f6fb7739f574d364dab83a95a77345d8e0bc7f0d5168768",
+    "before": "b36d7b87757f53e12cd860f028a376457e74a7a8a611c5a85ac90ecdc1da1a6e"
+  },
+  "services/supervisor/src/pex_supervisor/model_only_transport.py": {
+    "after": "24aac280cf5301a9f4f7309ad1d77997cf5dd023217e5537d50df95ce67cf766",
+    "before": null
+  },
+  "services/supervisor/src/pex_supervisor/runtime.py": {
+    "after": "240f8e5583881f5f53817da36fd7bd41b457d32deb92d7916a05760d9ac499c7",
+    "before": "61647555e3e3039f418552d4dc20630e257af86c98eb2d9dd4daaff8a09ae73a"
+  },
+  "services/supervisor/src/pex_supervisor/strict_model.py": {
+    "after": "2bfdf2afc8ac94103d2d6fe21c78249c67190e45a40d53f01ec5edca57ab94df",
+    "before": null
+  },
+  "services/supervisor/src/pex_supervisor/strict_usage.py": {
+    "after": "a12276d5bf58a8d7a67917de7f7ad45fdef8064133fda19cce13abd2e306c514",
+    "before": null
+  },
+  "tests/integration/test_model_only_pipeline.py": {
+    "after": "3c884bd804a194b294c7712cfabefc20e474e1d3756a38d4362cfe61cccd01ee",
+    "before": null
+  },
+  "tests/model_only_support.py": {
+    "after": "7f4c020f64b067fe9d5968ca797e4306e9a0b68d45741c6a8b27ec68eff13fa7",
+    "before": null
+  },
+  "tests/unit/test_supervisor_model_only.py": {
+    "after": "c3151a394c7b4fcf759c7a63ce22ad0c412c4fdb5a1bda46a3c61d0f9b99df02",
+    "before": null
+  }
+}
