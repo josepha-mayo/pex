@@ -222,7 +222,10 @@ class _OwnerAuthApp:
                     raise OwnerAuthError(503, "owner_workspace_unavailable") from None
                 self._sessions.check_request_boundary(headers, origin_required=False)
                 self._sessions.revalidate(principal)
-                revalidate = lambda: self._sessions.revalidate(principal)
+
+                def revalidate():
+                    self._sessions.revalidate(principal)
+
                 cookie = None
             elif login:
                 result = self._sessions.login(headers, _login_secret(body))
@@ -258,8 +261,8 @@ class _OwnerAuthApp:
 def create_web_owner_auth_app(sessions: OwnerSessions, *, workspace=None) -> _OwnerAuthApp:
     """Explicit injection only: no defaults, automatic mounting or real secrets.
 
-    The complete route inventory is four exact paths; workspace defaults unavailable. There are no automatic
-    docs/schema endpoints, slash redirects, CORS handling or fallback routes.
+    The complete route inventory is four exact paths; workspace defaults unavailable.
+    No automatic docs/schema endpoints, slash redirects, CORS or fallback routes.
     """
     if type(sessions) is not OwnerSessions:
         raise ValueError("owner sessions must be explicitly constructed")

@@ -184,7 +184,7 @@ class WorkspaceHttpTests(unittest.IsolatedAsyncioTestCase):
         for action in ("expire", "logout"):
             cookie, csrf = await self.http.signed_in()
 
-            async def delayed():
+            async def delayed(action=action, cookie=cookie, csrf=csrf):
                 if action == "expire":
                     self.http.now += 4000
                 else:
