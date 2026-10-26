@@ -20,6 +20,7 @@ From repository root with PYTHONPATH=services/bridge/src: run Python directly on
 
 ## Limits
 
-No fresh real-browser visual check, HTTPS/TLS/proxy qualification, actual owner credential, provider call, payment, worker-plus-supervisor benchmark or deployment. The UI and auth-only ASGI are not mounted into a production service. No private data or worker capability is available. The source remains a delta on a reconstructed historical baseline, not recovered latest code or a self-contained app. No claims from earlier lost source transfer to these bytes.
+Actual HTTP-only desktop and393px iframe visual checks are recorded separately in BROWSER_QUALIFICATION.md. No HTTPS/TLS/proxy qualification, actual owner credential, provider call, payment, worker-plus-supervisor benchmark or deployment. The UI and auth-only ASGI are not mounted into a production service. No private data or worker capability is available. The source remains a delta on a reconstructed historical baseline, not recovered latest code or a self-contained app. No claims from earlier lost source transfer to these bytes.
 
 Built artifacts are identified in BUILD_SHA256.json but deliberately not pushed. Prior pre-expiry HTML/JS hashes are superseded. Local same-process static HTTP served earlier build artifacts with200 and exact bytes; cross-command listener reachability was not established. Final browser handoff must verify current build hashes and use its supported local serving route. HTTP preview should show HTTPS-required/unavailable with no auth requests. A mocked successful browser flow must be labeled authored simulation, never real authentication or TLS.
+

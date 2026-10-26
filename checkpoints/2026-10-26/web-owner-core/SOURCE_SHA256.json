@@ -76,5 +76,11 @@
     "size": 14671,
     "sha256": "b5d3c373dc7d143d976636bffa37d5c39e7a65a77754793b7b1798a6b6affb15",
     "git_blob_sha": "0cc18ce2be7e11fcc6a4058c1545e528b14c4ca6"
+  },
+  {
+    "path": "apps/desktop/tests/manual/owner-narrow.html",
+    "size": 603,
+    "sha256": "fd41421a92e608aa566b27b69a6f2a3d847ef760ccfc346c965e9331028854a7",
+    "git_blob_sha": "e963e2ca2f4b9dfbcf7d4a7f1906ec6fbc6f4480"
   }
 ]
