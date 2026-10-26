@@ -77,3 +77,12 @@ test('uncertain logout remains locally locked with explicit warning',async()=>{
   assert.equal(f.el('workspace').hidden,true);assert.equal(f.el('owner-form').hidden,true);
   assert.match(f.el('status').textContent,/could not be confirmed/);assert.equal(f.calls.length,2);
 });
+
+
+test('static HTML cannot submit the secret through a query string before JavaScript',()=>{
+  const {document}=parseHTML(html);
+  assert.equal(document.getElementById('owner-form').getAttribute('method'),'post');
+  assert.equal(document.getElementById('owner-form').getAttribute('action'),'/owner/auth/login');
+  assert.equal(document.getElementById('owner-secret').disabled,true);
+  assert.equal(document.getElementById('sign-in').disabled,true);
+});
