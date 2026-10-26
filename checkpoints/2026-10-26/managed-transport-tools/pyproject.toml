@@ -5,6 +5,7 @@ requires-python = ">=3.11"
 dependencies = ["httpx==0.28.1", "httpcore==1.0.9", "jsonschema==4.26.0"]
 
 [project.optional-dependencies]
+bridge = ["strands-agents==1.53.0", "pydantic==2.14.1"]
 test = ["pytest==9.1.1", "pytest-asyncio==1.4.1"]
 
 [tool.pytest.ini_options]
