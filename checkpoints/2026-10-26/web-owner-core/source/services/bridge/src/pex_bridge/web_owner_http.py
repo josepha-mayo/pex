@@ -1,7 +1,8 @@
-"""Standalone auth-only ASGI surface, NOT a deployable owner app.
+"""Standalone owner ASGI surface, NOT a deployable owner app.
 
-Nothing mounts this factory into the bridge. It exposes only login/session/logout,
-never private data, provider settings, adapters, MCP/hooks, or WebSockets. It does
+Nothing mounts this factory into the bridge. It exposes login/session/logout and
+an optional explicitly injected read-only workspace, never provider settings,
+adapters, MCP/hooks, or WebSockets. It does
 not import bridge startup, inspect credentials/environment, or trust forwarded
 headers. A future server must separately establish trustworthy HTTPS scope; this
 module cannot attest a server/proxy's scheme provenance or TLS configuration.
@@ -23,6 +24,7 @@ _ROUTES = {
     "/owner/auth/login": "POST",
     "/owner/auth/session": "GET",
     "/owner/auth/logout": "POST",
+    "/owner/workspace": "GET",
 }
 Receive = Callable[[], Awaitable[dict[str, Any]]]
 Send = Callable[[dict[str, Any]], Awaitable[None]]
@@ -118,7 +120,8 @@ async def _read_body(receive: Receive, *, limit: int, declared: int | None) -> b
 
 
 async def _respond(
-    send: Send, status: int, payload: dict[str, Any], *, set_cookie: str | None = None
+    send: Send, status: int, payload: dict[str, Any], *, set_cookie: str | None = None,
+    revalidate: Callable[[], None] | None = None
 ) -> None:
     body = json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode("ascii")
     headers = [
@@ -133,12 +136,20 @@ async def _respond(
     if set_cookie is not None:
         headers.append((b"set-cookie", set_cookie.encode("ascii")))
     await send({"type": "http.response.start", "status": status, "headers": headers})
+    if revalidate is not None:
+        try:
+            revalidate()
+        except OwnerAuthError:
+            # Headers may already be sent; terminate without releasing private bytes.
+            await send({"type": "http.response.body", "body": b""})
+            return
     await send({"type": "http.response.body", "body": body})
 
 
 class _OwnerAuthApp:
-    def __init__(self, sessions: OwnerSessions) -> None:
+    def __init__(self, sessions: OwnerSessions, workspace=None) -> None:
         self._sessions = sessions
+        self._workspace = workspace
 
     async def __call__(self, scope: dict[str, Any], receive: Receive, send: Send) -> None:
         kind = scope.get("type")
@@ -158,6 +169,7 @@ class _OwnerAuthApp:
                     raise ValueError("unsupported owner lifespan event")
         if kind != "http":
             raise ValueError("unsupported owner ASGI scope")
+        revalidate = None
         try:
             if scope.get("scheme") != "https":
                 raise OwnerAuthError(403, "owner_https_required")
@@ -184,7 +196,21 @@ class _OwnerAuthApp:
             body = await _read_body(
                 receive, limit=MAX_LOGIN_BODY_BYTES if login else 0, declared=declared
             )
-            if login:
+            if path == "/owner/workspace":
+                principal = self._sessions.authorize("GET", headers)
+                if self._workspace is None:
+                    raise OwnerAuthError(503, "owner_workspace_not_configured")
+                try:
+                    async with asyncio.timeout(3.0):
+                        payload = await self._workspace.read_workspace()
+                except Exception:
+                    # Never include SQL, database paths, exception text or stale rows.
+                    raise OwnerAuthError(503, "owner_workspace_unavailable") from None
+                self._sessions.check_request_boundary(headers, origin_required=False)
+                self._sessions.revalidate(principal)
+                revalidate = lambda: self._sessions.revalidate(principal)
+                cookie = None
+            elif login:
                 result = self._sessions.login(headers, _login_secret(body))
                 payload = {
                     "authenticated": True,
@@ -211,16 +237,21 @@ class _OwnerAuthApp:
             await _respond(send, exc.status_code, {"error": exc.code})
             return
         # No await separates the final session check/action from entering send.
-        # This factory grants no private-data or delayed write authority.
-        await _respond(send, 200, payload, set_cookie=cookie)
+        # A private projection is checked again after response-start awaits.
+        await _respond(send, 200, payload, set_cookie=cookie, revalidate=revalidate)
 
 
-def create_web_owner_auth_app(sessions: OwnerSessions) -> _OwnerAuthApp:
+def create_web_owner_auth_app(sessions: OwnerSessions, *, workspace=None) -> _OwnerAuthApp:
     """Explicit injection only: no defaults, automatic mounting or real secrets.
 
-    The complete route inventory is three exact paths. There are no automatic
+    The complete route inventory is four exact paths; workspace defaults unavailable. There are no automatic
     docs/schema endpoints, slash redirects, CORS handling or fallback routes.
     """
     if type(sessions) is not OwnerSessions:
         raise ValueError("owner sessions must be explicitly constructed")
-    return _OwnerAuthApp(sessions)
+    if workspace is not None:
+        from pex_bridge.web_owner_workspace import OwnerWorkspaceReader
+
+        if type(workspace) is not OwnerWorkspaceReader:
+            raise ValueError("explicit read-only owner workspace required")
+    return _OwnerAuthApp(sessions, workspace)
