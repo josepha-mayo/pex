@@ -1,0 +1,107 @@
+{
+  "classification": "Pre-existing default-mode settings fixture teardown calls local provider autodiscovery after its mocked BYOK test. Not model-only behavior, not external provider inference. Source/default behavior intentionally unchanged. All listed calls were blocked before DNS resolution.",
+  "diagnostic_reproduction": {
+    "deselected": 56,
+    "log": "legacy-loopback-audit.txt",
+    "pytest_passed": 5,
+    "seconds": 2.58
+  },
+  "exact_attempts": [
+    {
+      "event": "socket.getaddrinfo",
+      "port": 11434,
+      "target": "127.0.0.1",
+      "test": "tests/contract/test_supervisor_settings.py::test_named_byok_constructs_with_exact_vault_key_and_canonical_endpoint[openrouter-anthropic/claude-sonnet-4.6-https://openrouter.ai/api/v1-strands.models.openai.OpenAIModel] (teardown)"
+    },
+    {
+      "event": "socket.getaddrinfo",
+      "port": 1234,
+      "target": "127.0.0.1",
+      "test": "tests/contract/test_supervisor_settings.py::test_named_byok_constructs_with_exact_vault_key_and_canonical_endpoint[openrouter-anthropic/claude-sonnet-4.6-https://openrouter.ai/api/v1-strands.models.openai.OpenAIModel] (teardown)"
+    },
+    {
+      "event": "socket.getaddrinfo",
+      "port": 11434,
+      "target": "127.0.0.1",
+      "test": "tests/contract/test_supervisor_settings.py::test_named_byok_constructs_with_exact_vault_key_and_canonical_endpoint[zen-big-pickle-https://opencode.ai/zen/v1-strands.models.openai.OpenAIModel] (teardown)"
+    },
+    {
+      "event": "socket.getaddrinfo",
+      "port": 1234,
+      "target": "127.0.0.1",
+      "test": "tests/contract/test_supervisor_settings.py::test_named_byok_constructs_with_exact_vault_key_and_canonical_endpoint[zen-big-pickle-https://opencode.ai/zen/v1-strands.models.openai.OpenAIModel] (teardown)"
+    },
+    {
+      "event": "socket.getaddrinfo",
+      "port": 11434,
+      "target": "127.0.0.1",
+      "test": "tests/contract/test_supervisor_settings.py::test_named_byok_constructs_with_exact_vault_key_and_canonical_endpoint[zen-muse-spark-1.3-https://opencode.ai/zen/v1-pex_supervisor.openai_responses.OpenAIResponsesModel] (teardown)"
+    },
+    {
+      "event": "socket.getaddrinfo",
+      "port": 1234,
+      "target": "127.0.0.1",
+      "test": "tests/contract/test_supervisor_settings.py::test_named_byok_constructs_with_exact_vault_key_and_canonical_endpoint[zen-muse-spark-1.3-https://opencode.ai/zen/v1-pex_supervisor.openai_responses.OpenAIResponsesModel] (teardown)"
+    },
+    {
+      "event": "socket.getaddrinfo",
+      "port": 11434,
+      "target": "127.0.0.1",
+      "test": "tests/contract/test_supervisor_settings.py::test_named_provider_key_rotation_uses_explicit_displayed_endpoint[True] (teardown)"
+    },
+    {
+      "event": "socket.getaddrinfo",
+      "port": 1234,
+      "target": "127.0.0.1",
+      "test": "tests/contract/test_supervisor_settings.py::test_named_provider_key_rotation_uses_explicit_displayed_endpoint[True] (teardown)"
+    },
+    {
+      "event": "socket.getaddrinfo",
+      "port": 11434,
+      "target": "127.0.0.1",
+      "test": "tests/contract/test_supervisor_settings.py::test_named_provider_key_rotation_uses_explicit_displayed_endpoint[False] (teardown)"
+    },
+    {
+      "event": "socket.getaddrinfo",
+      "port": 1234,
+      "target": "127.0.0.1",
+      "test": "tests/contract/test_supervisor_settings.py::test_named_provider_key_rotation_uses_explicit_displayed_endpoint[False] (teardown)"
+    }
+  ],
+  "expanded_assertions": {
+    "audit_wrapper_exit": 1,
+    "blocked_dns_attempts": 10,
+    "passed": 556,
+    "skipped": 3,
+    "socket_connect_attempts": 0
+  },
+  "focused_mode_tests": {
+    "attempts": 0,
+    "caught_attempts_also_fail": true,
+    "passed": 67,
+    "sentries": [
+      "socket.socket.connect",
+      "socket.socket.connect_ex",
+      "socket.create_connection",
+      "socket.getaddrinfo"
+    ]
+  },
+  "not_claimed": [
+    "zero attempts across all expanded tests",
+    "whole-app startup isolation",
+    "raw provider-wire usage validation",
+    "live provider transport or billing control"
+  ],
+  "targets": [
+    {
+      "host": "127.0.0.1",
+      "port": 11434,
+      "purpose": "local Ollama /api/tags autodiscovery"
+    },
+    {
+      "host": "127.0.0.1",
+      "port": 1234,
+      "purpose": "local LM Studio /v1/models autodiscovery"
+    }
+  ]
+}
