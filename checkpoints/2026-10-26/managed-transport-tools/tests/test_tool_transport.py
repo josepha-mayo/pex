@@ -6,6 +6,8 @@ from dataclasses import replace
 
 import pytest
 from test_managed_chat import ENDPOINT, MODEL, SYNTHETIC_KEY, VALID, response
+from test_managed_chat import no_network as no_network
+from test_managed_chat import rig as rig
 from test_tool_protocol import bind, final_arguments, initial
 
 import managed_chat as mc
