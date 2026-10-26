@@ -265,6 +265,15 @@ class OwnerSessions:
         # Forwarded headers are never used as substitutes for Host or Origin.
         return values
 
+    def check_request_boundary(self, headers: RawHeaders, *, origin_required: bool) -> None:
+        """Check raw headers before an HTTP adapter awaits or reads credentials.
+
+        This grants no session authority. The eventual login/authorization call
+        must check them again, including configuration changes during body reads.
+        """
+        with self._lock:
+            self._headers(headers, origin_required=origin_required)
+
     @staticmethod
     def _session_token(headers: dict[bytes, list[str]]) -> str:
         cookies = headers.get(b"cookie", [])
