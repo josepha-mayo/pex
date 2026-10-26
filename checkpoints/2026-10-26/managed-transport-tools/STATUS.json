@@ -1,5 +1,5 @@
 {
-  "status": "BROKEN WIP initial bridge: public Agent/tool and telemetry bypasses known; no provider admission",
+  "status": "WIP repaired buffered PEX/Strands bridge:292 offline tests pass; independent review pending",
   "baseline_commit": "92d550afb3374b97a6ba3fecc29514c41624712f",
   "baseline_149_test_qualification_inherited": false,
   "tool_protocol_tests_run": true,
@@ -9,19 +9,17 @@
   "public_live_invoke_enabled": false,
   "production_integration": false,
   "public_deployment": false,
-  "tests_passed": 267,
-  "tests_failed": 14,
-  "known_failure": "Strands augments invocation_state with five code-owned runtime fields; current empty-only validation refuses actual Agent calls. Two tests also inspect max_attempts instead of actual private _max_attempts.",
-  "tests_scope": "242 prior tests plus25 bridge tests pass;14 actual-Agent integration tests fail before dispatch; all offline",
+  "tests_passed": 292,
+  "tests_failed": 0,
+  "known_failure": null,
+  "tests_scope": "149 base transport +56 source-bound protocol +37 raw-tool transport +50 buffered Strands bridge tests; all offline, socket/DNS zero-attempt sentries",
   "ruff_check": "passed",
   "ruff_format_check": "passed",
   "tests_errors": 0,
   "known_review_gaps": [
-    "Public invoke_async currently constructs/runs Agent before stream refusal; independent offline in-memory OTel exporter observed3 spans including prompt content. Must deny before Agent/telemetry.",
-    "Public make_agent currently returns an Agent that can execute caller-injected assistant toolUse before model denial; get_goal executed with1 observation and0 transport receipts in offline reproduction. Must remove public builder.",
-    "Actual Strands runtime state contains owned Agent/cycle/trace fields and additional compatibility fields after tool execution; empty-only guard currently rejects actual-Agent loops.",
-    "Actual ToolRegistry normalizes advertised specs; exact normalized presentation must be bound without weakening authoritative wire schemas.",
-    "Future live qualification still requires explicit framework telemetry isolation; private offline-path ambient tracing is not qualified."
+    "Independent review of repaired exact bridge snapshot is pending.",
+    "Future live qualification requires explicit framework telemetry isolation; private offline Agent tracing is not qualified.",
+    "Production PEX admission, durable budget receipts/reservations and provider qualification remain separate and disabled."
   ],
   "secret_check_scope": "Current credential echo in outer JSON and decoded known embedded argument/evidence JSON only; not arbitrary encoding detection"
 }

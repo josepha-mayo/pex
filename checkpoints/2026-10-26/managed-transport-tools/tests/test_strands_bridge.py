@@ -20,6 +20,9 @@ import strands_bridge as sb
 class OfflineFixtureModel(sb.ManagedPEXModel):
     """Local authored harness only; production Model.stream stays deny-all."""
 
+    async def invoke_async(self):
+        return await self._invoke_owned_agent()
+
     async def stream(self, *args, **kwargs):
         credential = mc._ScopedCredential(SYNTHETIC_KEY, self._candidate.route.fingerprint)
         async with aclosing(self._stream_owned(*args, credential=credential, **kwargs)) as stream:
@@ -92,8 +95,8 @@ async def test_actual_strands_agent_typed_final_output_and_usage(rig, role):
     rig.handler = lambda request: response(
         payload(m.protocol.final_name, json.dumps(final_arguments(role)))
     )
-    agent = m.make_agent()
-    assert agent._retry_strategy.max_attempts == 1
+    agent = m._make_agent()
+    assert agent._retry_strategy._max_attempts == 1
     assert type(agent.conversation_manager) is sb.NullConversationManager
     result = await m.invoke_async()
     assert result.structured_output.model_dump(mode="json").items() >= final_arguments(role).items()
@@ -368,3 +371,160 @@ def test_configuration_cannot_accept_external_registry_or_client():
     config = m.get_config()
     config["model_id"] = "alias"
     assert m.get_config()["model_id"] == MODEL
+
+
+@pytest.mark.asyncio
+async def test_public_denial_cannot_construct_agent_trace_or_execute_injected_tool(
+    rig, monkeypatch
+):
+    m = model(cls=sb.ManagedPEXModel)
+    attempts = []
+
+    def forbidden(*args, **kwargs):
+        attempts.append("forbidden_agent_or_trace")
+        raise AssertionError("public denial must precede framework activity")
+
+    monkeypatch.setattr(sb, "Agent", forbidden)
+    monkeypatch.setattr("strands.telemetry.tracer.get_tracer", forbidden)
+    assert not hasattr(m, "make_agent")
+    with pytest.raises(mc.Refusal, match="live_not_authorized"):
+        await m.invoke_async()
+    with pytest.raises(TypeError):
+        await m.invoke_async([assistant_call()])
+    with pytest.raises(mc.Refusal, match="live_not_authorized"):
+        await collect(m.stream(messages=[assistant_call()]))
+    assert attempts == [] and m.used_tools == () and m.observations == ()
+    assert m.receipts == () and rig.calls == []
+
+
+def test_exact_normalized_sdk_presentation_maps_to_unchanged_authoritative_schema():
+    m = model()
+    original = [json.loads(d.advertised_spec_json) for d in m.protocol.definitions]
+    normalized = [json.loads(raw) for _, raw in m._normalized_specs]
+    assert original != normalized
+    assert m._translate_specs(normalized) == original
+    normalized[0]["inputSchema"]["json"]["properties"]["boundary_page"]["type"] = "string"
+    with pytest.raises(mc.Refusal, match="changed_after_binding"):
+        m._translate_specs(normalized)
+    assert m.protocol.definition("get_goal").wire_spec()["function"]["parameters"]["properties"][
+        "boundary_page"
+    ]["anyOf"] == [{"type": "integer"}, {"type": "null"}]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "unknown_key",
+        "wrong_agent",
+        "request_state",
+        "wrong_model",
+        "wrong_messages",
+        "wrong_parent",
+    ],
+)
+async def test_actual_runtime_metadata_overrides_are_refused(rig, mutation):
+    class CorruptRuntime(OfflineFixtureModel):
+        async def stream(self, *args, **kw):
+            state = kw["invocation_state"]
+            if mutation == "unknown_key":
+                state["extra_body"] = {"model": "alias"}
+            if mutation == "wrong_agent":
+                state["agent"] = object()
+            if mutation == "request_state":
+                state["request_state"]["arbitrary"] = True
+            if len(rig.calls) == 1:
+                if mutation == "wrong_model":
+                    state["model"] = object()
+                if mutation == "wrong_messages":
+                    state["messages"] = []
+                if mutation == "wrong_parent":
+                    state["event_loop_parent_cycle_id"] = None
+            async for event in super().stream(*args, **kw):
+                yield event
+
+    m = model(cls=CorruptRuntime)
+    rig.handler = lambda request: response(payload("get_goal", "{}"))
+    from strands.types.exceptions import EventLoopException
+
+    with pytest.raises((mc.Refusal, EventLoopException), match="unowned_strands_runtime_state"):
+        await m.invoke_async()
+    assert len(rig.calls) == (
+        1 if mutation in {"wrong_model", "wrong_messages", "wrong_parent"} else 0
+    )
+    assert all(receipt.attempts == 1 for receipt in m.receipts)
+
+
+@pytest.mark.asyncio
+async def test_owned_agent_invocation_has_no_repeat_or_caller_prompt_api(rig):
+    m = model()
+    rig.handler = lambda request: response(
+        payload(m.protocol.final_name, json.dumps(final_arguments("planner")))
+    )
+    await m.invoke_async()
+    with pytest.raises(mc.Refusal, match="invocation_reuse_refused"):
+        await m.invoke_async()
+    with pytest.raises(TypeError):
+        await m._invoke_owned_agent([assistant_call()])
+    assert len(rig.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_actual_null_context_manager_never_retries_overflow(rig):
+    from strands.types.exceptions import ContextWindowOverflowException
+
+    attempts = []
+
+    class OverflowFixture(OfflineFixtureModel):
+        async def stream(self, *args, **kw):
+            attempts.append("model_attempt")
+            raise ContextWindowOverflowException("synthetic overflow")
+            yield
+
+    m = model(cls=OverflowFixture)
+    with pytest.raises(ContextWindowOverflowException):
+        await m.invoke_async()
+    assert attempts == ["model_attempt"] and rig.calls == [] and m.receipts == ()
+
+
+@pytest.mark.asyncio
+async def test_pending_parallel_result_reorder_preserves_exact_text(rig):
+    m = model()
+    first = payload("get_goal", "{}", "first_id")
+    first["choices"][0]["message"]["tool_calls"].append(
+        payload("inspect_acceptance", "{}", "second_id")["choices"][0]["message"]["tool_calls"][0]
+    )
+    rig.handler = lambda request: response(first)
+    inputs = kwargs(m)
+    await collect(m.stream(**inputs))
+    inputs["messages"] += [
+        {
+            "role": "assistant",
+            "content": assistant_call("first_id")["content"]
+            + assistant_call("second_id", "inspect_acceptance")["content"],
+        },
+        {
+            "role": "user",
+            "content": [
+                tool_result("second_id", '{ "synthetic": "é", "order": 2 }'),
+                tool_result("first_id", '{ "synthetic": true, "order": 1 }'),
+            ],
+        },
+    ]
+    rig.handler = lambda request: response(
+        payload(m.protocol.final_name, json.dumps(final_arguments("planner")), "final_id")
+    )
+    await collect(m.stream(**inputs))
+    messages = json.loads(rig.calls[-1].content)["messages"]
+    assert messages[-2:] == [
+        {
+            "role": "tool",
+            "tool_call_id": "second_id",
+            "content": '{ "synthetic": "é", "order": 2 }',
+        },
+        {
+            "role": "tool",
+            "tool_call_id": "first_id",
+            "content": '{ "synthetic": true, "order": 1 }',
+        },
+    ]

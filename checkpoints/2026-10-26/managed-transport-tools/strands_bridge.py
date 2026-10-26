@@ -7,11 +7,16 @@ SSE, TTFT, tokenizer, money-cap, production-admission or inference claim is made
 from __future__ import annotations
 
 import hashlib
+import json
 from importlib.metadata import version
+from uuid import UUID
 
+from opentelemetry.trace import Span
 from strands import Agent
 from strands.agent.conversation_manager import NullConversationManager
 from strands.models.model import Model
+from strands.tools.registry import ToolRegistry
+from strands.tools.tools import normalize_tool_spec
 
 from managed_chat import Refusal, Route
 from managed_tool_chat import ManagedToolChatCandidate, ToolInvocation
@@ -124,6 +129,19 @@ class ManagedPEXModel(Model):
         self._busy = False
         self._receipts = []
         self._failure = None
+        self._owned_agent = None
+        self._agent_invoked = False
+        self._runtime_cycles = []
+        self._last_tool_cycle = None
+        # Pin BOTH exact SDK presentation forms from immutable code-bound
+        # originals. Never replace the authoritative PEX schema on the wire.
+        normalized = []
+        registry = ToolRegistry()
+        for definition in self.protocol.definitions:
+            spec = normalize_tool_spec(json.loads(definition.advertised_spec_json))
+            registry.validate_tool_spec(spec)
+            normalized.append((definition.name, _canonical(spec)))
+        self._normalized_specs = tuple(normalized)
 
     @property
     def protocol(self):
@@ -166,10 +184,12 @@ class ManagedPEXModel(Model):
         raise Refusal("live_not_authorized")
         yield  # pragma: no cover - public admission never depends on env/provenance
 
-    def make_agent(self):
+    def _make_agent(self):
+        if self._owned_agent is not None:
+            return self._owned_agent
         # Code-owned construction. No caller tools, callbacks, hooks, client or
         # retry/context-management policy is accepted by this interface.
-        return Agent(
+        self._owned_agent = Agent(
             model=self,
             tools=list(self._bound.tools),
             system_prompt=self.protocol.system_prompt,
@@ -178,12 +198,105 @@ class ManagedPEXModel(Model):
             retry_strategy=None,  # Strands1.53 => max_attempts=1, not default6.
             conversation_manager=NullConversationManager(),
         )
+        return self._owned_agent
 
     async def invoke_async(self):
-        # Even this owned high-level entry reaches the denied public stream.
-        return await self.make_agent().invoke_async(
-            self.protocol.initial_prompt, limits=dict(_ROLE_LIMITS[self.protocol.role])
-        )
+        # Deny BEFORE Agent construction, tracing, middleware or tool execution.
+        raise Refusal("live_not_authorized")
+
+    async def _invoke_owned_agent(self):
+        """Private fixed-prompt helper; exercised only by exact offline fixtures."""
+        if self._agent_invoked or self._rounds or self._terminal:
+            raise Refusal("bridge_invocation_reuse_refused")
+        self._agent_invoked = True
+        try:
+            result = await self._make_agent().invoke_async(
+                self.protocol.initial_prompt, limits=dict(_ROLE_LIMITS[self.protocol.role])
+            )
+            if type(result.structured_output) is not self._bound.output_type:
+                raise Refusal("structured_output_missing")
+            return result
+        finally:
+            self._terminal = True
+
+    def _translate_specs(self, specs):
+        if type(specs) is not list or not specs:
+            raise Refusal("invalid_offered_tools")
+        normalized = dict(self._normalized_specs)
+        originals = []
+        for spec in specs:
+            if type(spec) is not dict:
+                raise Refusal("invalid_offered_tools")
+            definition = self.protocol.definition(spec.get("name"))
+            if _canonical(spec) not in (
+                definition.advertised_spec_json,
+                normalized[definition.name],
+            ):
+                raise Refusal("tool_spec_changed_after_binding")
+            originals.append(json.loads(definition.advertised_spec_json))
+        self.protocol.offered(originals)
+        return originals
+
+    def _validate_runtime_state(self, state):
+        if _empty_state(state) and self._owned_agent is None:
+            return None  # Private direct-path fixtures, never public admission.
+        base = {
+            "agent",
+            "event_loop_cycle_id",
+            "request_state",
+            "event_loop_cycle_trace",
+            "event_loop_cycle_span",
+        }
+        after_tools = {
+            "model",
+            "messages",
+            "system_prompt",
+            "tool_config",
+            "event_loop_parent_cycle_id",
+        }
+        agent = self._owned_agent
+        if (
+            agent is None
+            or type(state) is not dict
+            or set(state) not in (base, base | after_tools)
+            or state["agent"] is not agent
+            or not _empty_state(state["request_state"])
+            or type(state["request_state"]) is not dict
+            or type(state["event_loop_cycle_id"]) is not UUID
+            or state["event_loop_cycle_id"] in self._runtime_cycles
+            or not agent.event_loop_metrics.traces
+            or state["event_loop_cycle_trace"] is not agent.event_loop_metrics.traces[-1]
+            or not isinstance(state["event_loop_cycle_span"], Span)
+        ):
+            raise Refusal("unowned_strands_runtime_state")
+        cycle = state["event_loop_cycle_id"]
+        latest = agent.event_loop_metrics.latest_agent_invocation
+        if (
+            latest is None
+            or not latest.cycles
+            or latest.cycles[-1].event_loop_cycle_id != str(cycle)
+        ):
+            raise Refusal("unowned_strands_runtime_state")
+        if set(state) == base | after_tools:
+            config = state["tool_config"]
+            if (
+                state["model"] is not self
+                or state["messages"] is not agent.messages
+                or state["system_prompt"] != self.protocol.system_prompt
+                or state["event_loop_parent_cycle_id"] != self._last_tool_cycle
+                or type(config) is not dict
+                or set(config) != {"tools", "toolChoice"}
+                or config["toolChoice"] != {"auto": {}}
+                or type(config["tools"]) is not list
+                or any(
+                    type(item) is not dict or set(item) != {"toolSpec"} for item in config["tools"]
+                )
+            ):
+                raise Refusal("unowned_strands_runtime_state")
+            self._translate_specs([item["toolSpec"] for item in config["tools"]])
+        elif self._last_tool_cycle is not None:
+            raise Refusal("unowned_strands_runtime_state")
+        return cycle
 
     def _validate_extension(self, history):
         if history[: len(self._committed)] != self._committed:
@@ -295,11 +408,11 @@ class ManagedPEXModel(Model):
             if (
                 system_prompt != self.protocol.system_prompt
                 or system_prompt_content != [{"text": self.protocol.system_prompt}]
-                or not _empty_state(invocation_state)
                 or set(kwargs) - {"model_state"}
                 or not _empty_state(kwargs.get("model_state"))
             ):
                 raise Refusal("unowned_strands_configuration")
+            runtime_cycle = self._validate_runtime_state(invocation_state)
             history = _decode_messages(messages)
             self._validate_extension(history)
             call_id = hashlib.sha256(self.protocol.invocation_id.encode()).hexdigest()[:40]
@@ -307,10 +420,12 @@ class ManagedPEXModel(Model):
                 f"{call_id}.{self._rounds + 1}",
                 self.protocol,
                 history,
-                _canonical(tool_specs, 262144),
+                _canonical(self._translate_specs(tool_specs), 262144),
                 _canonical(tool_choice),
             )
             self._rounds += 1  # Forced-final consumes the SAME finite allowance.
+            if runtime_cycle is not None:
+                self._runtime_cycles.append(runtime_cycle)
             try:
                 completion = await self._candidate._execute_owned(invocation, credential)
             finally:
@@ -331,6 +446,8 @@ class ManagedPEXModel(Model):
                 self._terminal = True
             self._committed = history + (self._reply_message(reply),)
             self._pending = frozenset(call.call_id for call in reply.calls)
+            if reply.calls and runtime_cycle is not None:
+                self._last_tool_cycle = runtime_cycle
             self._plain_reply = not reply.calls
             events = self._events(reply, completion.receipt.usage)
             for event in events:
