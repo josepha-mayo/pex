@@ -1,0 +1,78 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# Node / Tauri
+node_modules/
+apps/desktop/dist/
+apps/desktop/src-tauri/target/
+*.local
+
+# Local runtime
+.pex/
+*.db
+*.db-journal
+# Sensitive local receive evidence; never a benchmark or release asset.
+codex-received.sqlite
+codex-received.sqlite-wal
+codex-received.sqlite-shm
+codex-received.sqlite-journal
+.env
+.env.*
+!.env.example
+bridge.token
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.opencode/
+*.log
+/work/
+/_scratch_*.png
+
+# Benchmark raw logs are immutable once written; never commit invented scores
+benchmarks/results/_scratch/
+benchmarks/results/*.tmp
+benchmarks/results/*.jsonl
+benchmarks/results/INVALID_LEAKED_RUNS_DO_NOT_USE/
+
+# Generated Codex App Server JSON Schema (regenerate with
+# `codex app-server generate-json-schema --out docs/vendor/codex-app-server`)
+docs/vendor/codex-app-server/
+
+# Hatch-pet working copies (final atlas is copied out after QA)
+apps/desktop/pets/pex-hatch/
+apps/desktop/src/pets/_hatch/
+# Generated visual-QA evidence contains machine-bound provenance. Release
+# packaging must regenerate and validate it; source checkpoints never stage it.
+apps/desktop/src/pets/_audit/
+apps/desktop/src-tauri/gen/
+apps/desktop/src-tauri/binaries/
+build/pyinstaller/
+build/sidecar-pets/
+
+# Local demo captures; upload the video to YouTube/Vimeo, keep stills in git
+docs/demo/*.webm
+docs/demo/*.mp4
+
+# Secrets
+credentials.json
+*.pem
+*.key
+
+# Local hosting linkage; never commit credentials or site state
+.netlify/
+
+# Isolated owner build output; never source
+apps/desktop/dist-owner/
