@@ -1,0 +1,45 @@
+{
+  "classification": "standalone offline-only transport candidate; no live admission",
+  "files": {
+    "README.md": {
+      "bytes": 6232,
+      "git_blob_sha": "6bfec276637b56b66412c6038ed6ce24e70503cc",
+      "sha256": "b4dbc1eeb6a50405d9c37ce9422fcfbb391a826e3916ed8f7be8a4bcf2d38ddc"
+    },
+    "evidence/DEPENDENCIES.json": {
+      "bytes": 391,
+      "git_blob_sha": "9ed05ed43f9fc1fe5d8e59ea9cc52c0d504e7780",
+      "sha256": "b7e4c668bbd34e24601fad556af09e7574c7b2f8e7ee67175d2f2815f553b42b"
+    },
+    "evidence/pytest.txt": {
+      "bytes": 260,
+      "git_blob_sha": "c1ddf5f85d412c6bcf70b6bda876d3c8efd07137",
+      "sha256": "1b5eb7a176e8967ea2ddd587e91daf02039c387e8258bc4f4640e078b4dc8dcc"
+    },
+    "evidence/ruff-check.txt": {
+      "bytes": 19,
+      "git_blob_sha": "1f5f344d054fae10f39140fb7199c99321d9190a",
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    "evidence/ruff-format.txt": {
+      "bytes": 26,
+      "git_blob_sha": "983e5b7d3b8260cd7b6465688368178dddd7e316",
+      "sha256": "3bc53bf3e981a98a34a852e175bf9b77af841edea74fca595d9aedcbaf9a4938"
+    },
+    "managed_chat.py": {
+      "bytes": 23772,
+      "git_blob_sha": "e0ceccbf64d115a15f1705318dc8c979f576b978",
+      "sha256": "d393189cc43924f86cd02a630f8993ea56f54cceb16001e447b5504d28b8a1a0"
+    },
+    "pyproject.toml": {
+      "bytes": 431,
+      "git_blob_sha": "0463b90070e6e036a6d486ece772496bb144d8a4",
+      "sha256": "8232cedc78e649705a9fa9c532309467c9b189436de315ee239a2438ec6c7072"
+    },
+    "tests/test_managed_chat.py": {
+      "bytes": 28291,
+      "git_blob_sha": "819e5eaac0334212fde9d0f2a28bd9326443a83d",
+      "sha256": "a5ef89fb0c3aef6a29abe5c511fd953ebdafa74da9091013102fa47f5ed59d71"
+    }
+  }
+}
