@@ -1,0 +1,6 @@
+{
+  "services/bridge/src/pex_bridge/web_owner_auth.py": "117343e65be87308ec333b97289954e6cb52cc2a39ad5bca454e003941c96cc3",
+  "services/bridge/src/pex_bridge/web_owner_http.py": "d622fceade9a24fafb95d1b6ce7204753e317811126e36b41e04588b81290883",
+  "tests/unit/test_web_owner_auth.py": "235710a44bf2d0fdf0bb6a6874d454301ae0d9abccb5d8fd7359f96f50aaeb9f",
+  "tests/unit/test_web_owner_http.py": "b5d3c373dc7d143d976636bffa37d5c39e7a65a77754793b7b1798a6b6affb15"
+}

@@ -1,5 +1,5 @@
-# WIP: standalone owner authentication
+# WIP: web owner authentication delta
 
-The core has 33 passing synthetic unit tests. This checkpoint adds an unwired, auth-only ASGI factory with exact login/session/logout routes. HTTP behavior tests have not yet run. AST and lint checks were reported for the new file; no browser, TLS/proxy, server integration or deployment qualification exists. No provider calls or real credentials. This delta is not a self-contained app, not recovery of lost latest source, and grants no worker or private-data authority.
+Core and unwired auth-only ASGI factory: 33 core +16 authored in-process ASGI tests pass, zero network attempts; all four Python files lint/format clean. Parent independently reran49 tests. See HTTP_QUALIFICATION.md and SOURCE_SHA256.json for exact scope and identities.
 
-HTTP source SHA256: d622fceade9a24fafb95d1b6ce7204753e317811126e36b41e04588b81290883
+Not mounted into PEX; no UI/private-data control, actual browser/TLS/proxy or live inference qualification. No credentials provisioned, deployment or change to production model-only denial. Historical-base delta only, not recovered latest code or complete application.
