@@ -528,3 +528,107 @@ async def test_pending_parallel_result_reorder_preserves_exact_text(rig):
             "content": '{ "synthetic": true, "order": 1 }',
         },
     ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("role", ["planner", "verifier"])
+@pytest.mark.parametrize(
+    "sequence", ["tools_plain_final", "tools_tools_final", "tools_tools_plain"]
+)
+async def test_actual_three_round_lifecycle_sequences_never_dispatch_a_fourth(rig, role, sequence):
+    m = model(role)
+    kinds = sequence.split("_")
+
+    def handle(request):
+        round_number = len(rig.calls)
+        assert round_number <= 3
+        kind = kinds[round_number - 1]
+        if kind == "plain":
+            return response(VALID)
+        if kind == "tools":
+            return response(payload("get_goal", "{}", f"evidence_{round_number}"))
+        return response(
+            payload(m.protocol.final_name, json.dumps(final_arguments(role)), "final_id")
+        )
+
+    rig.handler = handle
+    if kinds[-1] == "plain":
+        with pytest.raises(mc.Refusal, match="structured_output_missing"):
+            await m.invoke_async()
+    else:
+        result = await m.invoke_async()
+        assert type(result.structured_output) is m._bound.output_type
+    assert len(rig.calls) == len(m.receipts) == m._rounds == 3
+    with pytest.raises(mc.Refusal, match="reuse_refused"):
+        await m.invoke_async()
+    assert len(rig.calls) == 3
+
+
+def test_isolated_in_memory_telemetry_exporter_sees_zero_public_denial_spans():
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    # Fresh process owns its in-memory exporter, avoiding any global tracing
+    # modification in the test runner or future multi-threaded application.
+    script = r"""
+import asyncio, socket
+attempts = []
+def denied(*args, **kwargs):
+    attempts.append(True)
+    raise AssertionError("no network authorized")
+socket.getaddrinfo = denied
+socket.socket.connect = denied
+socket.socket.connect_ex = denied
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+provider = TracerProvider()
+exporter = InMemorySpanExporter()
+provider.add_span_processor(SimpleSpanProcessor(exporter))
+trace.set_tracer_provider(provider)
+from test_strands_bridge import model, collect, kwargs
+from strands_bridge import ManagedPEXModel
+from managed_chat import Refusal
+async def check():
+    m = model(cls=ManagedPEXModel)
+    for name in ("invoke_async", "stream", "structured_output"):
+        try:
+            if name == "invoke_async":
+                await m.invoke_async()
+            else:
+                await collect(getattr(m, name)(**kwargs(m)))
+        except Refusal as error:
+            assert str(error) == "live_not_authorized"
+        else:
+            raise AssertionError("public entry did not deny")
+    assert not hasattr(m, "make_agent")
+    assert m.receipts == m.observations == m.used_tools == ()
+asyncio.run(check())
+provider.force_flush()
+assert len(exporter.get_finished_spans()) == 0
+provider.shutdown()
+assert attempts == []
+print("zero public telemetry spans; zero tools; zero network attempts")
+"""
+    root = Path(__file__).resolve().parents[1]
+    env = {
+        "PATH": os.defpath,
+        "PYTHONPATH": os.pathsep.join(
+            [str(root), str(root / "tests"), os.environ.get("PYTHONPATH", "")]
+        ),
+        "PEX_REQUIRE_PROTOCOL_TESTS": "1",
+        "PYTHONDONTWRITEBYTECODE": "1",
+    }
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=root,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=True,
+    )
+    assert result.stdout.strip() == "zero public telemetry spans; zero tools; zero network attempts"

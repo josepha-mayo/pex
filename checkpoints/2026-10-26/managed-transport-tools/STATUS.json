@@ -1,5 +1,5 @@
 {
-  "status": "WIP repaired buffered PEX/Strands bridge:292 offline tests pass; independent review pending",
+  "status": "OFFLINE-ONLY candidate:299 authored tests pass; functional source independently reviewed at292 plus7 reproduced evidence tests",
   "baseline_commit": "92d550afb3374b97a6ba3fecc29514c41624712f",
   "baseline_149_test_qualification_inherited": false,
   "tool_protocol_tests_run": true,
@@ -9,17 +9,27 @@
   "public_live_invoke_enabled": false,
   "production_integration": false,
   "public_deployment": false,
-  "tests_passed": 292,
+  "tests_passed": 299,
   "tests_failed": 0,
   "known_failure": null,
-  "tests_scope": "149 base transport +56 source-bound protocol +37 raw-tool transport +50 buffered Strands bridge tests; all offline, socket/DNS zero-attempt sentries",
+  "tests_scope": "149 base transport +56 source-bound protocol +37 raw-tool transport +57 buffered Strands bridge tests; all offline with socket/DNS zero-attempt sentries",
   "ruff_check": "passed",
   "ruff_format_check": "passed",
   "tests_errors": 0,
   "known_review_gaps": [
-    "Independent review of repaired exact bridge snapshot is pending.",
-    "Future live qualification requires explicit framework telemetry isolation; private offline Agent tracing is not qualified.",
-    "Production PEX admission, durable budget receipts/reservations and provider qualification remain separate and disabled."
+    "Private offline Agent execution may use ambient framework telemetry; explicit isolation is required before any live qualification.",
+    "Production PEX admission and durable budget reservations/accounting remain separate and disabled.",
+    "Actual provider route/model/schema compatibility, current credential/transmission grant and live benchmark are not yet qualified.",
+    "Historical web authentication hardening remains outside this candidate; no public deployment."
   ],
-  "secret_check_scope": "Current credential echo in outer JSON and decoded known embedded argument/evidence JSON only; not arbitrary encoding detection"
+  "secret_check_scope": "Current credential echo in outer JSON and decoded known embedded argument/evidence JSON only; not arbitrary encoding detection",
+  "functional_source_checkpoint": "ee60f1bd58f22385a74a626471cfeaa1912ff83c",
+  "independent_review": {
+    "functional_source_approved_offline_only": true,
+    "suite_tests_independently_rerun": 292,
+    "additional_lifecycle_probes": 6,
+    "public_entry_in_memory_telemetry_spans": 0,
+    "public_entry_tool_executions": 0,
+    "latest_299_suite_independent_rerun": false
+  }
 }

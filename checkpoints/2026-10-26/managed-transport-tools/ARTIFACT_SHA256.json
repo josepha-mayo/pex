@@ -1,0 +1,61 @@
+{
+  "files": {
+    "DEPENDENCY_SOURCE_MANIFEST.json": {
+      "bytes": 5655,
+      "sha256": "9cbf5a1c0f72a8220b6c297ad61d535fb4e7da975b13680f2d6a0c7ab904d13f"
+    },
+    "OFFLINE_QUALIFICATION.md": {
+      "bytes": 9200,
+      "sha256": "9d0f0944f7925e7ec6b87e4db86b4a5945fda98e80f596304b7b6040bc0ab271"
+    },
+    "README.md": {
+      "bytes": 3948,
+      "sha256": "4a6f5d51dcbb5437091c87bf7f2e5e256ac4cb112eb377a4e8a43fac8399d9b1"
+    },
+    "STATUS.json": {
+      "bytes": 1877,
+      "sha256": "8c420025e0ad0d4c129ad3cb08cadb915512b232d3220cfb22511d48abe5d351"
+    },
+    "managed_chat.py": {
+      "bytes": 24544,
+      "sha256": "6172cb4546896c0c569ff21a314410b6f7da12c01f9db2ddd501b3d180abc509"
+    },
+    "managed_tool_chat.py": {
+      "bytes": 8557,
+      "sha256": "569fc5ec35f65e43d25fdce3b6aeab820acf7cdaac858a44f5438198bc31c717"
+    },
+    "pyproject.toml": {
+      "bytes": 509,
+      "sha256": "fec501473521169bffd57b2e003ef7c171e2f513e6bfdcb7360349f6152323e9"
+    },
+    "pytest-offline.txt": {
+      "bytes": 420,
+      "sha256": "67ab00536f343731c7aed071821f2d3e04d624999181423069c1f3b2ea72fe13"
+    },
+    "strands_bridge.py": {
+      "bytes": 19181,
+      "sha256": "bcbe547026a9343633d6e8292e084b51081278cd3d7ace88ed0d55402138823b"
+    },
+    "tests/test_managed_chat.py": {
+      "bytes": 28291,
+      "sha256": "a5ef89fb0c3aef6a29abe5c511fd953ebdafa74da9091013102fa47f5ed59d71"
+    },
+    "tests/test_strands_bridge.py": {
+      "bytes": 23759,
+      "sha256": "80e934ca668062ebe97157eb808dafffa5066be2b56b1fa0a73f95eb87d6d21e"
+    },
+    "tests/test_tool_protocol.py": {
+      "bytes": 15727,
+      "sha256": "6ca5487d952986e43d2c8b6525c812b698eaaccbfb0539c01fb77a3db4651e5e"
+    },
+    "tests/test_tool_transport.py": {
+      "bytes": 14991,
+      "sha256": "a1d1ea7d00abba2ceab2c3f06f6a152bbe7791b24c9563da140bd60cd44032c2"
+    },
+    "tool_protocol.py": {
+      "bytes": 20092,
+      "sha256": "599dca451423a3f27c8957f665f94a0bd82e3ca1d2ca263cfd143686bceceac1"
+    }
+  },
+  "scope": "Standalone offline-only tool-enabled candidate; no provider authorization/integration"
+}

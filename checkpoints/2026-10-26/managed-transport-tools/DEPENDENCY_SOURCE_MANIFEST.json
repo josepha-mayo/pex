@@ -1,0 +1,135 @@
+{
+  "distribution_versions": {
+    "httpcore": "1.0.9",
+    "httpx": "0.28.1",
+    "jsonschema": "4.26.0",
+    "opentelemetry-api": "1.45.1",
+    "opentelemetry-sdk": "1.45.1",
+    "pydantic": "2.14.1",
+    "pytest": "9.1.1",
+    "pytest-asyncio": "1.4.1",
+    "strands-agents": "1.53.0"
+  },
+  "files": {
+    "guarded-pex/packages/protocol/src/pex_protocol/actions.py": {
+      "bytes": 1858,
+      "sha256": "e8aa8fee7540287929d8c913bddc3ac731adc3b71a0d137247bee0877759e2ae"
+    },
+    "guarded-pex/packages/protocol/src/pex_protocol/enums.py": {
+      "bytes": 2561,
+      "sha256": "065c56b0d431b7e03c4dbe181fcd1c2e4e8d1d13a50dc6febecabeaada09f8f5"
+    },
+    "guarded-pex/packages/protocol/src/pex_protocol/redaction.py": {
+      "bytes": 4216,
+      "sha256": "0e2094a3d9bb001d016e311a70c2f967e124fbd1b025733dc071a3069b91fe07"
+    },
+    "guarded-pex/packages/protocol/src/pex_protocol/supervisor.py": {
+      "bytes": 27707,
+      "sha256": "9563683abb0ee203dd873cef3b20af4861bb45788bbefe1a41d90cf35637f161"
+    },
+    "guarded-pex/services/supervisor/src/pex_supervisor/evidence_observations.py": {
+      "bytes": 4429,
+      "sha256": "8a3eca3f5fd41626d9f4f0b7ef9ead01ebf8709bcc81c37a7e9fad6b0fd10c09"
+    },
+    "guarded-pex/services/supervisor/src/pex_supervisor/evidence_tools.py": {
+      "bytes": 46447,
+      "sha256": "681941c259cdfdcea1c24e7eb1ae6acc2dd22838c5df50d80bed2ad44c65c46a"
+    },
+    "guarded-pex/services/supervisor/src/pex_supervisor/loop.py": {
+      "bytes": 72586,
+      "sha256": "2c62e5b93aba14ff4f6fb7739f574d364dab83a95a77345d8e0bc7f0d5168768"
+    },
+    "guarded-pex/services/supervisor/src/pex_supervisor/model_only_transport.py": {
+      "bytes": 861,
+      "sha256": "24aac280cf5301a9f4f7309ad1d77997cf5dd023217e5537d50df95ce67cf766"
+    },
+    "guarded-pex/services/supervisor/src/pex_supervisor/prompts/supervisor.md": {
+      "bytes": 4804,
+      "sha256": "b9af39aa7e81b8ce7a761297d09a947bf180a942bd6944bee226ad9bd5d06f37"
+    },
+    "guarded-pex/services/supervisor/src/pex_supervisor/prompts/verifier.md": {
+      "bytes": 2927,
+      "sha256": "649ceb2f3351fcc206c8a659f10dbe69116f68b4d3654ee2ded2164143bc3382"
+    },
+    "site-packages/httpcore/_async/connection.py": {
+      "bytes": 8449,
+      "sha256": "e8e70f5ea3047dcd01537f3ffa21d4343775bca4937365154f4f57a8d6ff04e9"
+    },
+    "site-packages/httpcore/_async/connection_pool.py": {
+      "bytes": 17307,
+      "sha256": "0ce210dacd9909ff6a7f0c61ccca6b4cf2ea08bf0ec465e2285eaa447c6f5726"
+    },
+    "site-packages/httpx/_client.py": {
+      "bytes": 65714,
+      "sha256": "c43f941baefe58c91e96d00039e1868fe719d91453026d7db1647194563bff8d"
+    },
+    "site-packages/httpx/_transports/default.py": {
+      "bytes": 13983,
+      "sha256": "03379a454c95c0271c4f2c8d25ec437f49f57457f3cf2769748420bf0ecf2e79"
+    },
+    "site-packages/jsonschema/_types.py": {
+      "bytes": 5456,
+      "sha256": "7ff9e44c36eb8dadc4ddfb083530bbdf2fe03174d4db5d08fc7eea2b434ddf47"
+    },
+    "site-packages/jsonschema/validators.py": {
+      "bytes": 47159,
+      "sha256": "97f171b995b4b0ca05530a9366a1252fb1753f99f3cb7b1068b6d9aab1096fa5"
+    },
+    "site-packages/pydantic/main.py": {
+      "bytes": 91376,
+      "sha256": "84335fc05a112a2834af4a048f71c6a7c46b90f4468bee541da36e438a387190"
+    },
+    "site-packages/strands/agent/agent.py": {
+      "bytes": 86118,
+      "sha256": "fd069e1e97418b632fa385c76eb5d158bbe0b9996aa8dddb91553e37ab33bd31"
+    },
+    "site-packages/strands/agent/conversation_manager/null_conversation_manager.py": {
+      "bytes": 1575,
+      "sha256": "32c0a1eb1b42e6b2ce4479674cf4efa5b01a996bacdf70a569647062c8cff9dd"
+    },
+    "site-packages/strands/event_loop/_retry.py": {
+      "bytes": 6452,
+      "sha256": "319f67952a40aed06178d5be2d96fd453882a7c1bb0f4f70874c8bb7f1226ac3"
+    },
+    "site-packages/strands/event_loop/event_loop.py": {
+      "bytes": 39675,
+      "sha256": "689f63c36a311022f938e3c404db60f5b2dff9999df2bfdd6f7a6f015ada6cd9"
+    },
+    "site-packages/strands/event_loop/streaming.py": {
+      "bytes": 21125,
+      "sha256": "44243021bc0e767fa9f0ee5c8f201c970663a9f0ef23f1f39496e43e94687c4d"
+    },
+    "site-packages/strands/models/model.py": {
+      "bytes": 13208,
+      "sha256": "79d59d40594cc019d9711e6dd30cc00e1c9d715dcdd8c2ba738ceef410cf5f09"
+    },
+    "site-packages/strands/tools/executors/_executor.py": {
+      "bytes": 23746,
+      "sha256": "1d7b4ec59421b36081e2232ef1e7743a5eb9a7e28418b19a40c9013f7ac958c2"
+    },
+    "site-packages/strands/tools/registry.py": {
+      "bytes": 29607,
+      "sha256": "cf94a1cf68f1acf79e071d84bdb63a8f674d75a44d48fcfffe2ea8fe2d4ce5bd"
+    },
+    "site-packages/strands/tools/structured_output/_structured_output_context.py": {
+      "bytes": 5954,
+      "sha256": "4850526cb85e4824393a554bd0e4d66fc1f7189998bad732a7ec63ffd850484e"
+    },
+    "site-packages/strands/tools/structured_output/structured_output_tool.py": {
+      "bytes": 5952,
+      "sha256": "fe81bdf4d52b9ffba1a47b45a174bd53a0051a0488f320dbadb97fb9d2d1f54f"
+    },
+    "site-packages/strands/tools/structured_output/structured_output_utils.py": {
+      "bytes": 15275,
+      "sha256": "45fbad8b259c54fa5c769d5056aac4ab9c84269c069d196048ff7282a9305991"
+    },
+    "site-packages/strands/tools/tools.py": {
+      "bytes": 9337,
+      "sha256": "f54ac81e46abb86993e1909d6de5cd9519b52a8bd91f180d70430c92d02d362b"
+    }
+  },
+  "guarded_pex_source_root": "pex-supervisor-model-only-GUARDED-WORKING-20261026-2051",
+  "openai_sdk_executed_by_candidate": false,
+  "python": "3.12.14",
+  "scope": "Offline standalone managed transport + actual guarded PEX protocol dependencies; no provider calls or admission"
+}
