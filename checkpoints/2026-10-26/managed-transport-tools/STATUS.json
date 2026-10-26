@@ -1,5 +1,5 @@
 {
-  "status": "WIP contract tests added; fixture identity repair pending",
+  "status": "WIP strict contract and serializer tested; bridge not implemented",
   "baseline_commit": "92d550afb3374b97a6ba3fecc29514c41624712f",
   "baseline_149_test_qualification_inherited": false,
   "tool_protocol_tests_run": true,
@@ -9,7 +9,10 @@
   "public_live_invoke_enabled": false,
   "production_integration": false,
   "public_deployment": false,
-  "tests_passed": 162,
-  "tests_failed": 43,
-  "known_failure": "Authored test helper attaches a goal without matching session.goal_id/project_id; existing PEX identity validator correctly refuses it"
+  "tests_passed": 205,
+  "tests_failed": 0,
+  "known_failure": null,
+  "tests_scope": "149 copied transport regressions plus56 source-bound PEX protocol tests; all offline",
+  "ruff_check": "passed",
+  "ruff_format_check": "passed"
 }

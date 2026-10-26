@@ -66,6 +66,10 @@ def request_fixture(event_type=EventType.STOP, with_boundaries=False):
             created_at=when,
             updated_at=when,
         )
+    if goal is not None:
+        session.goal_id = goal.id
+        session.project_id = goal.project_id
+        event.project_id = goal.project_id
     return SupervisorRequest(
         session=session, event=event, goal=goal, supervisor_decision_mode="supervisor_model_only"
     )
