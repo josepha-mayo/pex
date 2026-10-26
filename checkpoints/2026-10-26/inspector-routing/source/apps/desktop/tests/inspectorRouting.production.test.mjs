@@ -1,0 +1,161 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import vm from 'node:vm';
+import ts from 'typescript';
+
+// Execute the actual App.tsx handlers, hash parser and hashchange effect, including
+// the actual Inspector prop binding. Do not duplicate their implementations here.
+// State setters and browser history are controlled adapters: these are focused
+// production-handler tests, not a mounted-App or real-browser qualification.
+const source = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8');
+const ast = ts.createSourceFile('App.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+function nodesMatching(predicate) {
+  const found = [];
+  function visit(node) {
+    if (predicate(node)) found.push(node);
+    ts.forEachChild(node, visit);
+  }
+  visit(ast);
+  return found;
+}
+function one(predicate, label) {
+  const found = nodesMatching(predicate);
+  assert.equal(found.length, 1, `exactly one production ${label}`);
+  return found[0];
+}
+const functionNames = ['selectSession', 'openInspector', 'shellFromHash', 'surfaceFromHash', 'sessionFromHash', 'deckViewFromHash'];
+const functions = functionNames.map((name) => one(
+  (node) => ts.isFunctionDeclaration(node) && node.name?.text === name,
+  name,
+).getText(ast));
+const constants = ['EMPTY_GOAL', 'DECK_VIEWS'].map((name) => {
+  const node = one((item) => ts.isVariableDeclaration(item) && ts.isIdentifier(item.name) && item.name.text === name, name);
+  return `const ${node.getText(ast)};`;
+});
+const inspector = one(
+  (node) => ts.isJsxSelfClosingElement(node) && node.tagName.getText(ast) === 'Inspector',
+  'Inspector element',
+);
+const selection = inspector.attributes.properties.filter(
+  (node) => ts.isJsxAttribute(node) && node.name.getText(ast) === 'onSelectSession',
+);
+assert.equal(selection.length, 1, 'Inspector has exactly one session-selection callback');
+assert.ok(ts.isJsxExpression(selection[0].initializer));
+const selectionExpression = selection[0].initializer.expression.getText(ast);
+const routingEffect = one((node) => (
+  ts.isCallExpression(node)
+  && node.expression.getText(ast) === 'useEffect'
+  && ts.isArrowFunction(node.arguments[0])
+  && node.arguments[0].getText(ast).includes('window.addEventListener("hashchange", route)')
+), 'hashchange effect').arguments[0].getText(ast);
+const executable = ts.transpileModule([
+  ...constants,
+  ...functions,
+  `globalThis.production = { onSelectSession: ${selectionExpression}, mount: ${routingEffect} };`,
+].join('\n'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+
+function mountRoute(initialHash) {
+  const entries = [initialHash];
+  let index = 0;
+  const listeners = new Set();
+  const state = { selectedId: null, shell: null, surface: null, activeView: null, editingGoalId: 'editing', goalOverrideMode: true, goalDraft: { title: 'unfinished' } };
+  const ledger = { current: 'edit-ledger' };
+  const fireHashchange = () => { for (const listener of listeners) listener(); };
+  const location = {
+    pathname: '/',
+    get hash() { return entries[index]; },
+    set hash(value) {
+      const hash = value.startsWith('#') ? value : `#${value}`;
+      if (hash === entries[index]) return;
+      entries.splice(index + 1);
+      entries.push(hash);
+      index += 1;
+      fireHashchange();
+    },
+  };
+  const context = vm.createContext({
+    window: {
+      location,
+      addEventListener(name, fn) { assert.equal(name, 'hashchange'); listeners.add(fn); },
+      removeEventListener(name, fn) { assert.equal(name, 'hashchange'); listeners.delete(fn); },
+    },
+    TAURI: false,
+    current: null,
+    editingGoalLedgerKey: ledger,
+    setSelectedId(value) { state.selectedId = value; context.current = { id: value }; },
+    setSurface(value) { state.surface = value; },
+    setShell(value) { state.shell = value; },
+    setActiveView(value) { state.activeView = value; },
+    setEditingGoalId(value) { state.editingGoalId = value; },
+    setGoalOverrideMode(value) { state.goalOverrideMode = value; },
+    setGoalDraft(value) { state.goalDraft = value; },
+  });
+  vm.runInContext(executable, context, { filename: 'production-App-routing.js' });
+  const cleanup = context.production.mount();
+  return {
+    state, ledger, location,
+    select: context.production.onSelectSession,
+    cleanup,
+    historyLength: () => entries.length,
+    back() {
+      if (index === 0) return false;
+      index -= 1;
+      fireHashchange();
+      return true;
+    },
+  };
+}
+
+const A = 'opencode:worker A/α?#';
+const B = 'codex:worker B/β?literal%2F#';
+const hashFor = (id) => `#inspector/${encodeURIComponent(id)}`;
+
+test('Inspector production callback selects encoded worker B and updates selected UI state plus hash', () => {
+  const app = mountRoute(hashFor(A));
+  app.select(B);
+  assert.equal(app.state.selectedId, B);
+  assert.equal(app.state.surface, 'inspector');
+  assert.equal(app.location.hash, hashFor(B));
+  assert.equal(app.state.editingGoalId, null, 'switching workers clears the old edit');
+  assert.equal(app.state.goalOverrideMode, false);
+  assert.equal(app.state.goalDraft.title, '');
+  assert.equal(app.ledger.current, null);
+  app.cleanup();
+});
+
+test('refresh uses the production hashchange mount and decoder to restore selected worker B exactly once', () => {
+  const app = mountRoute(hashFor(A));
+  app.select(B);
+  const refreshed = mountRoute(app.location.hash);
+  assert.equal(refreshed.state.selectedId, B, 'literal percent encoding must not be decoded twice');
+  assert.equal(refreshed.state.shell, 'main');
+  assert.equal(refreshed.state.surface, 'inspector');
+  app.cleanup();
+  refreshed.cleanup();
+});
+
+test('Back after A to B follows the production hashchange route and restores worker A', () => {
+  const app = mountRoute(hashFor(A));
+  app.select(B);
+  assert.equal(app.state.selectedId, B);
+  assert.equal(app.back(), true, 'changing Inspector worker must create a history entry');
+  assert.equal(app.location.hash, hashFor(A));
+  assert.equal(app.state.selectedId, A);
+  assert.equal(app.state.surface, 'inspector');
+  app.cleanup();
+});
+
+test('reselecting the same encoded worker preserves unfinished goal edit and history', () => {
+  const app = mountRoute(hashFor(B));
+  const draft = app.state.goalDraft;
+  app.select(B);
+  assert.equal(app.state.selectedId, B);
+  assert.equal(app.location.hash, hashFor(B));
+  assert.equal(app.state.editingGoalId, 'editing');
+  assert.equal(app.state.goalOverrideMode, true);
+  assert.equal(app.state.goalDraft, draft);
+  assert.equal(app.ledger.current, 'edit-ledger');
+  assert.equal(app.historyLength(), 1, 'same hash must not create a duplicate history entry');
+  app.cleanup();
+});

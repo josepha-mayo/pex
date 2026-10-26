@@ -1,0 +1,14 @@
+{
+  "apps/desktop/package.json": {
+    "after_sha256": "30451ebd376b3a95a8aa34f04253b5365d3440ad67b99de4db156b674f18e7e0",
+    "before_sha256": "975f64f14c10313c764a95f542ea0b80f74aa21b8748f0400e066c29a91471f0"
+  },
+  "apps/desktop/src/App.tsx": {
+    "after_sha256": "bab14fb2ad7ac6a6bd86908f4f5fd09433cea5ccb01dd31661da750f45d76b4d",
+    "before_sha256": "c7f1ebdc9171659a9c7f5d618e5d2e0c53c20644cdd92963ecf942a7c285421d"
+  },
+  "apps/desktop/tests/inspectorRouting.production.test.mjs": {
+    "after_sha256": "7120a65ba5e9bbcab225ff95ed360eca3082f9f5be620552a3ab4fab05f80a2f",
+    "before_sha256": null
+  }
+}

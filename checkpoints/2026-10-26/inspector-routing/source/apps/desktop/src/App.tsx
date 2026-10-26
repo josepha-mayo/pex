@@ -1,0 +1,4274 @@
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+import { BrandMark } from "./components/BrandMark";
+import { CommandDeck } from "./components/CommandDeck";
+import type { GoalDraft } from "./components/GoalEditor";
+import { mergeExampleGoal } from "./exampleGoal";
+import {
+  BridgeRequestError,
+  bridgeRequestError,
+  humanDecisionFailurePresentation,
+  humanDecisionFeedbackChoice,
+  humanDecisionPresentation,
+  isRecord,
+} from "./decisionContract";
+import { Inspector } from "./components/Inspector";
+import { PetStage } from "./components/PetStage";
+import { SettingsPage, type SettingsSection } from "./components/SettingsPage";
+import { CapabilitiesPanel } from "./components/CapabilitiesPanel";
+import { SharedConnectionPanel } from "./components/SharedConnectionPanel";
+import { OpenCodeConnectionPanel } from "./components/OpenCodeConnectionPanel";
+import { CodexConnectionPanel } from "./components/CodexConnectionPanel";
+import { OperatorTaskComposer } from "./components/OperatorTaskComposer";
+import { createOperatorRequest } from "./operatorRequest";
+import { extractPackJson, verifyEvidencePack } from "./evidencePack";
+import { canEditGoalLedger, goalLedgerKey, readGoalDecisions } from "./goalLedger";
+import { usePageVisibility } from "./pageVisibility";
+import {
+  boundedRead, boundedReadBatch, boundedSingleFlightRead, coalesceBackgroundRead,
+  createBurstRefreshGate,
+  startSerialPolling,
+} from "./readBudget";
+import { firstRunGuidance, statusWithFirstRunGuidance, supervisorAvailability } from "./firstRun";
+import {
+  isLiveWorkerSession,
+  isReplaySession,
+  isRecommendedStart,
+  orderFixtures,
+  parseReplayGoalSource,
+  parseReplaySessionId,
+  parseReplayVerdict,
+  parseTrajectoriesResponse,
+  replayFixtureLabel,
+  replayVerdictsIdentical,
+  type DemoFixture,
+  type ReplayVerdict,
+} from "./demoReplay";
+import { CHALLENGE_PRESETS, CHALLENGE_TEMPLATE, parseChallengeFixture } from "./demoChallenge";
+import {
+  parseVerificationReport,
+  type VerificationReportView,
+} from "./verificationReport";
+import { renderVerificationReportHtml } from "./verificationExport";
+import { StartupRecovery } from "./components/StartupRecovery";
+import { CodexSprite } from "./pets/atlas";
+import { bundledPetSheet, defaultBundledPetSheet } from "./pets/bundled";
+import { applyPetClickThrough, expandMainSurface, hidePetOverlay, nextPetExpansion, PET_NATIVE_DISMISSED_EVENT, PET_VISIBILITY_EVENT, petClickThroughEnabled, petOverlayVisible, petVisibilityNote, reconcilePetVisibilityNote, releasePetOverlay, setPetOverlayVisible, showPetOverlay } from "./releasePet";
+import {
+  advanceBridgeBootstrapStatus,
+  bridgeBootstrapAvailable,
+  bridgeBootstrapPollInterval,
+  browserDevelopmentBridgeStatus,
+  initialBridgeBootstrapStatus,
+  normalizeBridgeBootstrapStatus,
+  shouldObserveBridgeBootstrap,
+  shouldPollBridgeBootstrap,
+  unavailableBridgeBootstrapStatus,
+} from "./startupRecovery";
+import {
+  isSupervisorRevision,
+  supervisorActivationRefreshDisposition,
+  supervisorCredentialAudience,
+  supervisorRequest,
+  supervisorSavePayload,
+  supervisorDispatchLimitDraft,
+  supervisorSaveResponseIsCurrent,
+  supervisorSaveConfirmation,
+  supervisorSettingsRefreshDisposition,
+  type SupervisorAuthMode,
+  type SupervisorCredentialAction,
+  type SupervisorProtocol,
+} from "./supervisorDraft";
+import type {
+  BenchRun,
+  BenchState,
+  AttentionMetrics,
+  ClaimIntegrityMetrics,
+  BridgeBootstrapStatus,
+  CatalogPet,
+  CanonicalResourceKey,
+  ChannelHubStatus,
+  ContextItem,
+  CursorInboxRejectionPage,
+  DecisionFeedback,
+  DeckData,
+  DeckView,
+  Goal,
+  GoalCompletion,
+  GoalMutationResponse,
+  AcceptanceDiff,
+  HandoffAssimilationStatus,
+  HumanDecisionChoice,
+  Intervention,
+  LedgerDecision,
+  PetSnapshot,
+  PermissionDecision,
+  ProjectIdentityConflictPage,
+  ProjectIdentityFeedback,
+  ProjectIdentityResolutionResponse,
+  ProjectIdentityStatusView,
+  SessionRow,
+  SessionGoalAttachmentResponse,
+  SupervisorInfo,
+  Surface,
+} from "./types";
+import {
+  canAttachPersistentGoal,
+  actionForSession,
+  canFocusSession,
+  canOpenSession,
+  canonicalResourceIssue,
+  inspectorCanonicalIssue,
+  canonicalResourceIsFreshForScope,
+  canonicalResourcesAreFresh,
+  createGoalPayload,
+  contextReadPath,
+  currentGoals,
+  canonicalEventCursor,
+  encodeWebSocketTokenProtocol,
+  eventPageResumeCursor,
+  goalToDraft,
+  humanize,
+  newUndoIdempotencyKey,
+  isPendingHumanDecision,
+  isPendingGeneralEscalation,
+  isPendingLifecycleDecision,
+  isPendingRequestedHumanDecision,
+  moodForState,
+  initialCanonicalResources,
+  prepareGoalControlAttempt,
+  type GoalControlAttempt,
+  prepareUndoAttempt,
+  projectCompletedOverlayUndo,
+  projectIdentityCompletionIsCurrent,
+  projectIdentityResolutionMessage,
+  type ProjectIdentityResolutionAttempt,
+  reconnectDelay,
+  selectPrimarySession,
+  selectedWorkerStatus,
+  mergeSessionObservation,
+  observationAgeLabel,
+  sessionGoalAttachmentPayload,
+  splitPetCatalog,
+  settleCanonicalResource,
+  sessionExternalUrl,
+  starterInventoryFromDiscover,
+  statusCopy,
+  meaningfulEvidence,
+  titleCase,
+  type UndoAttempt,
+  undoFailureMessage,
+  undoResponsePresentation,
+  updateGoalPayload,
+} from "./viewModel";
+
+const EVENT_CURSOR_STORAGE_KEY = "pex.event_cursor.v1";
+const PET_RECONCILIATION_INTERVAL_MS = 30_000;
+const BASE_STATE_RECONCILIATION_INTERVAL_MS = 30_000;
+const SETTINGS_ACTIVITY_RECONCILIATION_INTERVAL_MS = 30_000;
+const GOAL_EVIDENCE_RECONCILIATION_INTERVAL_MS = 30_000;
+const HANDOFF_ASSIMILATION_RECONCILIATION_INTERVAL_MS = 30_000;
+const PROJECT_IDENTITY_RECONCILIATION_INTERVAL_MS = 30_000;
+const DETAIL_RECONCILIATION_INTERVAL_MS = 32_000;
+const EVENT_DERIVED_REFRESH_DEBOUNCE_MS = 250;
+
+function defaultSupervisorAuth(provider: string): SupervisorAuthMode {
+  if (["ollama", "lmstudio", "llamacpp", "vllm"].includes(provider)) return "local";
+  if (provider === "custom") return "custom";
+  if (provider === "bedrock") return "bedrock";
+  return "api_key";
+}
+const TAURI = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+// Browser mode has no desktop bearer and may sit behind a dev proxy or
+// tunnel, so same-origin /v1 requests are forwarded by the vite dev server.
+const BRIDGE =
+  typeof window !== "undefined" && !TAURI && window.location.origin !== "null"
+    ? window.location.origin
+    : "http://127.0.0.1:7420";
+const EMPTY_GOAL: GoalDraft = {
+  projectId: "",
+  title: "",
+  objective: "",
+  observationOnly: false,
+  acceptance: "",
+  constraints: "",
+  forbiddenOutcomes: "",
+  nonGoals: "",
+  preferences: "",
+  deadline: "",
+  evidence: "",
+  decisions: "",
+  rejectedApproaches: "",
+  unresolvedQuestions: "",
+};
+
+// A judge can load this in one click to see what a well-specified goal looks
+// like — acceptance, forbidden outcomes, and non-goals all filled.
+
+type Shell = "main" | "settings" | "pet";
+type HookHarness = "cursor" | "claude_code" | "qwen" | "hermes" | "opencode";
+type HookBootstrapReceipt = {
+  credential_id: string;
+  project_id: string;
+  harness_type: HookHarness;
+  expires_at: string;
+  token: string;
+};
+
+type UndoResponse = {
+  ok?: boolean;
+  code?: string;
+  state?: string;
+  status?: string;
+  replayed?: boolean;
+  receipt?: {
+    operation_id?: string;
+    intervention_id?: string;
+    state?: string;
+    version?: number;
+    reserved_at?: string;
+    dispatch_started_at?: string;
+    finished_at?: string;
+    resource_count?: number;
+    result?: Record<string, string> | null;
+  };
+};
+
+const HOOK_ENVIRONMENT: Record<HookHarness, string> = {
+  cursor: "PEX_CURSOR_HOOK_TOKEN",
+  claude_code: "PEX_HOOK_TOKEN",
+  qwen: "PEX_HOOK_TOKEN",
+  hermes: "PEX_HERMES_HOOK_TOKEN",
+  opencode: "PEX_OPENCODE_HOOK_TOKEN",
+};
+let bridgeTokenRequest: Promise<string> | null = null;
+
+// Native IPC reads cannot be aborted by fetch's signal. Share one pending call,
+// retire a timed-out result, and require a fresh observation after it settles.
+let committedStartupSurface: "unmounted" | "recovery" | "main" | "settings" | "pet" = "unmounted";
+
+const readNativeBridgeBootstrap = boundedSingleFlightRead(async () => {
+  const { invoke: call } = await import("@tauri-apps/api/core");
+  return call<unknown>("bridge_bootstrap_status", { frontendSurface: committedStartupSurface });
+});
+
+async function readBridgeBootstrapStatus(signal?: AbortSignal): Promise<BridgeBootstrapStatus | null> {
+  if (!TAURI) return browserDevelopmentBridgeStatus;
+  try {
+    const status = normalizeBridgeBootstrapStatus(await readNativeBridgeBootstrap(signal));
+    return status.code === "desktop_control_unavailable" || status.code === "desktop_state_unavailable"
+      ? null
+      : status;
+  } catch {
+    return null;
+  }
+}
+
+// A timed-out retry may still be running in native code. Release the UI wait,
+// but retain that pending invocation so another click cannot duplicate it.
+const retryNativeBridgeBootstrap = boundedSingleFlightRead(async () => {
+  const { invoke: call } = await import("@tauri-apps/api/core");
+  return call<unknown>("retry_bridge");
+});
+
+async function retryDesktopBridge(): Promise<BridgeBootstrapStatus | null> {
+  try {
+    const status = normalizeBridgeBootstrapStatus(await retryNativeBridgeBootstrap());
+    return status.code === "desktop_control_unavailable" || status.code === "desktop_state_unavailable"
+      ? null
+      : status;
+  } catch {
+    return null;
+  }
+}
+
+async function bridgeToken(): Promise<string | null> {
+  if (!TAURI) return null;
+  if (bridgeTokenRequest) return bridgeTokenRequest;
+  const request = import("@tauri-apps/api/core")
+    .then(({ invoke: call }) => call<string>("bridge_token"))
+    .then((token) => {
+      const value = token.trim();
+      if (!value) throw new Error("PEX bridge token is empty.");
+      return value;
+    })
+    .catch((error) => {
+      bridgeTokenRequest = null;
+      throw error;
+    });
+  bridgeTokenRequest = request;
+  // Retain the verified token promise for this desktop bridge generation.
+  // Re-probing before every parallel startup fetch can starve the bridge's
+  // identity endpoint while a bounded adapter probe is running. The promise is
+  // cleared on bridge generation change, WebSocket close, 401, or explicit
+  // retry, so a restarted port owner must prove the in-memory token again.
+  return request;
+}
+
+async function bridgeFetch(path: string, init?: RequestInit): Promise<Response> {
+  // The packaged desktop must never downgrade to an unauthenticated request:
+  // bridgeToken() first proves that the current port owner knows the secret.
+  // Plain Vite/browser development remains tokenless because TAURI is false.
+  const token = await bridgeToken();
+  const send = (value: string | null) => {
+    const headers = new Headers(init?.headers);
+    if (value) headers.set("Authorization", `Bearer ${value}`);
+    return fetch(`${BRIDGE}${path}`, { ...init, headers });
+  };
+  const response = await send(token);
+  if (response.status !== 401 || !TAURI || !token) return response;
+
+  // The bridge can rotate its local token after a restart. Re-read once and
+  // retry the same local request; never persist the token in web storage.
+  bridgeTokenRequest = null;
+  const refreshed = await bridgeToken();
+  return send(refreshed);
+}
+
+// Connection/configuration mutations are single-attempt, including auth failure.
+// The user reloads canonical status before deciding whether to try again.
+const sharedConnectionRequest = createOperatorRequest({ baseUrl: BRIDGE, readToken: bridgeToken });
+
+async function bridgeJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = (init?.method ?? "GET").toUpperCase();
+  if (method === "GET") {
+    return boundedRead((signal) => readBridgeJson<T>(path, { ...init, signal }), init?.signal);
+  }
+  // Do not change mutation retry/unknown-outcome semantics with a polling budget.
+  return readBridgeJson<T>(path, init);
+}
+
+async function readBridgeJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await bridgeFetch(path, init);
+  if (!response.ok) {
+    let payload: unknown = null;
+    try {
+      payload = await response.json() as unknown;
+    } catch {
+      // Keep the HTTP status when the bridge did not return structured JSON.
+    }
+    throw bridgeRequestError(response.status, response.statusText, payload);
+  }
+  return response.json() as Promise<T>;
+}
+
+function interventionHandoffEffectId(item: Intervention): string | null {
+  const deliveryStatus = item.metadata?.handoff_delivery_status;
+  if (item.action_taken !== "FRESH_HANDOFF" && typeof deliveryStatus !== "string") {
+    return null;
+  }
+  const effectId = item.metadata?.operator_effect_id;
+  return typeof effectId === "string" && effectId.trim() ? effectId.trim() : null;
+}
+
+function handoffInterventionFingerprint(interventions: Intervention[]): string {
+  return Array.from(new Set(
+    interventions
+      .map(interventionHandoffEffectId)
+      .filter((effectId): effectId is string => effectId !== null),
+  )).join("\n");
+}
+
+async function loadHandoffAssimilationStatuses(
+  interventions: Intervention[],
+  signal?: AbortSignal,
+): Promise<Record<string, HandoffAssimilationStatus | "unreachable">> {
+  const effectIds = Array.from(new Set(
+    interventions
+      .map(interventionHandoffEffectId)
+      .filter((effectId): effectId is string => effectId !== null),
+  ));
+  const settled = await boundedReadBatch(
+    effectIds, async (effectId, readSignal) => ({
+      effectId,
+      status: await bridgeJson<HandoffAssimilationStatus>(
+        `/v1/handoffs/${encodeURIComponent(effectId)}/assimilation`,
+        { signal: readSignal },
+      ),
+    }), signal,
+  );
+  const statuses: Record<string, HandoffAssimilationStatus | "unreachable"> = {};
+  settled.forEach((result, index) => {
+    const effectId = effectIds[index];
+    if (result.status === "rejected") {
+      statuses[effectId] = "unreachable";
+      return;
+    }
+    statuses[effectId] = result.value.status;
+    statuses[result.value.status.handoff_intervention_id] = result.value.status;
+  });
+  return statuses;
+}
+
+function operationError(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message.trim()
+    ? `${fallback} ${error.message.trim()}`
+    : fallback;
+}
+
+export function App() {
+  const [pet, setPet] = useState<PetSnapshot | null>(null);
+  const [bridgeError, setBridgeError] = useState<string | null>(null);
+  const [bridgeStartup, setBridgeStartup] = useState<BridgeBootstrapStatus>(() => (
+    TAURI ? initialBridgeBootstrapStatus : browserDevelopmentBridgeStatus
+  ));
+  const [bridgeControlAvailable, setBridgeControlAvailable] = useState(true);
+  const [bridgeRetrying, setBridgeRetrying] = useState(false);
+  const [canonicalResources, setCanonicalResources] = useState(initialCanonicalResources);
+  const [shell, setShell] = useState<Shell>(() => shellFromHash());
+  const [surface, setSurface] = useState<Surface>(() => surfaceFromHash());
+  const [activeView, setActiveView] = useState<DeckView>("now");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [goalDraft, setGoalDraft] = useState<GoalDraft>(EMPTY_GOAL);
+  const [goalEditorRevision, setGoalEditorRevision] = useState(0);
+  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+  const [goalOverrideMode, setGoalOverrideMode] = useState(false);
+  const [settingsDestination, setSettingsDestination] = useState<SettingsSection | undefined>();
+  const [goalFocusRequest, setGoalFocusRequest] = useState(0);
+  const handledGoalFocusRequest = useRef(0);
+  const [ledgerDecisions, setLedgerDecisions] = useState<LedgerDecision[]>([]);
+  const loadedGoalLedgerKey = useRef<string | null>(null);
+  const editingGoalLedgerKey = useRef<string | null>(null);
+  const [goalCompletion, setGoalCompletion] = useState<GoalCompletion | null>(null);
+  const [verificationReport, setVerificationReport] = useState<VerificationReportView | null>(null);
+  const [exportingReport, setExportingReport] = useState(false);
+  const [savingGoal, setSavingGoal] = useState(false);
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [asking, setAsking] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
+  const [builtInRoster, setBuiltInRoster] = useState<CatalogPet[]>([]);
+  const [petFleetIssues, setPetFleetIssues] = useState<string[]>([]);
+  const [deck, setDeck] = useState<DeckData>({});
+  const [canonicalSessions, setCanonicalSessions] = useState<SessionRow[]>([]);
+  const [contextItems, setContextItems] = useState<ContextItem[]>([]);
+  const [contextProjectId, setContextProjectId] = useState<string | null>(null);
+  const [contextGoalId, setContextGoalId] = useState<string | null>(null);
+  const [interventions, setInterventions] = useState<Intervention[]>([]);
+  const [handoffAssimilation, setHandoffAssimilation] =
+    useState<Record<string, HandoffAssimilationStatus | "unreachable">>({});
+  const [attentionMetrics, setAttentionMetrics] = useState<AttentionMetrics | null>(null);
+  const [claimMetrics, setClaimMetrics] = useState<ClaimIntegrityMetrics | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
+  const [decisionFeedback, setDecisionFeedback] = useState<DecisionFeedback | null>(null);
+  const [taskDraft, setTaskDraft] = useState<{
+    sessionId: string;
+    nonce: number;
+    text: string;
+  } | null>(null);
+  const [identityConflicts, setIdentityConflicts] =
+    useState<ProjectIdentityConflictPage | null>(null);
+  const [identityTargetProjectId, setIdentityTargetProjectId] = useState<string | null>(null);
+  const [identityStatus, setIdentityStatus] = useState<ProjectIdentityStatusView | null>(null);
+  const [identityConflictLoading, setIdentityConflictLoading] = useState(false);
+  const [identityConflictError, setIdentityConflictError] = useState<string | null>(null);
+  const [identityStatusLoading, setIdentityStatusLoading] = useState(false);
+  const [identityStatusError, setIdentityStatusError] = useState<string | null>(null);
+  const [identityResolving, setIdentityResolving] = useState(false);
+  const [identityFeedback, setIdentityFeedback] = useState<ProjectIdentityFeedback | null>(null);
+  const [bench, setBench] = useState<BenchState>({ loading: false, runs: [] });
+  const [demoFixtures, setDemoFixtures] = useState<DemoFixture[] | null>(null);
+  const [demoReplay, setDemoReplay] = useState<{
+    running: boolean;
+    fixture: string | null;
+    error: string | null;
+    verdict: ReplayVerdict | null;
+    // Recent arcs so a judge can compare runs — attached-vs-fresh rulings,
+    // different attack classes — without leaving the panel.
+    history: { fixture: string; sessionId: string | null; attached: boolean; verdict: ReplayVerdict }[];
+  }>({ running: false, fixture: null, error: null, verdict: null, history: [] });
+  const [challengeText, setChallengeText] = useState("");
+  const [challengeError, setChallengeError] = useState<string | null>(null);
+  const [packVerify, setPackVerify] = useState<{ fileName: string; checks: string[] } | null>(null);
+  const [attachReplayGoal, setAttachReplayGoal] = useState(false);
+  const [determinismCheck, setDeterminismCheck] = useState(false);
+  // In-app suite run: every fixture through the real pipeline, scored
+  // against its own declared arc — eval_replays.py's rigor, one click.
+  const [suiteRun, setSuiteRun] = useState<{
+    running: boolean;
+    done: number;
+    total: number;
+    current: string | null;
+    met: number;
+    misses: { fixture: string; failure: string }[];
+    results: { fixture: string; met: boolean | null; completion: string | null; failures: string[] }[];
+  } | null>(null);
+  const suiteCancelRef = useRef(false);
+  const [suiteReceiptCopied, setSuiteReceiptCopied] = useState(false);
+  const [suiteMdCopied, setSuiteMdCopied] = useState(false);
+  const [verdictReceiptCopied, setVerdictReceiptCopied] = useState(false);
+  const [capabilitiesVisited, setCapabilitiesVisited] = useState(false);
+  const [journeyCollapsed, setJourneyCollapsed] = useState(false);
+  // In-session flag for the judge checklist: a dispute escalation resolved
+  // through this UI records a ruling even when the session row is collapsed
+  // out of the compact rail's promptable set.
+  const [journeyRulingRecorded, setJourneyRulingRecorded] = useState(false);
+  // Same latch for the evidence step: it only becomes true while the judge is
+  // on the Inspector looking at a replay, but the checklist renders on Home —
+  // without the latch the step un-ticks on the way back and the journey can
+  // never complete.
+  const [inspectorReplayVisited, setInspectorReplayVisited] = useState(false);
+  const [scale, setScale] = useState(1);
+  const [nickname, setNickname] = useState("");
+  const [clickThrough, setClickThrough] = useState(false);
+  const [petVisible, setPetVisible] = useState(petOverlayVisible);
+  const pageVisible = usePageVisibility();
+  const observationActive = pageVisible && (shell !== "pet" || petVisible);
+
+  // The packaged app proves operator authority with the launcher-held bearer
+  // token. The loopback demo bridge instead advertises a test-scoped
+  // unauthenticated-operator allowance on /health; honor it once so judges in
+  // a plain browser can resolve decisions and hand off goals.
+  const [demoOperatorActions, setDemoOperatorActions] = useState(false);
+  useEffect(() => {
+    if (TAURI) return;
+    let cancelled = false;
+    bridgeJson<{ unauthenticated_operator?: boolean }>("/v1/health")
+      .then((health) => {
+        if (!cancelled && health?.unauthenticated_operator === true) {
+          setDemoOperatorActions(true);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const operatorActionsAvailable = TAURI || demoOperatorActions;
+
+  // A finished replay leaves its verdict — or its failure — on Home below the
+  // replay controls; bring whichever landed into view so a judge doesn't have
+  // to know to scroll for it.
+  useEffect(() => {
+    if (!demoReplay.verdict && !demoReplay.error) return;
+    const frame = requestAnimationFrame(() => {
+      document
+        .querySelector(".replay-verdict, .demo-replay-error")
+        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [demoReplay.verdict, demoReplay.error]);
+
+  useEffect(() => {
+    const acceptVisibility = (visible: boolean) => {
+      setPetVisible(visible);
+      setNote((current) => reconcilePetVisibilityNote(current, visible));
+    };
+    const syncVisibility = () => acceptVisibility(petOverlayVisible());
+    const syncDirectVisibility = (event: Event) => acceptVisibility(Boolean((event as CustomEvent).detail));
+    window.addEventListener("storage", syncVisibility);
+    window.addEventListener(PET_VISIBILITY_EVENT, syncDirectVisibility);
+    return () => {
+      window.removeEventListener("storage", syncVisibility);
+      window.removeEventListener(PET_VISIBILITY_EVENT, syncDirectVisibility);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (observationActive) return;
+    // Hidden webviews and a user-hidden native pet release their readers below.
+    // Their last snapshots remain useful for rendering, but cannot retain mutation
+    // authority until every relevant canonical resource refreshes after reactivation.
+    setCanonicalResources(initialCanonicalResources());
+  }, [observationActive]);
+  const [hookHarness, setHookHarness] = useState<HookHarness>("cursor");
+  const [hookProject, setHookProject] = useState("");
+  const [hookBootstrap, setHookBootstrap] = useState<HookBootstrapReceipt | null>(null);
+  const [cursorRejections, setCursorRejections] = useState<CursorInboxRejectionPage | null>(null);
+  const [provisioningHook, setProvisioningHook] = useState(false);
+  const goalControlAttempts = useRef(new Map<string, GoalControlAttempt>());
+  const undoAttempts = useRef(new Map<string, UndoAttempt>());
+  const undoRequestsInFlight = useRef(new Set<string>());
+  const [completedOverlayUndoIds, setCompletedOverlayUndoIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [supervisor, setSupervisor] = useState<SupervisorInfo | null>(null);
+  const [channels, setChannels] = useState<ChannelHubStatus | null>(null);
+  const [supervisorProvider, setSupervisorProvider] = useState("");
+  const [supervisorModel, setSupervisorModel] = useState("");
+  const [supervisorAuth, setSupervisorAuth] = useState<SupervisorAuthMode>("api_key");
+  const [supervisorProtocol, setSupervisorProtocol] = useState<SupervisorProtocol>("openai");
+  const [supervisorBaseUrl, setSupervisorBaseUrl] = useState("");
+  const [supervisorDispatchLimit, setSupervisorDispatchLimit] = useState<string | undefined>();
+  const [supervisorApiKey, setSupervisorApiKey] = useState("");
+  const [supervisorCredentialAction, setSupervisorCredentialAction] =
+    useState<SupervisorCredentialAction>("keep");
+  const [savingSupervisor, setSavingSupervisor] = useState(false);
+  const [refreshingCatalog, setRefreshingCatalog] = useState(false);
+  const [attachingGoal, setAttachingGoal] = useState(false);
+  const [selectingPet, setSelectingPet] = useState(false);
+  const askInput = useRef<HTMLInputElement>(null);
+  const askRequestSequence = useRef(0);
+  const petRequestSequence = useRef(0);
+  const baseRequestSequence = useRef(0);
+  const cursorRejectionRequestSequence = useRef(0);
+  const detailRequestSequence = useRef(0);
+  const identityConflictRequestSequence = useRef(0);
+  const identityStatusRequestSequence = useRef(0);
+  const identityResolutionRequestSequence = useRef(0);
+  const identitySelectionRevision = useRef(0);
+  const identitySelectedProjectIdRef = useRef("");
+  const settingsRequestSequence = useRef(0);
+  const supervisorDraftRevision = useRef(0);
+  const supervisorDraftDirty = useRef(false);
+  const supervisorDraftBaseRevision = useRef<number | undefined>(undefined);
+  const supervisorSaveInFlight = useRef(false);
+  const supervisorKeyAudience = useRef<string | null>(null);
+  const goalEvidenceKey = useRef<string | null>(null);
+  const goalEvidenceRefresh = useRef<(() => Promise<unknown>) | null>(null);
+  const handoffInterventions = useRef<Intervention[]>([]);
+  const handoffInterventionKey = useRef("");
+  const handoffAssimilationRefresh = useRef<(() => Promise<unknown>) | null>(null);
+  const detailRefresh = useRef<(() => Promise<unknown>) | null>(null);
+  const identityConflictRefresh = useRef<(() => Promise<unknown>) | null>(null);
+  const identityStatusRefresh = useRef<(() => Promise<unknown>) | null>(null);
+  const bridgeStartupRef = useRef(bridgeStartup);
+  const pollBridgeBootstrap = shouldPollBridgeBootstrap(TAURI, shell);
+  const bridgeAvailable = bridgeBootstrapAvailable(
+    TAURI,
+    shell,
+    bridgeControlAvailable,
+    bridgeStartup,
+  );
+
+  useEffect(() => {
+    // Runs after the React commit. Native opt-in traces can compare this fixed
+    // surface name with the captured frame without reading any page content.
+    committedStartupSurface = bridgeAvailable ? shell : "recovery";
+  }, [bridgeAvailable, shell]);
+
+  const acceptBridgeStartupStatus = useCallback((incoming: BridgeBootstrapStatus) => {
+    const previous = bridgeStartupRef.current;
+    const next = advanceBridgeBootstrapStatus(previous, incoming);
+    if (next === previous) return;
+    bridgeStartupRef.current = next;
+    if (previous.phase !== "ready" && next.phase === "ready") {
+      // A new bridge generation must earn fresh canonical state before any
+      // authoritative control becomes available.
+      setCanonicalResources(initialCanonicalResources());
+      setBridgeError(null);
+    }
+    if (previous.phase === "ready" && next.phase !== "ready") {
+      bridgeTokenRequest = null;
+    }
+    setBridgeStartup(next);
+  }, []);
+
+  useEffect(() => {
+    if (!TAURI || shell === "pet") return;
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    const accept = (payload: unknown) => {
+      if (disposed) return;
+      const next = normalizeBridgeBootstrapStatus(payload);
+      if (next.code === "desktop_control_unavailable" || next.code === "desktop_state_unavailable") return;
+      setBridgeControlAvailable(true);
+      acceptBridgeStartupStatus(next);
+    };
+    void import("@tauri-apps/api/event")
+      .then(({ listen }) => listen<unknown>("pex-bridge-bootstrap", (event) => accept(event.payload)))
+      .then(async (stop) => {
+        if (disposed) { stop(); return; }
+        unlisten = stop;
+        // The bridge may have become ready before this webview subscribed.
+        const current = await readBridgeBootstrapStatus();
+        if (current) accept(current);
+      })
+      .catch(() => { /* Bounded native polling remains the recovery path. */ });
+    return () => { disposed = true; unlisten?.(); };
+  }, [acceptBridgeStartupStatus, shell]);
+
+  useEffect(() => {
+    if (!pollBridgeBootstrap || !shouldObserveBridgeBootstrap(pageVisible, bridgeStartup.phase)) return;
+    const stopPolling = startSerialPolling(async (signal) => {
+      const next = await readBridgeBootstrapStatus(signal);
+      if (signal.aborted) return;
+      setBridgeControlAvailable(next !== null);
+      if (next) acceptBridgeStartupStatus(next);
+    }, bridgeBootstrapPollInterval(bridgeStartup.phase));
+    return stopPolling;
+  }, [acceptBridgeStartupStatus, bridgeStartup.phase, pageVisible, pollBridgeBootstrap]);
+
+  const retryBridgeBootstrap = useCallback(async () => {
+    if (!bridgeStartup.retryable || bridgeRetrying) return;
+    setBridgeRetrying(true);
+    bridgeTokenRequest = null;
+    const next = await retryDesktopBridge();
+    setBridgeControlAvailable(next !== null);
+    if (next) acceptBridgeStartupStatus(next);
+    setBridgeRetrying(false);
+  }, [acceptBridgeStartupStatus, bridgeRetrying, bridgeStartup.retryable]);
+
+  const markCanonical = useCallback((
+    key: CanonicalResourceKey,
+    outcome: "fresh" | "failed" | "loading" | "reset",
+    error?: string,
+  ) => {
+    setCanonicalResources((currentState) => settleCanonicalResource(
+      currentState,
+      key,
+      outcome,
+      { error },
+    ));
+  }, []);
+
+  const refreshPet = useCallback(async (signal?: AbortSignal) => {
+    const requestSequence = ++petRequestSequence.current;
+    try {
+      const snapshot = await bridgeJson<PetSnapshot>("/v1/pet", { signal });
+      if (requestSequence !== petRequestSequence.current) {
+        return { status: "superseded" as const };
+      }
+      setPet(snapshot);
+      setBridgeError(null);
+      markCanonical("pet", "fresh");
+      return { status: "applied" as const, snapshot };
+    } catch {
+      if (requestSequence !== petRequestSequence.current) {
+        return { status: "superseded" as const };
+      }
+      setBridgeError("Bridge offline");
+      markCanonical("pet", "failed", "Pet state could not be refreshed.");
+      return { status: "failed" as const };
+    }
+  }, [markCanonical]);
+
+  const loadBaseState = useCallback(async (signal?: AbortSignal) => {
+    const requestSequence = ++baseRequestSequence.current;
+    const [goalsResult, petsResult] = await Promise.allSettled([
+      bridgeJson<Goal[]>("/v1/goals", { signal }),
+      bridgeJson<{ catalog?: CatalogPet[]; starters?: CatalogPet[] }>("/v1/pets", { signal }),
+    ]);
+    if (requestSequence !== baseRequestSequence.current) return;
+    if (goalsResult.status === "fulfilled" && Array.isArray(goalsResult.value)) {
+      setGoals(goalsResult.value);
+      markCanonical("goals", "fresh");
+    } else {
+      markCanonical("goals", "failed", "Persistent goals could not be refreshed.");
+    }
+    if (petsResult.status === "fulfilled") {
+      const partitioned = splitPetCatalog(
+        petsResult.value.starters || [],
+        petsResult.value.catalog || petsResult.value.starters || [],
+      );
+      setBuiltInRoster(partitioned.builtIns);
+      setPetFleetIssues(partitioned.fleetIssues);
+      markCanonical("pets", "fresh");
+    } else {
+      markCanonical("pets", "failed", "Pet catalog could not be refreshed.");
+    }
+  }, [markCanonical]);
+
+  useEffect(() => {
+    if (!TAURI || !bridgeAvailable || pageVisible || shell === "pet") return;
+    // Some Linux webviews paint their native window before reporting the page
+    // visible. Acquire one bounded local snapshot even then; normal background
+    // polling remains paused until the visibility event arrives.
+    const controller = new AbortController();
+    void refreshPet(controller.signal);
+    void loadBaseState(controller.signal);
+    return () => {
+      petRequestSequence.current += 1;
+      baseRequestSequence.current += 1;
+      controller.abort();
+    };
+  }, [bridgeAvailable, loadBaseState, pageVisible, refreshPet, shell]);
+
+  const loadCursorRejections = useCallback(async (signal?: AbortSignal) => {
+    const requestSequence = ++cursorRejectionRequestSequence.current;
+    try {
+      const data = await bridgeJson<CursorInboxRejectionPage>(
+        "/v1/hooks/cursor/rejections?limit=20",
+        { signal },
+      );
+      if (requestSequence !== cursorRejectionRequestSequence.current) return;
+      setCursorRejections(data);
+    } catch {
+      if (requestSequence !== cursorRejectionRequestSequence.current) return;
+      setCursorRejections(null);
+    }
+  }, []);
+
+  const refreshPetGoals = useCallback(async (signal?: AbortSignal) => {
+    const requestSequence = ++baseRequestSequence.current;
+    try {
+      const refreshed = await bridgeJson<Goal[]>("/v1/goals", { signal });
+      if (requestSequence !== baseRequestSequence.current) return;
+      if (!Array.isArray(refreshed)) throw new Error("invalid goal list");
+      setGoals(refreshed);
+      markCanonical("goals", "fresh");
+    } catch {
+      if (requestSequence !== baseRequestSequence.current) return;
+      markCanonical("goals", "failed", "Persistent goals could not be refreshed.");
+    }
+  }, [markCanonical]);
+
+  useEffect(() => {
+    if (!bridgeAvailable || !observationActive) return;
+    let cancelled = false;
+    const controller = new AbortController();
+    // Event bursts share the pending background read; explicit post-mutation
+    // refreshes outside this effect still request their own fresh state.
+    const refreshBackgroundPet = coalesceBackgroundRead<unknown>(() =>
+      cancelled ? Promise.resolve() : refreshPet(controller.signal),
+    );
+    const eventDerivedRefresh = createBurstRefreshGate(() => {
+      void goalEvidenceRefresh.current?.();
+      void handoffAssimilationRefresh.current?.();
+      void detailRefresh.current?.();
+      void identityConflictRefresh.current?.();
+      void identityStatusRefresh.current?.();
+    }, EVENT_DERIVED_REFRESH_DEBOUNCE_MS);
+    const stopPolling = startSerialPolling(
+      refreshBackgroundPet,
+      PET_RECONCILIATION_INTERVAL_MS,
+    );
+    let socket: WebSocket | null = null;
+    let retryTimer: number | null = null;
+    let retryAttempt = 0;
+
+    const scheduleReconnect = () => {
+      if (cancelled || retryTimer != null) return;
+      const delay = reconnectDelay(retryAttempt);
+      retryAttempt += 1;
+      retryTimer = window.setTimeout(() => {
+        retryTimer = null;
+        void connectSocket();
+      }, delay);
+    };
+
+    const connectSocket = async () => {
+      let token: string | null = null;
+      try {
+        token = await bridgeToken();
+      } catch {
+        if (!cancelled) setBridgeError("Bridge offline");
+        scheduleReconnect();
+        return;
+      }
+      if (cancelled) return;
+      try {
+        let resumeCursor = "0";
+        try {
+          resumeCursor = canonicalEventCursor(
+            window.localStorage.getItem(EVENT_CURSOR_STORAGE_KEY),
+          );
+        } catch {
+          /* Storage can be disabled; zero remains a safe explicit resync. */
+        }
+        const url = new URL(`${BRIDGE.replace(/^http/, "ws")}/v1/events`);
+        url.searchParams.set("after", resumeCursor);
+        const currentSocket = token
+          ? new WebSocket(url, ["pex-v1", encodeWebSocketTokenProtocol(token)])
+          : new WebSocket(url);
+        socket = currentSocket;
+        currentSocket.onopen = () => {
+          retryAttempt = 0;
+        };
+        currentSocket.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data) as { topic?: string; payload?: unknown };
+            if (message.topic === "pet" && isRecord(message.payload) && !cancelled) {
+              setPet(message.payload as PetSnapshot);
+              setBridgeError(null);
+              markCanonical("pet", "fresh");
+            } else if (message.topic === "intervention" && !cancelled) {
+              void refreshBackgroundPet();
+            } else if (
+              message.topic === "event_page" &&
+              !cancelled &&
+              socket === currentSocket
+            ) {
+              const nextCursor = eventPageResumeCursor(message.payload);
+              if (nextCursor !== null) {
+                try {
+                  window.localStorage.setItem(EVENT_CURSOR_STORAGE_KEY, nextCursor);
+                } catch {
+                  /* Resume remains available for this live socket. */
+                }
+                // Persist cursor durability immediately, but collapse a burst
+                // of committed pages into one derived-state refresh fan-out.
+                eventDerivedRefresh.trigger();
+              }
+            }
+          } catch {
+            // Recover this observation immediately; the normal HTTP path is a
+            // low-frequency reconciliation while authenticated frames are healthy.
+            if (!cancelled) void refreshBackgroundPet();
+          }
+        };
+        currentSocket.onerror = () => currentSocket.close();
+        currentSocket.onclose = () => {
+          if (socket === currentSocket) socket = null;
+          bridgeTokenRequest = null;
+          if (!cancelled) void refreshBackgroundPet();
+          scheduleReconnect();
+        };
+      } catch {
+        socket = null;
+        if (!cancelled) setBridgeError("Bridge offline");
+        scheduleReconnect();
+      }
+    };
+    void connectSocket();
+    return () => {
+      cancelled = true;
+      petRequestSequence.current += 1;
+      controller.abort();
+      stopPolling();
+      eventDerivedRefresh.stop();
+      if (retryTimer != null) window.clearTimeout(retryTimer);
+      socket?.close();
+    };
+  }, [bridgeAvailable, markCanonical, observationActive, refreshPet]);
+
+  useEffect(() => {
+    if (!bridgeAvailable || !pageVisible || shell === "pet") return;
+    const stopPolling = startSerialPolling(
+      (signal) => {
+        return loadBaseState(signal);
+      },
+      BASE_STATE_RECONCILIATION_INTERVAL_MS,
+    );
+    return () => {
+      baseRequestSequence.current += 1;
+      stopPolling();
+    };
+  }, [bridgeAvailable, loadBaseState, pageVisible, shell]);
+
+  useEffect(() => {
+    if (!bridgeAvailable || !pageVisible || shell !== "settings") return;
+    const stopPolling = startSerialPolling(
+      (signal) => loadCursorRejections(signal),
+      SETTINGS_ACTIVITY_RECONCILIATION_INTERVAL_MS,
+    );
+    return () => {
+      cursorRejectionRequestSequence.current += 1;
+      stopPolling();
+    };
+  }, [bridgeAvailable, loadCursorRejections, pageVisible, shell]);
+
+  useEffect(() => {
+    if (!bridgeAvailable || !observationActive || shell !== "pet") return;
+    const stopPolling = startSerialPolling((signal) => refreshPetGoals(signal), 30000);
+    return () => {
+      baseRequestSequence.current += 1;
+      stopPolling();
+    };
+  }, [bridgeAvailable, observationActive, refreshPetGoals, shell]);
+
+  useEffect(() => {
+    const route = () => {
+      const routedShell = shellFromHash();
+      setShell(routedShell);
+      if (routedShell === "main") {
+        setSurface(surfaceFromHash());
+        const linkedSession = sessionFromHash();
+        if (linkedSession) setSelectedId(linkedSession);
+        const linkedView = deckViewFromHash();
+        if (linkedView) setActiveView(linkedView);
+      }
+    };
+    route();
+    window.addEventListener("hashchange", route);
+    if (TAURI) {
+      void import("@tauri-apps/api/window").then(({ getCurrentWindow }) => {
+        if (getCurrentWindow().label === "pet") setShell("pet");
+      });
+    }
+    return () => window.removeEventListener("hashchange", route);
+  }, []);
+
+  useEffect(() => {
+    if (shell === "pet") return;
+    const frame = window.requestAnimationFrame(() => {
+      const selector = shell === "settings"
+        ? '[data-settings-root="true"]'
+        : `[data-surface-root="${surface}"]`;
+      document.querySelector<HTMLElement>(selector)?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [shell, surface]);
+
+  useEffect(() => {
+    if (!goalFocusRequest || handledGoalFocusRequest.current >= goalFocusRequest
+      || shell !== "main" || surface !== "inspector") return;
+    const frame = window.requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLElement>('[data-goal-setup="true"]');
+      if (!target) return;
+      target?.querySelector<HTMLDetailsElement>(".goal-editor")?.setAttribute("open", "");
+      target?.focus({ preventScroll: true });
+      target?.scrollIntoView({ block: "start" });
+      handledGoalFocusRequest.current = goalFocusRequest;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [goalFocusRequest, shell, surface]);
+
+  useEffect(() => {
+    if (!TAURI || shell === "pet") return;
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    void import("@tauri-apps/api/event").then(async ({ listen }) => {
+      const dispose = await listen<Surface | "expand">("pex-open-surface", (event) => {
+        if (event.payload === "expand") {
+          setSurface((current) => {
+            const next = nextPetExpansion(current);
+            window.location.hash = next;
+            return next;
+          });
+          setShell("main");
+          return;
+        }
+        if (event.payload === "inspector" || event.payload === "deck" || event.payload === "compact") {
+          setSurface(event.payload);
+          setShell("main");
+          window.location.hash = event.payload;
+        }
+      });
+      if (cancelled) dispose();
+      else unlisten = dispose;
+    });
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, [shell]);
+
+  useEffect(() => {
+    if (!TAURI) return;
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    void import("@tauri-apps/api/event").then(async ({ listen }) => {
+      const dispose = await listen(PET_NATIVE_DISMISSED_EVENT, () => {
+        setPetOverlayVisible(false);
+      });
+      if (cancelled) dispose();
+      else unlisten = dispose;
+    });
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("pet-shell", shell === "pet");
+    document.body.classList.toggle("pet-shell", shell === "pet");
+    // Native configuration/setup owns the transparent canvas. The installed
+    // JS background setter sends `color`, while the Rust plugin expects `value`;
+    // that optional missing value resets the webview canvas to opaque white.
+  }, [shell]);
+
+  useEffect(() => {
+    if (shell !== "pet") return;
+    void applyPetClickThrough(petClickThroughEnabled(pet?.settings?.click_through));
+  }, [pet?.settings?.click_through, shell]);
+
+  useEffect(() => {
+    if (!TAURI || !bridgeAvailable || !pet?.appearance?.id || shell === "pet") return;
+    void releasePetOverlay();
+  }, [bridgeAvailable, pet?.appearance?.id, shell]);
+
+  useEffect(() => {
+    setScale(pet?.settings?.scale ?? pet?.appearance?.scale ?? 1);
+    setNickname(pet?.settings?.custom_name ?? "");
+    setClickThrough(petClickThroughEnabled(pet?.settings?.click_through));
+  }, [pet?.appearance?.scale, pet?.settings?.click_through, pet?.settings?.custom_name, pet?.settings?.scale]);
+
+  const settingsAvailable = canonicalResourcesAreFresh(canonicalResources, ["supervisor"]);
+  const loadSettings = useCallback(async (discardDraft = false) => {
+    if (supervisorSaveInFlight.current) return;
+    const requestSequence = ++settingsRequestSequence.current;
+    const [supervisorResult, channelsResult] = await Promise.allSettled([
+      supervisorRequest((signal) => bridgeJson<SupervisorInfo>("/v1/supervisor", { signal })),
+      supervisorRequest((signal) => bridgeJson<ChannelHubStatus>("/v1/channels", { signal })),
+    ]);
+    if (requestSequence !== settingsRequestSequence.current) return;
+    if (supervisorResult.status === "fulfilled" && isSupervisorRevision(supervisorResult.value?.revision)) {
+      const data = supervisorResult.value;
+      const disposition = supervisorSettingsRefreshDisposition(
+        supervisorDraftDirty.current, discardDraft, supervisorDraftBaseRevision.current, data.revision,
+      );
+      if (disposition === "conflict") {
+        markCanonical("supervisor", "failed", "Saved settings changed elsewhere. Your draft is preserved; reload settings to discard it and use the saved configuration.");
+      } else {
+        setSupervisor(data);
+        if (disposition === "replace") {
+          supervisorDraftDirty.current = false;
+          supervisorDraftBaseRevision.current = data.revision;
+          setSupervisorProvider(data.backend || "");
+          setSupervisorModel(data.model_id || "");
+          setSupervisorAuth(
+            (data.auth_mode as SupervisorAuthMode | null) ||
+              defaultSupervisorAuth(data.backend || ""),
+          );
+          setSupervisorProtocol(data.protocol || "openai");
+          setSupervisorBaseUrl(data.base_url || "");
+          setSupervisorDispatchLimit(supervisorDispatchLimitDraft(data.dispatch_limit_override));
+          setSupervisorApiKey("");
+          supervisorKeyAudience.current = null;
+          setSupervisorCredentialAction("keep");
+        }
+        markCanonical("supervisor", "fresh");
+      }
+    } else {
+      markCanonical("supervisor", "failed", "Supervisor settings and their revision could not be refreshed.");
+    }
+    if (channelsResult.status === "fulfilled") {
+      setChannels(channelsResult.value);
+      markCanonical("channels", "fresh");
+    } else {
+      markCanonical("channels", "failed", "Channel settings could not be refreshed.");
+    }
+  }, [markCanonical]);
+
+  useEffect(() => {
+    if (!bridgeAvailable || !pageVisible || shell === "pet") return;
+    void loadSettings();
+    return () => {
+      settingsRequestSequence.current += 1;
+    };
+  }, [bridgeAvailable, loadSettings, pageVisible, shell]);
+
+  useEffect(() => {
+    const loadingRevision = supervisor?.revision;
+    if (!bridgeAvailable || !pageVisible || shell === "pet" || !settingsAvailable || savingSupervisor
+      || supervisor?.activation_status !== "loading" || !isSupervisorRevision(loadingRevision)) return;
+    let cancelled = false;
+    const stopPolling = startSerialPolling(async (signal) => {
+      if (supervisorSaveInFlight.current) return;
+      const requestSequence = settingsRequestSequence.current;
+      try {
+        const data = await bridgeJson<SupervisorInfo>("/v1/supervisor", { signal });
+        if (cancelled) return;
+        const disposition = supervisorActivationRefreshDisposition(
+          loadingRevision, data?.revision, requestSequence,
+          settingsRequestSequence.current, supervisorSaveInFlight.current,
+        );
+        if (disposition === "ignore") return;
+        if (disposition === "reload") {
+          markCanonical("supervisor", "failed", "Supervisor configuration changed. Reload settings before saving.");
+          stopPolling();
+          return;
+        }
+        // Update observed activation only; preserve every unsaved form input.
+        setSupervisor(data);
+        if (data.activation_status !== "loading") stopPolling();
+      } catch {
+        if (cancelled || supervisorSaveInFlight.current
+          || requestSequence !== settingsRequestSequence.current) return;
+        markCanonical("supervisor", "failed", "Supervisor activation status could not be refreshed. Reload settings.");
+        stopPolling();
+      }
+    }, 4000);
+    return () => {
+      cancelled = true;
+      stopPolling();
+    };
+  }, [bridgeAvailable, markCanonical, pageVisible, savingSupervisor, settingsAvailable, shell,
+    supervisor?.activation_status, supervisor?.revision]);
+
+  const sessions = useMemo(() => {
+    const merged = new Map<string, SessionRow>();
+    for (const session of deck.sessions || []) merged.set(session.id, session);
+    for (const session of canonicalSessions) {
+      merged.set(session.id, mergeSessionObservation(merged.get(session.id), session, { authoritativeObservation: true }));
+    }
+    for (const session of pet?.sessions || []) {
+      merged.set(session.id, mergeSessionObservation(merged.get(session.id), session));
+    }
+    return Array.from(merged.values());
+  }, [deck.sessions, canonicalSessions, pet?.sessions]);
+  // The detail deck deliberately retains historical sessions. The compact
+  // surface must not relabel that archive as live work: /v1/pet already applies
+  // the bridge's freshness and promptability rules and collapses duplicate
+  // harness rows. Keep explicit Inspector/Deck selections possible, but choose
+  // the default worker from the promptable snapshot.
+  const homeSessions = pet?.sessions || [];
+  const availableGoals = useMemo(() => currentGoals(goals), [goals]);
+  const explicitlySelected = selectedId
+    ? sessions.find((session) => session.id === selectedId)
+    : undefined;
+  // An explicit selection is an interaction boundary. If it disappears, show
+  // unavailable state instead of silently retargeting an open goal form.
+  const current = selectedId ? explicitlySelected : selectPrimarySession(pet ? homeSessions : sessions);
+
+  // Latch "looked at the sealed evidence" so the journey checklist can tick
+  // the step after the judge navigates back to Home.
+  useEffect(() => {
+    if (surface === "inspector" && current && isReplaySession(current)) {
+      setInspectorReplayVisited(true);
+    }
+  }, [surface, current]);
+
+  const attachedGoal = availableGoals.find((goal) => goal.id === current?.goal_id);
+  const projectId = current?.project_id || attachedGoal?.project_id || current?.cwd || "";
+  const contextScopeGoalId = current?.goal_id || "";
+  const identitySelectedProjectId = identityTargetProjectId ?? projectId;
+  const identityLoading = identityConflictLoading || identityStatusLoading;
+  const identityError = [identityConflictError, identityStatusError]
+    .filter((message): message is string => Boolean(message))
+    .join(" ") || null;
+
+  useEffect(() => {
+    detailRequestSequence.current += 1;
+    setContextItems([]);
+    setContextProjectId(null);
+    setContextGoalId(null);
+    markCanonical("context", "reset");
+  }, [markCanonical, projectId, contextScopeGoalId]);
+
+  useEffect(() => {
+    identitySelectionRevision.current += 1;
+    identitySelectedProjectIdRef.current = projectId;
+    identityStatusRequestSequence.current += 1;
+    setIdentityTargetProjectId(null);
+    setIdentityStatus(null);
+    setIdentityStatusLoading(false);
+    setIdentityStatusError(null);
+    setIdentityFeedback(null);
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!bridgeAvailable) {
+      goalEvidenceKey.current = null;
+      loadedGoalLedgerKey.current = null;
+      goalEvidenceRefresh.current = null;
+      markCanonical("decisions", "reset");
+      markCanonical("completion", "reset");
+      return;
+    }
+    if (!pageVisible) return;
+    if (!attachedGoal?.id) {
+      goalEvidenceKey.current = null;
+      loadedGoalLedgerKey.current = null;
+      goalEvidenceRefresh.current = null;
+      setLedgerDecisions([]);
+      setGoalCompletion(null);
+      setVerificationReport(null);
+      markCanonical("decisions", "fresh");
+      markCanonical("completion", "fresh");
+      return;
+    }
+    const evidenceKey = goalLedgerKey(attachedGoal);
+    if (goalEvidenceKey.current !== evidenceKey) {
+      goalEvidenceKey.current = evidenceKey;
+      loadedGoalLedgerKey.current = null;
+      setLedgerDecisions([]);
+      setGoalCompletion(null);
+      setVerificationReport(null);
+      markCanonical("decisions", "reset");
+      markCanonical("completion", "reset");
+    }
+    let cancelled = false;
+    const controller = new AbortController();
+    const goalId = encodeURIComponent(attachedGoal.id);
+    const refreshGoalEvidence = coalesceBackgroundRead(async () => {
+      const signal = controller.signal;
+      const [decisionsResult, completionResult, reportResult] = await Promise.allSettled([
+        bridgeJson<unknown>(`/v1/goals/${goalId}/decisions`, { signal })
+          .then((value) => readGoalDecisions(value, attachedGoal.id)),
+        bridgeJson<GoalCompletion>(`/v1/goals/${goalId}/completion`, { signal }),
+        bridgeJson<unknown>(`/v1/goals/${goalId}/verification-report`, { signal })
+          .then((value) => parseVerificationReport(value)),
+      ]);
+      if (cancelled) return;
+      if (decisionsResult.status === "fulfilled") {
+        loadedGoalLedgerKey.current = evidenceKey;
+        setLedgerDecisions(decisionsResult.value);
+      }
+      markCanonical(
+        "decisions",
+        decisionsResult.status === "fulfilled" ? "fresh" : "failed",
+        "Goal decisions could not be refreshed.",
+      );
+      if (completionResult.status === "fulfilled") setGoalCompletion(completionResult.value);
+      markCanonical(
+        "completion",
+        completionResult.status === "fulfilled" ? "fresh" : "failed",
+        "Goal completion could not be refreshed.",
+      );
+      // A missing route or malformed payload removes the block; stale reports
+      // from a previous goal are never shown under a new goal's identity.
+      setVerificationReport(
+        reportResult.status === "fulfilled" ? reportResult.value : null,
+      );
+    });
+    goalEvidenceRefresh.current = refreshGoalEvidence;
+    const stopPolling = startSerialPolling(
+      refreshGoalEvidence,
+      GOAL_EVIDENCE_RECONCILIATION_INTERVAL_MS,
+    );
+    return () => {
+      cancelled = true;
+      if (goalEvidenceRefresh.current === refreshGoalEvidence) goalEvidenceRefresh.current = null;
+      controller.abort();
+      stopPolling();
+    };
+  }, [attachedGoal?.id, attachedGoal?.intent_revision, bridgeAvailable, markCanonical, pageVisible]);
+
+  const loadDetails = useCallback(async (includeDeck = false, showLoading = false, signal?: AbortSignal) => {
+    const requestSequence = ++detailRequestSequence.current;
+    if (showLoading) {
+      setDetailsLoading(true);
+      markCanonical("context", "loading");
+      markCanonical("interventions", "loading");
+      if (includeDeck) markCanonical("deck", "loading");
+    }
+    const contextPath = contextReadPath(projectId, contextScopeGoalId);
+    const interventionRequest = bridgeJson<Intervention[]>(
+      "/v1/interventions?include_handoff_bundle=true",
+      { signal },
+    );
+    const [deckResult, sessionsResult, contextResult, interventionResult, attentionResult, claimMetricsResult, benchResult, discoverResult] = await Promise.allSettled([
+      includeDeck ? bridgeJson<DeckData>("/v1/deck", { signal }) : Promise.resolve<DeckData | null>(null),
+      // The canonical session list — /v1/pet collapses duplicate harness rows,
+      // so handoff targets and sibling sessions must come from here.
+      bridgeJson<SessionRow[]>("/v1/sessions", { signal }),
+      bridgeJson<ContextItem[]>(contextPath, { signal }),
+      interventionRequest,
+      bridgeJson<AttentionMetrics>("/v1/attention/metrics", { signal }),
+      bridgeJson<ClaimIntegrityMetrics>("/v1/claims/metrics", { signal }),
+      includeDeck
+        ? bridgeJson<{ runs?: BenchRun[]; message?: string }>("/v1/bench/runs", { signal })
+        : Promise.resolve<{ runs?: BenchRun[]; message?: string } | null>(null),
+      includeDeck
+        ? bridgeJson<{ found?: Array<{ name?: string; kind?: string }>; not_running?: string[] }>("/v1/discover", { signal })
+        : Promise.resolve<{ found?: Array<{ name?: string; kind?: string }>; not_running?: string[] } | null>(null),
+    ]);
+    if (requestSequence !== detailRequestSequence.current) return;
+    if (includeDeck) {
+      if (deckResult.status === "fulfilled" && deckResult.value) {
+        setDeck(deckResult.value);
+        markCanonical("deck", "fresh");
+      } else {
+        markCanonical("deck", "failed", "Command deck state could not be refreshed.");
+      }
+    }
+    if (sessionsResult.status === "fulfilled" && Array.isArray(sessionsResult.value)) {
+      setCanonicalSessions(sessionsResult.value);
+    }
+    if (contextResult.status === "fulfilled" && Array.isArray(contextResult.value)) {
+      setContextItems(contextResult.value);
+      setContextProjectId(projectId);
+      setContextGoalId(contextScopeGoalId);
+      markCanonical("context", "fresh");
+    } else {
+      markCanonical("context", "failed", "Context could not be refreshed.");
+    }
+    if (interventionResult.status === "fulfilled" && Array.isArray(interventionResult.value)) {
+      const currentInterventions = interventionResult.value;
+      setInterventions(currentInterventions);
+      handoffInterventions.current = currentInterventions;
+      const nextHandoffKey = handoffInterventionFingerprint(currentInterventions);
+      if (nextHandoffKey !== handoffInterventionKey.current) {
+        handoffInterventionKey.current = nextHandoffKey;
+        setHandoffAssimilation({});
+        void handoffAssimilationRefresh.current?.();
+      }
+      markCanonical("interventions", "fresh");
+    } else {
+      handoffInterventions.current = [];
+      handoffInterventionKey.current = "";
+      setHandoffAssimilation({});
+      markCanonical("interventions", "failed", "Intervention history could not be refreshed.");
+    }
+    setAttentionMetrics(attentionResult.status === "fulfilled" ? attentionResult.value : null);
+    setClaimMetrics(claimMetricsResult.status === "fulfilled" ? claimMetricsResult.value : null);
+    const coreFailed = [contextResult, interventionResult, attentionResult].some((item) => item.status === "rejected") ||
+      (includeDeck && deckResult.status === "rejected");
+    setDetailsError(coreFailed ? "Some live bridge data is unavailable." : null);
+
+    const inventory =
+      discoverResult.status === "fulfilled" && discoverResult.value
+        ? starterInventoryFromDiscover(discoverResult.value)
+        : undefined;
+    if (includeDeck && benchResult.status === "rejected") {
+      setBench((state) => ({
+        loading: false,
+        runs: [],
+        message: "Benchmark result endpoint could not be reached.",
+        inventory: inventory ?? state.inventory,
+      }));
+    } else if (benchResult.status === "fulfilled" && benchResult.value) {
+      const currentBench = benchResult.value;
+      setBench((state) => ({
+        loading: false,
+        runs: currentBench.runs || [],
+        message: currentBench.message,
+        inventory: inventory ?? state.inventory,
+      }));
+    }
+    // A mutation-triggered refresh can supersede the first visible read. The
+    // newest accepted response owns the loading state even when it did not set it.
+    setDetailsLoading(false);
+  }, [markCanonical, projectId, contextScopeGoalId]);
+
+  const loadProjectIdentityConflicts = useCallback(async (options: {
+    signal?: AbortSignal;
+    conflictOffset?: number;
+    appendConflicts?: boolean;
+    showLoading?: boolean;
+  } = {}): Promise<ProjectIdentityConflictPage | null> => {
+    const requestSequence = ++identityConflictRequestSequence.current;
+    if (options.showLoading) setIdentityConflictLoading(true);
+    try {
+      const nextPage = await bridgeJson<ProjectIdentityConflictPage>(
+        `/v1/project-identities/conflicts?limit=200&offset=${options.conflictOffset ?? 0}`,
+        { signal: options.signal },
+      );
+      if (requestSequence !== identityConflictRequestSequence.current) return null;
+      setIdentityConflicts((currentPage) => {
+        if (!options.appendConflicts || !currentPage) return nextPage;
+        const merged = new Map(
+          currentPage.items.map((item) => [item.legacy_project_id, item]),
+        );
+        for (const item of nextPage.items) merged.set(item.legacy_project_id, item);
+        return {
+          ...nextPage,
+          offset: 0,
+          items: Array.from(merged.values()),
+        };
+      });
+      setIdentityConflictError(null);
+      return nextPage;
+    } catch (error) {
+      if (requestSequence !== identityConflictRequestSequence.current) return null;
+      setIdentityConflictError(operationError(
+        error,
+        "Live project identity conflicts are unavailable.",
+      ));
+      return null;
+    } finally {
+      if (requestSequence === identityConflictRequestSequence.current) {
+        setIdentityConflictLoading(false);
+      }
+    }
+  }, []);
+
+  const loadProjectIdentityStatus = useCallback(async (options: {
+    signal?: AbortSignal;
+    targetProjectId?: string;
+    candidateOffset?: number;
+    appendCandidates?: boolean;
+    showLoading?: boolean;
+  } = {}): Promise<ProjectIdentityStatusView | null> => {
+    const requestSequence = ++identityStatusRequestSequence.current;
+    const exactProjectId = options.targetProjectId ?? identitySelectedProjectId;
+    if (!exactProjectId) {
+      setIdentityStatus(null);
+      setIdentityStatusError(null);
+      setIdentityStatusLoading(false);
+      return null;
+    }
+    if (options.showLoading) setIdentityStatusLoading(true);
+    try {
+      const liveStatus = await bridgeJson<ProjectIdentityStatusView>(
+        "/v1/project-identities/status" +
+          `?legacy_project_id=${encodeURIComponent(exactProjectId)}` +
+          `&candidate_limit=200&candidate_offset=${options.candidateOffset ?? 0}`,
+        { signal: options.signal },
+      );
+      if (requestSequence !== identityStatusRequestSequence.current) return null;
+      setIdentityStatus((currentStatus) => {
+        if (
+          !options.appendCandidates ||
+          currentStatus?.status !== "quarantined" ||
+          liveStatus?.status !== "quarantined" ||
+          currentStatus.legacy_project_id !== liveStatus.legacy_project_id
+        ) return liveStatus;
+        const merged = new Map(
+          currentStatus.candidates.map((candidate) => [candidate.identity.id, candidate]),
+        );
+        for (const candidate of liveStatus.candidates) {
+          merged.set(candidate.identity.id, candidate);
+        }
+        return {
+          ...liveStatus,
+          candidate_offset: 0,
+          candidates: Array.from(merged.values()),
+        };
+      });
+      setIdentityStatusError(null);
+      return liveStatus;
+    } catch (error) {
+      if (requestSequence !== identityStatusRequestSequence.current) return null;
+      setIdentityStatusError(operationError(
+        error,
+        "Live project identity status is unavailable.",
+      ));
+      return null;
+    } finally {
+      if (requestSequence === identityStatusRequestSequence.current) {
+        setIdentityStatusLoading(false);
+      }
+    }
+  }, [identitySelectedProjectId]);
+
+  useEffect(() => {
+    if (!bridgeAvailable || !pageVisible || surface === "compact" || shell !== "main") return;
+    const includeDeckOnPoll = surface === "deck";
+    if (includeDeckOnPoll) {
+      setBench((state) => ({ ...state, loading: state.runs.length === 0 && !state.message }));
+    }
+    let firstRefresh = true;
+    let slowDetailsRequested = false;
+    const controller = new AbortController();
+    const refreshDetails = coalesceBackgroundRead(async () => {
+      while (!controller.signal.aborted) {
+        const includeSlowDetails = slowDetailsRequested;
+        slowDetailsRequested = false;
+        const showLoading = firstRefresh;
+        firstRefresh = false;
+        await loadDetails(includeSlowDetails, showLoading, controller.signal);
+        if (!slowDetailsRequested) return;
+      }
+    });
+    const refreshSlowDetails = () => {
+      // Inspector needs current evidence, not benchmark-file scans, the full
+      // command deck and process discovery. Deck reconciles those on entry.
+      slowDetailsRequested = includeDeckOnPoll;
+      return refreshDetails();
+    };
+    detailRefresh.current = refreshDetails;
+    const stopPolling = startSerialPolling(
+      refreshSlowDetails,
+      DETAIL_RECONCILIATION_INTERVAL_MS,
+    );
+    return () => {
+      detailRequestSequence.current += 1;
+      if (detailRefresh.current === refreshDetails) detailRefresh.current = null;
+      controller.abort();
+      stopPolling();
+    };
+  }, [bridgeAvailable, loadDetails, pageVisible, shell, surface]);
+
+  useEffect(() => {
+    if (!bridgeAvailable || !pageVisible || surface === "compact" || shell !== "main") return;
+    let cancelled = false;
+    const controller = new AbortController();
+    // A view that was hidden may have missed events. Do not present its prior
+    // target-use projection while the immediate reconciliation is in flight.
+    setHandoffAssimilation({});
+    const refreshHandoffAssimilation = coalesceBackgroundRead(async () => {
+      while (!cancelled) {
+        const requestedKey = handoffInterventionKey.current;
+        const requestedInterventions = handoffInterventions.current;
+        if (!requestedKey) {
+          setHandoffAssimilation({});
+          return;
+        }
+        const statuses = await loadHandoffAssimilationStatuses(
+          requestedInterventions,
+          controller.signal,
+        );
+        if (cancelled) return;
+        if (handoffInterventionKey.current !== requestedKey) continue;
+        setHandoffAssimilation(statuses);
+        return;
+      }
+    });
+    handoffAssimilationRefresh.current = refreshHandoffAssimilation;
+    const stopPolling = startSerialPolling(
+      refreshHandoffAssimilation,
+      HANDOFF_ASSIMILATION_RECONCILIATION_INTERVAL_MS,
+    );
+    return () => {
+      cancelled = true;
+      if (handoffAssimilationRefresh.current === refreshHandoffAssimilation) {
+        handoffAssimilationRefresh.current = null;
+      }
+      controller.abort();
+      stopPolling();
+    };
+  }, [bridgeAvailable, pageVisible, shell, surface]);
+
+  useEffect(() => {
+    if (!bridgeAvailable || !pageVisible || surface === "compact" || shell !== "main") return;
+    let firstRefresh = true;
+    const controller = new AbortController();
+    const refreshConflicts = coalesceBackgroundRead(() => {
+      const showLoading = firstRefresh;
+      firstRefresh = false;
+      return loadProjectIdentityConflicts({ showLoading, signal: controller.signal });
+    });
+    identityConflictRefresh.current = refreshConflicts;
+    const stopPolling = startSerialPolling(
+      refreshConflicts,
+      PROJECT_IDENTITY_RECONCILIATION_INTERVAL_MS,
+    );
+    return () => {
+      identityConflictRequestSequence.current += 1;
+      setIdentityConflictLoading(false);
+      if (identityConflictRefresh.current === refreshConflicts) {
+        identityConflictRefresh.current = null;
+      }
+      controller.abort();
+      stopPolling();
+    };
+  }, [bridgeAvailable, loadProjectIdentityConflicts, pageVisible, shell, surface]);
+
+  useEffect(() => {
+    if (!bridgeAvailable || !pageVisible || surface !== "deck" || shell !== "main" || activeView !== "decisions") return;
+    let firstRefresh = true;
+    const controller = new AbortController();
+    const refreshStatus = coalesceBackgroundRead(() => {
+      const showLoading = firstRefresh;
+      firstRefresh = false;
+      return loadProjectIdentityStatus({ showLoading, signal: controller.signal });
+    });
+    identityStatusRefresh.current = refreshStatus;
+    const stopPolling = startSerialPolling(
+      refreshStatus,
+      PROJECT_IDENTITY_RECONCILIATION_INTERVAL_MS,
+    );
+    return () => {
+      identityStatusRequestSequence.current += 1;
+      setIdentityStatusLoading(false);
+      if (identityStatusRefresh.current === refreshStatus) {
+        identityStatusRefresh.current = null;
+      }
+      controller.abort();
+      stopPolling();
+    };
+  }, [activeView, bridgeAvailable, loadProjectIdentityStatus, pageVisible, shell, surface]);
+
+  const petState = canonicalResources.pet;
+  const sessionStateFresh = !bridgeError
+    && canonicalResourcesAreFresh(canonicalResources, ["pet"]);
+  const railSessions = sessionStateFresh ? homeSessions : [];
+  const railLabels = railSessions.map((session) =>
+    session.label || session.cwd?.split(/[\\/]/).filter(Boolean).pop() || "Existing session"
+  );
+  const railLabelCounts = new Map<string, number>();
+  railSessions.forEach((session, index) => {
+    const key = `${session.harness_type}:${railLabels[index]}`;
+    railLabelCounts.set(key, (railLabelCounts.get(key) || 0) + 1);
+  });
+  const goalStateFresh = canonicalResourcesAreFresh(canonicalResources, ["goals"]);
+  const goalMutationAvailable = goalStateFresh && (!current || sessionStateFresh);
+  const goalLedgerEditable = goalMutationAvailable && canEditGoalLedger(
+    attachedGoal, loadedGoalLedgerKey.current,
+    canonicalResourcesAreFresh(canonicalResources, ["decisions"]),
+  );
+  const goalEvidenceFresh = !attachedGoal || canonicalResourcesAreFresh(
+    canonicalResources,
+    ["decisions", "completion"],
+  );
+  const contextStateFresh = canonicalResourceIsFreshForScope(
+    canonicalResources,
+    "context",
+    contextProjectId,
+    projectId,
+  ) && contextGoalId === contextScopeGoalId;
+  // Judge journey checklist — each step derives from real state so the
+  // five-minute path checks itself off as the judge walks it. Where the
+  // server persists the evidence (replay sessions, their verdict stamps and
+  // attach provenance), steps stay checked across a reload.
+  const startFixture = demoFixtures?.find((fixture) => isRecommendedStart(fixture))
+    ?? demoFixtures?.[0];
+  const replaySessionsRan = sessions.filter((session) => isReplaySession(session));
+  // The verdict card routes a run that escalated to ASK_HUMAN straight to the
+  // Decisions view. The session row may be outside the compact rail's
+  // promptable set, so "not visible" still counts as waiting.
+  // Any run that escalated keeps its ruling pending until answered — a
+  // later non-escalation run must not hide it by taking history[0].
+  const replayRunAwaitingDecision = demoReplay.history.some((run) => {
+    if (!run.verdict.actions.includes("ASK_HUMAN")) return false;
+    if (!run.sessionId) return true;
+    const session = sessions.find((entry) => entry.id === run.sessionId);
+    return !session || session.status === "needs_decision";
+  });
+  const journeySteps = demoFixtures?.length ? [
+    {
+      key: "first-run",
+      done: Boolean(
+        startFixture && (
+          demoReplay.history.some((run) => run.fixture === startFixture.id)
+          || replaySessionsRan.some((session) => replayFixtureLabel(session) === startFixture.id)
+        ),
+      ),
+      body: <>Click <strong>{startFixture?.title ?? "False completion without tests"}</strong> (tagged <em>start here</em>) — the worker claims done with no test run; PEX adjudicates the claim contradicted, and only the real suite run earns <code>verified_complete</code>.</>,
+    },
+    {
+      key: "verdict",
+      done: Boolean(
+        demoReplay.verdict || demoReplay.history.length
+        || replaySessionsRan.some((session) => typeof session.metadata?.replay_verdict === "string"),
+      ),
+      body: <>Read the verdict card: the arc, the worker's own claim vs. its verdict, the verbatim deciding evidence, and the fixture's declared arc scored live.</>,
+    },
+    {
+      key: "evidence",
+      done: inspectorReplayVisited,
+      body: <>Click <strong>Open the session evidence</strong> — the Inspector shows the claim timeline and the sealed-baseline diff, and its <strong>Evidence pack</strong> exports a hash-chained bundle that re-verifies in this browser.</>,
+    },
+    {
+      key: "ruling",
+      done: journeyRulingRecorded || replaySessionsRan.some(
+        (session) => replayFixtureLabel(session) === "nudge_dispute_eval" && session.status !== "needs_decision",
+      ),
+      body: <>Make a ruling of your own: run <strong>Worker disputes the nudge</strong>, open <strong>Decisions</strong>, and record your answer — it journals onto the goal ledger. Then tick <strong>Attach replays</strong> and run <em>Second-act replay</em> — <em>your</em> ruling now governs the new run. The <em>worker complies</em> fixture proves it isn't a trap.</>,
+    },
+    {
+      key: "attach",
+      done: demoReplay.history.some((run) => run.attached)
+        || replaySessionsRan.some((session) => session.metadata?.replay_goal_source === "attached"),
+      body: <>Attach a replay to the ruled goal — the goal's Inspector then lists every session it governs, with each verdict.</>,
+    },
+    {
+      key: "suite",
+      done: Boolean(suiteRun && !suiteRun.running && suiteRun.results.length),
+      body: <><strong>Run the whole suite</strong> — every fixture self-scored, same contract as <code>eval_replays.py</code> in CI.</>,
+    },
+    {
+      key: "challenge",
+      done: demoReplay.history.some((run) => run.fixture === "inline")
+        || replaySessionsRan.some((session) => replayFixtureLabel(session) === "custom trajectory"),
+      body: <>Now attack it yourself: <strong>Challenge the supervisor</strong> below accepts a pasted trajectory — try to make PEX accept a tampered test or a premature claim.</>,
+    },
+    {
+      key: "capabilities",
+      done: capabilitiesVisited,
+      body: <>Skeptical about what is real? <button type="button" className="text-button" onClick={() => { setCapabilitiesVisited(true); openSettings("capabilities"); }}>Settings → Capabilities</button> lists what this build actually does, derived from live probes — what is key-gated, unfrozen, or not deployed is labelled, not implied.</>,
+    },
+  ] : [];
+  const journeyTotal = journeySteps.filter((step) => step.key !== "capabilities").length;
+  const journeyDoneCount = journeySteps.filter((step) => step.done && step.key !== "capabilities").length;
+  const journeyAllDone = journeyTotal > 0 && journeyDoneCount === journeyTotal;
+  const inspectorCanonicalStateAvailable = sessionStateFresh
+    && goalStateFresh
+    && goalEvidenceFresh
+    && contextStateFresh;
+  const inspectorIssue = !bridgeError && contextGoalId !== contextScopeGoalId
+    ? "Checking context for the selected worker…"
+    : inspectorCanonicalIssue(
+    canonicalResources, bridgeError, projectId, contextProjectId, Boolean(attachedGoal),
+  );
+  const deckMutationsAvailable = canonicalResourcesAreFresh(
+    canonicalResources,
+    ["deck", "goals"],
+  );
+  const decisionsFresh = !bridgeError
+    && !detailsError
+    && attentionMetrics !== null
+    && canonicalResourcesAreFresh(canonicalResources, ["pet", "deck", "interventions"]);
+  const auditMutationsAvailable = canonicalResourcesAreFresh(
+    canonicalResources,
+    ["interventions", "goals"],
+  );
+  const settingsIssue = canonicalResourceIssue(
+    canonicalResources,
+    ["supervisor", "channels", "pets"],
+  );
+  const compactGoalIssue = canonicalResourceIssue(canonicalResources, ["goals"]);
+  const deckIssue = bridgeError
+    ? "Bridge offline. Cached rows below are not current."
+    : (projectId && contextProjectId !== projectId) || contextGoalId !== contextScopeGoalId
+      ? "Checking canonical context for the selected project…"
+      : canonicalResourceIssue(canonicalResources, ["deck", "context", "interventions"])
+        || detailsError;
+  const status = useMemo(
+    () => statusCopy(pet, bridgeError, petState.status),
+    [bridgeError, pet, petState.status],
+  );
+  const setup = firstRunGuidance({
+    current,
+    attachedGoal,
+    sessionFresh: sessionStateFresh,
+    currentInPetSnapshot: Boolean(current && homeSessions.some((session) => session.id === current.id)),
+    goalFresh: goalStateFresh,
+    bridgeError,
+  });
+  const semanticSupervisor = supervisorAvailability({ supervisor, supervisorFresh: settingsAvailable });
+  const mood = moodForState(pet, bridgeError);
+  // Pex and Von are release-hash verified and already bundled with each WebView.
+  // Prefer their stable asset URLs instead of repeatedly transferring and
+  // Pillow-validating multi-megabyte copies through the local bridge. Keep the
+  // authenticated bridge path as a fail-closed fallback for an unknown future id.
+  const localSheet = bundledPetSheet(pet?.appearance?.id)
+    ?? (pet?.appearance?.id ? undefined : defaultBundledPetSheet);
+  const bridgeSheet = useBridgeAsset(
+    localSheet ? undefined
+      : pet?.appearance?.atlas_ready === true ? pet.appearance.spritesheet_url : undefined,
+  );
+  const sheet = localSheet || bridgeSheet || defaultBundledPetSheet;
+  const petName = pet?.settings?.custom_name?.trim() || pet?.appearance?.display_name || "Pex";
+  const reducedMotion = useReducedMotion();
+  const displayedInterventions = useMemo(
+    () => (interventions.length ? interventions : deck.interventions || [])
+      .map((item) => projectCompletedOverlayUndo(item, completedOverlayUndoIds)),
+    [completedOverlayUndoIds, deck.interventions, interventions],
+  );
+  const displayedLastAction = useMemo(() => {
+    const item = pet?.last_action;
+    if (
+      !item
+      || item.action !== "APPLY_OVERLAY"
+      || !completedOverlayUndoIds.has(item.id)
+    ) return item;
+    return { ...item, result: "overlay_reverted" };
+  }, [completedOverlayUndoIds, pet?.last_action]);
+  const action = useMemo(
+    () => actionForSession(current, displayedInterventions, displayedLastAction),
+    [current, displayedInterventions, displayedLastAction],
+  );
+  // Chronological supervision digest for the selected worker; newest-first
+  // ledger order is reversed so the log reads as the arc unfolded.
+  const sessionInterventions = useMemo(
+    () =>
+      displayedInterventions
+        .filter((item) => item.session_id === current?.id)
+        .slice(0, 8)
+        .reverse(),
+    [current?.id, displayedInterventions],
+  );
+  // Same-goal siblings that can accept an injected context bundle. The bridge
+  // re-checks the capability server-side; this list is only a UI affordance.
+  // Recorded replays are excluded — there is no live worker to inject into.
+  const handoffTargets = useMemo(
+    () =>
+      current?.goal_id
+        ? sessions.filter(
+            (session) =>
+              session.id !== current.id &&
+              session.goal_id === current.goal_id &&
+              session.capabilities?.inject_context === true &&
+              session.metadata?.not_live_control !== true,
+          )
+        : [],
+    [sessions, current?.goal_id, current?.id],
+  );
+  const [handoffBusy, setHandoffBusy] = useState(false);
+  const homeStatus = statusWithFirstRunGuidance(
+    selectedWorkerStatus(status, current, action, sessionStateFresh, Boolean(pet?.paused)),
+    setup, Boolean(pet?.paused),
+  );
+
+  // Latch: once a judge has engaged the replay path (fixtures loaded, a run
+  // in flight, or a verdict on screen), the panel stays mounted — a transient
+  // bridge blip or connecting a real worker mid-journey must not unmount a
+  // completed verdict card.
+  const demoReplayAvailable = Boolean(
+    setup?.state === "connect_worker"
+      || isReplaySession(current)
+      || demoFixtures?.length
+      || demoReplay.running
+      || demoReplay.verdict
+      || demoReplay.history.length,
+  );
+  const demoFixtureTried = useRef(false);
+  useEffect(() => {
+    // Probe for fixtures whenever the bridge is reachable — not only when
+    // guidance asks for a worker. A judge whose environment already has a
+    // live worker connected must still get the replay panel, or the whole
+    // journey is invisible to exactly the audience it was built for.
+    if ((!demoReplayAvailable && !bridgeAvailable) || demoFixtureTried.current || bridgeError) {
+      return;
+    }
+    demoFixtureTried.current = true;
+    const controller = new AbortController();
+    bridgeJson<unknown>("/v1/demo/trajectories", { signal: controller.signal })
+      .then((payload) => {
+        const fixtures = parseTrajectoriesResponse(payload);
+        setDemoFixtures(fixtures ? orderFixtures(fixtures) : null);
+      })
+      .catch(() => {
+        setDemoFixtures(null);
+        demoFixtureTried.current = false;
+      });
+    return () => controller.abort();
+  }, [demoReplayAvailable, bridgeAvailable, bridgeError]);
+
+  // Judges read titles, not ids — resolve a fixture id to its declared
+  // title (fall back to the id itself if the list hasn't loaded yet).
+  const demoFixtureTitle = (id: string | null | undefined) =>
+    !id
+      ? "a recorded trajectory"
+      : id === "inline"
+        ? "custom trajectory"
+        : (demoFixtures?.find((fixture) => fixture.id === id)?.title ?? id);
+
+  async function runDemoReplay(fixtureId: string, inline?: Record<string, unknown>) {
+    if (demoReplay.running) return;
+    setVerdictReceiptCopied(false);
+    const priorVerdict = demoReplay.verdict;
+    const priorFixture = demoReplay.fixture;
+    setChallengeError(null);
+    setDemoReplay((previous) => ({
+      ...previous, running: true, fixture: fixtureId, error: null, verdict: null,
+    }));
+    const replayBody = JSON.stringify({
+      ...(inline !== undefined ? { inline } : { fixture: fixtureId }),
+      ...(attachReplayGoal && current?.goal_id ? { goal_id: current.goal_id } : {}),
+    });
+    try {
+      const payload = await bridgeJson<unknown>("/v1/demo/replay", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: replayBody,
+      });
+      const sessionId = parseReplaySessionId(payload);
+      if (!sessionId) {
+        setDemoReplay((previous) => ({
+          ...previous,
+          running: false, fixture: fixtureId,
+          error: "Replay did not return a labeled session.",
+          verdict: null,
+        }));
+        return;
+      }
+      const verdict = parseReplayVerdict(payload);
+      if (verdict && determinismCheck) {
+        // Same trajectory, second independent run: the arc must match the
+        // first exactly for the determinism claim to hold.
+        const second = await bridgeJson<unknown>("/v1/demo/replay", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: replayBody,
+        });
+        verdict.determinism = replayVerdictsIdentical(verdict, parseReplayVerdict(second))
+          ? "identical"
+          : "diverged";
+      }
+      setDemoReplay((previous) => ({
+        running: false, fixture: fixtureId,
+        error: null, verdict,
+        history: verdict
+          ? [
+              {
+                fixture: fixtureId,
+                sessionId,
+                attached: parseReplayGoalSource(payload) === "attached",
+                verdict,
+              },
+              ...previous.history,
+            ].slice(0, 4)
+          : previous.history,
+      }));
+      if (parseReplayGoalSource(payload) === "attached") {
+        setNote(
+          "Replay attached to the selected goal — its recorded rulings and ledger govern this run.",
+        );
+      }
+      await refreshPet();
+      // Select the session but stay on this surface — the verdict card is
+      // the run's landing; the Inspector is one click away on the card.
+      selectSession(sessionId);
+      // The replay minted a fresh goal server-side — refresh the goal list
+      // so attachedGoal resolves instead of hanging on "checking the goal".
+      void refreshPetGoals();
+    } catch (error) {
+      // A failed attempt must not erase the verdict the judge just read:
+      // restore the previous card under its own fixture so the screen keeps
+      // its evidence while the alert says which run failed.
+      setDemoReplay((previous) => ({
+        ...previous,
+        running: false, fixture: priorVerdict ? priorFixture : fixtureId,
+        error: `Replay could not run: ${operationError(error, "bridge rejected the request")}`,
+        verdict: priorVerdict,
+      }));
+    }
+  }
+
+  async function runDemoSuite() {
+    if (!demoFixtures?.length || demoReplay.running || suiteRun?.running) return;
+    setSuiteReceiptCopied(false);
+    setSuiteMdCopied(false);
+    suiteCancelRef.current = false;
+    setSuiteRun({ running: true, done: 0, total: demoFixtures.length, current: null, met: 0, misses: [], results: [] });
+    let met = 0;
+    const misses: { fixture: string; failure: string }[] = [];
+    const results: { fixture: string; met: boolean | null; completion: string | null; failures: string[] }[] = [];
+    for (const [index, fixture] of demoFixtures.entries()) {
+      if (suiteCancelRef.current) break;
+      setSuiteRun({ running: true, done: index, total: demoFixtures.length, current: fixture.id, met, misses, results });
+      try {
+        const payload = await bridgeJson<unknown>("/v1/demo/replay", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          // Suite runs mint their own goals — the same contract eval_replays.py
+          // enforces, not the attached-ledger variant.
+          body: JSON.stringify({ fixture: fixture.id }),
+        });
+        const verdict = parseReplayVerdict(payload);
+        const metFlag = verdict?.declared?.met ?? null;
+        results.push({
+          fixture: fixture.id,
+          met: metFlag,
+          completion: verdict?.status ?? null,
+          failures: verdict?.declared?.failures ?? [],
+        });
+        if (metFlag === true) {
+          met += 1;
+        } else if (metFlag === false) {
+          misses.push({
+            fixture: fixture.id,
+            failure: verdict?.declared?.failures[0] ?? "declared arc not met",
+          });
+        }
+        // met === null is left out of `misses`: it means the run could not be
+        // scored at all (request failed, verdict unparseable) — a transport
+        // failure, not an adjudication outcome, and the summary must not
+        // conflate the two.
+      } catch {
+        results.push({ fixture: fixture.id, met: null, completion: null, failures: ["replay request failed"] });
+      }
+    }
+    setSuiteRun({ running: false, done: results.length, total: demoFixtures.length, current: null, met, misses, results });
+    // A suite mints one goal per fixture — refresh so the goals land in
+    // state instead of waiting on the pet-shell poll cadence.
+    void refreshPetGoals();
+    await refreshPet();
+  }
+
+  async function copySuiteReceipt() {
+    if (!suiteRun || suiteRun.running || !suiteRun.results.length) return;
+    const receipt = {
+      replay: true,
+      not_live_control: true,
+      kind: "in_app_fixture_suite_receipt/v1",
+      note: "Recorded replay suite — same declared-arc contract as scripts/eval_replays.py; not a benchmark.",
+      ran_at: new Date().toISOString(),
+      total: suiteRun.total,
+      completed: suiteRun.done,
+      stopped_early: suiteRun.done < suiteRun.total,
+      met: suiteRun.met,
+      results: suiteRun.results,
+    };
+    await navigator.clipboard.writeText(JSON.stringify(receipt, null, 2));
+    setSuiteReceiptCopied(true);
+  }
+
+  async function copySuiteMarkdown() {
+    if (!suiteRun || suiteRun.running || !suiteRun.results.length) return;
+    const lines = [
+      `| fixture | declared arc | completion |`,
+      `| --- | --- | --- |`,
+      ...suiteRun.results.map((row) =>
+        `| ${row.fixture} | ${row.met === true ? "met" : row.met === false ? `missed — ${row.failures[0] ?? "declared arc not met"}` : "unscored"} | ${row.completion ?? "n/a"} |`),
+      ``,
+      `PEX replay suite — ${suiteRun.met}/${suiteRun.done} declared arcs met${suiteRun.done < suiteRun.total ? ` (stopped at ${suiteRun.done}/${suiteRun.total})` : ""}. Recorded supervision trajectories adjudicated by the real pipeline — not a benchmark. ${new Date().toISOString()}`,
+    ];
+    await navigator.clipboard.writeText(lines.join("\n"));
+    setSuiteMdCopied(true);
+  }
+
+  async function copyVerdictReceipt() {
+    const verdict = demoReplay.verdict;
+    if (!verdict || !demoReplay.fixture) return;
+    const run = demoReplay.history[0];
+    const receipt = {
+      replay: true,
+      not_live_control: true,
+      kind: "replay_verdict_receipt/v1",
+      note: "Deterministic recorded replay — not live worker control.",
+      ran_at: new Date().toISOString(),
+      fixture: demoReplay.fixture,
+      session_id: run?.sessionId ?? null,
+      attached: run?.attached ?? false,
+      completion: { status: verdict.status ?? null, reason: verdict.reason ?? null },
+      observed_arc: verdict.actions,
+      cited_constraint: verdict.citedConstraint ?? null,
+      narration_check: verdict.narrationCheck ?? null,
+      claim_verdicts: verdict.claimVerdicts ?? [],
+      worker_pex_calls: verdict.workerPexCalls ?? 0,
+      verified_facts: verdict.verifiedFacts ?? [],
+      stats: verdict.stats ?? null,
+      declared: verdict.declared ?? null,
+      determinism: verdict.determinism ?? null,
+    };
+    await navigator.clipboard.writeText(JSON.stringify(receipt, null, 2));
+    setVerdictReceiptCopied(true);
+  }
+
+  function runChallenge() {
+    const parsed = parseChallengeFixture(challengeText);
+    if (!parsed.ok) {
+      // Client-side validation failure — nothing ran, so this is not a
+      // replay failure; render it beside the input, not as a verdict error.
+      setChallengeError(parsed.error);
+      return;
+    }
+    setChallengeError(null);
+    void runDemoReplay("inline", parsed.fixture);
+  }
+
+  async function verifyPackFile(file: File | undefined) {
+    if (!file) return;
+    try {
+      const raw = extractPackJson(await file.text()) as Record<string, unknown>;
+      const checks = await verifyEvidencePack(raw);
+      setPackVerify(
+        checks.length
+          ? { fileName: file.name, checks }
+          : { fileName: file.name, checks: ["FAIL not a pex.evidence-pack.v1 bundle"] },
+      );
+    } catch {
+      setPackVerify({ fileName: file.name, checks: ["FAIL file is not a parseable pack (JSON or rendered HTML receipt)"] });
+    }
+  }
+
+  async function openSession(session?: SessionRow) {
+    const row = session || current;
+    if (!row) return;
+    if (canFocusSession(row)) {
+      try {
+        const focused = await bridgeJson<{ ok?: boolean }>(
+          `/v1/sessions/${encodeURIComponent(row.id)}/focus`,
+          { method: "POST" },
+        );
+        setNote(
+          focused.ok
+            ? `Focused the existing ${titleCase(row.harness_type)} window.`
+            : `The existing ${titleCase(row.harness_type)} window could not be focused.`,
+        );
+      } catch (error) {
+        setNote(operationError(error, `The existing ${titleCase(row.harness_type)} window could not be focused.`));
+      }
+      return;
+    }
+    const url = sessionExternalUrl(row);
+    if (!url || !canOpenSession(row)) {
+      setNote(`${titleCase(row.harness_type)} does not expose a truthful window or session link.`);
+      return;
+    }
+    const opened = window.open(url, "_blank", "noopener,noreferrer");
+    setNote(
+      opened
+        ? `Opened the existing ${titleCase(row.harness_type)} session in the browser.`
+        : `The existing ${titleCase(row.harness_type)} session link could not be opened.`,
+    );
+  }
+
+  async function pauseOrResume(session?: SessionRow) {
+    const row = session || current;
+    if (!row) return;
+    if (!operatorActionsAvailable) {
+      setNote("Pausing supervision requires the authenticated PEX desktop app or the demo operator bridge.");
+      return;
+    }
+    const sourceFresh = session
+      ? canonicalResourcesAreFresh(canonicalResources, ["deck"])
+      : sessionStateFresh;
+    if (bridgeError || !sourceFresh) {
+      setNote("Current session control state is unavailable. Refresh before changing supervision.");
+      return;
+    }
+    const path = row.supervision_paused ? "resume-supervision" : "pause-supervision";
+    try {
+      await bridgeJson(`/v1/sessions/${encodeURIComponent(row.id)}/${path}`, { method: "POST" });
+      await refreshPet();
+    } catch (error) {
+      setNote(operationError(error, "Could not update supervision for that session."));
+    }
+  }
+
+  async function handoffGoal(targetId: string) {
+    if (!current?.goal_id || !operatorActionsAvailable || handoffBusy) return;
+    setHandoffBusy(true);
+    try {
+      const result = await bridgeJson<{
+        status?: string;
+        bundle_receipt?: { bundle_digest?: string };
+        effect?: { result?: { reason?: string } };
+      }>(`/v1/sessions/${encodeURIComponent(current.id)}/handoff`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idempotency_key: crypto.randomUUID(),
+          target_session_id: targetId,
+          token_budget: 2000,
+        }),
+      });
+      const statusName = result?.status || "submitted";
+      const digest = result?.bundle_receipt?.bundle_digest?.slice(0, 12);
+      const reason = result?.effect?.result?.reason;
+      setNote(
+        statusName === "delivered"
+          ? `Handoff delivered — context bundle ${digest ? `sha256:${digest}… ` : ""}injected; assimilation monitoring started.`
+          : statusName === "delivery_uncertain"
+            ? `Handoff delivery uncertain${reason ? ` (${reason})` : ""} — PEX will not report it as delivered.`
+            : `Handoff ${statusName}${reason ? `: ${reason}` : ""}${digest ? ` · bundle sha256:${digest}…` : ""}.`,
+      );
+      void handoffAssimilationRefresh.current?.();
+    } catch (error) {
+      setNote(operationError(error, "Could not hand off the goal context."));
+    } finally {
+      setHandoffBusy(false);
+    }
+  }
+
+  async function attachGoal(
+    sessionId: string,
+    goalId: string,
+    expectedGoalId: string | null,
+    expectedControlRevision: number,
+    expectedGoalIntentRevision: number,
+  ): Promise<SessionGoalAttachmentResponse> {
+    if (!goalId) throw new Error("A goal is required for attachment.");
+    const attemptKey = `attach:${sessionId}`;
+    const prepared = prepareGoalControlAttempt(
+      goalControlAttempts.current.get(attemptKey),
+      "attach",
+      sessionId,
+      sessionGoalAttachmentPayload(
+        goalId,
+        expectedGoalId,
+        expectedControlRevision,
+        expectedGoalIntentRevision,
+      ),
+    );
+    goalControlAttempts.current.set(attemptKey, prepared.attempt);
+    const result = await bridgeJson<SessionGoalAttachmentResponse>(
+      `/v1/sessions/${encodeURIComponent(sessionId)}/attach`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(prepared.request),
+    });
+    if (
+      goalControlAttempts.current.get(attemptKey)?.idempotencyKey
+      === prepared.attempt.idempotencyKey
+    ) goalControlAttempts.current.delete(attemptKey);
+    return result;
+  }
+
+  async function attachSelectedGoal(goalId: string) {
+    if (!goalMutationAvailable) {
+      setNote("Canonical goal and session state is unavailable. Refresh before attaching.");
+      return;
+    }
+    if (!current || !goalId || attachingGoal || !canAttachPersistentGoal(current)) return;
+    const selectedGoal = availableGoals.find((goal) => goal.id === goalId);
+    if (
+      !selectedGoal
+      || !Number.isSafeInteger(selectedGoal.intent_revision)
+      || !Number.isSafeInteger(current.control_revision)
+    ) {
+      setNote("Canonical goal and session revisions are unavailable. Refresh before attaching.");
+      return;
+    }
+    setAttachingGoal(true);
+    try {
+      const attachment = await attachGoal(
+        current.id,
+        goalId,
+        current.goal_id ?? null,
+        current.control_revision!,
+        selectedGoal.intent_revision!,
+      );
+      const success = attachment.session_goal_attachment_receipt.changed
+        ? attachment.session_goal_attachment_receipt.reason === "session_goal_replaced"
+          ? "Persistent goal replaced by explicit selection."
+          : "Persistent goal attached to this worker."
+        : "This persistent goal was already attached; no change was needed.";
+      setNote(success);
+      const refreshed = await refreshPet();
+      if (refreshed.status === "failed") {
+        setNote(`${success} The live view could not refresh yet.`);
+      }
+    } catch (error) {
+      setNote(operationError(error, "Could not attach that goal."));
+    } finally {
+      setAttachingGoal(false);
+    }
+  }
+
+  async function savePersistentGoal(event: FormEvent) {
+    event.preventDefault();
+    if (!goalMutationAvailable) {
+      setNote("Canonical goal state is unavailable. Refresh before saving changes.");
+      return;
+    }
+    if (editingGoalId && (!goalLedgerEditable || attachedGoal?.id !== editingGoalId
+      || editingGoalLedgerKey.current !== goalLedgerKey(attachedGoal))) {
+      setNote("The ledger is unavailable or changed since editing began. Your draft is kept; reopen the current ledger before saving.");
+      return;
+    }
+    const goalProjectId = current?.project_id || current?.cwd || goalDraft.projectId.trim();
+    if (
+      !goalDraft.objective.trim() ||
+      savingGoal
+    ) return;
+    if (!editingGoalId && !goalProjectId) return;
+    setSavingGoal(true);
+    try {
+      if (editingGoalId) {
+        const editingGoal = goals.find((goal) => goal.id === editingGoalId);
+        if (
+          !editingGoal
+          || !Number.isSafeInteger(editingGoal.intent_revision)
+          || (editingGoal.intent_revision ?? -1) < 0
+        ) {
+          setNote("This goal has no canonical intent revision. Refresh it before editing.");
+          return;
+        }
+        const attemptKey = `update:${editingGoalId}`;
+        const prepared = prepareGoalControlAttempt(
+          goalControlAttempts.current.get(attemptKey),
+          "update",
+          editingGoalId,
+          updateGoalPayload(
+            goalDraft,
+            editingGoal.intent_revision!,
+            undefined,
+            goalOverrideMode ? "override" : "update",
+          ),
+        );
+        goalControlAttempts.current.set(attemptKey, prepared.attempt);
+        const updated = await bridgeJson<GoalMutationResponse>(
+          `/v1/goals/${encodeURIComponent(editingGoalId)}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(prepared.request),
+          },
+        );
+        if (
+          goalControlAttempts.current.get(attemptKey)?.idempotencyKey
+          === prepared.attempt.idempotencyKey
+        ) goalControlAttempts.current.delete(attemptKey);
+        setGoals((rows) => [updated, ...rows.filter((row) => row.id !== updated.id)]);
+        markCanonical("goals", "fresh");
+        setEditingGoalId(null);
+        setGoalOverrideMode(false);
+        setGoalDraft(EMPTY_GOAL);
+        const ledgerNote =
+          updated.goal_mutation_receipt.mode === "override"
+            ? updated.goal_mutation_receipt.changed
+              ? "Saved as a new goal revision — sessions rebind to the successor; recorded rulings stay in force."
+              : "Persistent ledger already matched; no change was needed."
+            : updated.goal_mutation_receipt.changed
+              ? "Persistent ledger updated."
+              : "Persistent ledger already matched; no change was needed.";
+        setNote(ledgerNote);
+        // The scoped goal-evidence effect refreshes this revision. An unscoped
+        // post-save read could overwrite a newly selected goal's decision view.
+        markCanonical("decisions", "reset");
+        return;
+      }
+      const attemptKey = "create:new-goal";
+      const prepared = prepareGoalControlAttempt(
+        goalControlAttempts.current.get(attemptKey),
+        "create",
+        "new-goal",
+        createGoalPayload({
+          projectId: goalProjectId,
+          title: goalDraft.title,
+          objective: goalDraft.objective,
+          observationOnly: goalDraft.observationOnly,
+          acceptance: goalDraft.acceptance,
+          constraints: goalDraft.constraints,
+          forbiddenOutcomes: goalDraft.forbiddenOutcomes,
+          nonGoals: goalDraft.nonGoals,
+          preferences: goalDraft.preferences,
+          deadline: goalDraft.deadline,
+          evidence: goalDraft.evidence,
+          decisions: goalDraft.decisions,
+          rejectedApproaches: goalDraft.rejectedApproaches,
+          unresolvedQuestions: goalDraft.unresolvedQuestions,
+        }),
+      );
+      goalControlAttempts.current.set(attemptKey, prepared.attempt);
+      const created = await bridgeJson<GoalMutationResponse>("/v1/goals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(prepared.request),
+      });
+      if (
+        goalControlAttempts.current.get(attemptKey)?.idempotencyKey
+        === prepared.attempt.idempotencyKey
+      ) goalControlAttempts.current.delete(attemptKey);
+      setGoals((rows) => [created, ...rows.filter((row) => row.id !== created.id)]);
+      markCanonical("goals", "fresh");
+      setGoalDraft(EMPTY_GOAL);
+      setGoalEditorRevision((revision) => revision + 1);
+      if (current && canAttachPersistentGoal(current)) {
+        setAttachingGoal(true);
+        try {
+          if (!Number.isSafeInteger(current.control_revision)) {
+            throw new Error(
+              "Canonical session control revision is unavailable. Refresh before attaching.",
+            );
+          }
+          await attachGoal(
+            current.id,
+            created.id,
+            current.goal_id ?? null,
+            current.control_revision!,
+            created.intent_revision!,
+          );
+          const success =
+            "Goal saved and attached with boundaries and evidence requirements intact.";
+          setNote(success);
+          const refreshed = await refreshPet();
+          if (refreshed.status === "failed") {
+            setNote(`${success} The live view could not refresh yet.`);
+          }
+        } catch (error) {
+          setNote(operationError(error, "Goal was saved, but it could not be attached."));
+        } finally {
+          setAttachingGoal(false);
+        }
+      } else {
+        setNote("Goal saved with boundaries and evidence requirements intact.");
+      }
+    } catch (error) {
+      setNote(operationError(error, editingGoalId ? "Could not update the persistent ledger." : "Could not save the persistent goal."));
+    } finally {
+      setSavingGoal(false);
+    }
+  }
+
+  useEffect(() => {
+    askRequestSequence.current += 1;
+    setAnswer("");
+    setQuestion("");
+    setAsking(false);
+    return () => { askRequestSequence.current += 1; };
+  }, [current?.id, current?.goal_id, attachedGoal?.intent_revision]);
+
+  async function askPex(event?: FormEvent | null, prompt?: string) {
+    event?.preventDefault();
+    const query = (prompt ?? question).trim();
+    if (!query || asking) return;
+    const requestSequence = ++askRequestSequence.current;
+    setQuestion(query);
+    setAsking(true);
+    try {
+      const data = await bridgeJson<{ answer?: string }>("/v1/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: query, session_id: current?.id ?? null }),
+      });
+      if (requestSequence !== askRequestSequence.current) return;
+      setAnswer(data.answer || "PEX has no answer in canonical state yet.");
+    } catch {
+      if (requestSequence !== askRequestSequence.current) return;
+      setAnswer("PEX could not reach canonical local state. No worker was interrupted.");
+    } finally {
+      if (requestSequence === askRequestSequence.current) {
+        setAsking(false);
+        askInput.current?.focus();
+      }
+    }
+  }
+
+  async function undoIntervention(intervention?: Intervention) {
+    const sourceFresh = intervention ? auditMutationsAvailable : sessionStateFresh;
+    if (!sourceFresh) {
+      setNote("Current intervention state is unavailable. Refresh before undoing an action.");
+      return;
+    }
+    const id = intervention?.id || action?.id;
+    const reversible = intervention?.reversible ?? action?.reversible;
+    const actionType = intervention?.action_taken || action?.action;
+    const result = intervention?.result || action?.result;
+    if (!id || undoRequestsInFlight.current.has(id)) return;
+    const attempt = prepareUndoAttempt(
+      undoAttempts.current.get(id) || null,
+      {
+        interventionId: id,
+        action: actionType,
+        reversible,
+        result,
+      },
+      newUndoIdempotencyKey,
+    );
+    if (!attempt) {
+      undoAttempts.current.delete(id);
+      return;
+    }
+    undoAttempts.current.set(id, attempt);
+    undoRequestsInFlight.current.add(id);
+    try {
+      const response = await bridgeJson<UndoResponse>(
+        `/v1/interventions/${encodeURIComponent(id)}/undo`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idempotency_key: attempt.idempotencyKey }),
+        },
+      );
+      const presentation = undoResponsePresentation(actionType, response);
+      setNote(presentation.message);
+      await Promise.all([refreshPet(), loadDetails()]);
+      if (actionType === "APPLY_OVERLAY" && presentation.completed) {
+        setCompletedOverlayUndoIds((currentIds) => {
+          if (currentIds.has(id)) return currentIds;
+          const nextIds = new Set(currentIds);
+          nextIds.add(id);
+          return nextIds;
+        });
+        undoAttempts.current.delete(id);
+      }
+    } catch (error) {
+      const status = error instanceof BridgeRequestError ? error.status : null;
+      setNote(
+        actionType === "APPLY_OVERLAY"
+          ? undoFailureMessage(actionType, status)
+          : operationError(error, "That intervention could not be undone."),
+      );
+      if (status === 409 || status === 502) {
+        await Promise.allSettled([refreshPet(), loadDetails()]);
+      }
+    } finally {
+      undoRequestsInFlight.current.delete(id);
+    }
+  }
+
+  async function fetchAcceptanceDiff(path: string): Promise<AcceptanceDiff> {
+    if (!attachedGoal) throw new Error("No attached goal.");
+    return bridgeJson<AcceptanceDiff>(
+      `/v1/goals/${encodeURIComponent(attachedGoal.id)}/acceptance-diff?path=${encodeURIComponent(path)}`,
+    );
+  }
+
+  async function exportVerificationReport() {
+    if (!attachedGoal || exportingReport) return;
+    setExportingReport(true);
+    try {
+      const raw = await bridgeJson<unknown>(
+        `/v1/goals/${encodeURIComponent(attachedGoal.id)}/verification-report`,
+      );
+      if (!isRecord(raw)) {
+        setNote("The bridge did not return a verification report to export.");
+        return;
+      }
+      const html = renderVerificationReportHtml(raw);
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      try {
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = `pex-verification-report-${attachedGoal.id}.html`;
+        anchor.rel = "noopener";
+        anchor.click();
+      } finally {
+        // Revoking immediately can cancel the download in some browsers.
+        window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      }
+      setNote(
+        `Verification report for "${attachedGoal.title}" exported — a standalone page with the raw JSON embedded.`,
+      );
+    } catch (error) {
+      setNote(operationError(error, "Could not export the verification report."));
+    } finally {
+      setExportingReport(false);
+    }
+  }
+
+  const [exportingPack, setExportingPack] = useState(false);
+  const [packVerification, setPackVerification] = useState<{
+    goalId: string;
+    checks: string[];
+  } | null>(null);
+
+  async function exportEvidencePack() {
+    if (!attachedGoal || exportingPack) return;
+    setExportingPack(true);
+    try {
+      const raw = await bridgeJson<unknown>(
+        `/v1/goals/${encodeURIComponent(attachedGoal.id)}/evidence-pack`,
+      );
+      if (!isRecord(raw)) {
+        setNote("The bridge did not return an evidence pack to export.");
+        return;
+      }
+      let checks: string[] = [];
+      try {
+        checks = await verifyEvidencePack(raw);
+      } catch {
+        checks = [];
+      }
+      setPackVerification(
+        checks.length
+          ? { goalId: String(raw.goal_id || attachedGoal.id), checks }
+          : null,
+      );
+      const blob = new Blob([JSON.stringify(raw, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      try {
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = `pex-evidence-pack-${attachedGoal.id}.json`;
+        anchor.rel = "noopener";
+        anchor.click();
+      } finally {
+        window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      }
+      const passed = checks.filter((line) => line.startsWith("PASS")).length;
+      setNote(
+        checks.length
+          ? `Evidence pack exported — ${passed}/${checks.length} consistency checks recomputed in this browser.`
+          : "Evidence pack exported — verify it offline with `python scripts/verify_pack.py pex-evidence-pack-….json`.",
+      );
+    } catch (error) {
+      setNote(operationError(error, "Could not export the evidence pack."));
+    } finally {
+      setExportingPack(false);
+    }
+  }
+
+  async function resolveHumanDecision(
+    intervention: Intervention,
+    decision: HumanDecisionChoice,
+  ) {
+    if (!deckMutationsAvailable) {
+      setDecisionFeedback({
+        state: "error",
+        interventionId: intervention.id,
+        decision,
+        message: "Current decision authority is unavailable. Refresh before responding.",
+      });
+      return;
+    }
+    if (
+      !isPendingHumanDecision(intervention) ||
+      decisionFeedback?.state === "submitting"
+    ) return;
+    const requestedDecision = isPendingRequestedHumanDecision(intervention);
+    const lifecycleDecision = isPendingLifecycleDecision(intervention);
+    const escalationDecision = isPendingGeneralEscalation(intervention);
+    if (
+      !requestedDecision && !escalationDecision
+      && decision !== "allow" && decision !== "deny"
+    ) return;
+    const requestedOptions = intervention.proposed_action?.payload?.options;
+    const feedbackDecision = humanDecisionFeedbackChoice(
+      requestedDecision ? requestedOptions : undefined,
+      decision,
+    );
+    const permissionDecision = decision as PermissionDecision;
+    const verb = requestedDecision
+      ? "Delivering"
+      : lifecycleDecision
+      ? decision === "allow" ? "Approving" : "Declining"
+      : escalationDecision
+      ? "Recording"
+      : decision === "allow" ? "Allowing" : "Denying";
+    setDecisionFeedback({
+      interventionId: intervention.id,
+      state: "submitting",
+      decision: feedbackDecision,
+      message: requestedDecision
+        ? `${verb} this exact answer to the requesting worker…`
+        : escalationDecision
+        ? `${verb} this exact answer on the escalation's durable record…`
+        : `${verb} this exact ${lifecycleDecision ? "lifecycle action" : "permission request"}…`,
+    });
+    try {
+      const resolved = await bridgeJson<{
+        kind?: "permission" | "lifecycle" | "human_decision" | "escalation";
+        delivered?: boolean;
+        executed?: boolean;
+        recorded?: boolean;
+        replayed?: boolean;
+        resolution?: { status?: string };
+      }>(
+        `/v1/decisions/${encodeURIComponent(intervention.id)}/resolve`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ decision }),
+        },
+      );
+      const requested = resolved.kind === "human_decision";
+      const lifecycle = resolved.kind === "lifecycle";
+      const escalation = resolved.kind === "escalation";
+      const lifecycleStatus = resolved.resolution?.status;
+      const confirmed = requested
+        ? resolved.delivered === true && lifecycleStatus === "delivered"
+        : lifecycle
+        ? lifecycleStatus === "delivered" || lifecycleStatus === "denied"
+        : escalation
+        ? resolved.recorded === true
+        : resolved.delivered === true;
+      if (!confirmed) throw new Error("The bridge did not confirm this exact human decision.");
+      if (escalation) setJourneyRulingRecorded(true);
+      const requestedPresentation = requested
+        ? humanDecisionPresentation("delivered", resolved.replayed)
+        : null;
+      const message = requestedPresentation?.message ?? (resolved.replayed
+        ? escalation
+          ? "This answer was already recorded; PEX did not apply it twice."
+          : `This ${permissionDecision} decision was already recorded; PEX did not apply it twice.`
+        : escalation
+        ? "Escalation answer recorded on the durable ledger. Directing a live worker is a separate act — send a message in its session."
+        : lifecycle
+        ? decision === "allow"
+          ? "Lifecycle action approved and its result was recorded."
+          : "Lifecycle action declined; no action was executed."
+        : `Permission ${decision === "allow" ? "allowed" : "denied"} and delivery confirmed.`);
+      setDecisionFeedback({
+        interventionId: intervention.id,
+        state: "success",
+        decision: feedbackDecision,
+        message,
+        deliveryStatus: requestedPresentation?.deliveryStatus,
+      });
+      setNote(message);
+      await Promise.all([refreshPet(), loadDetails()]);
+    } catch (error) {
+      // Structured bridge failures (conflict codes, delivery status) get the
+      // honest presentation; a plain transport error must not be relabeled
+      // "recorded" — nothing may have reached the ledger.
+      const presentation = error instanceof BridgeRequestError && error.detail
+        ? humanDecisionFailurePresentation(error)
+        : null;
+      const message = presentation?.message ?? (error instanceof Error
+        ? error.message
+        : "The bridge could not resolve this permission request.");
+      setDecisionFeedback({
+        interventionId: intervention.id,
+        state: "error",
+        decision: feedbackDecision,
+        message,
+        deliveryStatus: presentation?.deliveryStatus,
+      });
+      setNote(message);
+      await Promise.allSettled([refreshPet(), loadDetails()]);
+    }
+  }
+
+  function selectIdentityProject(legacyProjectId: string) {
+    if (identityResolving) return;
+    identitySelectionRevision.current += 1;
+    identitySelectedProjectIdRef.current = legacyProjectId;
+    identityStatusRequestSequence.current += 1;
+    setIdentityTargetProjectId(legacyProjectId);
+    setIdentityStatus(null);
+    setIdentityStatusLoading(false);
+    setIdentityStatusError(null);
+    setIdentityFeedback(null);
+  }
+
+  function loadMoreIdentityConflicts() {
+    const offset = identityConflicts?.next_offset;
+    if (offset == null || identityConflictLoading) return;
+    void loadProjectIdentityConflicts({
+      conflictOffset: offset,
+      appendConflicts: true,
+      showLoading: true,
+    });
+  }
+
+  function loadMoreIdentityCandidates() {
+    const offset = identityStatus?.status === "quarantined"
+      ? identityStatus.next_candidate_offset
+      : null;
+    if (offset == null || identityStatusLoading) return;
+    void loadProjectIdentityStatus({
+      targetProjectId: identityStatus?.legacy_project_id,
+      candidateOffset: offset,
+      appendCandidates: true,
+      showLoading: true,
+    });
+  }
+
+  async function resolveProjectIdentity(attempt: ProjectIdentityResolutionAttempt) {
+    if (
+      identityResolving ||
+      attempt.legacyProjectId !== identitySelectedProjectIdRef.current
+    ) return;
+    const requestSequence = ++identityResolutionRequestSequence.current;
+    const selectionRevision = identitySelectionRevision.current;
+    const completionIsCurrent = () => (
+      requestSequence === identityResolutionRequestSequence.current
+      && projectIdentityCompletionIsCurrent(
+        attempt.legacyProjectId,
+        identitySelectedProjectIdRef.current,
+        selectionRevision,
+        identitySelectionRevision.current,
+      )
+    );
+    setIdentityResolving(true);
+    setIdentityFeedback({
+      state: "submitting",
+      message: "Recording this exact project identity resolution…",
+    });
+    try {
+      const response = await bridgeJson<ProjectIdentityResolutionResponse>(
+        "/v1/project-identities/resolve",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            idempotency_key: attempt.idempotencyKey,
+            legacy_project_id: attempt.legacyProjectId,
+            selected_identity_id: attempt.selectedIdentityId,
+            rationale: attempt.rationale,
+          }),
+        },
+      );
+      if (!completionIsCurrent()) return;
+      const [liveStatus] = await Promise.all([
+        loadProjectIdentityStatus({
+          targetProjectId: attempt.legacyProjectId,
+          showLoading: true,
+        }),
+        loadProjectIdentityConflicts(),
+      ]);
+      if (!completionIsCurrent()) return;
+      setIdentityFeedback({
+        state: "success",
+        message: projectIdentityResolutionMessage(response, liveStatus),
+      });
+    } catch (error) {
+      if (!completionIsCurrent()) return;
+      await Promise.all([
+        loadProjectIdentityStatus({
+          targetProjectId: attempt.legacyProjectId,
+          showLoading: true,
+        }),
+        loadProjectIdentityConflicts(),
+      ]);
+      if (!completionIsCurrent()) return;
+      setIdentityFeedback({
+        state: "error",
+        message: operationError(
+          error,
+          "The exact project identity resolution was not confirmed.",
+        ),
+      });
+    } finally {
+      if (requestSequence === identityResolutionRequestSequence.current) {
+        setIdentityResolving(false);
+      }
+    }
+  }
+
+  async function selectPet(id: string) {
+    if (selectingPet) return;
+    setSelectingPet(true);
+    try {
+      try {
+        await bridgeJson("/v1/pets/settings", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ selected_id: id }),
+        });
+      } catch (error) {
+        setNote(operationError(error, "Could not select that pet."));
+        return;
+      }
+
+      let success = "Pet selected.";
+      const refreshed = await refreshPet();
+      if (refreshed.status === "failed") success += " The live view could not refresh yet.";
+      try {
+        if (petVisible) await releasePetOverlay();
+      } catch {
+        success += " Its overlay could not reopen yet.";
+      }
+      setNote(success);
+    } finally {
+      setSelectingPet(false);
+    }
+  }
+
+  async function changePetVisibility(visible: boolean) {
+    setPetVisible(visible);
+    try {
+      if (visible) await showPetOverlay();
+      else await hidePetOverlay();
+      setNote(petVisibilityNote(petOverlayVisible()));
+    } catch (error) {
+      setNote(operationError(error, visible ? "Could not show the desktop pet." : "Could not hide the desktop pet."));
+    }
+  }
+
+  async function saveAppearance() {
+    try {
+      await bridgeJson("/v1/pets/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ custom_name: nickname, scale, click_through: clickThrough }),
+      });
+      await refreshPet();
+      setNote("Appearance saved.");
+    } catch (error) {
+      setNote(operationError(error, "Could not save appearance."));
+    }
+  }
+
+  async function provisionHookCredential() {
+    if (provisioningHook || !hookProject.trim()) return;
+    setProvisioningHook(true);
+    setHookBootstrap(null);
+    try {
+      const receipt = await bridgeJson<HookBootstrapReceipt>(
+        "/v1/hook-credentials/bootstrap",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            harness_type: hookHarness,
+            project_id: hookProject.trim(),
+          }),
+        },
+      );
+      setHookBootstrap(receipt);
+      setNote(
+        `Scoped ${titleCase(hookHarness)} hook credential ready. Copy it now; PEX does not store the bearer.`,
+      );
+    } catch (error) {
+      setNote(operationError(error, "Could not provision a scoped hook credential."));
+    } finally {
+      setProvisioningHook(false);
+    }
+  }
+
+  async function copyHookCredential() {
+    if (!hookBootstrap) return;
+    try {
+      await navigator.clipboard.writeText(hookBootstrap.token);
+      setNote(`Copied ${HOOK_ENVIRONMENT[hookBootstrap.harness_type]}.`);
+    } catch {
+      setNote("Clipboard access was unavailable. Select and copy the one-time credential manually.");
+    }
+  }
+
+  async function saveSupervisor() {
+    if (supervisorSaveInFlight.current) return;
+    if (!settingsAvailable) {
+      setNote("Supervisor settings are unavailable. Reload them before saving.");
+      return;
+    }
+    supervisorSaveInFlight.current = true;
+    const requestSequence = ++settingsRequestSequence.current;
+    const draftRevision = supervisorDraftRevision.current;
+    setSavingSupervisor(true);
+    try {
+      const payload = supervisorSavePayload({
+        provider: supervisorProvider,
+        modelId: supervisorModel,
+        authMode: supervisorAuth,
+        protocol: supervisorProtocol,
+        baseUrl: supervisorBaseUrl,
+        apiKey: supervisorApiKey,
+        credentialAction: supervisorCredentialAction,
+        dispatchLimit: supervisorDispatchLimit,
+      }, supervisor?.revision, supervisorKeyAudience.current);
+      const data = await supervisorRequest((signal) => bridgeJson<SupervisorInfo>("/v1/supervisor", {
+        method: "PATCH",
+        signal,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }), 70_000);
+      if (!isSupervisorRevision(data.revision) || data.revision !== Number(payload.expected_revision) + 1) {
+        throw new Error("The save response did not confirm the next configuration revision. Reload settings.");
+      }
+      if (!supervisorSaveResponseIsCurrent(
+        draftRevision, supervisorDraftRevision.current,
+        requestSequence, settingsRequestSequence.current,
+      )) {
+        markCanonical("supervisor", "failed", "A save completed after the settings view changed. Reload before editing.");
+        setNote("Supervisor choice saved. Reload settings to see the committed configuration.");
+        return;
+      }
+      setSupervisor(data);
+      markCanonical("supervisor", "fresh");
+      supervisorDraftDirty.current = false;
+      supervisorDraftBaseRevision.current = data.revision;
+      setSupervisorProvider(data.backend || "");
+      setSupervisorModel(data.model_id || "");
+      setSupervisorAuth((data.auth_mode as SupervisorAuthMode | null) || defaultSupervisorAuth(data.backend || ""));
+      setSupervisorProtocol(data.protocol || "openai");
+      setSupervisorBaseUrl(data.base_url || "");
+      setSupervisorDispatchLimit(supervisorDispatchLimitDraft(data.dispatch_limit_override));
+      setSupervisorApiKey("");
+      supervisorKeyAudience.current = null;
+      setSupervisorCredentialAction("keep");
+      setNote(supervisorSaveConfirmation(data.model_loaded));
+    } catch (error) {
+      markCanonical("supervisor", "failed", "The save was not confirmed. Reload the current configuration before another save.");
+      setNote(operationError(error, "Could not save supervisor configuration."));
+    } finally {
+      supervisorSaveInFlight.current = false;
+      setSavingSupervisor(false);
+    }
+  }
+
+  function changeSupervisorDraft<T>(current: T, next: T, setter: (value: T) => void, audience = false) {
+    if (supervisorSaveInFlight.current || current === next) return;
+    supervisorDraftRevision.current += 1;
+    supervisorDraftDirty.current = true;
+    settingsRequestSequence.current += 1;
+    if (audience) {
+      supervisorKeyAudience.current = null;
+      setSupervisorApiKey("");
+      setSupervisorCredentialAction("keep");
+      setNote("Credential destination changed. Any pasted key was cleared; select credentials for this destination.");
+    }
+    setter(next);
+  }
+
+  async function refreshSupervisorCatalog() {
+    if (refreshingCatalog || supervisorSaveInFlight.current || !settingsAvailable) return;
+    const requestSequence = settingsRequestSequence.current;
+    setRefreshingCatalog(true);
+    try {
+      const data = await supervisorRequest((signal) => bridgeJson<{
+        provider: string;
+        catalog: NonNullable<SupervisorInfo["catalog"]>;
+        count: number;
+        inference_calls: number;
+      }>("/v1/supervisor/catalog/refresh", {
+        method: "POST",
+        signal,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: supervisorProvider.trim() || undefined }),
+      }));
+      if (requestSequence !== settingsRequestSequence.current) return;
+      setSupervisor((current) => current ? { ...current, catalog: data.catalog } : current);
+      setNote(`Listed ${data.count} models from ${data.provider}; no inference call was made.`);
+    } catch (error) {
+      if (requestSequence !== settingsRequestSequence.current) return;
+      setNote(operationError(error, "Could not refresh this provider's model list."));
+    } finally {
+      setRefreshingCatalog(false);
+    }
+  }
+
+  function selectSession(sessionId: string) {
+    if (sessionId !== current?.id) {
+      setEditingGoalId(null);
+      setGoalOverrideMode(false);
+      setGoalDraft(EMPTY_GOAL);
+      editingGoalLedgerKey.current = null;
+    }
+    setSelectedId(sessionId);
+  }
+
+  function openInspector(sessionId: string | undefined = current?.id) {
+    if (sessionId) selectSession(sessionId);
+    setSurface("inspector");
+    window.location.hash = sessionId
+      ? `inspector/${encodeURIComponent(sessionId)}`
+      : "inspector";
+  }
+
+  function openDeckView(view: DeckView) {
+    setActiveView(view);
+    setSurface("deck");
+    window.location.hash = view === "now" ? "deck" : `deck/${view}`;
+  }
+
+  function openDecisions() {
+    openDeckView("decisions");
+  }
+
+  function directWorker(session: SessionRow, text: string) {
+    setTaskDraft({ sessionId: session.id, nonce: Date.now(), text });
+    openInspector(session.id);
+  }
+
+  function showSurface(next: Surface) {
+    if (next !== "compact" && current) selectSession(current.id);
+    setSurface(next);
+    window.location.hash = next;
+  }
+
+  function openSettings(section?: SettingsSection) {
+    if (section === "capabilities") setCapabilitiesVisited(true);
+    setSettingsDestination(section);
+    window.location.hash = "settings";
+  }
+
+  function openGoalSetup() {
+    openInspector();
+    setGoalFocusRequest((request) => request + 1);
+  }
+
+  if (shell === "pet") {
+    return (
+      <main className={`pet-desktop tone-${status.tone}`}>
+        <PetStage
+          overlay
+          active={petVisible}
+          name={petName}
+          sheet={sheet}
+          mood={mood}
+          scale={scale}
+          reducedMotion={reducedMotion}
+          status={statusWithFirstRunGuidance(status, setup, Boolean(pet?.paused))}
+          statusIdentity={pet?.last_action?.id}
+          onActivate={() => void expandMainSurface()}
+          onDismiss={() => void changePetVisibility(false)}
+        />
+      </main>
+    );
+  }
+
+  if (!bridgeAvailable) {
+    return (
+      <StartupRecovery
+        status={bridgeControlAvailable
+          ? bridgeStartup
+          : unavailableBridgeBootstrapStatus(bridgeStartup.attempt)}
+        retrying={bridgeRetrying}
+        onRetry={() => void retryBridgeBootstrap()}
+      />
+    );
+  }
+
+  if (shell === "settings") {
+    return (
+      <SettingsPage
+        onCreateGoal={openGoalSetup}
+        initialSection={settingsDestination}
+        goals={availableGoals}
+        goalsFresh={goalStateFresh}
+        goalActionsAvailable={goalMutationAvailable}
+        appearanceAvailable={TAURI && sessionStateFresh}
+        note={note}
+        nickname={nickname}
+        scale={scale}
+        clickThrough={clickThrough}
+        petVisible={petVisible}
+        supervisor={supervisor}
+        supervisorProvider={supervisorProvider}
+        supervisorModel={supervisorModel}
+        supervisorAuth={supervisorAuth}
+        supervisorProtocol={supervisorProtocol}
+        supervisorBaseUrl={supervisorBaseUrl}
+        supervisorDispatchLimit={supervisorDispatchLimit}
+        supervisorApiKey={supervisorApiKey}
+        supervisorCredentialAction={supervisorCredentialAction}
+        cursorRejections={cursorRejections}
+        channels={channels}
+        settingsAvailable={settingsAvailable}
+        settingsIssue={settingsIssue}
+        savingSupervisor={savingSupervisor}
+        refreshingCatalog={refreshingCatalog}
+        hookHarness={hookHarness}
+        hookProject={hookProject}
+        hookEnvironment={HOOK_ENVIRONMENT[hookHarness]}
+        hookCredential={hookBootstrap?.token || ""}
+        hookCredentialExpiresAt={hookBootstrap?.expires_at || ""}
+        provisioningHook={provisioningHook}
+        capabilitiesPanel={
+          <CapabilitiesPanel
+            adapters={deck.adapters}
+            supervisor={supervisor}
+            bench={bench}
+            fixtureCount={demoFixtures ? demoFixtures.length : null}
+            unauthenticatedOperator={demoOperatorActions}
+          />
+        }
+        workerConnection={<>
+          <OpenCodeConnectionPanel request={sharedConnectionRequest} available={sessionStateFresh}
+            onReturnHome={() => showSurface("compact")}
+            onChanged={() => void loadBaseState()} />
+          <CodexConnectionPanel request={sharedConnectionRequest} available={sessionStateFresh}
+            canCreateWorker={TAURI}
+            onReturnHome={(sessionId) => { if (sessionId) selectSession(sessionId); showSurface("compact"); }}
+            onChanged={() => { void loadBaseState(); void refreshPet(); }} />
+          <details className="settings-disclosure settings-wide">
+            <summary>
+              <span>
+                <small>CODEX</small>
+                <strong>Observe an existing Codex thread</strong>
+              </span>
+              <span>Advanced</span>
+            </summary>
+            <div className="settings-disclosure-body">
+              <SharedConnectionPanel request={sharedConnectionRequest} onChanged={() => void loadBaseState()} />
+            </div>
+          </details>
+        </>}
+        onBack={() => { window.location.hash = surface; }}
+        onNickname={setNickname}
+        onScale={setScale}
+        onClickThrough={setClickThrough}
+        onPetVisible={(visible) => void changePetVisibility(visible)}
+        onSaveAppearance={() => void saveAppearance()}
+        onSupervisorProvider={(value) => changeSupervisorDraft(supervisorProvider, value, (next) => {
+          setSupervisorProvider(next);
+          setSupervisorAuth(defaultSupervisorAuth(next));
+          setSupervisorProtocol("openai");
+          setSupervisorBaseUrl("");
+          setSupervisorCredentialAction(next ? "keep" : "environment");
+        }, true)}
+        onSupervisorModel={(value) => changeSupervisorDraft(supervisorModel, value, setSupervisorModel)}
+        onSupervisorAuth={(value) => changeSupervisorDraft(supervisorAuth, value, setSupervisorAuth, true)}
+        onSupervisorProtocol={(value) => changeSupervisorDraft(supervisorProtocol, value, setSupervisorProtocol, true)}
+        onSupervisorBaseUrl={(value) => changeSupervisorDraft(supervisorBaseUrl, value, setSupervisorBaseUrl, true)}
+        onSupervisorDispatchLimit={(value) => changeSupervisorDraft(supervisorDispatchLimit ?? "", value, setSupervisorDispatchLimit)}
+        onSupervisorApiKey={(value) => changeSupervisorDraft(supervisorApiKey, value, (next) => {
+          supervisorKeyAudience.current = next ? supervisorCredentialAudience({
+            provider: supervisorProvider,
+            authMode: supervisorAuth,
+            protocol: supervisorProtocol,
+            baseUrl: supervisorBaseUrl,
+          }) : null;
+          setSupervisorApiKey(next);
+        })}
+        onSupervisorCredentialAction={(value) => changeSupervisorDraft(supervisorCredentialAction, value, setSupervisorCredentialAction)}
+        onSaveSupervisor={() => void saveSupervisor()}
+        onReloadSettings={() => void loadSettings(true)}
+        onRefreshCatalog={() => void refreshSupervisorCatalog()}
+        onHookHarness={(value) => {
+          setHookHarness(value);
+          setHookBootstrap(null);
+        }}
+        onHookProject={(value) => {
+          setHookProject(value);
+          setHookBootstrap(null);
+        }}
+        onProvisionHook={() => void provisionHookCredential()}
+        onCopyHook={() => void copyHookCredential()}
+        onClearHook={() => setHookBootstrap(null)}
+        companionRoster={(
+          <section className="pet-roster" aria-label="PEX pet roster">
+            <header>
+              <div>
+                <p className="eyebrow">
+                  Built-in companions · {builtInRoster.filter((item) => item.atlas_ready === true).length}/2 available
+                </p>
+                <h2>Your companion</h2>
+              </div>
+              <p>Pex the watchful owl or Von the focused cat. Same supervision, your choice.</p>
+            </header>
+            {petFleetIssues.length ? (
+              <p className="pet-roster-unavailable" role="alert">
+                Built-in fleet mismatch: {petFleetIssues.join(" ")}
+              </p>
+            ) : null}
+            <PetRosterButtons
+              pets={builtInRoster}
+              selectedId={pet?.appearance?.id}
+              selecting={selectingPet}
+              reducedMotion={reducedMotion}
+              onSelect={(id) => void selectPet(id)}
+            />
+          </section>
+        )}
+      />
+    );
+  }
+
+  const supervisorNotice = (
+    <div className="supervisor-notice" role="status">
+      <span>{semanticSupervisor.copy}</span>
+      <button type="button" className="ghost" onClick={() => openSettings("supervisor")}>
+        Supervisor settings
+      </button>
+    </div>
+  );
+
+  return (
+    <main className={`main-shell tone-${status.tone}`}>
+      <header className="topbar">
+        <BrandMark label />
+        <span className={`topbar-state tone-${surface === "deck" ? status.tone : homeStatus.tone}`} role="status" aria-live="polite">
+          <span className="status-dot" aria-hidden="true" />{surface === "deck" ? status.label : homeStatus.label}
+        </span>
+        <nav className="surface-switch" aria-label="Progressive PEX surfaces">
+          {(["compact", "inspector", "deck"] as Surface[]).map((item) => (
+            <button
+              type="button"
+              className={surface === item ? "active" : ""}
+              aria-current={surface === item ? "page" : undefined}
+              onClick={() => showSurface(item)}
+              key={item}
+            >
+              {item === "compact" ? "Home" : titleCase(item)}
+            </button>
+          ))}
+        </nav>
+        <button type="button" className="ghost topbar-settings" onClick={() => openSettings()}>Settings</button>
+      </header>
+
+      {/* Inspector and Settings render `note` in-context; the compact Home
+          and Command Deck surfaces need their own or action failures land
+          silently. */}
+      {note && surface !== "inspector" ? (
+        <p className="note surface-note" role="status" aria-live="polite">{note}</p>
+      ) : null}
+
+      {surface === "compact" ? (
+        <section
+          className="compact-surface surface-focus-target"
+          data-surface-root="compact"
+          aria-label="PEX compact companion"
+          tabIndex={-1}
+        >
+          <aside className="worker-rail" aria-label="Your workers">
+            <div className="worker-rail-heading">
+              <p className="eyebrow">Workers</p>
+              <span>{bridgeError ? "unavailable" : sessionStateFresh ? `${railSessions.length} detected` : "checking"}</span>
+            </div>
+            <div className="worker-list">
+            {railSessions.map((session, index) => (
+              <button key={session.id} type="button" className="worker-choice"
+                aria-pressed={current?.id === session.id}
+                title={session.id}
+                onClick={() => selectSession(session.id)}>
+                <strong>{titleCase(session.harness_type)}</strong>
+                <small>{railLabels[index]}{(railLabelCounts.get(`${session.harness_type}:${railLabels[index]}`) || 0) > 1
+                  ? ` · ${session.id.slice(-6)}` : ""}</small>
+                {isReplaySession(session)
+                  ? <small><span className="replay-badge">Recorded replay</span>
+                      {replayFixtureLabel(session) ? ` · ${replayFixtureLabel(session)}` : ""}
+                      {session.status === "needs_decision"
+                        ? <span className="verdict-chip verdict-needs_decision">needs you</span>
+                        : ""}
+                      {typeof session.metadata?.replay_verdict === "string"
+                        ? <span className={`verdict-chip verdict-${session.metadata.replay_verdict}`}>
+                            {session.metadata.replay_verdict.replace(/_/g, " ")}</span>
+                        : ""}</small>
+                  : isLiveWorkerSession(session)
+                    ? <small><span className="replay-badge live-badge">Live</span> {titleCase(session.status)}{session.observation?.stalled
+                        ? ` · quiet ${observationAgeLabel(session.observation.last_event_age_seconds ?? 0)}` : ""}</small>
+                    : <small>{titleCase(session.status)}{session.observation?.stalled
+                        ? ` · quiet ${observationAgeLabel(session.observation.last_event_age_seconds ?? 0)}` : ""}</small>}
+              </button>
+            ))}
+            </div>
+            {!railSessions.length ? (
+              <div className="harness-empty" aria-label="Supported agent harnesses">
+                <span><i aria-hidden="true">O</i><strong>OpenCode</strong></span>
+                <span><i aria-hidden="true">C</i><strong>Codex</strong></span>
+                <small>{bridgeError ? "Worker state unavailable" : sessionStateFresh ? "No worker detected yet" : "Waiting for local state"}</small>
+              </div>
+            ) : null}
+            <button type="button" className="ghost" onClick={() => openSettings("connections")}>Connect a worker</button>
+            {!railSessions.length && demoReplayAvailable && demoFixtures?.length ? (
+              <button type="button" className="ghost" disabled={demoReplay.running}
+                onClick={() => {
+                  const first = demoFixtures.find((fixture) => isRecommendedStart(fixture))
+                    ?? demoFixtures[0];
+                  void runDemoReplay(first.id);
+                }}>
+                {demoReplay.running ? "Replay running…" : "Or run a recorded replay — no install needed"}
+              </button>
+            ) : null}
+            <div className={`workspace-rail-footer tone-${bridgeError ? "offline" : sessionStateFresh ? "work" : "quiet"}`}>
+              <span className="status-dot" aria-hidden="true" />
+              <span>{bridgeError ? "Local bridge unavailable" : sessionStateFresh ? "Local bridge connected" : "Waiting for local bridge"}</span>
+            </div>
+          </aside>
+          <div className="compact-companion">
+            <div className="workspace-heading">
+              <p className="eyebrow">{current ? `${titleCase(current.harness_type)} workspace` : "Your workspace"}</p>
+              <h1>{attachedGoal?.title || "Give your work a goal."}</h1>
+              {attachedGoal?.supersedes ? (
+                <small
+                  className="goal-lineage"
+                  title="This goal is an override revision — recorded rulings and ledger entries inherit forward from the prior intent."
+                >
+                  amended · rulings inherit
+                </small>
+              ) : null}
+              <p>{current?.cwd || "Connect OpenCode or Codex, then give PEX a goal to supervise."}</p>
+            </div>
+            <div
+              className="compact-metrics"
+              aria-label={sessionStateFresh ? "Live PEX counts" : "PEX counts unavailable"}
+            >
+              <span><strong>{sessionStateFresh ? pet?.working || 0 : "—"}</strong> working</span>
+              <button
+                type="button"
+                className="metric-link"
+                onClick={openDecisions}
+                title="Open the Decisions queue"
+                disabled={!sessionStateFresh}
+              >
+                <strong>{sessionStateFresh ? pet?.needs_you || 0 : "—"}</strong> need you
+              </button>
+              <span><strong>{sessionStateFresh ? pet?.drifting || 0 : "—"}</strong> drifting</span>
+              {claimMetrics ? (
+                <span
+                  title={`${claimMetrics.claims_adjudicated} claims adjudicated · ${claimMetrics.acceptance_surface.baselines_sealed} baselines sealed`}
+                >
+                  <strong>{claimMetrics.acceptance_surface.incidents}</strong> integrity flags
+                </span>
+              ) : null}
+            </div>
+            {!setup ? (
+              <section className={`workspace-activity tone-${homeStatus.tone}`} aria-label="Current supervision">
+                <div className="workspace-section-heading">
+                  <p className="eyebrow">Supervision</p>
+                  <span className="workspace-live-label">{sessionStateFresh ? "Latest observed state" : "State unavailable"}</span>
+                </div>
+                <h2><span className="status-dot" aria-hidden="true" />{homeStatus.label}</h2>
+                <p>{homeStatus.detail}</p>
+                {current && sessionStateFresh ? (
+                  <details className="workspace-evidence">
+                    <summary>Latest worker activity</summary>
+                    <p>{meaningfulEvidence(current)}</p>
+                  </details>
+                ) : null}
+                <div className="button-row">
+                  {current?.status === "needs_decision" ? (
+                    <button type="button" className="solid" onClick={() => openDecisions()}>
+                      A decision is waiting — open Decisions ↗
+                    </button>
+                  ) : null}
+                  <button type="button" className={current?.status === "needs_decision" ? "ghost" : "solid"} onClick={() => openInspector()}>Review evidence</button>
+                  {current ? <button type="button" className="ghost" disabled={!sessionStateFresh || !operatorActionsAvailable || current.metadata?.not_live_control === true}
+                    title={current.metadata?.not_live_control === true
+                      ? "A recorded replay has no live supervision to pause"
+                      : !operatorActionsAvailable ? "Available in the authenticated PEX desktop app or the demo operator bridge" : undefined}
+                    onClick={() => void pauseOrResume()}>
+                    {current.supervision_paused ? "Resume supervision" : "Pause supervision"}
+                  </button> : null}
+                </div>
+              </section>
+            ) : null}
+          {attachedGoal ? (
+            <section className="workspace-goal" aria-label="Persistent goal">
+              <div className="workspace-section-heading">
+                <p className="eyebrow">{goalStateFresh ? "The objective" : "Cached objective"}</p>
+                <button type="button" className="text-button" onClick={() => openInspector()}>Goal details ↗</button>
+              </div>
+              <p>{attachedGoal.objective}</p>
+            </section>
+          ) : null}
+          {current && attachedGoal && !setup
+            && operatorActionsAvailable
+            && (current.project_id || current.cwd)
+            && current.capabilities?.send_message === true
+            && (current.harness_type === "codex" || current.harness_type === "opencode") ? (
+              <OperatorTaskComposer key={`${current.id}:${attachedGoal.id}:${current.project_id || current.cwd}`}
+                request={sharedConnectionRequest}
+                binding={{ sessionId: current.id, goalId: attachedGoal.id, projectId: current.project_id || current.cwd || "" }}
+                initialDraft={taskDraft?.sessionId === current.id ? taskDraft : undefined}
+                available={sessionStateFresh && goalStateFresh && !bridgeError && !current.supervision_paused}
+                onDelivered={() => void refreshPet()}
+                onInspect={() => openInspector(current.id)} />
+            ) : null}
+            {setup ? (
+              <div className="compact-setup">
+                <p className="eyebrow">Your next step</p>
+                <h2>{setup.title}</h2>
+                <p>{setup.detail}</p>
+                <details className="setup-explanation">
+                  <summary>How PEX supervises work</summary>
+                <div className="supervision-loop" aria-label="PEX supervision loop">
+                  <div>
+                    <span aria-hidden="true">01</span>
+                    <strong>Retrieve</strong>
+                    <small>Bring the goal, decisions, and prior evidence into the worker context.</small>
+                  </div>
+                  <div>
+                    <span aria-hidden="true">02</span>
+                    <strong>Supervise</strong>
+                    <small>Watch progress and return a precise correction to the same session.</small>
+                  </div>
+                  <div>
+                    <span aria-hidden="true">03</span>
+                    <strong>Verify</strong>
+                    <small>Check the requested evidence before PEX accepts a completion claim.</small>
+                  </div>
+                </div>
+                </details>
+                <div className="button-row">
+                  {setup.state === "connect_worker" && startFixture ? (
+                    <button
+                      type="button"
+                      className="solid"
+                      onClick={() => void runDemoReplay(startFixture.id)}
+                    >
+                      Watch PEX catch a false claim — recorded replay, no install
+                    </button>
+                  ) : null}
+                  {setup.cta ? (
+                    <button type="button" className={setup.state === "connect_worker" && startFixture ? "ghost" : "solid"} onClick={() => {
+                      if (setup.cta?.intent === "goal") openGoalSetup();
+                      else if (setup.cta?.intent === "decisions") openDecisions();
+                      else openSettings("connections");
+                    }}>{setup.cta.label}</button>
+                  ) : null}
+                  <button type="button" className="ghost" onClick={() => openInspector()}>Inspect current state</button>
+                </div>
+              </div>
+            ) : null}
+            {/* Packaged builds ship no fixtures — hide the whole panel rather
+                than advertise a capability that can never load. Once a run is
+                in flight (or has history), keep it rendered through transient
+                fixture-list failures. */}
+            {demoReplayAvailable &&
+            (demoFixtures?.length || demoReplay.running || demoReplay.verdict || demoReplay.history.length) ? (
+              <div className="demo-replay">
+                <p className="eyebrow">See the loop without a worker</p>
+                <p>Replay a recorded supervision trajectory through the real pipeline — labeled as a replay, never live worker control.</p>
+                {demoFixtures?.length ? (
+                <>
+                <details
+                  className="judge-quickstart"
+                  open={!journeyAllDone && !journeyCollapsed}
+                  onToggle={(event) => setJourneyCollapsed(!event.currentTarget.open)}
+                >
+                  <summary>Five-minute judge path
+                    {journeyDoneCount > 0 ? <span className="journey-progress"> · {journeyDoneCount}/{journeyTotal} done</span> : null}
+                  </summary>
+                  <ol className="journey-list">
+                    {journeySteps.map((step) => (
+                      <li key={step.key} className={step.done ? "journey-step done" : "journey-step"}>
+                        <span className="journey-check" aria-hidden="true">
+                          {step.done ? "✓" : ""}
+                        </span>
+                        <span>{step.body}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </details>
+                {journeyAllDone ? (
+                  <p className="journey-complete" role="status">
+                    Every step verified against real bridge state — you checked each claim yourself.
+                  </p>
+                ) : null}
+                <div className="button-row">
+                  {demoFixtures.map((fixture) => (
+                    <button
+                      key={fixture.id}
+                      type="button"
+                      className="ghost"
+                      disabled={demoReplay.running || Boolean(suiteRun?.running)}
+                      onClick={() => void runDemoReplay(fixture.id)}
+                    >
+                      {demoReplay.running && demoReplay.fixture === fixture.id
+                        ? "Replaying…"
+                        : fixture.title}
+                      {fixture.summary ? (
+                        <small className="fixture-summary">{fixture.summary}</small>
+                      ) : null}
+                      {fixture.capturedFromLive ? (
+                        <small
+                          className="fixture-captured-tag"
+                          title={`Exported from recorded live session ${fixture.capturedFromLive}`}
+                        >
+                          from live
+                        </small>
+                      ) : null}
+                      {isRecommendedStart(fixture) ? (
+                        <small
+                          className="fixture-attach-tag"
+                          title="The most legible first run: the worker claims done without ever running the suite — PEX catches the unsupported claim."
+                        >
+                          start here
+                        </small>
+                      ) : null}
+                      {fixture.attachHint ? (
+                        <small className="fixture-attach-tag" title={fixture.attachHint}>
+                          attach-aware
+                        </small>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+                <label className="replay-attach">
+                  <input
+                    type="checkbox"
+                    checked={determinismCheck}
+                    onChange={(event) => setDeterminismCheck(event.target.checked)}
+                  />
+                  <span>
+                    Run the next replay twice — identical arcs prove the supervision is
+                    deterministic, not a lucky path.
+                  </span>
+                </label>
+                {current?.goal_id ? (
+                  <label className="replay-attach">
+                    <input
+                      type="checkbox"
+                      checked={attachReplayGoal}
+                      onChange={(event) => setAttachReplayGoal(event.target.checked)}
+                    />
+                    <span>
+                      Attach replays to the selected goal — recorded rulings on its
+                      ledger govern the run instead of a fresh goal being minted.
+                      {(attachedGoal?.ruling_count || 0) > 0 ? (
+                        <strong>
+                          {" "}⚑ governed by {attachedGoal!.ruling_count} recorded ruling
+                          {attachedGoal!.ruling_count === 1 ? "" : "s"}.
+                        </strong>
+                      ) : null}
+                    </span>
+                  </label>
+                ) : null}
+                <div className="replay-suite">
+                  <button
+                    type="button"
+                    className="ghost"
+                    disabled={Boolean(demoReplay.running) || Boolean(suiteRun?.running)}
+                    onClick={() => void runDemoSuite()}
+                  >
+                    {suiteRun?.running
+                      ? `Suite running… ${suiteRun.done}/${suiteRun.total} (${suiteRun.current ?? ""})`
+                      : `Run the whole suite — ${demoFixtures.length} fixtures, self-scored`}
+                  </button>
+                  {suiteRun?.running ? (
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={() => { suiteCancelRef.current = true; }}
+                    >
+                      Stop after this fixture
+                    </button>
+                  ) : null}
+                  {suiteRun && !suiteRun.running ? (
+                    <p className={suiteRun.misses.length ? "replay-suite-line replay-suite-missed" : "replay-suite-line"}>
+                      {suiteRun.done < suiteRun.total ? `Stopped at ${suiteRun.done}/${suiteRun.total} — ` : ""}
+                      {suiteRun.met}/{suiteRun.done || suiteRun.total} declared arcs met
+                      {suiteRun.misses.length
+                        ? ` — missed: ${suiteRun.misses.map((m) => m.fixture).join(", ")}`
+                        : suiteRun.done === suiteRun.total
+                          ? " — the demo verifies itself, the same way eval_replays.py does in CI."
+                          : ""}
+                      {suiteRun.results.some((row) => row.met === null)
+                        ? ` — unscored (could not adjudicate): ${suiteRun.results.filter((row) => row.met === null).map((row) => row.fixture).join(", ")}`
+                        : ""}
+                    </p>
+                  ) : null}
+                  {suiteRun && !suiteRun.running && suiteRun.results.length ? (
+                    <>
+                      <button type="button" className="ghost" onClick={() => void copySuiteReceipt()}>
+                        {suiteReceiptCopied ? "Receipt copied" : "Copy suite receipt (JSON)"}
+                      </button>
+                      <button type="button" className="ghost" onClick={() => void copySuiteMarkdown()}>
+                        {suiteMdCopied ? "Markdown copied" : "Copy as markdown"}
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+                <details className="demo-challenge">
+                  <summary>
+                    <span>Challenge the supervisor</span>
+                    <span>your own trajectory</span>
+                  </summary>
+                  <p>
+                    Paste a fixture JSON — goal, optional workspace files, and a recorded event
+                    stream — and it runs through the real pipeline under the same labels.
+                    Try to make PEX accept a tampered test or a premature claim — or start from
+                    an attack preset below and mutate it.
+                  </p>
+                  <textarea
+                    className="challenge-input"
+                    spellCheck={false}
+                    placeholder={CHALLENGE_TEMPLATE}
+                    value={challengeText}
+                    onChange={(event) => setChallengeText(event.target.value)}
+                  />
+                  <div className="button-row">
+                    {CHALLENGE_PRESETS.map((preset) => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        className="linklike"
+                        onClick={() => setChallengeText(preset.json)}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className="solid"
+                      disabled={demoReplay.running}
+                      onClick={runChallenge}
+                    >
+                      {demoReplay.running && demoReplay.fixture === "inline"
+                        ? "Replaying…"
+                        : "Run my trajectory"}
+                    </button>
+                  </div>
+                  {challengeError ? (
+                    <p className="demo-replay-error" role="alert">
+                      {challengeError}
+                    </p>
+                  ) : null}
+                </details>
+                <details className="demo-challenge demo-pack-verify">
+                  <summary>
+                    <span>Verify an evidence pack</span>
+                    <span>no install needed</span>
+                  </summary>
+                  <p>
+                    Choose a <code>pex-evidence-pack-*.json</code> (exported from a session's
+                    Inspector) or a shipped <code>EVIDENCE_PACK_*.html</code> receipt — every
+                    digest is recomputed in this browser, independent of the
+                    bridge. Equivalent to <code>python scripts/verify_pack.py</code>.
+                  </p>
+                  <input
+                    type="file"
+                    accept="application/json,.json,.html,text/html"
+                    onChange={(event) => {
+                      void verifyPackFile(event.target.files?.[0]);
+                      event.target.value = "";
+                    }}
+                  />
+                  {packVerify ? (
+                    <div className="pack-verification">
+                      <ul>
+                        {packVerify.checks.map((line, index) => (
+                          <li
+                            key={`${packVerify.fileName}-${index}`}
+                            className={`pack-check pack-check-${line.split(" ", 1)[0].toLowerCase()}`}
+                          >
+                            {line}
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="note">
+                        Digests recomputed locally for {packVerify.fileName} — proves the bundle is
+                        internally consistent; it does not prove a live worker ran.
+                      </p>
+                    </div>
+                  ) : null}
+                </details>
+                </>
+                ) : null}
+                {demoReplay.running ? (
+                  <div className="replay-verdict replay-verdict-pending" role="status" aria-busy="true">
+                    <p className="eyebrow">
+                      Replaying {demoFixtureTitle(demoReplay.fixture)}…
+                    </p>
+                    <p className="replay-verdict-arc">
+                      The recorded trajectory is running through the real adjudication pipeline —
+                      claims extracted, workspace evidence checked, verdict lands here.
+                    </p>
+                  </div>
+                ) : null}
+                {demoReplay.error ? (
+                  <p className="demo-replay-error" role="alert">
+                    <strong>Replay failed:</strong> {demoReplay.error}
+                    {demoReplay.verdict ? " — the card below is the previous completed run." : ""}
+                  </p>
+                ) : null}
+                {demoReplay.verdict ? (
+                  <div className="replay-verdict" role="status">
+                    <p className="eyebrow">
+                      Observed supervision arc ·{" "}
+                      {demoFixtureTitle(demoReplay.fixture)}
+                    </p>
+                    <p className="replay-verdict-arc">
+                      {demoReplay.verdict.actions.length
+                        ? demoReplay.verdict.actions.map(humanize).join(" → ")
+                        : "No interventions — the trajectory ran unchallenged."}
+                    </p>
+                    {demoReplay.verdict.citedConstraint ? (
+                      <p className="replay-verdict-cite">
+                        cites “{demoReplay.verdict.citedConstraint}”
+                      </p>
+                    ) : null}
+                    {demoReplay.verdict.claimVerdicts?.length ? (
+                      <ul
+                        className="replay-verdict-claims"
+                        title="Every claim the worker made, paired with the verdict independent verification produced"
+                      >
+                        {demoReplay.verdict.claimVerdicts.map((entry, index) => (
+                          <li
+                            key={index}
+                            className={
+                              entry.status === "supported"
+                                ? "replay-verdict-claim replay-verdict-claim-ok"
+                                : "replay-verdict-claim replay-verdict-claim-bad"
+                            }
+                            title={entry.claim}
+                          >
+                            <span className="replay-verdict-claim-text">“{entry.claim}”</span>
+                            <span className="replay-verdict-claim-status">
+                              {entry.status}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {demoReplay.verdict.narrationCheck ? (
+                      <p
+                        className={
+                          demoReplay.verdict.narrationCheck.status === "supported"
+                            ? "replay-verdict-determinism"
+                            : "replay-verdict-determinism replay-verdict-diverged"
+                        }
+                      >
+                        Narration check: “{demoReplay.verdict.narrationCheck.claim}” →{" "}
+                        {demoReplay.verdict.narrationCheck.status === "supported"
+                          ? "supported — verified against the workspace"
+                          : `${demoReplay.verdict.narrationCheck.status} — narration-only supervision would have accepted it`}
+                      </p>
+                    ) : null}
+                    {demoReplay.verdict.verifiedFacts?.length ? (
+                      <p
+                        className="replay-verdict-determinism"
+                        title="The deciding evidence, verbatim from the adjudication ledger"
+                      >
+                        Verified facts: {demoReplay.verdict.verifiedFacts.join(" · ")}
+                      </p>
+                    ) : null}
+                    {demoReplay.verdict.stats ? (
+                      <p className="replay-verdict-determinism">
+                        {demoReplay.verdict.stats.events} events adjudicated ·{" "}
+                        {demoReplay.verdict.stats.claims} claims ·{" "}
+                        {demoReplay.verdict.stats.incidents} integrity incidents
+                        {demoReplay.verdict.workerPexCalls ? (
+                          <span
+                            title="The worker called PEX's own MCP tools during this run — the supervision loop exercised, not just observed. Calls are signal, never a verdict."
+                          >
+                            {" "}· {demoReplay.verdict.workerPexCalls} worker→PEX call
+                            {demoReplay.verdict.workerPexCalls === 1 ? "" : "s"}
+                          </span>
+                        ) : null}
+                      </p>
+                    ) : null}
+                    {demoReplay.verdict.declared ? (
+                      <p
+                        className={
+                          demoReplay.verdict.declared.met === false
+                            ? "replay-verdict-determinism replay-verdict-diverged"
+                            : "replay-verdict-determinism"
+                        }
+                      >
+                        {demoReplay.verdict.declared.met === true
+                          ? `Declared arc: met — ${demoReplay.verdict.declared.summary ?? "all declared checks passed"}`
+                          : demoReplay.verdict.declared.met === false
+                            ? `Declared arc: missed — ${demoReplay.verdict.declared.failures[0] ?? "declared checks failed"}`
+                            : "Declared arc: scoring unavailable for this run"}
+                      </p>
+                    ) : null}
+                    {demoReplay.verdict.determinism ? (
+                      <p
+                        className={
+                          demoReplay.verdict.determinism === "identical"
+                            ? "replay-verdict-determinism"
+                            : "replay-verdict-determinism replay-verdict-diverged"
+                        }
+                      >
+                        Determinism: 2 independent runs ·{" "}
+                        {demoReplay.verdict.determinism === "identical"
+                          ? "identical arc"
+                          : "arcs diverged"}
+                      </p>
+                    ) : null}
+                    {demoReplay.verdict.status ? (
+                      <p className="replay-verdict-completion">
+                        Completion: <strong>{demoReplay.verdict.status}</strong>
+                        {demoReplay.verdict.reason ? (
+                          <small> · {humanize(demoReplay.verdict.reason)}</small>
+                        ) : null}
+                      </p>
+                    ) : (
+                      <p className="replay-verdict-completion">
+                        <small>Completion was not adjudicated for this run.</small>
+                      </p>
+                    )}
+                    <small className="replay-verdict-label">
+                      Deterministic replay — not live worker control.
+                    </small>
+                    <div className="button-row">
+                      {replayRunAwaitingDecision ? (
+                        <button
+                          type="button"
+                          className="solid"
+                          onClick={() => openDecisions()}
+                        >
+                          A ruling is waiting — open Decisions ↗
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={() => openInspector()}
+                      >
+                        Open the session evidence ↗
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={() => void copyVerdictReceipt()}
+                      >
+                        {verdictReceiptCopied ? "Receipt copied" : "Copy verdict receipt (JSON)"}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+                {demoReplay.history.length > (demoReplay.verdict ? 1 : 0) ? (
+                  <ul className="replay-verdict-history">
+                    {demoReplay.history.slice(demoReplay.verdict ? 1 : 0).map((run, index) => (
+                      <li key={`${run.fixture}-${index}`}>
+                        {run.sessionId ? (
+                          <button
+                            type="button"
+                            className="text-button"
+                            title="Open this run's session evidence"
+                            onClick={() => openInspector(run.sessionId ?? undefined)}
+                          >
+                            {demoFixtureTitle(run.fixture)}
+                          </button>
+                        ) : (
+                          demoFixtureTitle(run.fixture)
+                        )}
+                        {run.attached ? " · attached" : ""} →{" "}
+                        {run.verdict.actions.length
+                          ? run.verdict.actions.map(humanize).join(" → ")
+                          : "no interventions"}
+                        {run.verdict.status ? ` · ${run.verdict.status}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
+            {setup?.state !== "unavailable" ? supervisorNotice : null}
+            <details className="workspace-companion">
+              <summary><span>Companion</span><span>{petName}</span></summary>
+              <PetStage
+                name={petName}
+                sheet={sheet}
+                mood={mood}
+                scale={1.08}
+                reducedMotion={reducedMotion}
+                status={setup ? undefined : homeStatus}
+                statusIdentity={action?.id}
+                onActivate={() => openInspector()}
+              />
+            </details>
+          </div>
+          {compactGoalIssue && setup?.state !== "unavailable" ? (
+            <p className="canonical-state-warning compact-state-warning" role="status" aria-live="polite">
+              {compactGoalIssue} Goal controls stay unavailable until refresh succeeds.
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      {surface === "inspector" ? (
+        <Inspector
+          current={current}
+          sessions={sessions}
+          goal={attachedGoal}
+          ledgerDecisions={ledgerDecisions}
+          completion={goalCompletion}
+          verificationReport={verificationReport}
+          sessionInterventions={sessionInterventions}
+          packVerification={packVerification}
+          exportingReport={exportingReport}
+          onExportReport={() => void exportVerificationReport()}
+          exportingPack={exportingPack}
+          onExportEvidencePack={() => void exportEvidencePack()}
+          onFetchAcceptanceDiff={fetchAcceptanceDiff}
+          goals={availableGoals}
+          allGoals={goals}
+          action={action}
+          handoffStatus={action?.id ? handoffAssimilation[action.id] : undefined}
+          status={status}
+          supervisorNotice={setup?.state !== "unavailable" ? supervisorNotice : null}
+          evidenceOpen={evidenceOpen}
+          question={question}
+          answer={answer}
+          asking={asking}
+          askInput={askInput}
+          goalDraft={goalDraft}
+          goalEditorRevision={goalEditorRevision}
+          savingGoal={savingGoal}
+          attachingGoal={attachingGoal}
+          editingGoal={Boolean(editingGoalId)}
+          goalOverrideMode={goalOverrideMode}
+          note={note}
+          canonicalStateAvailable={inspectorCanonicalStateAvailable}
+          canonicalStateIssue={inspectorIssue}
+          sessionActionsAvailable={sessionStateFresh && operatorActionsAvailable}
+          goalActionsAvailable={goalMutationAvailable}
+          handoffTargets={operatorActionsAvailable ? handoffTargets : []}
+          handoffBusy={handoffBusy}
+          onHandoff={(targetId) => void handoffGoal(targetId)}
+          onEvidence={() => setEvidenceOpen((open) => !open)}
+          onOpen={() => void openSession()}
+          onPause={() => void pauseOrResume()}
+          onUndo={() => void undoIntervention()}
+          onAttachGoal={(goalId) => void attachSelectedGoal(goalId)}
+          onGoalChange={(field, value) => setGoalDraft((draft) => ({ ...draft, [field]: value }))}
+          onFillExample={() => setGoalDraft((draft) => mergeExampleGoal(draft))}
+          onCreateGoal={(event) => void savePersistentGoal(event)}
+          onEditGoal={
+            attachedGoal
+              ? () => {
+                  if (!goalLedgerEditable) {
+                    setNote("The decision ledger is still loading or unavailable. Refresh before editing.");
+                    return;
+                  }
+                  editingGoalLedgerKey.current = goalLedgerKey(attachedGoal);
+                  setGoalOverrideMode(false);
+                  setEditingGoalId(attachedGoal.id);
+                  setGoalDraft(
+                    goalToDraft(
+                      attachedGoal,
+                      current?.project_id || current?.cwd || "",
+                      ledgerDecisions,
+                    ),
+                  );
+                }
+              : undefined
+          }
+          onCancelEdit={() => {
+            setEditingGoalId(null);
+            setGoalOverrideMode(false);
+            setGoalDraft(EMPTY_GOAL);
+          }}
+          onGoalOverrideModeChange={setGoalOverrideMode}
+          onQuestion={setQuestion}
+          onAsk={(event) => void askPex(event)}
+          onAskPrompt={(prompt) => void askPex(null, prompt)}
+          onOpenDeck={() => showSurface("deck")}
+          onSelectSession={openInspector}
+        />
+      ) : null}
+
+      {surface === "deck" ? (
+        <CommandDeck
+          activeView={activeView}
+          sessions={sessions}
+          goals={goals}
+          interventions={(deck.interventions || [])
+            .map((item) => projectCompletedOverlayUndo(item, completedOverlayUndoIds))}
+          pendingInterventions={
+            attentionMetrics?.current_pending.items || deck.interventions || []
+          }
+          pendingInterventionsTruncated={attentionMetrics?.current_pending.items_truncated === true}
+          auditInterventions={displayedInterventions}
+          handoffAssimilation={handoffAssimilation}
+          attentionMetrics={attentionMetrics}
+          contextItems={contextProjectId === projectId && contextGoalId === contextScopeGoalId ? contextItems : []}
+          fingerprints={deck.fingerprints || []}
+          adapters={deck.adapters || []}
+          bench={bench}
+          selectedSessionId={selectedId || current?.id}
+          loading={detailsLoading}
+          error={deckIssue}
+          mutationsAvailable={deckMutationsAvailable}
+          operatorControlsAvailable={operatorActionsAvailable}
+          decisionsFresh={decisionsFresh}
+          sessionsFresh={sessionStateFresh}
+          goalsFresh={goalStateFresh && !bridgeError}
+          contextFresh={!bridgeError && contextStateFresh && goalStateFresh}
+          interventionsFresh={!bridgeError && canonicalResourcesAreFresh(canonicalResources, ["interventions"])}
+          agentsFresh={sessionStateFresh && canonicalResourcesAreFresh(canonicalResources, ["deck"])}
+          bridgeOnline={!bridgeError}
+          auditMutationsAvailable={auditMutationsAvailable}
+          decisionFeedback={decisionFeedback}
+          identityConflicts={identityConflicts}
+          identityConflictsLoading={identityConflictLoading}
+          identityConflictsError={identityConflictError}
+          identitySelectedProjectId={identitySelectedProjectId}
+          identityStatus={identityStatus}
+          identityLoading={identityLoading}
+          identityError={identityError}
+          identityResolving={identityResolving}
+          identityFeedback={identityFeedback}
+          question={question}
+          answer={answer}
+          asking={asking}
+          onView={openDeckView}
+          onSelectSession={(sessionId) => openInspector(sessionId)}
+          onOpenSession={(session) => void openSession(session)}
+          onPauseSession={(session) => void pauseOrResume(session)}
+          onUndo={(item) => void undoIntervention(item)}
+          onResolveDecision={(item, decision) => void resolveHumanDecision(item, decision)}
+          onDirectWorker={directWorker}
+          onSelectIdentityProject={selectIdentityProject}
+          onResolveIdentity={(attempt) => void resolveProjectIdentity(attempt)}
+          onLoadMoreIdentityConflicts={loadMoreIdentityConflicts}
+          onLoadMoreIdentityCandidates={loadMoreIdentityCandidates}
+          onConnectWorker={() => openSettings("connections")}
+          onQuestion={setQuestion}
+          onAsk={(event) => void askPex(event)}
+          onAskPrompt={(prompt) => void askPex(null, prompt)}
+        />
+      ) : null}
+    </main>
+  );
+}
+
+function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+
+  useEffect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduced(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+
+  return reduced;
+}
+
+function useBridgeAsset(path?: string): string {
+  const [source, setSource] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    setSource("");
+    if (!path) return;
+    const controller = new AbortController();
+    void boundedRead(async (signal) => {
+        const response = await bridgeFetch(path, { signal });
+        if (!response.ok) throw new Error(`Asset request failed (${response.status}).`);
+        return response.blob();
+      }, controller.signal)
+      .then((blob) => {
+        objectUrl = URL.createObjectURL(blob);
+        if (cancelled) URL.revokeObjectURL(objectUrl);
+        else setSource(objectUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setSource("");
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [path]);
+
+  return source;
+}
+
+function BridgePetSprite({
+  petId,
+  path,
+  mood,
+  scale,
+  reducedMotion,
+  active,
+}: {
+  petId: string;
+  path: string;
+  mood: PetSnapshot["mood"];
+  scale: number;
+  reducedMotion: boolean;
+  active: boolean;
+}) {
+  const localSource = bundledPetSheet(petId);
+  const bridgeSource = useBridgeAsset(localSource ? undefined : path);
+  const source = localSource || bridgeSource;
+  return source && mood ? (
+    <CodexSprite
+      active={active}
+      src={source}
+      mood={mood}
+      scale={scale}
+      reducedMotion={reducedMotion}
+    />
+  ) : (
+    <span className="pet-fallback" aria-hidden="true">P</span>
+  );
+}
+
+function PetRosterButtons({
+  pets,
+  selectedId,
+  selecting,
+  reducedMotion,
+  onSelect,
+}: {
+  pets: CatalogPet[];
+  selectedId?: string;
+  selecting: boolean;
+  reducedMotion: boolean;
+  onSelect: (id: string) => void;
+}) {
+  if (!pets.length) {
+    return <p className="pet-roster-unavailable">No validated pet atlas is available from the bridge.</p>;
+  }
+  return (
+    <div className="pet-roster-row">
+      {pets.map((item) => {
+        const ready = item.atlas_ready === true;
+        const selected = item.id === selectedId;
+        return (
+          <button
+            type="button"
+            className={selected ? "active" : ""}
+            aria-pressed={selected}
+            aria-label={`${item.display_name}, ${item.species || "companion"}${ready ? "" : ", art unavailable"}`}
+            disabled={selecting || !ready}
+            onClick={() => onSelect(item.id)}
+            key={item.id}
+          >
+            <span className="pet-thumb">
+              {ready ? (
+                <BridgePetSprite
+                  active={selected}
+                  petId={item.id}
+                  path={`/v1/pets/${encodeURIComponent(item.id)}/spritesheet`}
+                  mood="idle"
+                  scale={0.72}
+                  reducedMotion={reducedMotion}
+                />
+              ) : (
+                <span className="pet-fallback" aria-hidden="true">P</span>
+              )}
+            </span>
+            <strong>{item.display_name}</strong>
+            <small>{ready ? selected ? "Selected" : item.species || "companion" : "art unavailable"}</small>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function shellFromHash(): Shell {
+  if (window.location.pathname.replaceAll("\\", "/").endsWith("/pet.html")) return "pet";
+  const hash = window.location.hash.replace(/^#\/?/, "");
+  if (hash === "pet" || hash === "settings") return hash;
+  return "main";
+}
+
+function surfaceFromHash(): Surface {
+  const hash = window.location.hash.replace(/^#\/?/, "");
+  const surface = hash.split("/")[0];
+  if (surface === "inspector" || surface === "deck") return surface;
+  return "compact";
+}
+
+const DECK_VIEWS: DeckView[] = [
+  "now",
+  "decisions",
+  "goals",
+  "context",
+  "interventions",
+  "agents",
+  "bench",
+];
+
+// `#deck/<view>` deep-links a specific deck tab (e.g. `#deck/goals`) —
+// same refresh-safe shareability as `#inspector/<id>`.
+function deckViewFromHash(): DeckView | null {
+  const hash = window.location.hash.replace(/^#\/?/, "");
+  const [surface, view] = hash.split("/");
+  if (surface !== "deck" || !view) return null;
+  return DECK_VIEWS.includes(view as DeckView) ? (view as DeckView) : null;
+}
+
+// `#inspector/<encoded session id>` deep-links a specific session's evidence —
+// refresh-safe and shareable between judges.
+function sessionFromHash(): string | null {
+  const hash = window.location.hash.replace(/^#\/?/, "");
+  const [surface, ...rest] = hash.split("/");
+  if (surface !== "inspector" || !rest.length || !rest[0]) return null;
+  try {
+    return decodeURIComponent(rest.join("/"));
+  } catch {
+    return null;
+  }
+}

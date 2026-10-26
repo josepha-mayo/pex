@@ -1,0 +1,37 @@
+{
+  "name": "pex-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "prepare:sidecar": "node scripts/build-sidecar.mjs",
+    "prepare:sidecar:release": "node scripts/build-sidecar.mjs --release-build",
+    "validate:pets": "node scripts/build-sidecar.mjs --validate-pets-only",
+    "preflight:release": "node scripts/build-sidecar.mjs --preflight-release",
+    "verify:package": "node scripts/verify-package.mjs",
+    "test": "node --test src/hosted/client.test.ts src/viewModel.test.ts src/firstRun.test.ts src/readBudget.test.ts src/startupRecovery.test.ts src/supervisorDraft.test.ts src/operatorRequest.test.ts src/operatorTask.test.ts src/openCodeConnection.test.ts src/codexConnection.test.ts src/sharedConnection.test.ts src/autonomousCorrections.test.ts src/releasePet.test.ts src/demoReplay.test.ts src/components/CapabilitiesPanel.test.ts src/verificationReport.test.ts src/verificationExport.test.ts src/diffText.test.ts src/evidencePack.test.ts src/exampleGoal.test.ts src/demoChallenge.test.ts src/pets/bundled.test.ts scripts/release-contract.test.mjs scripts/package-contract.test.mjs scripts/pet-review-contract.test.mjs scripts/bridge-runtime-contract.test.mjs && npm run test:web-explorer && npm run test:hosted-dom && npm run test:inspector-routing",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "test:web-explorer": "node --test ../../tests/unit/test_web_explorer.mjs && node --test tests/webExplorer.dom.test.mjs",
+    "build:hosted": "tsc && vite build --mode hosted",
+    "test:hosted-dom": "node --test tests/hostedReplay.dom.test.mjs",
+    "test:inspector-routing": "node --test tests/inspectorRouting.production.test.mjs"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.5.0",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^4.4.1",
+    "linkedom": "^0.18.13",
+    "playwright": "^1.63.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.4"
+  }
+}
