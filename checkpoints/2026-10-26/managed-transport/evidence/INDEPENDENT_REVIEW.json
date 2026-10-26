@@ -1,0 +1,26 @@
+{
+  "review_type": "independent read-only source review and offline test rerun",
+  "disposition": "approved for offline-candidate backup only; not live admission",
+  "tests_passed": 149,
+  "reviewed_source_sha256": "d393189cc43924f86cd02a630f8993ea56f54cceb16001e447b5504d28b8a1a0",
+  "reviewed_test_sha256": "a5ef89fb0c3aef6a29abe5c511fd953ebdafa74da9091013102fa47f5ed59d71",
+  "resolved_findings": [
+    "nonfinite JSON numeric overflow in otherwise ignored fields",
+    "malformed falsy tool/refusal fields and legacy function-call side channel",
+    "multicast/site-local addresses classified global by ipaddress",
+    "unsupported positive audio/prediction/cache-write usage details",
+    "escaped lone-surrogate and NUL response content"
+  ],
+  "remaining_blocking_defects_in_reviewed_scope": [],
+  "scope_limits": [
+    "public live invocation denied",
+    "private Python members are not a sandbox",
+    "one buffered text-only call; no tools or Strands integration",
+    "in-memory receipts only; no durable reservation or crash recovery",
+    "configured route is not authorization",
+    "no provider qualification or billing guarantee",
+    "no SSE or TTFT claim"
+  ],
+  "provider_credentials_used": false,
+  "provider_calls": 0
+}

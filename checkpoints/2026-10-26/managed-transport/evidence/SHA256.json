@@ -1,0 +1,15 @@
+{
+  "scope": "standalone candidate and sanitized offline evidence only",
+  "files": {
+    "managed_chat.py": "d393189cc43924f86cd02a630f8993ea56f54cceb16001e447b5504d28b8a1a0",
+    "tests/test_managed_chat.py": "a5ef89fb0c3aef6a29abe5c511fd953ebdafa74da9091013102fa47f5ed59d71",
+    "pyproject.toml": "8232cedc78e649705a9fa9c532309467c9b189436de315ee239a2438ec6c7072",
+    "README.md": "b4dbc1eeb6a50405d9c37ce9422fcfbb391a826e3916ed8f7be8a4bcf2d38ddc",
+    "evidence/pytest.txt": "1b5eb7a176e8967ea2ddd587e91daf02039c387e8258bc4f4640e078b4dc8dcc",
+    "evidence/ruff-check.txt": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+    "evidence/ruff-format.txt": "3bc53bf3e981a98a34a852e175bf9b77af841edea74fca595d9aedcbaf9a4938",
+    "evidence/DEPENDENCIES.json": "b7e4c668bbd34e24601fad556af09e7574c7b2f8e7ee67175d2f2815f553b42b",
+    "evidence/INDEPENDENT_REVIEW.json": "d222ee454bd18acad4c304a1d810de4ccf98902cd148a0a7cfc171348f34cb28",
+    "evidence/RESULT.json": "e847346a01f507e510d512d218807abdc501231bad9779ffdb57d88501f974db"
+  }
+}

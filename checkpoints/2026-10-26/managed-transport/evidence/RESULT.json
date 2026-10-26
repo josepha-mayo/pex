@@ -1,0 +1,30 @@
+{
+  "status": "standalone implemented offline-tested candidate; production integration blocked",
+  "generated_utc": "2026-10-26T21:18:15.400954+00:00",
+  "implemented": true,
+  "offline_tests_passed": 149,
+  "ruff_check": "passed",
+  "ruff_format_check": "passed",
+  "execution_transport": "direct HTTPX; no OpenAI or Strands SDK execution",
+  "mode": "nonstreaming buffered text-only Chat Completions",
+  "public_live_invoke_enabled": false,
+  "production_admission_changed": false,
+  "default_pex_paths_changed": false,
+  "provider_calls": 0,
+  "provider_credentials_used": false,
+  "public_deployment": false,
+  "socket_and_dns_sentries": "zero actual attempts asserted in test teardown; synthetic DNS fixtures do not call network",
+  "accounting": "in-memory per-invocation receipts; unknown usage is null and post-dispatch failures remain uncertain",
+  "billing_guarantee": false,
+  "tokenizer_guarantee": false,
+  "inference_quality_or_speed_claim": false,
+  "source_checkpoint_commit": "b5701d553203ca5ea1a98296fd60fc0037667297",
+  "source_checkpoint_branch": "wip/reconstruction-checkpoints-20261026",
+  "next_integration_requirements": [
+    "typed bounded tool/Strands interface if required by PEX",
+    "durable reservations and ambiguity recovery policy",
+    "existing owner/policy/workspace/evidence/budget veto integration",
+    "separate reviewed live admission and current bounded provider-run authorization",
+    "missing historical web-auth hardening remains a deployment blocker"
+  ]
+}
