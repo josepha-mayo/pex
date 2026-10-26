@@ -228,9 +228,9 @@ class ProtocolContract:
             self.role,
             self.invocation_id,
             self.request_digest,
-            self.system_prompt,
-            self.initial_prompt,
-            self.forced_final_prompt,
+            hashlib.sha256(self.system_prompt.encode()).hexdigest(),
+            hashlib.sha256(self.initial_prompt.encode()).hexdigest(),
+            hashlib.sha256(self.forced_final_prompt.encode()).hexdigest(),
             [
                 [
                     item.name,
@@ -291,7 +291,7 @@ class ProtocolContract:
 class ToolCall:
     call_id: str
     name: str
-    arguments_json: str
+    arguments_json: str = field(repr=False)
 
     def __post_init__(self):
         if type(self.call_id) is not str or not _CALL_ID.fullmatch(self.call_id):
@@ -304,7 +304,7 @@ class ToolCall:
 @dataclass(frozen=True, slots=True)
 class TextMessage:
     role: Literal["user", "assistant"]
-    text: str
+    text: str = field(repr=False)
 
     def __post_init__(self):
         if type(self.role) is not str or self.role not in {"user", "assistant"}:
@@ -315,7 +315,7 @@ class TextMessage:
 @dataclass(frozen=True, slots=True)
 class AssistantTools:
     calls: tuple[ToolCall, ...]
-    text: str | None = None
+    text: str | None = field(default=None, repr=False)
 
     def __post_init__(self):
         if (
@@ -331,7 +331,7 @@ class AssistantTools:
 @dataclass(frozen=True, slots=True)
 class ToolResult:
     call_id: str
-    text: str
+    text: str = field(repr=False)
     status: Literal["success", "error"] = "success"
 
     def __post_init__(self):

@@ -303,6 +303,20 @@ def _usage(raw: object, limits: Limits) -> Usage:
     return Usage(*counts, *details)
 
 
+def _contains_secret(value, secret):
+    pending = [value]
+    while pending:
+        item = pending.pop()
+        if type(item) is str and secret in item:
+            return True
+        if type(item) is dict:
+            pending.extend(item.keys())
+            pending.extend(item.values())
+        elif type(item) is list:
+            pending.extend(item)
+    return False
+
+
 async def _resolve_public_address(host: str, port: int):
     try:
         literal = ipaddress.ip_address(host)
@@ -356,6 +370,13 @@ class _GuardedTransport(httpx.AsyncBaseTransport):
         if raw != self._body or len(raw) > route.limits.max_request_bytes:
             raise Refusal("request_body_mismatch")
         body = _strict_json(raw)
+        if set(body) != self._owner._body_fields():
+            raise Refusal("request_field_mismatch")
+        if (
+            type(body.get(route.output_field)) is not int
+            or body[route.output_field] != route.limits.max_output_tokens
+        ):
+            raise Refusal("request_output_cap_mismatch")
         if (
             body.get("model") != route.model_id
             or body.get("stream") is not False
@@ -465,6 +486,61 @@ class ManagedChatCandidate:
             self._receipts[invocation_id], attempts=1, dispatch_state="possible"
         )
 
+    def _accept_invocation(self, invocation):
+        return type(invocation) is Invocation
+
+    def _body_fields(self):
+        return {"model", "stream", "n", self.route.output_field, "messages"}
+
+    def _request_payload(self, invocation):
+        return {
+            "model": self.route.model_id,
+            "stream": False,
+            "n": 1,
+            self.route.output_field: self.route.limits.max_output_tokens,
+            "messages": [
+                {"role": "system", "content": _ROLE_SYSTEM[self.route.role]},
+                {"role": "user", "content": invocation.prompt},
+            ],
+        }
+
+    def _response_content(self, raw, credential, invocation):
+        choices = raw.get("choices")
+        if type(choices) is not list or len(choices) != 1 or type(choices[0]) is not dict:
+            raise Refusal("invalid_response_choices")
+        choice = choices[0]
+        if (
+            type(choice.get("index")) is not int
+            or choice["index"] != 0
+            or choice.get("finish_reason") != "stop"
+        ):
+            raise Refusal("incomplete_response")
+        message = choice.get("message")
+        if (
+            type(message) is not dict
+            or message.get("role") != "assistant"
+            or message.get("tool_calls") is not None
+            or "function_call" in message
+            or message.get("refusal") is not None
+        ):
+            raise Refusal("unsupported_response_message")
+        content = message.get("content")
+        if (
+            type(content) is not str
+            or not content
+            or "\x00" in content
+            or credential._value in content
+        ):
+            raise Refusal("invalid_response_content")
+        try:
+            content.encode("utf-8")
+        except UnicodeEncodeError:
+            raise Refusal("invalid_response_content") from None
+        return content
+
+    def _completion(self, receipt, content=None):
+        return Completion(receipt, content)
+
     async def _execute_owned(
         self, invocation: Invocation, credential: _ScopedCredential
     ) -> Completion:
@@ -473,7 +549,7 @@ class ManagedChatCandidate:
         This is not a live-admission API. No client, transport, arbitrary params,
         raw headers, callable credential or provider adapter is accepted.
         """
-        if type(invocation) is not Invocation or type(credential) is not _ScopedCredential:
+        if not self._accept_invocation(invocation) or type(credential) is not _ScopedCredential:
             raise Refusal("unsupported_invocation_or_credential")
         if invocation.invocation_id in self._receipts:
             raise Refusal("invocation_reuse_refused")
@@ -485,24 +561,16 @@ class ManagedChatCandidate:
         try:
             if credential._fingerprint != self.route.fingerprint:
                 raise Refusal("credential_scope_mismatch")
+            payload = self._request_payload(invocation)
             body = json.dumps(
-                {
-                    "model": self.route.model_id,
-                    "stream": False,
-                    "n": 1,
-                    self.route.output_field: self.route.limits.max_output_tokens,
-                    "messages": [
-                        {"role": "system", "content": _ROLE_SYSTEM[self.route.role]},
-                        {"role": "user", "content": invocation.prompt},
-                    ],
-                },
+                payload,
                 ensure_ascii=False,
                 allow_nan=False,
                 separators=(",", ":"),
             ).encode("utf-8")
             if len(body) > self.route.limits.max_request_bytes:
                 raise Refusal("request_too_large")
-            if credential._value in invocation.prompt:
+            if _contains_secret(payload, credential._value):
                 raise Refusal("credential_in_prompt_refused")
             timeout = httpx.Timeout(self.route.limits.timeout_seconds)
             async with asyncio.timeout(self.route.limits.timeout_seconds):
@@ -540,48 +608,14 @@ class ManagedChatCandidate:
                         )
                         if usage.output_tokens > self.route.limits.max_output_tokens:
                             raise Refusal("observed_output_cap_exceeded")
-                        choices = raw.get("choices")
-                        if (
-                            type(choices) is not list
-                            or len(choices) != 1
-                            or type(choices[0]) is not dict
-                        ):
-                            raise Refusal("invalid_response_choices")
-                        choice = choices[0]
-                        if (
-                            type(choice.get("index")) is not int
-                            or choice["index"] != 0
-                            or choice.get("finish_reason") != "stop"
-                        ):
-                            raise Refusal("incomplete_response")
-                        message = choice.get("message")
-                        if (
-                            type(message) is not dict
-                            or message.get("role") != "assistant"
-                            or message.get("tool_calls") is not None
-                            or "function_call" in message
-                            or message.get("refusal") is not None
-                        ):
-                            raise Refusal("unsupported_response_message")
-                        content = message.get("content")
-                        if (
-                            type(content) is not str
-                            or not content
-                            or "\x00" in content
-                            or credential._value in content
-                        ):
-                            raise Refusal("invalid_response_content")
-                        try:
-                            content.encode("utf-8")
-                        except UnicodeEncodeError:
-                            raise Refusal("invalid_response_content") from None
+                        content = self._response_content(raw, credential, invocation)
                         self._receipts[invocation.invocation_id] = replace(
                             self.receipt(invocation.invocation_id),
                             dispatch_state="response_complete",
                             outcome="succeeded",
                             reason="validated_response",
                         )
-                        return Completion(self.receipt(invocation.invocation_id), content)
+                        return self._completion(self.receipt(invocation.invocation_id), content)
                     finally:
                         await response.aclose()
         except asyncio.CancelledError:
@@ -598,7 +632,7 @@ class ManagedChatCandidate:
         finally:
             self._active = False
         self._fail(invocation.invocation_id, reason)
-        return Completion(self.receipt(invocation.invocation_id))
+        return self._completion(self.receipt(invocation.invocation_id))
 
     def _fail(self, invocation_id, reason):
         receipt = self.receipt(invocation_id)

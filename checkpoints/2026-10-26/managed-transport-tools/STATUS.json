@@ -1,18 +1,19 @@
 {
-  "status": "WIP strict contract and serializer tested; bridge not implemented",
+  "status": "WIP strict tool-response transport implemented; fixture registration repair pending",
   "baseline_commit": "92d550afb3374b97a6ba3fecc29514c41624712f",
   "baseline_149_test_qualification_inherited": false,
   "tool_protocol_tests_run": true,
-  "tool_response_transport_implemented": false,
+  "tool_response_transport_implemented": true,
   "strands_bridge_implemented": false,
   "provider_calls": 0,
   "public_live_invoke_enabled": false,
   "production_integration": false,
   "public_deployment": false,
-  "tests_passed": 205,
+  "tests_passed": 207,
   "tests_failed": 0,
-  "known_failure": null,
-  "tests_scope": "149 copied transport regressions plus56 source-bound PEX protocol tests; all offline",
+  "known_failure": "New test module lost shared rig/no_network fixture imports during lint auto-fix; 25 fixture setup errors, no new HTTP tests executed.",
+  "tests_scope": "149 copied transport regressions plus56 source-bound PEX protocol tests and2 new pure protocol regressions passed;25 new transport tests setup-error; all offline",
   "ruff_check": "passed",
-  "ruff_format_check": "passed"
+  "ruff_format_check": "passed",
+  "tests_errors": 25
 }
