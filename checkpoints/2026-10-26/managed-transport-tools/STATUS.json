@@ -1,5 +1,5 @@
 {
-  "status": "WIP strict tool-response transport:232 offline tests pass; independent review gaps pending",
+  "status": "WIP strict tool-response transport hardening tested; Strands bridge pending",
   "baseline_commit": "92d550afb3374b97a6ba3fecc29514c41624712f",
   "baseline_149_test_qualification_inherited": false,
   "tool_protocol_tests_run": true,
@@ -9,15 +9,13 @@
   "public_live_invoke_enabled": false,
   "production_integration": false,
   "public_deployment": false,
-  "tests_passed": 232,
+  "tests_passed": 242,
   "tests_failed": 0,
   "known_failure": null,
-  "tests_scope": "149 base transport +56 source-bound protocol +27 tool transport tests; all offline, zero DNS/socket attempts",
+  "tests_scope": "149 base transport +56 source-bound protocol +37 tool transport tests; all offline, zero DNS/socket attempts",
   "ruff_check": "passed",
   "ruff_format_check": "passed",
   "tests_errors": 0,
-  "known_review_gaps": [
-    "Enforce required/named tool choice against raw reply, not catalog membership alone.",
-    "Scan decoded embedded tool argument JSON for escaped credential echoes before release and dispatch."
-  ]
+  "known_review_gaps": [],
+  "secret_check_scope": "Current credential echo in outer JSON and decoded known embedded argument/evidence JSON only; not arbitrary encoding detection"
 }

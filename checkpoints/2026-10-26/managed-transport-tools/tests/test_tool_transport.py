@@ -8,7 +8,7 @@ import pytest
 from test_managed_chat import ENDPOINT, MODEL, SYNTHETIC_KEY, VALID, response
 from test_managed_chat import no_network as no_network
 from test_managed_chat import rig as rig
-from test_tool_protocol import bind, final_arguments, initial
+from test_tool_protocol import EventType, bind, final_arguments, initial, request_fixture
 
 import managed_chat as mc
 import managed_tool_chat as mt
@@ -256,3 +256,120 @@ def test_full_prompt_fingerprint_bound_is_consistent_and_text_stays_complete():
     )
     with pytest.raises(mc.Refusal):
         replace(c, initial_prompt="x" * 131073)
+
+
+def escaped_synthetic_key():
+    return "".join(f"\\u{ord(char):04x}" for char in SYNTHETIC_KEY)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("choice", [{"any": {}}, {"tool": {"name": "get_goal"}}])
+async def test_required_or_named_choice_rejects_plain_stop(rig, choice):
+    _, candidate, invocation = setup(choice=choice)
+    rig.handler = lambda request: response(VALID)
+    result = await run(candidate, invocation)
+    assert result.receipt.reason == "response_tool_choice_mismatch"
+    assert result.receipt.outcome == "uncertain" and result.receipt.usage is not None
+    assert result.reply is None and len(rig.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_named_choice_rejects_another_offered_tool(rig):
+    _, candidate, invocation = setup(choice={"tool": {"name": "get_goal"}})
+    rig.handler = lambda request: response(payload("inspect_acceptance", "{}"))
+    result = await run(candidate, invocation)
+    assert result.receipt.reason == "response_tool_choice_mismatch" and result.reply is None
+    assert result.receipt.usage is not None and len(rig.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_forced_final_rejects_plain_stop(rig):
+    bound, candidate, _ = setup()
+    c = bound.contract
+    invocation = mt.ToolInvocation(
+        "forced_refusal",
+        c,
+        (
+            initial(c),
+            tp.TextMessage("assistant", "Synthetic text"),
+            tp.TextMessage("user", c.forced_final_prompt),
+        ),
+        json.dumps([json.loads(c.definition(c.final_name).advertised_spec_json)]),
+        '{"any":{}}',
+    )
+    rig.handler = lambda request: response(VALID)
+    result = await run(candidate, invocation)
+    assert result.receipt.reason == "response_tool_choice_mismatch" and result.reply is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("field", ["value", "key"])
+async def test_decoded_response_arguments_cannot_echo_credential(rig, field):
+    bound, candidate, invocation = setup()
+    escaped = escaped_synthetic_key()
+    nested = '{"value":"' + escaped + '"}' if field == "value" else '{"' + escaped + '":0}'
+    arguments = '{"action_type":"NOOP","rationale":"synthetic","payload":' + nested + "}"
+    assert SYNTHETIC_KEY not in arguments
+    rig.handler = lambda request: response(payload(bound.contract.final_name, arguments))
+    result = await run(candidate, invocation)
+    assert result.receipt.reason == "credential_in_response_refused"
+    assert result.receipt.usage is not None and result.reply is None
+    assert SYNTHETIC_KEY not in repr(result) and escaped not in repr(result)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("source", ["arguments", "evidence", "duplicate_evidence"])
+async def test_embedded_outbound_json_secret_or_invalid_envelope_refuses_before_dispatch(
+    rig, source
+):
+    bound, candidate, _ = setup()
+    c = bound.contract
+    if source == "arguments":
+        bound = bind(request=request_fixture(EventType.TOOL_RESULT, with_boundaries=True))
+        c = bound.contract
+        candidate = mt.ManagedToolChatCandidate(mc.Route(ENDPOINT, MODEL, "planner"), c)
+    escaped = escaped_synthetic_key()
+    args = '{"path":"' + escaped + '"}' if source == "arguments" else "{}"
+    name = "inspect_file" if source == "arguments" else "inspect_acceptance"
+    evidence = '{"result":"' + escaped + '"}' if source != "arguments" else '{"result":0}'
+    if source == "duplicate_evidence":
+        evidence = '{"result":0,"result":"' + escaped + '"}'
+    invocation = mt.ToolInvocation(
+        "outbound_encoded",
+        c,
+        (
+            initial(c),
+            tp.AssistantTools((tp.ToolCall("prior_call", name, args),)),
+            tp.ToolResult("prior_call", evidence),
+        ),
+        json.dumps([json.loads(item.advertised_spec_json) for item in c.definitions]),
+    )
+    result = await run(candidate, invocation)
+    assert result.receipt.outcome == "refused" and result.receipt.attempts == 0
+    assert result.receipt.usage is None and result.reply is None
+    assert rig.created == rig.resolutions == len(rig.calls) == 0
+    assert SYNTHETIC_KEY not in repr(result)
+
+
+@pytest.mark.asyncio
+async def test_plaintext_sdk_error_result_is_preserved_exactly(rig):
+    bound, candidate, _ = setup()
+    c = bound.contract
+    error_text = "Synthetic local tool failure: café\nno mutation."
+    invocation = mt.ToolInvocation(
+        "error_text",
+        c,
+        (
+            initial(c),
+            tp.AssistantTools((tp.ToolCall("prior_call", "inspect_acceptance", "{}"),)),
+            tp.ToolResult("prior_call", error_text, "error"),
+        ),
+        json.dumps([json.loads(item.advertised_spec_json) for item in c.definitions]),
+    )
+    rig.handler = lambda request: response(
+        payload(c.final_name, json.dumps(final_arguments("planner")))
+    )
+    assert (await run(candidate, invocation)).receipt.outcome == "succeeded"
+    assert (
+        json.loads(rig.calls[0].content)["messages"][-1]["content"].encode() == error_text.encode()
+    )

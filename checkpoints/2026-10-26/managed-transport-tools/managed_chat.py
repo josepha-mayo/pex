@@ -504,6 +504,9 @@ class ManagedChatCandidate:
             ],
         }
 
+    def _request_contains_secret(self, invocation, payload, secret):
+        return _contains_secret(payload, secret)
+
     def _response_content(self, raw, credential, invocation):
         choices = raw.get("choices")
         if type(choices) is not list or len(choices) != 1 or type(choices[0]) is not dict:
@@ -570,7 +573,7 @@ class ManagedChatCandidate:
             ).encode("utf-8")
             if len(body) > self.route.limits.max_request_bytes:
                 raise Refusal("request_too_large")
-            if _contains_secret(payload, credential._value):
+            if self._request_contains_secret(invocation, payload, credential._value):
                 raise Refusal("credential_in_prompt_refused")
             timeout = httpx.Timeout(self.route.limits.timeout_seconds)
             async with asyncio.timeout(self.route.limits.timeout_seconds):

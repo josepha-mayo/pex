@@ -13,9 +13,11 @@ from managed_chat import (
     _strict_json,
 )
 from tool_protocol import (
+    AssistantTools,
     ProtocolContract,
     TextMessage,
     ToolCall,
+    ToolResult,
     _text,
     serialize_history,
     validate_calls,
@@ -118,6 +120,28 @@ class ManagedToolChatCandidate(ManagedChatCandidate):
             "tool_choice": self.contract.tool_choice(invocation.choice(), offered),
         }
 
+    def _request_contains_secret(self, invocation, payload, secret):
+        if super()._request_contains_secret(invocation, payload, secret):
+            return True
+        # These are protocol-defined embedded JSON strings, not arbitrary text
+        # unescaping. Inspect semantic copies only; preserve original wire text.
+        for message in invocation.history:
+            if type(message) is AssistantTools:
+                for call in message.calls:
+                    parsed = self.contract.definition(call.name).validate_arguments(
+                        call.arguments_json
+                    )
+                    if _contains_secret(parsed, secret):
+                        return True
+            elif type(message) is ToolResult:
+                if message.status == "success" or message.text.lstrip().startswith(("{", "[")):
+                    parsed = _strict_json(message.text.encode())
+                    if message.status == "success" and type(parsed) is not dict:
+                        raise Refusal("invalid_evidence_envelope")
+                    if _contains_secret(parsed, secret):
+                        return True
+        return False
+
     def _response_content(self, raw, credential, invocation):
         # Called only AFTER complete bounded response + exact raw usage checks.
         if _contains_secret(raw, credential._value):
@@ -140,8 +164,11 @@ class ManagedToolChatCandidate(ManagedChatCandidate):
         if content is not None:
             _text(content, self.route.limits.max_response_bytes, empty=True)
         finish = choice.get("finish_reason")
+        wire_choice = self.contract.tool_choice(invocation.choice(), invocation.offered())
         raw_calls = message.get("tool_calls")
         if finish == "stop":
+            if wire_choice != "auto":
+                raise Refusal("response_tool_choice_mismatch")
             if raw_calls is not None or type(content) is not str or not content.strip():
                 raise Refusal("stop_tool_mismatch_or_empty_text")
             return AssistantReply(content, (), "stop")
@@ -163,6 +190,14 @@ class ManagedToolChatCandidate(ManagedChatCandidate):
             self.contract, invocation.history, allow_forced_final=invocation.forced()
         )
         validate_calls(self.contract, tuple(calls), invocation.offered(), seen)
+        if type(wire_choice) is dict and any(
+            call.name != wire_choice["function"]["name"] for call in calls
+        ):
+            raise Refusal("response_tool_choice_mismatch")
+        for call in calls:
+            parsed = self.contract.definition(call.name).validate_arguments(call.arguments_json)
+            if _contains_secret(parsed, credential._value):
+                raise Refusal("credential_in_response_refused")
         return AssistantReply(content or None, tuple(calls), "tool_calls")
 
     def _completion(self, receipt, content=None):
