@@ -121,8 +121,12 @@ async def _read_body(receive: Receive, *, limit: int, declared: int | None) -> b
 
 
 async def _respond(
-    send: Send, status: int, payload: dict[str, Any], *, set_cookie: str | None = None,
-    revalidate: Callable[[], None] | None = None
+    send: Send,
+    status: int,
+    payload: dict[str, Any],
+    *,
+    set_cookie: str | None = None,
+    revalidate: Callable[[], None] | None = None,
 ) -> None:
     body = json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode("ascii")
     headers = [
@@ -204,7 +208,14 @@ class _OwnerAuthApp:
                 try:
                     async with asyncio.timeout(WORKSPACE_TIMEOUT_SECONDS):
                         payload = await self._workspace.read_workspace()
-                    if len(json.dumps(payload, ensure_ascii=True, separators=(",", ":")).encode("ascii")) > 32768:
+                    if (
+                        len(
+                            json.dumps(payload, ensure_ascii=True, separators=(",", ":")).encode(
+                                "ascii"
+                            )
+                        )
+                        > 32768
+                    ):
                         raise ValueError("workspace response limit")
                 except Exception:
                     # Never include SQL, database paths, exception text or stale rows.
