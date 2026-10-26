@@ -28,13 +28,13 @@ function setup(responses, origin='https://owner.example.test') {
     submit(){document.getElementById('owner-form').dispatchEvent(new window.Event('submit',{cancelable:true}));}};
 }
 
-test('built page login clears form, shows honest pending workspace, logout clears view',async()=>{
+test('built page login clears form, shows honest read-only workspace, logout clears view',async()=>{
   const f=setup([denied(),good(),new Response('{"authenticated":false}')]);await flush();
   assert.equal(f.el('sign-in').disabled,false);assert.equal(f.el('workspace').hidden,true);
   f.el('owner-secret').value='S'.repeat(43);f.submit();
   assert.equal(f.el('owner-secret').value,'');await flush();
   assert.equal(f.el('workspace').hidden,false);assert.equal(f.el('owner-form').hidden,true);
-  assert.match(f.el('workspace').textContent,/not connected/);
+  assert.match(f.el('workspace').textContent,/not a live worker connection/);
   f.el('sign-out').click();assert.equal(f.el('workspace').hidden,true);await flush();
   assert.match(f.el('status').textContent,/revoked/);assert.equal(f.calls.length,3);
   assert.equal(f.document.toString().includes('S'.repeat(43)),false);
@@ -85,4 +85,21 @@ test('static HTML cannot submit the secret through a query string before JavaScr
   assert.equal(document.getElementById('owner-form').getAttribute('action'),'/owner/auth/login');
   assert.equal(document.getElementById('owner-secret').disabled,true);
   assert.equal(document.getElementById('sign-in').disabled,true);
+});
+
+const workspaceReply=()=>new Response(JSON.stringify({schema:'pex.owner-workspace.v1',observed_at:'2026-10-26T23:00:00Z',sessions:[{id:'s1',harness_type:'opencode',status:'working',goal_id:'g1',last_activity:null}],goals:[{id:'g1',title:'<img src=x onerror=alert(1)>',paused:false,completion:{status:'uncertain',reason:'no_current_supported_completion_evidence',as_of:'2026-10-26T23:00:00Z'}}],truncated:{sessions:false,goals:false}}));
+test('built page manually renders recorded rows as text and clears them on logout',async()=>{
+  const f=setup([good(),workspaceReply(),new Response('{"authenticated":false}')]);await flush();
+  assert.equal(f.calls.length,1);f.el('refresh-workspace').click();await flush();
+  assert.match(f.el('workspace-records').textContent,/opencode/);
+  assert.match(f.el('workspace-records').textContent,/uncertain/);
+  assert.equal(f.el('workspace-records').querySelector('img'),null);
+  assert.equal(f.calls[1].url,'https://owner.example.test/owner/workspace');
+  f.el('sign-out').click();assert.equal(f.el('workspace-records').textContent,'');await flush();
+});
+test('built page hides cached records when refresh fails',async()=>{
+  const f=setup([good(),workspaceReply(),new Response('',{status:503})]);await flush();
+  f.el('refresh-workspace').click();await flush();assert.match(f.el('workspace-records').textContent,/s1/);
+  f.el('refresh-workspace').click();assert.equal(f.el('workspace-records').textContent,'');await flush();
+  assert.match(f.el('workspace-status').textContent,/could not be read safely/);
 });

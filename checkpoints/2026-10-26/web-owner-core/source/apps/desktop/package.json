@@ -19,7 +19,7 @@
     "test:hosted-dom": "node --test tests/hostedReplay.dom.test.mjs",
     "test:inspector-routing": "node --test tests/inspectorRouting.production.test.mjs",
     "build:owner": "tsc && vite build --config vite.owner.config.ts",
-    "test:owner": "npm run build:owner && node --test src/owner/client.test.ts tests/ownerAuth.dom.test.mjs"
+    "test:owner": "npm run build:owner && node --test src/owner/client.test.ts src/owner/workspace.test.ts tests/ownerAuth.dom.test.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.5.0",
