@@ -100,3 +100,19 @@ Official cookbook pins the US endpoint/model:
 https://github.com/nebius/token-factory-cookbook/blob/main/models/nemotron/nemotron3-super-120B.md .
 Public regional routing can change: no automatic fallback or retry is authorized.
 The split profile grants no authority; invoke_live still refuses unconditionally.
+
+## Shared pilot funding candidate — 10:35 UTC (WIP, tests pending)
+
+Use ONE private Ledger database/instance for the pilot, primary route=planner,
+approved_routes=(planner_route, verifier_route), max_attempts=12, budget=250000000,
+input_token_bound=262144, output_token_bound=4096. The two routes must be identical
+except role. Shared mode refuses any different ceiling, attempt limit or role set.
+It persists both fingerprints and the global attempt limit; each receipt must match
+its own reserved route AND role. The same SQLite transaction checks aggregate
+settled/uncertain cost and all attempted reservations before admitting either role.
+No separate per-role funding pools are permitted. Reopening cannot reset the cap.
+Pre-shared-profile ledger databases require new private storage; never reuse a fresh
+DB to bypass an already begun pilot. Controller must retain this exact DB across
+both roles and process restarts. Live process admission remains closed.
+New authored tests for cross-role receipts, interleaved/concurrent shared costs,
+global attempt exhaustion and reopen/corruption are pending execution.

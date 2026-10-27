@@ -503,3 +503,133 @@ def test_split_envelope_persisted_and_corruption_refused(tmp_path):
     ledger.close()
     with pytest.raises(ValueError, match="envelope identity changed"):
         split_ledger(path)
+
+
+def shared_ledger(path, **changes):
+    from dataclasses import replace
+    route = split_route()
+    args = dict(approved_routes=(route, replace(route, role="verifier")), max_attempts=12)
+    args.update(changes)
+    return split_ledger(path, **args)
+
+
+def role_receipt(call, route, input_tokens=1000, output_tokens=100):
+    from dataclasses import replace
+    return replace(split_receipt(call, input_tokens, output_tokens),
+                   route_fingerprint=route.fingerprint, role=route.role)
+
+
+def test_shared_roles_settle_and_reopen_global_attempt_cap(tmp_path):
+    from dataclasses import replace
+    path = tmp_path / "shared.sqlite"
+    planner = split_route()
+    verifier = replace(planner, role="verifier")
+    ledger = shared_ledger(path)
+    for index in range(12):
+        route = planner if index % 2 == 0 else verifier
+        call = f"role-{index}"
+        ledger.reserve(call, route)
+        ledger.settle(call, role_receipt(call, route))
+        if index == 5:
+            ledger.close()
+            ledger = shared_ledger(path)
+    assert sum(row["charged"] for row in ledger.summary()) == 4680000
+    for route in (planner, verifier):
+        with pytest.raises(ValueError, match="global attempt cap refused"):
+            ledger.reserve("thirteenth", route)
+    ledger.close()
+    ledger = shared_ledger(path)
+    with pytest.raises(ValueError, match="global attempt cap refused"):
+        ledger.reserve("after-reopen", verifier)
+    ledger.close()
+
+
+@pytest.mark.parametrize("uncertain", [True, False])
+def test_interleaved_roles_share_one_quarter_dollar(tmp_path, uncertain):
+    from dataclasses import replace
+    path = tmp_path / "shared.sqlite"
+    planner = split_route()
+    verifier = replace(planner, role="verifier")
+    ledger = shared_ledger(path)
+    for index, route in enumerate((planner, verifier, planner)):
+        call = f"large-role-{index}"
+        ledger.reserve(call, route)
+        ledger.settle(call, None if uncertain else role_receipt(call, route, 262144, 4096))
+    ledger.close()
+    ledger = shared_ledger(path)
+    assert sum(row["charged"] for row in ledger.summary()) == 246988800
+    for route in (planner, verifier):
+        with pytest.raises(ValueError, match="budget reservation refused"):
+            ledger.reserve("fourth-role", route)
+    ledger.close()
+
+
+def test_concurrent_roles_share_one_cap(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    from dataclasses import replace
+    from threading import Barrier
+    path = tmp_path / "shared.sqlite"
+    shared_ledger(path).close()
+    barrier = Barrier(6)
+    def attempt(index):
+        ledger = shared_ledger(path)
+        route = split_route() if index % 2 == 0 else replace(split_route(), role="verifier")
+        try:
+            barrier.wait(timeout=10)
+            try:
+                ledger.reserve(f"mixed-{index}", route)
+                return True
+            except ValueError as exc:
+                assert str(exc) == "budget reservation refused"
+                return False
+        finally:
+            ledger.close()
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        assert sum(pool.map(attempt, range(6))) == 3
+    ledger = shared_ledger(path)
+    assert sum(row["charged"] for row in ledger.summary()) == 246988800
+    ledger.close()
+
+
+def test_reserved_role_cannot_settle_other_role(tmp_path):
+    from dataclasses import replace
+    ledger = shared_ledger(tmp_path / "shared.sqlite")
+    verifier = replace(split_route(), role="verifier")
+    ledger.reserve("verifier-call", verifier)
+    with pytest.raises(ValueError, match="receipt identity mismatch"):
+        ledger.settle("verifier-call", split_receipt("verifier-call"))
+    # Even retaining the reserved fingerprint cannot disguise the wrong role.
+    with pytest.raises(ValueError, match="receipt identity mismatch"):
+        ledger.settle("verifier-call", replace(split_receipt("verifier-call"), route_fingerprint=verifier.fingerprint))
+    assert ledger.summary()[0]["charged"] == 82329600
+    ledger.settle("verifier-call", role_receipt("verifier-call", verifier))
+    ledger.close()
+
+
+@pytest.mark.parametrize("change", [
+    {"budget": 500000000}, {"max_attempts": 13}, {"max_attempts": True},
+    {"approved_routes": ()}, {"approved_routes": (split_route(), split_route())},
+])
+def test_shared_profile_cannot_expand_cap_or_roles(tmp_path, change):
+    path = tmp_path / "shared.sqlite"
+    with pytest.raises(ValueError, match="shared pilot"):
+        shared_ledger(path, **change)
+    assert not path.exists()
+
+
+def test_shared_reopen_cannot_become_single_role_ledger(tmp_path):
+    path = tmp_path / "shared.sqlite"
+    shared_ledger(path).close()
+    with pytest.raises(ValueError, match="approved routes/attempt identity changed"):
+        split_ledger(path)
+
+
+def test_shared_stored_attempt_limit_tampering_refused(tmp_path):
+    path = tmp_path / "shared.sqlite"
+    ledger = shared_ledger(path)
+    ledger.db.execute("UPDATE pilot_limits SET max_attempts=120")
+    with pytest.raises(ValueError, match="attempt limit corrupt"):
+        ledger.reserve("call", split_route())
+    ledger.close()
+    with pytest.raises(ValueError, match="approved routes/attempt identity changed"):
+        shared_ledger(path)
