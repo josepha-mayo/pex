@@ -76,3 +76,34 @@ included in this source checkpoint.
 Redacted runtime recording events contain timestamps, phase/model labels,
 counts and terminal status only. Raw provider/CLI artifacts remain private.
 Root retains credential revocation and independent sandbox-cleanup ownership.
+
+## Optional Nebius BYOK worker — not activated
+
+The free OpenCode route returned real HTTP429 `provider.free-limit`; existing
+structured error gives `retryAfterMs=46448000` (~12h54m), outside this pilot window.
+The temporary free key was revoked by the owner-side controller; no retry/fallback.
+
+A separate, default-closed `pilot_nebius.py` / `nebius_worker.py` / `nebius_guard.ts`
+path preserves actual OpenCode with the supported Nebius OpenAI-compatible provider,
+canonical `/v1/chat/completions` endpoint and dated
+`deepseek-ai/DeepSeek-V4.1-Flash-1017`. It does not change the free-only path.
+Exact new owner authorization is still required: `APPROVAL=None` and public worker
+funding admission remain closed. No real paid inference, sandbox or paired score.
+
+Proposed fixed split: $0.375 per worker arm, $0.25 shared supervisor, separate
+$0.10 E2B cap. Each worker reserves $0.319488 before dispatch and releases only
+validated raw-wire usage; 12 attempts, 4096 `max_completion_tokens`, equal180s
+active worker ceiling. The dedicated funding RPC is controller-only, never an
+MCP/model tool. Builtin API-key configuration is inert; the trusted guard injects
+credentials only after exact route/body and durable funding admission.
+
+Fresh qualification: 5 authored private funding-IPC tests passed; 2 actual CLI
+BYOK authored fixture tests passed in6.77s, including durable funding through
+thread-safe controller RPC, two exact usage settlements at4500nanoUSD each,
+remote-only tools and0600 raw output files. No real account charge occurred.
+An initial joined rerun was rejected for unintended external startup access.
+Supported catalogue/update/free-provider disable flags plus disabled warming/share
+were added before the successful normal reviewed rerun. Minimal environment omits
+OTEL exporter endpoints/headers. This is protocol qualification, not model quality
+or production/web end-to-end evidence. The optional complete live pilot entry is
+not yet run or fully qualified.
