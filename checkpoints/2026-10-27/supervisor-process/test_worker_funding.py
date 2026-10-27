@@ -42,7 +42,7 @@ def complete():
     return json.dumps({"model":wf.MODEL,"choices":[{"index":0,"finish_reason":"stop","message":{"role":"assistant","content":"synthetic-private-body-do-not-persist"}}],"usage":usage()}).encode()
 
 
-def test_optional_paid_worker_public_admission_closed(tmp_path):
+def test_optional_paid_worker_rejects_unrecognized_approval(tmp_path):
     with pytest.raises(PermissionError,match="not_authorized"):
         wf.WorkerFunding(tmp_path/"worker.sqlite",arm="baseline",approved_config_digest="a"*64,
             approval_ref="authored-not-authorization",pricing_provenance_sha256=wf.PRICING_SHA)
@@ -187,3 +187,22 @@ def test_429_and_duplicate_final_usage_hold_full_reservation(tmp_path):
         result=db.settle_raw("call",sha,429 if index==0 else 200,"text/event-stream",body)
         assert result["state"]=="uncertain" and result["charged_nano_usd"]==319488000
         db.close()
+
+
+
+def test_exact_current_approval_opens_only_fixed_funding_profile(tmp_path):
+    tmp_path.chmod(0o700)
+    db=wf.WorkerFunding(tmp_path/"approved.sqlite",arm="baseline",approved_config_digest="a"*64,
+        approval_ref="Sentinel_9df859db703081919786cd38c9678f05",pricing_provenance_sha256=wf.PRICING_SHA)
+    assert db.summary()=={"charged_nano_usd":{"baseline":0,"pex":0},"attempts":{"baseline":0,"pex":0},"per_arm_budget_nano_usd":375000000}
+    assert wf.MAX_ATTEMPTS==12 and wf.RESERVATION==319488000
+    db.close()
+
+
+@pytest.mark.parametrize("approval",[None,"Sentinel_a6f9e81f1aa88191a915b10436a3cb06",
+    "Sentinel_5d0953f8f7c081919c23779c578048b9"])
+def test_prior_scope_or_request_is_not_new_approval(tmp_path,approval):
+    with pytest.raises(PermissionError,match="not_authorized"):
+        wf.WorkerFunding(tmp_path/"refused.sqlite",arm="baseline",approved_config_digest="a"*64,
+            approval_ref=approval,pricing_provenance_sha256=wf.PRICING_SHA)
+    assert not (tmp_path/"refused.sqlite").exists()
