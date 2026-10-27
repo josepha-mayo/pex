@@ -155,3 +155,12 @@ terminal reopen failures are exercised. External sockets are forbidden by tests.
 These are authored fixtures, NOT live inference, provider billing verification,
 a completed paired benchmark or demonstrated PEX improvement. Runtime config,
 credentials, ledger and recordings remain private and are never source pushes.
+
+
+Final requalification at 10:56 UTC: **75 focused checks passed in 1.12s** and
+**374 combined transport/process/pilot checks passed in 4.75s**. This includes
+`accounting.PilotBudgetExhausted` surviving the actual owned Agent invocation
+unchanged, with zero transport construction after exhausted reservations. Its
+`.code` is `budget_reservation_refused` or `global_attempt_cap_refused`; controller
+must classify these as supervisor-budget-terminal inconclusive, not task failure.
+All responses remain authored, not live provider calls. Production gates unchanged.
