@@ -18,7 +18,7 @@ def test_actual_cli_nebius_byok_authored(monkeypatch,tmp_path,joined_ledger):
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_POST(self):
             b=json.loads(self.rfile.read(int(self.headers['Content-Length'])))
-            calls.append({'model':b['model'],'max_tokens':b['max_tokens'],'tools':[t['function']['name'] for t in b.get('tools',[])],
+            calls.append({'model':b['model'],'max_completion_tokens':b['max_completion_tokens'],'tools':[t['function']['name'] for t in b.get('tools',[])],
                           'sentinel':self.headers.get('Authorization')=='Bearer SYNTHETIC-CLI-WORKER-ONLY'})
             if len(calls)==1:
                 delta={'role':'assistant','tool_calls':[{'index':0,'id':'authored-remote','type':'function','function':{'name':'pex_remote_run','arguments':'{"command":"AUTHORED-REMOTE-ONLY"}'}}]};finish='tool_calls'
@@ -70,7 +70,7 @@ def test_actual_cli_nebius_byok_authored(monkeypatch,tmp_path,joined_ledger):
             assert all(c[1][2]==200 for c in funding_calls if c[0]=='settle')
         assert (tmp_path/'cli/pex/turn-0.stderr').stat().st_mode&0o077==0
         assert (tmp_path/'cli/pex/turn-0.jsonl').stat().st_mode&0o077==0
-        assert len(calls)==2 and all(c['sentinel'] and c['model']==cw.MODEL and c['max_tokens']==4096 and set(c['tools'])=={'pex_remote_run','pex_remote_read','pex_remote_write','pex_remote_list'} for c in calls)
+        assert len(calls)==2 and all(c['sentinel'] and c['model']==cw.MODEL and c['max_completion_tokens']==4096 and set(c['tools'])=={'pex_remote_run','pex_remote_read','pex_remote_write','pex_remote_list'} for c in calls)
         assert remote_calls==['AUTHORED-REMOTE-ONLY','python -m unittest discover -s tests -p test_smoke.py','git diff -- .; git status --short']
         config=json.loads((tmp_path/'cli/pex/case/opencode.json').read_text())
         assert config['providers']['nebius']['settings']['apiKey']=='PEX-INERT-NONSECRET-NOT-A-KEY'

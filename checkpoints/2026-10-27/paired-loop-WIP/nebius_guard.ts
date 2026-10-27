@@ -40,7 +40,7 @@ export default Plugin.define({id:'pex-remote-only-pilot',async setup(ctx) {
     let b,body;try{body=await e.request.clone().text();if(Buffer.byteLength(body)>2097152)return deny();b=JSON.parse(body);}catch{return deny();}
     const u=new URL(e.request.url);
     if(e.kind!=='primary'||e.model.providerID!=='nebius'||e.model.id!==cfg.model||u.href!==cfg.endpoint||
-       e.request.method!=='POST'||b.model!==cfg.model||b.max_tokens!==cfg.outputPerCall||
+       e.request.method!=='POST'||b.model!==cfg.model||b.max_completion_tokens!==cfg.outputPerCall||
        b.n!==undefined&&b.n!==1||!Array.isArray(b.tools)||!b.tools.length||
        b.tools.some(t=>t.type!=='function'||!allowed.has(t.function?.name)))return deny();
     if(pending!==null)return deny();
