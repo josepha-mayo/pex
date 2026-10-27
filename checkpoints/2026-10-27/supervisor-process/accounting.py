@@ -15,7 +15,19 @@ def integer(value, limit=10**15):
 
 
 class Ledger:
-    def __init__(self, path: Path, *, budget: int, input_rate: int, output_rate: int):
+    def __init__(self, path: Path, *, budget: int, input_rate: int, output_rate: int,
+                 route, currency: str, pricing_provenance_sha256: str):
+        # Caller-supplied binding is not authorization. Public live entry still denies.
+        from managed_chat import Route
+        if type(route) is not Route:
+            raise ValueError("exact typed route required")
+        if type(currency) is not str or not re.fullmatch(r"[A-Z]{3}",currency):
+            raise ValueError("explicit currency required")
+        if type(pricing_provenance_sha256) is not str or not re.fullmatch(r"[a-f0-9]{64}",pricing_provenance_sha256):
+            raise ValueError("pricing provenance digest required")
+        self.route = route
+        self.currency = currency
+        self.provenance = pricing_provenance_sha256
         # Rates in integer nano-currency units PER token, no floating/zero fallback.
         for value in (budget, input_rate, output_rate):
             if integer(value) == 0:
@@ -43,6 +55,15 @@ class Ledger:
         self.db.execute(
             "CREATE TABLE IF NOT EXISTS calls (id TEXT PRIMARY KEY, route TEXT CHECK(typeof(route)='text' AND length(route)=64), reserve INTEGER CHECK(typeof(reserve)='integer' AND reserve>0), charged INTEGER CHECK(typeof(charged)='integer' AND charged>=0 AND charged<=reserve), state TEXT CHECK(state IN ('reserved_uncertain','uncertain','settled_raw_wire')), receipt TEXT)"
         )
+        self.db.execute("CREATE TABLE IF NOT EXISTS pricing_identity (fingerprint TEXT, endpoint TEXT, model TEXT, role TEXT, currency TEXT, provenance TEXT)")
+        identity = (route.fingerprint,route.endpoint,route.model_id,route.role,currency,pricing_provenance_sha256)
+        stored_identity = self.db.execute("SELECT * FROM pricing_identity").fetchall()
+        if fresh and not stored_identity:
+            self.db.execute("INSERT INTO pricing_identity VALUES (?,?,?,?,?,?)",identity)
+        elif stored_identity != [identity]:
+            self.db.close()
+            raise ValueError("route/currency/pricing provenance identity changed")
+        self.identity = identity
         expected = (budget, input_rate, output_rate)
         rows = self.db.execute("SELECT * FROM config").fetchall()
         if fresh and not rows:
@@ -58,6 +79,8 @@ class Ledger:
             raise
 
     def _validate_stored(self):
+        if self.db.execute("SELECT * FROM pricing_identity").fetchall() != [self.identity]:
+            raise ValueError("stored route/currency/pricing provenance corrupt")
         config = self.db.execute("SELECT budget,ir,outr FROM config").fetchall()
         if config != [(self.budget, self.ir, self.outr)] or any(
             type(x) is not int for x in config[0]
@@ -71,7 +94,7 @@ class Ledger:
                 type(call_id) is not str
                 or not re.fullmatch(r"[a-zA-Z0-9._-]{1,128}", call_id)
                 or type(route) is not str
-                or not re.fullmatch(r"[a-f0-9]{64}", route)
+                or route != self.route.fingerprint
                 or integer(reserved) == 0
                 or integer(charged) > reserved
                 or state not in ("reserved_uncertain", "uncertain", "settled_raw_wire")
@@ -90,6 +113,8 @@ class Ledger:
                     type(receipt) is not dict
                     or receipt.get("invocation_id") != call_id
                     or receipt.get("route_fingerprint") != route
+                    or receipt.get("model_id") != self.route.model_id
+                    or receipt.get("role") != self.route.role
                 ):
                     raise ValueError("stored receipt identity corrupt")
                 if state == "settled_raw_wire":
@@ -114,6 +139,9 @@ class Ledger:
         return total
 
     def reserve(self, call_id, route):
+        from managed_chat import Route
+        if type(route) is not Route or route != self.route or route.fingerprint != self.identity[0]:
+            raise ValueError("route does not match pinned pricing")
         if not re.fullmatch(r"[a-zA-Z0-9._-]{1,128}", call_id):
             raise ValueError("invalid invocation identity")
         # Conservative configured upper envelope, NOT a tokenizer estimate.
@@ -151,7 +179,8 @@ class Ledger:
             raise ValueError("raw-wire receipt required")
         if receipt is None:
             return  # crash/missing response retains FULL reservation, no retry
-        if receipt.invocation_id != call_id or receipt.route_fingerprint != row[0]:
+        if (receipt.invocation_id != call_id or receipt.route_fingerprint != row[0]
+                or receipt.model_id != self.route.model_id or receipt.role != self.route.role):
             raise ValueError("receipt identity mismatch")
         charge = row[1]
         state = "uncertain"
