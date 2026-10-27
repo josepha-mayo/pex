@@ -4,7 +4,7 @@ import json
 import os
 import re
 import sqlite3
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 
 
@@ -27,6 +27,8 @@ class Ledger:
         pricing_provenance_sha256: str,
         input_token_bound: int | None = None,
         output_token_bound: int | None = None,
+        approved_routes: tuple | None = None,
+        max_attempts: int | None = None,
     ):
         # Caller-supplied binding is not authorization. Public live entry still denies.
         from managed_chat import Route
@@ -60,6 +62,23 @@ class Ledger:
             self.envelope = ("authored-legacy", None, None)
             self.reservation = integer(route.limits.max_usage_tokens * max(input_rate, output_rate))
         self.input_bound, self.output_bound = input_token_bound, output_token_bound
+        if approved_routes is not None or max_attempts is not None:
+            if (
+                not split or type(approved_routes) is not tuple
+                or len(approved_routes) != 2
+                or any(type(r) is not Route for r in approved_routes)
+                or route.role != "planner"
+                or set(approved_routes) != {route, replace(route, role="verifier")}
+                or type(max_attempts) is not int or max_attempts != 12
+                or type(budget) is not int or budget != 250000000
+            ):
+                raise ValueError("shared pilot requires exact two roles, quarter-dollar cap and 12 attempts")
+            routes = tuple(sorted(approved_routes, key=lambda r: r.role))
+        else:
+            routes = (route,)
+        self.routes = {r.fingerprint: r for r in routes}
+        self.route_identities = tuple((r.fingerprint, r.endpoint, r.model_id, r.role) for r in routes)
+        self.max_attempts = max_attempts
         self.route = route
         self.currency = currency
         self.provenance = pricing_provenance_sha256
@@ -119,6 +138,18 @@ class Ledger:
         elif stored_envelope != [self.envelope]:
             self.db.close()
             raise ValueError("reservation envelope identity changed; new ledger required")
+        self.db.execute(
+            "CREATE TABLE IF NOT EXISTS approved_route_identity (fingerprint TEXT, endpoint TEXT, model TEXT, role TEXT)"
+        )
+        self.db.execute("CREATE TABLE IF NOT EXISTS pilot_limits (max_attempts INTEGER)")
+        stored_routes = tuple(self.db.execute("SELECT * FROM approved_route_identity ORDER BY role").fetchall())
+        stored_limits = self.db.execute("SELECT * FROM pilot_limits").fetchall()
+        if fresh and not stored_routes and not stored_limits:
+            self.db.executemany("INSERT INTO approved_route_identity VALUES (?,?,?,?)", self.route_identities)
+            self.db.execute("INSERT INTO pilot_limits VALUES (?)", (max_attempts,))
+        elif stored_routes != self.route_identities or stored_limits != [(max_attempts,)]:
+            self.db.close()
+            raise ValueError("approved routes/attempt identity changed; new ledger required")
         expected = (budget, input_rate, output_rate)
         rows = self.db.execute("SELECT * FROM config").fetchall()
         if fresh and not rows:
@@ -134,6 +165,14 @@ class Ledger:
             raise
 
     def _validate_stored(self):
+        if (
+            tuple(self.db.execute("SELECT * FROM approved_route_identity ORDER BY role").fetchall()) != self.route_identities
+            or self.db.execute("SELECT * FROM pilot_limits").fetchall() != [(self.max_attempts,)]
+        ):
+            raise ValueError("stored approved routes/attempt limit corrupt")
+        count = self.db.execute("SELECT COUNT(*) FROM calls").fetchone()[0]
+        if self.max_attempts is not None and count > self.max_attempts:
+            raise ValueError("stored global attempt cap exceeded")
         if self.db.execute("SELECT * FROM reservation_identity").fetchall() != [self.envelope]:
             raise ValueError("stored reservation envelope corrupt")
         if self.db.execute("SELECT * FROM pricing_identity").fetchall() != [
@@ -153,7 +192,7 @@ class Ledger:
                 type(call_id) is not str
                 or not re.fullmatch(r"[a-zA-Z0-9._-]{1,128}", call_id)
                 or type(route) is not str
-                or route != self.route.fingerprint
+                or route not in self.routes
                 or integer(reserved) != self.reservation
                 or integer(charged) > reserved
                 or state not in ("reserved_uncertain", "uncertain", "settled_raw_wire")
@@ -172,8 +211,8 @@ class Ledger:
                     type(receipt) is not dict
                     or receipt.get("invocation_id") != call_id
                     or receipt.get("route_fingerprint") != route
-                    or receipt.get("model_id") != self.route.model_id
-                    or receipt.get("role") != self.route.role
+                    or receipt.get("model_id") != self.routes[route].model_id
+                    or receipt.get("role") != self.routes[route].role
                 ):
                     raise ValueError("stored receipt identity corrupt")
                 if state == "settled_raw_wire":
@@ -209,8 +248,7 @@ class Ledger:
 
         if (
             type(route) is not Route
-            or route != self.route
-            or route.fingerprint != self.identity[0]
+            or self.routes.get(route.fingerprint) != route
         ):
             raise ValueError("route does not match pinned pricing")
         if not re.fullmatch(r"[a-zA-Z0-9._-]{1,128}", call_id):
@@ -220,6 +258,8 @@ class Ledger:
         self.db.execute("BEGIN IMMEDIATE")
         try:
             spent = self._validate_stored()
+            if self.max_attempts is not None and self.db.execute("SELECT COUNT(*) FROM calls").fetchone()[0] >= self.max_attempts:
+                raise ValueError("global attempt cap refused")
             if amount + spent > self.budget:
                 raise ValueError("budget reservation refused")
             self.db.execute(
@@ -253,8 +293,9 @@ class Ledger:
         if (
             receipt.invocation_id != call_id
             or receipt.route_fingerprint != row[0]
-            or receipt.model_id != self.route.model_id
-            or receipt.role != self.route.role
+            or row[0] not in self.routes
+            or receipt.model_id != self.routes[row[0]].model_id
+            or receipt.role != self.routes[row[0]].role
         ):
             raise ValueError("receipt identity mismatch")
         charge = row[1]
