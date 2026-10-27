@@ -119,6 +119,8 @@ async def run_pair(arms, worker, review, grader, *, budget=Budget(), mode="autho
             if state["status"] in {"natural_stop", "no_intervention", "verifier_rejected", "budget_terminal_inconclusive", "supervisor_budget_terminal_inconclusive", "worker_budget_terminal_inconclusive"}:
                 try:
                     state["protected_grade"] = await grader.grade(arm)
+                    if state["protected_grade"].get("status") in {"inconclusive","public_contract_changed"}:
+                        state["status"] = "grading_inconclusive"
                     state["grade_qualification"] = ("same_VM_post_stop_anti_tamper_limited" if mode=="live-pilot"
                                                     else "authored_orchestration_only_not_real_score")
                 except Exception as exc:

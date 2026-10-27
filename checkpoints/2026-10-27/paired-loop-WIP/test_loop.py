@@ -126,3 +126,15 @@ async def test_owned_planner_verifier_continuation(tmp_path, rig, approve):
     assert all(len(m.observations)==2 for m in models)
     assert result["receipt"]["planner_invocation"] != result["receipt"]["verifier_invocation"]
     if approve: assert result["text"]=="Authored non-answer continuation for protocol test"
+
+
+@pytest.mark.parametrize("grade_status", ["inconclusive", "public_contract_changed"])
+def test_returned_inconclusive_grade_is_not_natural_stop_success(grade_status):
+    class InconclusiveGrade(Grade):
+        async def grade(self,arm):
+            await super().grade(arm)
+            return {"status":grade_status,"task_tests_measured":False}
+    worker=Worker()
+    result=asyncio.run(run_pair(arms(),worker,Review(),InconclusiveGrade(worker)))
+    assert result["arms"]["baseline"]["status"]=="grading_inconclusive"
+    assert result["pex_lift"] is None and not result["presentation_eligible"]
