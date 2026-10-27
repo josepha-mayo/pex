@@ -39,7 +39,7 @@ export default Plugin.define({id:'paired-readiness-mock-only', async setup(ctx) 
 }});
 '''
 
-async def preflight(binary: Path, modules: Path, output: Path):
+async def preflight(binary: Path, modules: Path, output: Path, continuation: bool = False):
     if hashlib.sha256(binary.read_bytes()).hexdigest()!=PIN:
         raise ValueError("OpenCode2.1.4 binary identity mismatch")
     plugin=json.loads((modules/'@opencode/plugin/package.json').read_text())
@@ -56,7 +56,7 @@ async def preflight(binary: Path, modules: Path, output: Path):
             requests.append({'path':self.path,'model':data.get('model'),'max_tokens':data.get('max_tokens'),
                              'stream':data.get('stream'),'tools':len(data.get('tools',[])),
                              'synthetic_auth':self.headers.get('Authorization')=='Bearer '+SYNTHETIC})
-            if len(requests)!=1 or requests[-1]!={'path':'/v1/chat/completions','model':MODEL,'max_tokens':256,'stream':True,'tools':0,'synthetic_auth':True}:
+            if len(requests)>(2 if continuation else 1) or requests[-1]!={'path':'/v1/chat/completions','model':MODEL,'max_tokens':256,'stream':True,'tools':0,'synthetic_auth':True}:
                 self.send_error(400);return
             chunks=[{'choices':[{'index':0,'delta':{'role':'assistant','content':'qualification'},'finish_reason':None}]},
                     {'choices':[{'index':0,'delta':{},'finish_reason':'stop'}],
@@ -88,6 +88,13 @@ async def preflight(binary: Path, modules: Path, output: Path):
                             deadline=started+45,standalone=True,agent='qualification',
                             terminal_database=output/'data/opencode/opencode.db')
         receipt.update(status='passed',turn=asdict(turn))
+        if continuation:
+            second=await run_turn(executable=binary,workspace=case,model='opencode/'+MODEL,
+                prompt='Return qualification again. This is an authored same-session transport check only.',
+                environment=environment,stdout_path=output/'continuation.jsonl',stderr_path=output/'continuation.stderr.txt',
+                deadline=started+45,standalone=True,agent='qualification',session_id=turn.session_id,
+                terminal_database=output/'data/opencode/opencode.db')
+            receipt.update(continuation=asdict(second),same_session=second.session_id==turn.session_id)
     except Exception as error:
         receipt.update(status='blocked',error_type=type(error).__name__,error=str(error))
     finally:
@@ -95,8 +102,9 @@ async def preflight(binary: Path, modules: Path, output: Path):
         receipt.update(seconds=round(time.monotonic()-started,3),requests=requests)
         (output/'receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
     print(json.dumps(receipt))
-    return 0 if receipt['status']=='passed' and len(requests)==1 else 1
+    return 0 if receipt['status']=='passed' and len(requests)==(2 if continuation else 1) else 1
 
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('--binary',type=Path,required=True);p.add_argument('--plugin-modules',type=Path,required=True);p.add_argument('--output',type=Path,required=True)
-    a=p.parse_args();raise SystemExit(asyncio.run(preflight(a.binary.resolve(),a.plugin_modules.resolve(),a.output.absolute())))
+    p.add_argument('--continuation',action='store_true')
+    a=p.parse_args();raise SystemExit(asyncio.run(preflight(a.binary.resolve(),a.plugin_modules.resolve(),a.output.absolute(),a.continuation)))
