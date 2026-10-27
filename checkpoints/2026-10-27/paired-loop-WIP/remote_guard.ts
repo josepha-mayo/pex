@@ -41,6 +41,10 @@ export default Plugin.define({id:'pex-remote-only-pilot',async setup(ctx) {
     if(ledger.calls>=cfg.maxCalls||ledger.model!==cfg.model)return deny();
     ledger.calls++; // reserve BEFORE dispatch; never refund unknown calls/retries
     writeFileSync(cfg.ledger,JSON.stringify(ledger),{mode:0o600});
+    const key=readFileSync(cfg.keyPath,'utf8').trim();
+    if(!key || /[\r\n]/.test(key))return deny();
+    const headers=new Headers(e.request.headers);headers.set('Authorization','Bearer '+key);
+    e.request=new Request(e.request,{headers});
   });
   await ctx.session.hook('retry',e=>{e.decision={retry:false};});
   await ctx.session.hook('experimental.ws.handshake',e=>{e.url='ws://127.0.0.1:1/blocked';throw new Error('WS_DENIED');});

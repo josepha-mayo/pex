@@ -2,6 +2,7 @@
 import asyncio
 import hashlib
 import json
+import os
 from pathlib import Path
 import time
 from dataclasses import asdict
@@ -12,7 +13,7 @@ BASE='https://opencode.ai/inference/openai/v1'
 PIN='ca9b3ee262e33bb4e7aa0e1230dc61086a474c8c8016b980081d0719712fd2e7'
 GUARD=r'''
 import { Plugin } from '@opencode/plugin';
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync } from 'node:fs';
 const cfg=CONFIG;
 export default Plugin.define({id:'pex-free-readiness',async setup(ctx){
  let calls=0;
@@ -30,6 +31,8 @@ export default Plugin.define({id:'pex-free-readiness',async setup(ctx){
   let b;try{b=await e.request.clone().json();}catch{return deny();}
   if(e.kind!=='primary'||e.request.url!==cfg.base+'/chat/completions'||b.model!==cfg.model||b.max_tokens!==32||b.tools?.length||++calls!==1)return deny();
   writeFileSync(cfg.receipt,JSON.stringify({attempts:calls,model:cfg.model,tools:0,max_tokens:32}),{mode:0o600});
+  const key=readFileSync(cfg.keyPath,'utf8').trim();if(!key||/[\r\n]/.test(key))return deny();
+  const headers=new Headers(e.request.headers);headers.set('Authorization','Bearer '+key);e.request=new Request(e.request,{headers});
  });
  await ctx.session.hook('http.response',async e=>{
   let usage=null,finish_reason=null;const text=await e.response.clone().text();
@@ -52,13 +55,17 @@ async def probe(*,binary,modules,key_path,output,base=BASE,live=False):
     case=output/'case';(case/'plugins/guard').mkdir(parents=True)
     (output/'node_modules').symlink_to(modules,target_is_directory=True)
     receipt=output/'wire-usage.json'
-    (case/'plugins/guard/index.ts').write_text(GUARD.replace('CONFIG',json.dumps({'base':base,'model':MODEL,'receipt':str(receipt)})))
+    (case/'plugins/guard/index.ts').write_text(GUARD.replace('CONFIG',json.dumps({'base':base,'model':MODEL,'receipt':str(receipt),'keyPath':str(key_path.resolve())})))
     config={'model':'opencode/'+MODEL,'default_agent':'probe','plugins':['./plugins/guard'],
             'policies':[{'action':'provider.use','resource':'*','effect':'deny'},{'action':'provider.use','resource':'opencode','effect':'allow'},{'action':'tool.use','resource':'*','effect':'deny'}],
-            'providers':{'opencode':{'settings':{'baseURL':base,'apiKey':key},'models':{MODEL:{'body':{'max_tokens':32},'capabilities':{'tools':False,'input':['text'],'output':['text']}}}}},
+            'providers':{'opencode':{'settings':{'baseURL':base,'apiKey':'PEX-INERT-NONSECRET-NOT-A-KEY'},'models':{MODEL:{'body':{'max_tokens':32},'capabilities':{'tools':False,'input':['text'],'output':['text']}}}}},
             'agents':{'probe':{'mode':'primary','model':'opencode/'+MODEL,'steps':1,'permissions':[{'action':'*','resource':'*','effect':'deny'}]}}}
     path=case/'opencode.json';path.write_text(json.dumps(config));path.chmod(0o600)
     env={'PATH':'/usr/bin:/bin','HOME':str(output/'home'),'XDG_CONFIG_HOME':str(output/'config'),'XDG_DATA_HOME':str(output/'data'),'XDG_CACHE_HOME':str(output/'cache'),'XDG_STATE_HOME':str(output/'state'),'LANG':'C.UTF-8','TERM':'dumb'}
+    for name in ('HTTP_PROXY','HTTPS_PROXY','ALL_PROXY','NO_PROXY','http_proxy','https_proxy','all_proxy','no_proxy'):
+        if name in os.environ:env[name]=os.environ[name]
+    env['NO_PROXY']=env.get('NO_PROXY','')+',127.0.0.1,localhost'
+    env['no_proxy']=env.get('no_proxy',env['NO_PROXY'])+',127.0.0.1,localhost'
     start=time.monotonic();result={'kind':'provider-readiness-only','benchmark':False,'live':live,'model':'opencode/'+MODEL}
     try:
         turn=await run_turn(executable=binary,workspace=case,model='opencode/'+MODEL,prompt='Reply READY',environment=env,

@@ -35,7 +35,7 @@ class CLIWorker:
         self.pool=pool;self.remotes=remotes;self.states={}
         self.root=Path(private_root);self.root.mkdir(mode=0o700,parents=False,exist_ok=False)
         self.max_calls=max_calls;self.output_per_call=output_per_call
-        self.key=key
+        self.key_path=str(key_path.resolve())
 
     def _start(self,condition):
         if condition in self.states: return
@@ -48,7 +48,7 @@ class CLIWorker:
         cm=serve_remote(remote,profile/'rpc');sock=cm.__enter__()
         ledger=profile/'calls.json';ledger.write_text(json.dumps({'calls':0,'model':MODEL}));ledger.chmod(0o600)
         cfg={'baseURL':BASE,'endpoint':BASE+'/chat/completions','model':MODEL,'ledger':str(ledger),
-             'maxCalls':self.max_calls,'outputPerCall':self.output_per_call}
+             'maxCalls':self.max_calls,'outputPerCall':self.output_per_call,'keyPath':self.key_path}
         guard=Path(__file__).with_name('remote_guard.ts').read_text().replace('CONFIGURATION',json.dumps(cfg))
         (case/'plugins/guard/index.ts').write_text(guard)
         conf={'model':'opencode/'+MODEL,'default_agent':'paired','plugins':['./plugins/guard'],
@@ -56,7 +56,7 @@ class CLIWorker:
               'policies':[{'action':'provider.use','resource':'*','effect':'deny'},{'action':'provider.use','resource':'opencode','effect':'allow'},
                           {'action':'integration.use','resource':'*','effect':'deny'},{'action':'integration.use','resource':'mcp:pex_remote','effect':'allow'},
                           {'action':'tool.use','resource':'*','effect':'deny'}]+[{'action':'tool.use','resource':n+':*','effect':'allow'} for n in TOOLS],
-              'providers':{'opencode':{'settings':{'baseURL':BASE,'apiKey':self.key},'models':{MODEL:{'body':{'max_tokens':self.output_per_call},'capabilities':{'tools':True,'input':['text'],'output':['text']}}}}},
+              'providers':{'opencode':{'settings':{'baseURL':BASE,'apiKey':'PEX-INERT-NONSECRET-NOT-A-KEY'},'models':{MODEL:{'body':{'max_tokens':self.output_per_call},'capabilities':{'tools':True,'input':['text'],'output':['text']}}}}},
               'agents':{'paired':{'mode':'primary','model':'opencode/'+MODEL,'steps':self.max_calls,
                   'system':'Work on the user task autonomously using only pex_remote tools. All task files and commands belong to that isolated remote workspace, not this controller. Do not use local tools.',
                   'permissions':[{'action':'*','resource':'*','effect':'deny'}]+[{'action':n,'resource':'*','effect':'allow'} for n in TOOLS]}}}
@@ -72,6 +72,10 @@ class CLIWorker:
         index=state['seq'];state['seq']+=1
         env={'PATH':'/usr/bin:/bin','HOME':str(profile/'home'),'XDG_CONFIG_HOME':str(profile/'config'),
              'XDG_DATA_HOME':str(profile/'data'),'XDG_CACHE_HOME':str(profile/'cache'),'XDG_STATE_HOME':str(profile/'state'),'LANG':'C.UTF-8','TERM':'dumb'}
+        for name in ('HTTP_PROXY','HTTPS_PROXY','ALL_PROXY','NO_PROXY','http_proxy','https_proxy','all_proxy','no_proxy'):
+            if name in os.environ: env[name]=os.environ[name]
+        env['NO_PROXY']=env.get('NO_PROXY','')+',127.0.0.1,localhost'
+        env['no_proxy']=env.get('no_proxy',env['NO_PROXY'])+',127.0.0.1,localhost'
         cli_started=time.monotonic()
         receipt=await run_turn(executable=self.binary,workspace=state['case'],model='opencode/'+MODEL,prompt=prompt,
                               environment=env,stdout_path=profile/f'turn-{index}.jsonl',stderr_path=profile/f'turn-{index}.stderr',
