@@ -10,6 +10,8 @@ import os
 import re
 import sqlite3
 import stat
+import threading
+from functools import wraps
 from pathlib import Path
 
 # Set only in an independently reviewed source checkpoint after the new approval.
@@ -107,6 +109,8 @@ def _wire_usage(status, content_type, raw):
         value = _json(raw)
         if (type(value) is not dict or value.get("model") != MODEL or value.get("error") is not None
                 or type(value.get("choices")) is not list or len(value["choices"]) != 1
+                or type(value["choices"][0]) is not dict
+                or type(value["choices"][0].get("index")) is not int
                 or value["choices"][0].get("index") != 0
                 or value["choices"][0].get("finish_reason") not in ("stop", "length", "tool_calls")):
             raise ValueError("incomplete worker response")
@@ -156,6 +160,14 @@ def _wire_usage(status, content_type, raw):
     return usage
 
 
+def _locked(method):
+    @wraps(method)
+    def call(self, *args, **kwargs):
+        with self._lock:
+            return method(self, *args, **kwargs)
+    return call
+
+
 class _WorkerLedger:
     """Private pure-accounting implementation; never grants provider authority."""
     def __init__(self, path, *, arm, approved_config_digest, approval_ref, pricing_provenance_sha256):
@@ -180,7 +192,8 @@ class _WorkerLedger:
         self.arm = arm
         self.identity = (approved_config_digest, approval_ref, PRICING_SHA, ENDPOINT, MODEL,
                          INPUT_BOUND, OUTPUT_BOUND, INPUT_RATE, OUTPUT_RATE, ARM_BUDGET, MAX_ATTEMPTS)
-        self.db = sqlite3.connect(path, timeout=2, isolation_level=None)
+        self._lock = threading.RLock()
+        self.db = sqlite3.connect(path, timeout=2, isolation_level=None, check_same_thread=False)
         self.db.execute("PRAGMA synchronous=FULL")
         self.db.execute("PRAGMA journal_mode=DELETE")
         self.db.execute("CREATE TABLE IF NOT EXISTS config (digest TEXT,approval TEXT,pricing TEXT,endpoint TEXT,model TEXT,input_bound INTEGER,output_bound INTEGER,ir INTEGER,outr INTEGER,budget INTEGER,attempts INTEGER)")
@@ -190,7 +203,11 @@ class _WorkerLedger:
             self.db.execute("INSERT INTO config VALUES (?,?,?,?,?,?,?,?,?,?,?)", self.identity)
         elif stored != [self.identity]:
             self.db.close(); raise ValueError("worker pricing/approval identity changed")
-        self._validate()
+        try:
+            self._validate()
+        except BaseException:
+            self.db.close()
+            raise
 
     def _validate(self):
         if self.db.execute("SELECT * FROM config").fetchall() != [self.identity]:
@@ -225,6 +242,7 @@ class _WorkerLedger:
             raise ValueError("stored arm cap exceeded")
         return totals, counts
 
+    @_locked
     def reserve(self, call_id, request_sha256, request_body):
         if type(call_id) is not str or not re.fullmatch(r"[A-Za-z0-9._:-]{1,128}", call_id):
             raise ValueError("worker invocation id invalid")
@@ -240,6 +258,7 @@ class _WorkerLedger:
             self.db.execute("ROLLBACK"); raise
         return {"reserved_nano_usd": RESERVATION, "arm": self.arm, "call_id": call_id}
 
+    @_locked
     def settle_raw(self, call_id, request_sha256, status, content_type, rawbytes):
         _digest(request_sha256)
         if type(rawbytes) is not bytes or len(rawbytes)>MAX_BYTES:
@@ -268,10 +287,12 @@ class _WorkerLedger:
             self.db.execute("ROLLBACK"); raise
         return {"charged_nano_usd":charge,"state":state,"arm":self.arm,"call_id":call_id}
 
+    @_locked
     def summary(self):
         totals,counts=self._validate()
         return {"charged_nano_usd":totals,"attempts":counts,"per_arm_budget_nano_usd":ARM_BUDGET}
 
+    @_locked
     def close(self): self.db.close()
 
 
