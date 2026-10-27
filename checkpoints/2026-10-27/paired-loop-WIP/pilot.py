@@ -148,7 +148,13 @@ async def run_approved(path,digest):
 
 
 if __name__=='__main__':
+    os.umask(0o077)
     parser=argparse.ArgumentParser();parser.add_argument('--config',type=Path,required=True);parser.add_argument('--sha256',required=True)
     parser.add_argument('--execute-approved-pilot',action='store_true');args=parser.parse_args()
     if not args.execute_approved_pilot: raise SystemExit('Default closed: explicit root execution required')
-    print(json.dumps(asyncio.run(run_approved(args.config,args.sha256))))
+    try:
+        print(json.dumps(asyncio.run(run_approved(args.config,args.sha256))))
+    except Exception as error:
+        # Raw SDK/request exceptions may contain secrets; public output is type only.
+        print(json.dumps({'status':'pilot_inconclusive','category':type(error).__name__}))
+        raise SystemExit(1)

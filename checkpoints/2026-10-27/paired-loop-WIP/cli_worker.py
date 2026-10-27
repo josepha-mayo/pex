@@ -75,6 +75,8 @@ class CLIWorker:
             if name in os.environ: env[name]=os.environ[name]
         env['NO_PROXY']=env.get('NO_PROXY','')+',127.0.0.1,localhost'
         env['no_proxy']=env.get('no_proxy',env['NO_PROXY'])+',127.0.0.1,localhost'
+        for raw_path in (profile/f'turn-{index}.jsonl',profile/f'turn-{index}.stderr'):
+            fd=os.open(raw_path,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600);os.close(fd)
         cli_started=time.monotonic()
         receipt=await run_turn(executable=self.binary,workspace=state['case'],model='opencode/'+MODEL,prompt=prompt,
                               environment=env,stdout_path=profile/f'turn-{index}.jsonl',stderr_path=profile/f'turn-{index}.stderr',
