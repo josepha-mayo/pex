@@ -90,3 +90,16 @@ def test_wal_format_main_file_not_silently_accepted(ledgers):
     w.write_bytes(data)
     with pytest.raises(ValueError,match="rollback-mode"):
         audit(ledgers)
+
+
+def test_interrupted_diagnostic_reserved_uncertain_is_retained(ledgers,tmp_path):
+    from cumulative_budget import include_supervisor_diagnostics
+    p=tmp_path/'diagnostic.sqlite'
+    db=sqlite3.connect(p);db.execute('CREATE TABLE calls(reserve,charged,state)')
+    db.execute("INSERT INTO calls VALUES(82329600,82329600,'reserved_uncertain')");db.commit();db.close()
+    result=include_supervisor_diagnostics(audit(ledgers),[{'path':str(p),'sha256':digest(p)}])
+    assert result['charged_nano_usd']['supervisor']==164659200
+    assert result['remaining_nano_usd']['supervisor']==85340800
+    assert result['remaining_attempts']['supervisor']==10
+    with pytest.raises(ValueError,match='unique'):
+        include_supervisor_diagnostics(audit(ledgers),[{'path':str(p),'sha256':digest(p)}]*2)
