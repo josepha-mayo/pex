@@ -12,5 +12,5 @@ if __name__ == "__main__":
     import pytest
 
     raise SystemExit(
-        pytest.main(["-q", str(Path(__file__).with_name("test_process.py"))])
+        pytest.main(["-q", str(Path(__file__).with_name("test_process.py")), str(Path(__file__).with_name("test_pilot.py"))])
     )

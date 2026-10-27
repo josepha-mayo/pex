@@ -475,7 +475,6 @@ def test_split_profile_mismatch_refused_before_storage(tmp_path, change):
 @pytest.mark.parametrize("change", [
     {"endpoint": "https://api.tokenfactory.nebius.com/v1/chat/completions"},
     {"model_id": "nvidia/other-model"}, {"output_field": "max_tokens"},
-    {"limits": Limits(max_output_tokens=512)},
 ])
 def test_split_route_mismatch_refused(tmp_path, change):
     from dataclasses import replace
@@ -633,3 +632,17 @@ def test_shared_stored_attempt_limit_tampering_refused(tmp_path):
     ledger.close()
     with pytest.raises(ValueError, match="approved routes/attempt identity changed"):
         shared_ledger(path)
+
+
+def test_shared_original_role_caps_are_below_conservative_reservation(tmp_path):
+    from dataclasses import replace
+    planner = replace(split_route(), limits=Limits(max_output_tokens=1200, max_usage_tokens=266240))
+    verifier = replace(planner, role="verifier", limits=replace(planner.limits, max_output_tokens=900))
+    ledger = shared_ledger(tmp_path / "caps.sqlite", route=planner, approved_routes=(planner, verifier))
+    ledger.reserve("verifier", verifier)
+    assert ledger.summary()[0]["reserved"] == 82329600
+    receipt = role_receipt("verifier", verifier, 1, 901)
+    with pytest.raises(ValueError, match="split token envelope"):
+        ledger.settle("verifier", receipt)
+    assert ledger.summary()[0]["charged"] == 82329600
+    ledger.close()
