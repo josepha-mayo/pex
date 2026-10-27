@@ -31,7 +31,11 @@ def raise_funding_terminal(channel):
 
 class NebiusCLIWorker:
     def __init__(self, *, remotes, private_root, binary, modules, key_path, pool,
-                 max_calls=12, output_per_call=4096, activate=False, funding=None, authored=False):
+                 max_calls=12, output_per_call=4096, activate=False, funding=None, authored=False,
+                 public_check_command="python -m unittest discover -s tests -p test_smoke.py"):
+        if public_check_command not in ("python -m unittest discover -s tests -p test_smoke.py", "python -m unittest discover -s tests -v"):
+            raise ValueError("frozen_public_check_command_required")
+        self.public_check_command = public_check_command
         if activate is not True: raise PermissionError('pilot_not_activated')
         if set(funding or {})!={'baseline','pex'}: raise PermissionError('worker_funding_required')
         if authored:
@@ -112,10 +116,11 @@ class NebiusCLIWorker:
                 if any(type(v) is not int or v<0 for v in values): raise ValueError('worker_usage_unproven')
                 usage['calls']+=1;usage['input_tokens']+=values[0]+values[3]+values[4];usage['output_tokens']+=values[1]+values[2]
         remote=self.remotes[condition]
-        check=remote.run('python -m unittest discover -s tests -p test_smoke.py')
+        command=getattr(self,'public_check_command','python -m unittest discover -s tests -p test_smoke.py')
+        check=remote.run(command)
         if type(check.get('exit_code')) is not int or check['exit_code'] not in (0,1):
             raise PublicEvidenceInfrastructureError('public_check_non_test_terminal')
-        public_check={'command':'python -m unittest discover -s tests -p test_smoke.py','exit_code':check['exit_code'],
+        public_check={'command':command,'exit_code':check['exit_code'],
                       'output':(check['stdout']+'\n'+check['stderr'])[:8000]}
         public_check['receipt_sha256']=hashlib.sha256(json.dumps(public_check,sort_keys=True).encode()).hexdigest()
         diff=remote.run('git diff -- . && git status --short')

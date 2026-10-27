@@ -15,12 +15,14 @@ class Receipt:
     stdout_sha256:str='a'*64
     messages:tuple=('Authored final',)
 
+@pytest.mark.parametrize('public_command',['python -m unittest discover -s tests -p test_smoke.py','python -m unittest discover -s tests -v'])
 @pytest.mark.parametrize('module_name',['cli_worker','nebius_worker'])
 @pytest.mark.parametrize('smoke,diff,expected',[(0,0,'supported'),(1,0,'contradicted'),(127,0,None),(124,0,None),(0,128,None)])
-def test_worker_public_exit_boundaries(monkeypatch,tmp_path,module_name,smoke,diff,expected):
+def test_worker_public_exit_boundaries(monkeypatch,tmp_path,module_name,smoke,diff,expected,public_command):
     module=importlib.import_module(module_name)
     cls=module.CLIWorker if module_name=='cli_worker' else module.NebiusCLIWorker
     worker=object.__new__(cls)
+    if module_name=='nebius_worker':worker.public_check_command=public_command
     profile=tmp_path/'profile';(profile/'data/opencode').mkdir(parents=True)
     db=profile/'data/opencode/opencode.db';conn=sqlite3.connect(db)
     conn.execute('create table session_message(session_id text,seq int,type text,data text)')
@@ -40,7 +42,11 @@ def test_worker_public_exit_boundaries(monkeypatch,tmp_path,module_name,smoke,di
     if expected is None:
         with pytest.raises(PublicEvidenceInfrastructureError):turn()
     else:
-        result=turn();req=build_public_request(arm,result['public_observation'],result['session_id'])
+        result=turn()
+        if module_name=='nebius_worker':
+            assert result['public_observation']['public_check']['command']==public_command
+            if public_command.endswith('-v'):return
+        req=build_public_request(arm,result['public_observation'],result['session_id'])
         assert req.scores.features['verification']['status']==expected
         assert req.scores.features['verification']['acceptance_status']=='uncertain'
 
