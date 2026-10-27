@@ -14,6 +14,9 @@ import json
 import math
 import re
 import socket
+import os
+import ssl
+from pathlib import Path
 from dataclasses import dataclass, replace
 from typing import Literal
 from urllib.parse import urlsplit, urlunsplit
@@ -345,13 +348,54 @@ def _new_transport() -> httpx.AsyncBaseTransport:
     )
 
 
+@dataclass(frozen=True, repr=False)
+class _PilotProxyBinding:
+    """Explicit platform CONNECT only, admitted by independently pinned pilot config."""
+    proxy_sha256: str
+    ca_path: str
+    ca_sha256: str
+
+    def __repr__(self):
+        return "<private pilot platform transport binding>"
+
+    def transport(self, endpoint):
+        if endpoint != "https://api.tokenfactory.us-central1.nebius.com/v1/chat/completions":
+            raise Refusal("pilot_proxy_endpoint_refused")
+        if any(type(v) is not str or not re.fullmatch(r"[a-f0-9]{64}", v)
+               for v in (self.proxy_sha256, self.ca_sha256)):
+            raise Refusal("pilot_proxy_digest_refused")
+        proxy = os.environ.get("HTTPS_PROXY", "")
+        if not proxy or hashlib.sha256(proxy.encode()).hexdigest() != self.proxy_sha256:
+            raise Refusal("pilot_proxy_identity_changed")
+        parts = urlsplit(proxy)
+        if (parts.scheme not in ("http", "https") or not parts.hostname
+                or parts.path not in ("", "/") or parts.query or parts.fragment):
+            raise Refusal("pilot_proxy_format_refused")
+        if os.environ.get("SSL_CERT_FILE") != self.ca_path:
+            raise Refusal("pilot_ca_path_changed")
+        path = Path(self.ca_path)
+        if not path.is_absolute() or not path.is_file():
+            raise Refusal("pilot_ca_path_refused")
+        raw = path.read_bytes()
+        if len(raw) > 4*1024*1024 or hashlib.sha256(raw).hexdigest() != self.ca_sha256:
+            raise Refusal("pilot_ca_identity_changed")
+        context = ssl.create_default_context(cadata=raw.decode("ascii"))
+        return httpx.AsyncHTTPTransport(proxy=proxy, verify=context, trust_env=False,
+            retries=0, http2=False,
+            limits=httpx.Limits(max_connections=1, max_keepalive_connections=0))
+
+
 class _GuardedTransport(httpx.AsyncBaseTransport):
     def __init__(self, owner, invocation, credential, body):
         self._owner = owner
         self._invocation = invocation
         self._credential = credential
         self._body = body
-        self._inner = _new_transport()
+        self._proxy = getattr(owner, "_pilot_proxy_binding", None)
+        if self._proxy is not None and type(self._proxy) is not _PilotProxyBinding:
+            raise Refusal("pilot_proxy_binding_refused")
+        self._inner = (self._proxy.transport(owner.route.endpoint)
+                       if self._proxy is not None else _new_transport())
         self._attempted = False
 
     async def handle_async_request(self, request):
@@ -386,11 +430,12 @@ class _GuardedTransport(httpx.AsyncBaseTransport):
         if self._credential._fingerprint != route.fingerprint:
             raise Refusal("credential_scope_mismatch")
         parts = urlsplit(route.endpoint)
-        address = await _resolve_public_address(parts.hostname, parts.port or 443)
-        # The original configured endpoint is validated above. Pin TCP while
-        # preserving the original Host and verified TLS SNI, with no DNS rebind.
-        request.url = request.url.copy_with(host=str(address))
-        request.extensions["sni_hostname"] = parts.hostname
+        if self._proxy is None:
+            address = await _resolve_public_address(parts.hostname, parts.port or 443)
+            # Default remains direct DNS pinning. Pilot CONNECT preserves the exact
+            # original HTTPS URL, Host, and verified TLS SNI; proxy resolves it.
+            request.url = request.url.copy_with(host=str(address))
+            request.extensions["sni_hostname"] = parts.hostname
         self._attempted = True
         self._owner._mark_dispatch(self._invocation.invocation_id)
         return await self._inner.handle_async_request(request)

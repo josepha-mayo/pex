@@ -81,7 +81,7 @@ def _load_config(path, expected_sha):
                 "budget_nano_usd", "max_attempts", "input_rate", "output_rate",
                 "pricing_provenance_sha256", "key_path", "key_sha256", "ledger_path",
                 "source_sha256", "request_binding"}
-    if type(config) is not dict or set(config) != required:
+    if type(config) is not dict or set(config) not in (required, required | {"platform_proxy"}):
         raise ValueError("private configuration schema refused")
     exact = {"schema": 1, "approval_ref": APPROVAL_REF, "pilot_id": PILOT_ID,
              "endpoint": ENDPOINT, "model": MODEL, "budget_nano_usd": 250000000,
@@ -117,6 +117,16 @@ def _load_config(path, expected_sha):
         raise ValueError("pilot ledger private binding refused")
     if ledger.exists():
         _private_bytes(ledger, 16 * 1024 * 1024)
+    if "platform_proxy" in config:
+        proxy = config["platform_proxy"]
+        if type(proxy) is not dict or set(proxy) != {"proxy_sha256", "ca_path", "ca_sha256"}:
+            raise ValueError("pilot platform proxy binding refused")
+        from managed_chat import _PilotProxyBinding
+        # Validate pinned platform identities before constructing or spending ledger.
+        binding = _PilotProxyBinding(**proxy)
+        # The actual transport is constructed only in the guarded request path.
+        if any(type(v) is not str for v in proxy.values()):
+            raise ValueError("pilot platform proxy binding refused")
     return config
 
 
@@ -215,6 +225,9 @@ def pilot_model(private_config_path, request, *, invocation_id, proposal=None,
 
     model = PilotModel(route, request, invocation_id=invocation_id, proposal=proposal)
     model._candidate = AccountedPilotCandidate(route, model.protocol)
+    if "platform_proxy" in config:
+        from managed_chat import _PilotProxyBinding
+        model._candidate._pilot_proxy_binding = _PilotProxyBinding(**config["platform_proxy"])
     return model
 
 
