@@ -3,8 +3,10 @@
 import argparse
 import json
 import os
+import selectors
 import signal
 import subprocess
+import time
 from pathlib import Path
 
 
@@ -42,9 +44,27 @@ def run(python: Path, transport: Path, pex: Path):
         start_new_session=True,
     )
     try:
-        out, err = process.communicate(timeout=30)
-        if len(out) + len(err) > 65536:
-            raise RuntimeError("authored output bound exceeded")
+        buffers = {process.stdout: bytearray(), process.stderr: bytearray()}
+        deadline = time.monotonic() + 30
+        total = 0
+        with selectors.DefaultSelector() as selector:
+            for pipe in buffers:
+                selector.register(pipe, selectors.EVENT_READ)
+            while selector.get_map():
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError("authored process deadline exceeded")
+                for key, _ in selector.select(remaining):
+                    chunk = os.read(key.fileobj.fileno(), min(4096, 65537 - total))
+                    if not chunk:
+                        selector.unregister(key.fileobj)
+                        continue
+                    total += len(chunk)
+                    if total > 65536:
+                        raise RuntimeError("authored output bound exceeded")
+                    buffers[key.fileobj].extend(chunk)
+        process.wait(timeout=max(0.001, deadline - time.monotonic()))
+        out, err = bytes(buffers[process.stdout]), bytes(buffers[process.stderr])
         return {
             "exit_code": process.returncode,
             "stdout": out.decode(),

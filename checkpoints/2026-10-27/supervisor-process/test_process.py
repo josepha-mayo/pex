@@ -240,9 +240,21 @@ def test_concurrent_stale_settlement_cannot_overwrite(tmp_path):
         outcome="succeeded",
         usage=Usage(12, 3, 15),
     )
-    first.settle("call", receipt)
-    with pytest.raises(ValueError):
-        second.settle("call", replace(receipt, usage=Usage(1, 1, 2)))
+    original = first.db
+
+    class InterleavedConnection:
+        fired = False
+
+        def execute(self, sql, args=()):
+            if sql.startswith("UPDATE calls SET charged") and not self.fired:
+                self.fired = True
+                second.settle("call", receipt)
+            return original.execute(sql, args)
+
+    first.db = InterleavedConnection()
+    with pytest.raises(ValueError, match="concurrently"):
+        first.settle("call", replace(receipt, usage=Usage(1, 1, 2)))
     assert second.summary()[0]["charged"] == 33
+    first.db = original
     first.close()
     second.close()
