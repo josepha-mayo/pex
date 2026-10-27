@@ -25,6 +25,8 @@ class Ledger:
         route,
         currency: str,
         pricing_provenance_sha256: str,
+        input_token_bound: int | None = None,
+        output_token_bound: int | None = None,
     ):
         # Caller-supplied binding is not authorization. Public live entry still denies.
         from managed_chat import Route
@@ -37,6 +39,27 @@ class Ledger:
             r"[a-f0-9]{64}", pricing_provenance_sha256
         ):
             raise ValueError("pricing provenance digest required")
+        # This profile is a documented provider envelope, not caller-estimated tokens.
+        # It grants no live authority; actual transport admission remains separate.
+        split = input_token_bound is not None or output_token_bound is not None
+        if split:
+            if (
+                type(input_token_bound) is not int
+                or type(output_token_bound) is not int
+                or (input_token_bound, output_token_bound) != (262144, 4096)
+                or route.endpoint != "https://api.tokenfactory.us-central1.nebius.com/v1/chat/completions"
+                or route.model_id != "nvidia/nemotron-3-super-120b-a12b"
+                or route.output_field != "max_completion_tokens"
+                or route.limits.max_output_tokens != 4096
+                or (input_rate, output_rate, currency) != (300, 900, "USD")
+            ):
+                raise ValueError("split envelope requires pinned Nebius route/pricing/limits")
+            self.envelope = ("nebius-nemotron-super-20261027", input_token_bound, output_token_bound)
+            self.reservation = integer(input_token_bound * input_rate + output_token_bound * output_rate)
+        else:
+            self.envelope = ("authored-legacy", None, None)
+            self.reservation = integer(route.limits.max_usage_tokens * max(input_rate, output_rate))
+        self.input_bound, self.output_bound = input_token_bound, output_token_bound
         self.route = route
         self.currency = currency
         self.provenance = pricing_provenance_sha256
@@ -87,6 +110,15 @@ class Ledger:
             self.db.close()
             raise ValueError("route/currency/pricing provenance identity changed")
         self.identity = identity
+        self.db.execute(
+            "CREATE TABLE IF NOT EXISTS reservation_identity (profile TEXT, input_bound INTEGER, output_bound INTEGER)"
+        )
+        stored_envelope = self.db.execute("SELECT * FROM reservation_identity").fetchall()
+        if fresh and not stored_envelope:
+            self.db.execute("INSERT INTO reservation_identity VALUES (?,?,?)", self.envelope)
+        elif stored_envelope != [self.envelope]:
+            self.db.close()
+            raise ValueError("reservation envelope identity changed; new ledger required")
         expected = (budget, input_rate, output_rate)
         rows = self.db.execute("SELECT * FROM config").fetchall()
         if fresh and not rows:
@@ -102,6 +134,8 @@ class Ledger:
             raise
 
     def _validate_stored(self):
+        if self.db.execute("SELECT * FROM reservation_identity").fetchall() != [self.envelope]:
+            raise ValueError("stored reservation envelope corrupt")
         if self.db.execute("SELECT * FROM pricing_identity").fetchall() != [
             self.identity
         ]:
@@ -120,7 +154,7 @@ class Ledger:
                 or not re.fullmatch(r"[a-zA-Z0-9._-]{1,128}", call_id)
                 or type(route) is not str
                 or route != self.route.fingerprint
-                or integer(reserved) == 0
+                or integer(reserved) != self.reservation
                 or integer(charged) > reserved
                 or state not in ("reserved_uncertain", "uncertain", "settled_raw_wire")
             ):
@@ -156,12 +190,19 @@ class Ledger:
                         integer(usage.get(k))
                         for k in ("input_tokens", "output_tokens", "total_tokens")
                     )
+                    self._validate_usage_bounds(i, o)
                     if i + o != t or i * self.ir + o * self.outr != charged:
                         raise ValueError("stored usage charge corrupt")
             total += charged
         if total > self.budget:
             raise ValueError("stored budget exceeded")
         return total
+
+    def _validate_usage_bounds(self, input_tokens, output_tokens):
+        if self.input_bound is not None and (
+            input_tokens > self.input_bound or output_tokens > self.output_bound
+        ):
+            raise ValueError("raw-wire usage exceeds split token envelope")
 
     def reserve(self, call_id, route):
         from managed_chat import Route
@@ -175,7 +216,7 @@ class Ledger:
         if not re.fullmatch(r"[a-zA-Z0-9._-]{1,128}", call_id):
             raise ValueError("invalid invocation identity")
         # Conservative configured upper envelope, NOT a tokenizer estimate.
-        amount = integer(route.limits.max_usage_tokens * max(self.ir, self.outr))
+        amount = self.reservation
         self.db.execute("BEGIN IMMEDIATE")
         try:
             spent = self._validate_stored()
@@ -230,6 +271,7 @@ class Ledger:
                 integer(x)
                 for x in (usage.input_tokens, usage.output_tokens, usage.total_tokens)
             )
+            self._validate_usage_bounds(i, o)
             if i + o != t:
                 raise ValueError("invalid raw-wire usage")
             charge = integer(i * self.ir + o * self.outr)
