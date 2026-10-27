@@ -171,7 +171,8 @@ def _locked(method):
 class _WorkerLedger:
     """Private pure-accounting implementation; never grants provider authority."""
     def __init__(self, path, *, arm, approved_config_digest, approval_ref, pricing_provenance_sha256,
-                 prior_charged_nano_usd=None, predecessor_sha256=None):
+                 prior_charged_nano_usd=None, predecessor_sha256=None,
+                 arm_budget_nano_usd=ARM_BUDGET, phase_limit_nano_usd=None):
         if arm not in ARMS or pricing_provenance_sha256 != PRICING_SHA:
             raise ValueError("worker arm/pricing identity refused")
         _digest(approved_config_digest)
@@ -190,26 +191,35 @@ class _WorkerLedger:
         info = path.stat()
         if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_uid != os.geteuid()
                 or stat.S_IMODE(info.st_mode) & 0o077): raise ValueError("worker ledger private file required")
+        if type(arm_budget_nano_usd) is not int or arm_budget_nano_usd not in (375000000,350000000):
+            raise ValueError("exact legacy or successor worker split required")
+        self.arm_budget = arm_budget_nano_usd
         prior = {a: 0 for a in ARMS} if prior_charged_nano_usd is None else prior_charged_nano_usd
-        if type(prior) is not dict or set(prior) != set(ARMS) or any(type(v) is not int or not 0 <= v <= ARM_BUDGET for v in prior.values()):
+        if type(prior) is not dict or set(prior) != set(ARMS) or any(type(v) is not int or not 0 <= v <= self.arm_budget for v in prior.values()):
             raise ValueError("invalid prior worker charges")
         if any(prior.values()): _digest(predecessor_sha256)
         elif predecessor_sha256 is not None: _digest(predecessor_sha256)
         self.prior = dict(prior)
-        self.predecessor_identity = (json.dumps(self.prior,sort_keys=True),predecessor_sha256)
+        phase = min(self.arm_budget-v for v in prior.values()) if phase_limit_nano_usd is None else phase_limit_nano_usd
+        if type(phase) is not int or phase < 0 or any(v+phase>self.arm_budget for v in prior.values()):
+            raise ValueError("common phase allowance exceeds original arm pool")
+        if self.arm_budget == 350000000 and phase != 339918200:
+            raise ValueError("exact preregistered successor phase allowance required")
+        self.phase_limit = phase
+        self.predecessor_identity = (json.dumps(self.prior,sort_keys=True),predecessor_sha256,phase)
         self.arm = arm
         self.identity = (approved_config_digest, approval_ref, PRICING_SHA, ENDPOINT, MODEL,
-                         INPUT_BOUND, OUTPUT_BOUND, INPUT_RATE, OUTPUT_RATE, ARM_BUDGET, MAX_ATTEMPTS)
+                         INPUT_BOUND, OUTPUT_BOUND, INPUT_RATE, OUTPUT_RATE, self.arm_budget, MAX_ATTEMPTS)
         self._lock = threading.RLock()
         self.db = sqlite3.connect(path, timeout=2, isolation_level=None, check_same_thread=False)
         self.db.execute("PRAGMA synchronous=FULL")
         self.db.execute("PRAGMA journal_mode=DELETE")
         self.db.execute("CREATE TABLE IF NOT EXISTS config (digest TEXT,approval TEXT,pricing TEXT,endpoint TEXT,model TEXT,input_bound INTEGER,output_bound INTEGER,ir INTEGER,outr INTEGER,budget INTEGER,attempts INTEGER)")
         self.db.execute("CREATE TABLE IF NOT EXISTS calls (id TEXT PRIMARY KEY,arm TEXT,request_sha TEXT,reserved INTEGER,charged INTEGER,state TEXT,receipt TEXT)")
-        self.db.execute("CREATE TABLE IF NOT EXISTS predecessor (charges TEXT,sha256 TEXT)")
+        self.db.execute("CREATE TABLE IF NOT EXISTS predecessor (charges TEXT,sha256 TEXT,phase_limit INTEGER)")
         predecessors = self.db.execute("SELECT * FROM predecessor").fetchall()
         if not predecessors and fresh:
-            self.db.execute("INSERT INTO predecessor VALUES (?,?)",self.predecessor_identity)
+            self.db.execute("INSERT INTO predecessor VALUES (?,?,?)",self.predecessor_identity)
         elif predecessors != [self.predecessor_identity]:
             self.db.close(); raise ValueError("worker predecessor identity changed")
         stored = self.db.execute("SELECT * FROM config").fetchall()
@@ -254,7 +264,7 @@ class _WorkerLedger:
                     if i+o!=t or i>INPUT_BOUND or o>OUTPUT_BOUND or charge!=i*INPUT_RATE+o*OUTPUT_RATE:
                         raise ValueError("stored worker usage charge corrupt")
             totals[arm] += charge; counts[arm] += 1
-        if any(totals[a] > ARM_BUDGET or counts[a] > MAX_ATTEMPTS for a in ARMS):
+        if any(totals[a] > self.arm_budget or totals[a]-self.prior[a] > self.phase_limit or counts[a] > MAX_ATTEMPTS for a in ARMS):
             raise ValueError("stored arm cap exceeded")
         return totals, counts
 
@@ -267,7 +277,7 @@ class _WorkerLedger:
         try:
             totals, counts = self._validate()
             if counts[self.arm] >= MAX_ATTEMPTS: raise WorkerBudgetExhausted("worker_attempt_cap_refused")
-            if totals[self.arm] + RESERVATION > ARM_BUDGET: raise WorkerBudgetExhausted("worker_budget_reservation_refused")
+            if totals[self.arm] + RESERVATION > self.arm_budget or totals[self.arm]-self.prior[self.arm]+RESERVATION > self.phase_limit: raise WorkerBudgetExhausted("worker_budget_reservation_refused")
             self.db.execute("INSERT INTO calls VALUES (?,?,?,?,?,?,?)", (call_id,self.arm,request_sha256,RESERVATION,RESERVATION,"reserved_uncertain",None))
             self.db.execute("COMMIT")
         except BaseException:
@@ -306,7 +316,7 @@ class _WorkerLedger:
     @_locked
     def summary(self):
         totals,counts=self._validate()
-        return {"charged_nano_usd":totals,"attempts":counts,"per_arm_budget_nano_usd":ARM_BUDGET}
+        return {"charged_nano_usd":totals,"attempts":counts,"per_arm_budget_nano_usd":self.arm_budget}
 
     @_locked
     def close(self): self.db.close()

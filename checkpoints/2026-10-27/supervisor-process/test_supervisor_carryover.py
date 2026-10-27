@@ -21,3 +21,12 @@ def test_cumulative_quarter_dollar_retains_prior_and_uncertain(tmp_path):
 def test_missing_prior_pin_refused(tmp_path):
     with pytest.raises(ValueError,match='pinned prior'):
         ledger(tmp_path/'new.sqlite',1,None)
+
+
+def test_successor_300m_pool_preserves_prior_uncertainty(tmp_path):
+    routes=pilot_routes()
+    db=Ledger(tmp_path/'successor.sqlite',budget=300000000,input_rate=300,output_rate=900,route=routes[0],currency='USD',pricing_provenance_sha256='b'*64,input_token_bound=262144,output_token_bound=4096,approved_routes=routes,max_attempts=12,prior_charged_nano_usd=164659200,predecessor_sha256='a'*64)
+    db.reserve('one',routes[0])
+    assert db._validate_stored()==246988800
+    with pytest.raises(PilotBudgetExhausted):db.reserve('two-uncertain',routes[1])
+    db.close()

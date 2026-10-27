@@ -235,3 +235,17 @@ def test_successor_cannot_spend_prior_retained_dollars(tmp_path):
 def test_successor_requires_pinned_prior_identity(tmp_path):
     with pytest.raises(ValueError,match='digest'):
         ledger(tmp_path/'invalid.sqlite',prior_charged_nano_usd={'baseline':1,'pex':0})
+
+
+def test_successor_350m_pool_has_equal_fresh_phase_allowance(tmp_path):
+    path=tmp_path/'new-split.sqlite';raw,sha=request();prior={'baseline':10081800,'pex':9382800}
+    for arm in wf.ARMS:
+        db=ledger(path,arm,prior_charged_nano_usd=prior,predecessor_sha256='b'*64,arm_budget_nano_usd=350000000,phase_limit_nano_usd=339918200)
+        assert db.phase_limit==339918200
+        db.reserve(arm+'-one',sha,raw)
+        assert db.summary()['charged_nano_usd'][arm]==prior[arm]+wf.RESERVATION
+        db.close()
+    with pytest.raises(ValueError):
+        ledger(tmp_path/'bad-split.sqlite',prior_charged_nano_usd=prior,predecessor_sha256='b'*64,arm_budget_nano_usd=250000000)
+    with pytest.raises(ValueError):
+        ledger(tmp_path/'bad-phase.sqlite',prior_charged_nano_usd=prior,predecessor_sha256='b'*64,arm_budget_nano_usd=350000000,phase_limit_nano_usd=340000000)

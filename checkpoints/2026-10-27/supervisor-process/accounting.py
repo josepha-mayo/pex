@@ -88,9 +88,9 @@ class Ledger:
                 or any(replace(r, role=route.role, limits=replace(r.limits, max_output_tokens=route.limits.max_output_tokens)) != route for r in approved_routes)
                 or any(not 1 <= r.limits.max_output_tokens <= 4096 for r in approved_routes)
                 or type(max_attempts) is not int or max_attempts != 12
-                or type(budget) is not int or budget != 250000000
+                or type(budget) is not int or budget not in (250000000,300000000)
             ):
-                raise ValueError("shared pilot requires exact two roles, quarter-dollar cap and 12 attempts")
+                raise ValueError("shared pilot requires exact two roles, legacy/successor pool and 12 attempts")
             routes = tuple(sorted(approved_routes, key=lambda r: r.role))
         else:
             routes = (route,)
