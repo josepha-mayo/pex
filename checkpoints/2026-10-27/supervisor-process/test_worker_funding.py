@@ -158,3 +158,32 @@ def test_corrupt_unknown_charge_and_changed_identity_refused(tmp_path):
     db.close()
     with pytest.raises(ValueError):ledger(path)
     with pytest.raises(ValueError):ledger(path,approved_config_digest="b"*64)
+
+
+def test_same_ledger_instance_is_safe_for_rpc_threads(tmp_path):
+    db=ledger(tmp_path/"worker.sqlite");raw,sha=request();barrier=Barrier(6)
+    def admit(index):
+        barrier.wait(timeout=10)
+        try:db.reserve(f"rpc-{index}",sha,raw);return f"rpc-{index}"
+        except wf.WorkerBudgetExhausted:return None
+    with ThreadPoolExecutor(max_workers=6) as pool: admitted=[x for x in pool.map(admit,range(6)) if x]
+    assert len(admitted)==1
+    def settle(_):
+        try:return db.settle_raw(admitted[0],sha,200,"text/event-stream",stream())["state"]
+        except ValueError:return "refused"
+    with ThreadPoolExecutor(max_workers=2) as pool:assert sorted(pool.map(settle,range(2)))==["refused","settled_raw_wire"]
+    assert db.summary()["charged_nano_usd"]["baseline"]==420000
+    db.close()
+
+
+def test_429_and_duplicate_final_usage_hold_full_reservation(tmp_path):
+    raw,sha=request()
+    for index in (0,1):
+        path=tmp_path/f"ledger-{index}.sqlite";db=ledger(path);db.reserve("call",sha,raw)
+        body=stream()
+        if index:
+            final=body.split(b"\n\n")[-3]+b"\n\n"
+            body=body.replace(b"data: [DONE]",final+b"data: [DONE]")
+        result=db.settle_raw("call",sha,429 if index==0 else 200,"text/event-stream",body)
+        assert result["state"]=="uncertain" and result["charged_nano_usd"]==319488000
+        db.close()
