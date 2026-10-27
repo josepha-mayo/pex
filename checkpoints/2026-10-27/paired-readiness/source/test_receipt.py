@@ -3,6 +3,7 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
+
 from opencode_cli import completed_turn
 from opencode_v2_receipt import completed_turn_v2, prior_sequence
 

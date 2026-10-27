@@ -5,6 +5,7 @@ This is startup/wire compatibility, NEVER inference or a paired score.
 """
 
 from __future__ import annotations
+
 import argparse
 import asyncio
 import hashlib
@@ -14,6 +15,7 @@ import threading
 import time
 from dataclasses import asdict
 from pathlib import Path
+
 from opencode_cli import run_turn
 
 PIN = "ca9b3ee262e33bb4e7aa0e1230dc61086a474c8c8016b980081d0719712fd2e7"
@@ -216,7 +218,7 @@ async def preflight(
                 continuation=asdict(second),
                 same_session=second.session_id == turn.session_id,
             )
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001 - preserve failure receipt; never retry
         receipt.update(
             status="blocked", error_type=type(error).__name__, error=str(error)
         )

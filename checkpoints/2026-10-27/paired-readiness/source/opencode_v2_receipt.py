@@ -5,19 +5,20 @@ fresh captured CLI message identity AND committed post-exit local session rows.
 This reader is for an explicitly supplied disposable worker profile only.
 """
 
-from contextlib import contextmanager
 import hashlib
 import json
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
+
 from opencode_cli import (
+    MAX_EVENTS,
+    MAX_LINE_BYTES,
+    MAX_OUTPUT_BYTES,
     CliTurn,
     _constant,
     _float,
     _object,
-    MAX_OUTPUT_BYTES,
-    MAX_LINE_BYTES,
-    MAX_EVENTS,
 )
 
 
@@ -156,7 +157,7 @@ def completed_turn_v2(
             raise ValueError("CLI2 natural terminal stop unproven")
         content = payload.get("content")
         if not isinstance(content, list):
-            raise ValueError("CLI2 committed content invalid")
+            raise ValueError("CLI2 committed content invalid")  # noqa: TRY004 - invalid external record
         committed = [
             p.get("text")
             for p in content
