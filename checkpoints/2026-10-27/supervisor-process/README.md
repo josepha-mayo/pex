@@ -73,7 +73,7 @@ verifier -> actuation pipeline. Policy/evidence authorization, durable whole-run
 accounting, immutable request/proposal binding and baseline comparability remain
 separate admission gates. A valid structured reply does not authorize intervention.
 
-## Split-envelope candidate — 2026-10-27 10:30 UTC (WIP, tests pending)
+## Split-envelope candidate — 2026-10-27 10:31 UTC (WIP, authored verification passed)
 
 Ledger now optionally accepts input_token_bound=262144 and output_token_bound=4096.
 This exact profile requires the catalog Nemotron Super model, US endpoint, USD,
@@ -87,7 +87,9 @@ Cached input is priced fully; reasoning is included in output, not added twice.
 Profile identity is persisted; pre-profile databases require a NEW private ledger,
 not silent migration. Focused authored tests cover dynamic settlements, concurrent
 reservations, full/uncertain caps, route/rate/profile identity, and token overflow.
-They are pending execution for these bytes. No live inference or provider-enforced
+Fresh clean-child run: 46 passed in 0.79s. Combined current transport/process run:
+345 passed in 4.76s. These are authored responses/local SQLite checks only.
+No live inference or provider-enforced
 cash cap is claimed. Finite whole-pilot attempt count and combined planner/verifier
 budget coordination remain controller responsibilities, not this single-route DB.
 
