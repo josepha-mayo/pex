@@ -1,4 +1,4 @@
-"""Private stdio MCP to controller-owned remote VM operations only.
+"""Private stdio MCP via authenticated loopback to controller-owned VM operations.
 
 No exec/eval/shell/filesystem tool implementation exists on this host. The RPC
 owner holds the already-admitted E2B RemoteWorker; no keys cross this socket.
@@ -10,6 +10,8 @@ import os
 from pathlib import Path
 import socket
 import socketserver
+import secrets
+import hmac
 import sys
 import threading
 
@@ -39,27 +41,33 @@ def checked(method,args):
 def serve_remote(remote, private_dir):
     directory=Path(private_dir)
     directory.mkdir(mode=0o700,parents=False,exist_ok=False)
-    path=directory/'remote.sock'
+    path=directory/'remote.json'
+    token=secrets.token_hex(32)
     class Handler(socketserver.StreamRequestHandler):
         def handle(self):
             try:
                 line=self.rfile.readline(MAX+1)
                 if len(line)>MAX: raise ValueError("rpc_bound")
                 obj=json.loads(line)
-                if type(obj) is not dict or set(obj)!={"method","arguments"}: raise ValueError("rpc_shape")
+                if type(obj) is not dict or set(obj)!={"method","arguments","token"}: raise ValueError("rpc_shape")
+                if type(obj['token']) is not str or not hmac.compare_digest(obj['token'],token): raise ValueError('rpc_auth')
                 method=obj['method'];args=checked(method,obj['arguments'])
                 with self.server.serial:
                     if self.server.revoked: raise ValueError("worker_tool_access_revoked")
-                    result=getattr(remote,method)(**args)
+                    if method=='run': result=remote.run(args['command'])
+                    elif method=='read': result=remote.read(args['path'])
+                    elif method=='write': result=remote.write(args['path'],args['text'])
+                    else: result=remote.list(args['path'])
                 reply={"result":result}
             except Exception as error:
                 reply={"error":type(error).__name__} # never secret-bearing error text
             raw=json.dumps(reply,ensure_ascii=False).encode()+b'\n'
             if len(raw)>MAX: raw=b'{"error":"remote_output_bound"}\n'
             self.wfile.write(raw)
-    server=socketserver.ThreadingUnixStreamServer(str(path),Handler)
+    server=socketserver.ThreadingTCPServer(('127.0.0.1',0),Handler)
     server.daemon_threads=True;server.serial=threading.Lock();server.revoked=False
-    os.chmod(path,0o600)
+    fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+    with os.fdopen(fd,'w') as f: json.dump({'host':'127.0.0.1','port':server.server_address[1],'token':token},f)
     thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
     try: yield path
     finally:
@@ -71,10 +79,14 @@ def serve_remote(remote, private_dir):
 
 def rpc(path,method,args):
     checked(method,args)
-    with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as s:
+    descriptor=Path(path)
+    if descriptor.is_symlink() or descriptor.stat().st_mode&0o077: raise ValueError('private_rpc_descriptor_required')
+    config=json.loads(descriptor.read_text())
+    if config['host']!='127.0.0.1' or type(config['port']) is not int or not 0<config['port']<65536: raise ValueError('loopback_rpc_only')
+    with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as s:
         s.settimeout(90)
-        s.connect(str(path))
-        s.sendall(json.dumps({"method":method,"arguments":args}).encode()+b'\n')
+        s.connect((config['host'],config['port']))
+        s.sendall(json.dumps({"method":method,"arguments":args,"token":config["token"]}).encode()+b'\n')
         with s.makefile('rb') as f: raw=f.readline(MAX+1)
     if not raw or len(raw)>MAX: raise ValueError('rpc_response_bound')
     return json.loads(raw)

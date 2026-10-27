@@ -35,32 +35,37 @@ class CLIWorker:
         self.pool=pool;self.remotes=remotes;self.states={}
         self.root=Path(private_root);self.root.mkdir(mode=0o700,parents=False,exist_ok=False)
         self.max_calls=max_calls;self.output_per_call=output_per_call
-        for condition,remote in remotes.items():
-            profile=self.root/condition;profile.mkdir(mode=0o700)
-            case=profile/'case';case.mkdir(mode=0o700)
-            (case/'plugins/guard').mkdir(parents=True)
-            (profile/'node_modules').symlink_to(self.modules,target_is_directory=True)
-            cm=serve_remote(remote,profile/'rpc');sock=cm.__enter__()
-            ledger=profile/'calls.json';ledger.write_text(json.dumps({'calls':0,'model':MODEL}));ledger.chmod(0o600)
-            cfg={'baseURL':BASE,'endpoint':BASE+'/chat/completions','model':MODEL,'ledger':str(ledger),
-                 'maxCalls':max_calls,'outputPerCall':output_per_call}
-            guard=Path(__file__).with_name('remote_guard.ts').read_text().replace('CONFIGURATION',json.dumps(cfg))
-            (case/'plugins/guard/index.ts').write_text(guard)
-            conf={'model':'opencode/'+MODEL,'default_agent':'paired','plugins':['./plugins/guard'],
-                  'mcp':{'servers':{'pex_remote':{'type':'local','command':['/usr/bin/python3',str(Path(__file__).with_name('remote_mcp.py').resolve()),'--socket',str(sock)],'codemode':False,'protocol':'legacy','timeout':{'startup':10000,'catalog':10000,'execution':65000}}}},
-                  'policies':[{'action':'provider.use','resource':'*','effect':'deny'},{'action':'provider.use','resource':'opencode','effect':'allow'},
-                              {'action':'integration.use','resource':'*','effect':'deny'},{'action':'integration.use','resource':'mcp:pex_remote','effect':'allow'},
-                              {'action':'tool.use','resource':'*','effect':'deny'}]+[{'action':'tool.use','resource':n+':*','effect':'allow'} for n in TOOLS],
-                  'providers':{'opencode':{'settings':{'baseURL':BASE,'apiKey':key},'models':{MODEL:{'body':{'max_tokens':output_per_call},'capabilities':{'tools':True,'input':['text'],'output':['text']}}}}},
-                  'agents':{'paired':{'mode':'primary','model':'opencode/'+MODEL,'steps':max_calls,
-                      'system':'Work on the user task autonomously using only pex_remote tools. All task files and commands belong to that isolated remote workspace, not this controller. Do not use local tools.',
-                      'permissions':[{'action':'*','resource':'*','effect':'deny'}]+[{'action':n,'resource':'*','effect':'allow'} for n in TOOLS]}}}
-            config=case/'opencode.json';config.write_text(json.dumps(conf));config.chmod(0o600)
-            self.states[condition]={'profile':profile,'case':case,'cm':cm,'seq':0,'stopped':False,'ledger':ledger}
-        del key
+        self.key=key
+
+    def _start(self,condition):
+        if condition in self.states: return
+        remote=self.remotes[condition]() if callable(self.remotes[condition]) else self.remotes[condition]
+        self.remotes[condition]=remote
+        profile=self.root/condition;profile.mkdir(mode=0o700)
+        case=profile/'case';case.mkdir(mode=0o700)
+        (case/'plugins/guard').mkdir(parents=True)
+        (profile/'node_modules').symlink_to(self.modules,target_is_directory=True)
+        cm=serve_remote(remote,profile/'rpc');sock=cm.__enter__()
+        ledger=profile/'calls.json';ledger.write_text(json.dumps({'calls':0,'model':MODEL}));ledger.chmod(0o600)
+        cfg={'baseURL':BASE,'endpoint':BASE+'/chat/completions','model':MODEL,'ledger':str(ledger),
+             'maxCalls':self.max_calls,'outputPerCall':self.output_per_call}
+        guard=Path(__file__).with_name('remote_guard.ts').read_text().replace('CONFIGURATION',json.dumps(cfg))
+        (case/'plugins/guard/index.ts').write_text(guard)
+        conf={'model':'opencode/'+MODEL,'default_agent':'paired','plugins':['./plugins/guard'],
+              'mcp':{'servers':{'pex_remote':{'type':'local','command':['/usr/bin/python3',str(Path(__file__).with_name('remote_mcp.py').resolve()),'--socket',str(sock)],'codemode':False,'protocol':'legacy','timeout':{'startup':10000,'catalog':10000,'execution':65000}}}},
+              'policies':[{'action':'provider.use','resource':'*','effect':'deny'},{'action':'provider.use','resource':'opencode','effect':'allow'},
+                          {'action':'integration.use','resource':'*','effect':'deny'},{'action':'integration.use','resource':'mcp:pex_remote','effect':'allow'},
+                          {'action':'tool.use','resource':'*','effect':'deny'}]+[{'action':'tool.use','resource':n+':*','effect':'allow'} for n in TOOLS],
+              'providers':{'opencode':{'settings':{'baseURL':BASE,'apiKey':self.key},'models':{MODEL:{'body':{'max_tokens':self.output_per_call},'capabilities':{'tools':True,'input':['text'],'output':['text']}}}}},
+              'agents':{'paired':{'mode':'primary','model':'opencode/'+MODEL,'steps':self.max_calls,
+                  'system':'Work on the user task autonomously using only pex_remote tools. All task files and commands belong to that isolated remote workspace, not this controller. Do not use local tools.',
+                  'permissions':[{'action':'*','resource':'*','effect':'deny'}]+[{'action':n,'resource':'*','effect':'allow'} for n in TOOLS]}}}
+        config=case/'opencode.json';config.write_text(json.dumps(conf));config.chmod(0o600)
+        self.states[condition]={'profile':profile,'case':case,'cm':cm,'seq':0,'stopped':False,'ledger':ledger}
+
 
     async def turn(self,arm,*,prompt,session_id,remaining):
-        condition=arm['condition'];state=self.states[condition]
+        condition=arm['condition'];self._start(condition);state=self.states[condition]
         if state['stopped']: raise ValueError('worker_already_stopped')
         profile=state['profile'];db=profile/'data/opencode/opencode.db'
         before=prior_sequence(db,session_id)
@@ -80,8 +85,8 @@ class CLIWorker:
                 if any(type(v) is not int or v<0 for v in values): raise ValueError('worker_usage_unproven')
                 usage['calls']+=1;usage['input_tokens']+=values[0]+values[3]+values[4];usage['output_tokens']+=values[1]+values[2]
         remote=self.remotes[condition]
-        check=remote.run('python -m pytest -q tests/test_smoke.py')
-        public_check={'command':'python -m pytest -q tests/test_smoke.py','exit_code':check['exit_code'],
+        check=remote.run('python -m unittest discover -s tests -p test_smoke.py')
+        public_check={'command':'python -m unittest discover -s tests -p test_smoke.py','exit_code':check['exit_code'],
                       'output':(check['stdout']+'\n'+check['stderr'])[:8000]}
         public_check['receipt_sha256']=hashlib.sha256(json.dumps(public_check,sort_keys=True).encode()).hexdigest()
         diff=remote.run('git diff -- .; git status --short')
@@ -91,6 +96,7 @@ class CLIWorker:
                 'terminal':'natural_stop','public_observation':observation}
 
     async def stop(self,arm):
+        if arm['condition'] not in self.states: return
         state=self.states[arm['condition']]
         if not state['stopped']:
             state['stopped']=True;state['cm'].__exit__(None,None,None)

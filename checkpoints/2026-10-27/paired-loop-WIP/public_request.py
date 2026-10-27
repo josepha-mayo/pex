@@ -30,7 +30,7 @@ def build_public_request(arm, observation, session_id):
         raise ValueError("invalid_public_check_receipt")
     if len(check["command"].encode())>1024 or len(check["output"].encode())>16384:
         raise ValueError("public_check_too_large")
-    if check["command"] != "python -m pytest -q tests/test_smoke.py":
+    if check["command"] != "python -m unittest discover -s tests -p test_smoke.py":
         raise ValueError("only_frozen_public_smoke_check_allowed")
     if type(check["receipt_sha256"]) is not str or len(check["receipt_sha256"])!=64 or any(c not in "0123456789abcdef" for c in check["receipt_sha256"]):
         raise ValueError("public_check_digest_required")
