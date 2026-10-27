@@ -1,6 +1,5 @@
 """Authored responses only, in a new process initialized before framework import."""
 import json
-from dataclasses import replace
 import pytest
 from test_managed_chat import rig as rig, no_network as no_network, response, ENDPOINT, MODEL
 from test_tool_transport import payload
@@ -24,7 +23,7 @@ async def test_real_owned_tools_with_durable_wire_receipts(tmp_path,rig,role):
             assert connection.execute("SELECT COUNT(*) FROM calls WHERE state='reserved_uncertain'").fetchone()[0]==1
         if len(rig.calls)==1:
             return response(payload('get_goal','{"boundary_page":0}'))
-        return response(payload(model.protocol.final_name,json.dumps(final_arguments(role))))
+        return response(payload(model.protocol.final_name,json.dumps(final_arguments(role)),"final_call"))
     rig.handler=handle
     result=await model.invoke_async()
     assert result.structured_output is not None
