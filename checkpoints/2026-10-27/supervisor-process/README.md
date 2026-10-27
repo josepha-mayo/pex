@@ -42,6 +42,13 @@ network/provider/model calls; all response bodies authored. No lift, cost saving
 worker quality or paired result claimed. SOURCE_SHA256.json now identifies this
 candidate and four transport source files; full dependency admission is separate.
 
+Follow-up combined run at 02:19 UTC: **327 passed in 4.17s** (299 existing
+transport + 28 current process checks). The first combined command produced
+326 passes and one nested telemetry-subprocess import failure because the
+ad-hoc harness omitted protocol source paths from its child PYTHONPATH. The
+rerun supplied the same explicit trusted source paths to that nested process;
+no application or test logic was changed to obtain the passing result.
+
 ## Run
 From this directory (absolute paths to the existing trusted source/runtime):
 
