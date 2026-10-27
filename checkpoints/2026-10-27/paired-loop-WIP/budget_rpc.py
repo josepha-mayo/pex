@@ -33,8 +33,11 @@ def serve_budget(ledger):
                 with lock:
                     if state['closed']: raise PermissionError('funding_closed')
                     common={'operation','call_id','request_sha256'}
-                    if obj.get('operation')=='reserve' and set(obj)==common:
-                        result=ledger.reserve(obj['call_id'],obj['request_sha256'])
+                    if obj.get('operation')=='reserve' and set(obj)==common|{'request_base64'}:
+                        if type(obj['request_base64']) is not str: raise ValueError('request_body_shape')
+                        body=base64.b64decode(obj['request_base64'],validate=True)
+                        if len(body)>MAX_RAW: raise ValueError('request_body_bound')
+                        result=ledger.reserve(obj['call_id'],obj['request_sha256'],body)
                     elif obj.get('operation')=='settle' and set(obj)==common|{'status','content_type','raw_base64'}:
                         if type(obj['raw_base64']) is not str: raise ValueError('raw_shape')
                         raw=base64.b64decode(obj['raw_base64'],validate=True)
