@@ -66,9 +66,9 @@ def _request(raw, digest):
         raise ValueError("worker request digest mismatch")
     body = _json(raw)
     if (type(body) is not dict or body.get("model") != MODEL
-            or type(body.get("max_tokens")) is not int or body["max_tokens"] != OUTPUT_BOUND
+            or type(body.get("max_completion_tokens")) is not int or body["max_completion_tokens"] != OUTPUT_BOUND
             or type(body.get("n", 1)) is not int or body.get("n", 1) != 1
-            or "max_completion_tokens" in body or "extra_body" in body or "best_of" in body
+            or "max_tokens" in body or "extra_body" in body or "best_of" in body
             or body.get("service_tier", "default") != "default"
             or type(body.get("messages")) is not list or not body["messages"]
             or type(body.get("stream", False)) is not bool):

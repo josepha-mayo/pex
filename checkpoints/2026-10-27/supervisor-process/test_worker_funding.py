@@ -17,7 +17,7 @@ def ledger(path, arm="baseline", **changes):
 
 
 def request(**changes):
-    value=dict(model=wf.MODEL,max_tokens=4096,n=1,stream=True,
+    value=dict(model=wf.MODEL,max_completion_tokens=4096,n=1,stream=True,
                stream_options={"include_usage":True},messages=[{"role":"user","content":"Authored task"}],
                tools=[{"type":"function","function":{"name":"pex_remote_run","parameters":{"type":"object"}}}])
     value.update(changes)
@@ -121,9 +121,9 @@ def test_missing_or_ambiguous_sse_usage_retains_full(tmp_path,body):
     db.close()
 
 
-@pytest.mark.parametrize("changes",[{"n":2},{"n":True},{"max_tokens":4097},
+@pytest.mark.parametrize("changes",[{"n":2},{"n":True},{"max_completion_tokens":4097},
     {"model":"other/model"},{"extra_body":{}},{"best_of":2},{"service_tier":"priority"},
-    {"stream_options":{}},{"max_completion_tokens":4096},
+    {"stream_options":{}},{"max_tokens":4096},
     {"tools":[{"type":"function","function":{"name":"local_shell"}}]}])
 def test_bad_request_refused_before_reservation(tmp_path,changes):
     db=ledger(tmp_path/"worker.sqlite");raw,sha=request(**changes)
