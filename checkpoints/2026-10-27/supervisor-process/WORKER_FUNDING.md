@@ -48,3 +48,12 @@ Provenance: public pricing snapshot SHA256
 50e7bb6a6548514fbfe49c25148234644b39a29a2f3caf5cd6b85cd6fc8f20a4,
 from https://tokenfactory.nebius.com/api/public/models_info . This pricing snapshot
 is not authorization. The separate $1 request remains pending at this checkpoint.
+
+
+11:30 UTC actual CLI feedback: the OpenAI-compatible SDK emits
+`max_completion_tokens`, not `max_tokens`. Admission now requires exactly
+`max_completion_tokens=4096` (including reasoning) and rejects `max_tokens` to
+avoid ambiguous dual limits. Existing free and NVIDIA paths remain untouched.
+Fresh rerun on these changed bytes:31 focused passed in0.12s and405 combined
+passed in4.93s. Joined actual CLI qualification is owned by the controller lane;
+no live provider response or paid authorization is implied here.
