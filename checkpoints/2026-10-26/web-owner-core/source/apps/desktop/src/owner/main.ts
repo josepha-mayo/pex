@@ -22,6 +22,19 @@ function renderWorkspace(view: WorkspaceView) {
     const element = document.createElement(tag); element.textContent = text; parent.append(element); return element;
   };
   add("small", `Observed ${view.data.observed_at}. Separate recorded reads; not an atomic live snapshot.`);
+  add("h3", "Paired pilot evidence");
+  const evidence = view.data.run_evidence;
+  if (!evidence || evidence.state === "not_configured" || evidence.state === "empty") add("p", "No paired run recorded in this configured view.");
+  else if (evidence.state === "unavailable") add("p", "Run evidence is unavailable. No cached results are shown.");
+  else if (evidence.state === "recorded") {
+    add("p", `${evidence.paired_terminal ? "Both arms recorded terminal states" : "Paired run is not terminal"} · ${evidence.phase.replaceAll("_", " ")}`);
+    add("small", `Controller-recorded at ${evidence.observed_at}. Worker: ${evidence.worker_model}. Supervisor: ${evidence.supervisor_model}.`);
+    for (const name of ["baseline", "pex"] as const) {
+      const arm = evidence.arms[name];
+      add("p", `${name === "pex" ? "PEX supervised" : "Worker alone"}: ${arm.status.replaceAll("_", " ")} · Recorded worker calls: ${arm.worker_calls ?? "not reported"}`);
+    }
+    add("small", "Metadata only, not a verified score or proof of successful inference. Supervisor overhead is not included in worker counts. Any same-VM grading is anti-tamper-limited; grades are not displayed here. No general superiority claim.");
+  }
   add("h3", "Goals");
   if (!view.data.goals.length) add("p", "No recorded goals in this workspace.");
   for (const goal of view.data.goals) {

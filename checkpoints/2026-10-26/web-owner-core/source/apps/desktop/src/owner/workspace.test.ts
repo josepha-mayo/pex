@@ -51,3 +51,14 @@ test("title length agrees with server for astral and mixed Unicode", () => {
     assert.throws(() => parseWorkspace(value));
   }
 });
+
+test("authored run metadata validates and private extra fields fail closed", () => {
+  const base = { ...snapshot(), run_evidence: { state: "not_configured" } };
+  assert.equal(parseWorkspace(base).run_evidence?.state, "not_configured");
+  assert.throws(() => parseWorkspace({ ...base, run_evidence: { state: "empty", prompt: "private" } }));
+  const recorded = { state: "recorded", phase: "arm_terminal", observed_at: "2026-10-27T12:00:00Z", worker_model: "opencode/deepseek-v4.1-flash-free", supervisor_model: "nvidia/nemotron-3-super-120b-a12b", paired_terminal: false, arms: { baseline: { status: "natural_stop", worker_calls: 1 }, pex: { status: "not_started", worker_calls: null } } };
+  assert.equal(parseWorkspace({ ...base, run_evidence: recorded }).run_evidence?.state, "recorded");
+  assert.throws(() => parseWorkspace({ ...base, run_evidence: { ...recorded, paired_terminal: true } }));
+  assert.throws(() => parseWorkspace({ ...base, run_evidence: { ...recorded, grade: "private" } }));
+  assert.throws(() => parseWorkspace({ ...base, run_evidence: { ...recorded, worker_model: "private" } }));
+});

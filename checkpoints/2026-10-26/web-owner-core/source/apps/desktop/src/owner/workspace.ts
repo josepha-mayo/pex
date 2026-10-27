@@ -1,5 +1,10 @@
 /** Read-only, bounded owner projection. No polling, worker controls or provider calls. */
+export type RunEvidence = { state: "not_configured" | "empty" | "unavailable" } | {
+  state: "recorded"; phase: string; observed_at: string; worker_model: string; supervisor_model: string; paired_terminal: boolean;
+  arms: Record<"baseline" | "pex", { status: string; worker_calls: number | null }>;
+};
 export type Workspace = {
+  run_evidence?: RunEvidence;
   schema: "pex.owner-workspace.v1"; observed_at: string;
   sessions: { id: string; harness_type: string; status: string; goal_id: string | null; last_activity: string | null }[];
   goals: { id: string; title: string; paused: boolean; completion: { status: string; reason: string; as_of: string } }[];
@@ -14,11 +19,12 @@ const statuses = new Set("discovered idle working blocked needs_decision driftin
 const completions = new Set(["uncertain", "in_progress", "verified_complete", "incomplete"]);
 const reasons = new Set(["goal_not_currently_executable", "newer_active_session_work", "current_intent_stop_evidence_supported", "current_intent_stop_evidence_unsatisfied", "active_session_without_terminal_evidence", "no_current_supported_completion_evidence"]);
 export function parseWorkspace(value: unknown): Workspace {
-  if (!keys(value, ["schema", "observed_at", "sessions", "goals", "truncated"]) || value.schema !== "pex.owner-workspace.v1" || !stamp(value.observed_at) ||
+  if (!(keys(value, ["schema", "observed_at", "sessions", "goals", "truncated"]) || keys(value, ["schema", "observed_at", "sessions", "goals", "truncated", "run_evidence"])) || value.schema !== "pex.owner-workspace.v1" || !stamp(value.observed_at) ||
       !Array.isArray(value.sessions) || value.sessions.length > 20 || !Array.isArray(value.goals) || value.goals.length > 20 ||
       !keys(value.truncated, ["sessions", "goals"]) || typeof value.truncated.sessions !== "boolean" || typeof value.truncated.goals !== "boolean") throw new Error("invalid");
   for (const s of value.sessions) if (!keys(s, ["id", "harness_type", "status", "goal_id", "last_activity"]) || !id(s.id) || !harnesses.has(s.harness_type) || !statuses.has(s.status) || (s.goal_id !== null && !id(s.goal_id)) || (s.last_activity !== null && !stamp(s.last_activity))) throw new Error("invalid");
   for (const g of value.goals) if (!keys(g, ["id", "title", "paused", "completion"]) || !id(g.id) || typeof g.title !== "string" || !g.title.length || [...g.title].length > 320 || /[\x00-\x1f]/.test(g.title) || typeof g.paused !== "boolean" || !keys(g.completion, ["status", "reason", "as_of"]) || !completions.has(g.completion.status) || !reasons.has(g.completion.reason) || !stamp(g.completion.as_of)) throw new Error("invalid");
+  if ("run_evidence" in value) parseRunEvidence(value.run_evidence);
   return value as Workspace;
 }
 
@@ -56,4 +62,18 @@ export function createWorkspaceClient({ origin, authorized, changed, denied, sen
       } finally { clearTimeout(timer); if (active === controller) active = null; }
     },
   };
+}
+
+const terminalStates = new Set(["natural_stop", "no_intervention", "verifier_rejected", "budget_terminal_inconclusive", "supervisor_budget_terminal_inconclusive", "worker_budget_terminal_inconclusive", "infrastructure_error", "infrastructure_inconclusive", "grading_inconclusive"]);
+export function parseRunEvidence(v: unknown): RunEvidence {
+  if (keys(v, ["state"]) && ["not_configured", "empty", "unavailable"].includes(v.state)) return v as RunEvidence;
+  if (!keys(v, ["state", "phase", "observed_at", "worker_model", "supervisor_model", "paired_terminal", "arms"]) || v.state !== "recorded" || !stamp(v.observed_at) ||
+      !["arm_started", "isolated_workspace_created", "worker_natural_stop", "review_started", "review_finished", "arm_terminal", "paired_terminal", "paired_results_available", "cleanup_unconfirmed"].includes(v.phase) ||
+      !["opencode/deepseek-v4.1-flash-free", "nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017"].includes(v.worker_model) || v.supervisor_model !== "nvidia/nemotron-3-super-120b-a12b" ||
+      typeof v.paired_terminal !== "boolean" || !keys(v.arms, ["baseline", "pex"])) throw new Error("invalid");
+  for (const a of Object.values(v.arms)) {
+    if (!keys(a, ["status", "worker_calls"]) || !(terminalStates.has(a.status) || ["not_started", "running"].includes(a.status)) ||
+        (a.worker_calls !== null && (!Number.isInteger(a.worker_calls) || a.worker_calls < 0 || a.worker_calls > 1000)) || (v.paired_terminal && !terminalStates.has(a.status))) throw new Error("invalid");
+  }
+  return v as RunEvidence;
 }

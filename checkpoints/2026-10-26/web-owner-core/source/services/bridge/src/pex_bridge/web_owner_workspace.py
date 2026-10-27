@@ -8,6 +8,8 @@ is called. Separate reads are observational, not an atomic cross-row snapshot.
 from __future__ import annotations
 
 import json
+
+from pex_bridge.web_owner_evidence import read_evidence
 import re
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -83,9 +85,12 @@ class _ReadView(Store):
 class OwnerWorkspaceReader:
     """Explicit server-owned path; construction performs no DB or network I/O."""
 
-    def __init__(self, database_path: Path):
+    def __init__(self, database_path: Path, *, event_path: Path | None = None):
         if not isinstance(database_path, Path) or not database_path.is_absolute():
             raise ValueError("explicit absolute workspace database path required")
+        if event_path is not None and (not isinstance(event_path, Path) or not event_path.is_absolute()):
+            raise ValueError("explicit absolute event path required")
+        self.__event_path = event_path
         self.__view = _ReadView(database_path)
 
     async def read_workspace(self) -> dict:
@@ -148,6 +153,7 @@ class OwnerWorkspaceReader:
         result = {
             "schema": "pex.owner-workspace.v1",
             "observed_at": datetime.now(UTC).isoformat(),
+            "run_evidence": read_evidence(self.__event_path),
             "sessions": projected_sessions,
             "goals": projected_goals,
             "truncated": {"sessions": len(sessions) > ROW_LIMIT, "goals": len(goals) > ROW_LIMIT},
