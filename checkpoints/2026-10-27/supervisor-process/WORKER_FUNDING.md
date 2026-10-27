@@ -1,6 +1,7 @@
 # Optional paid-worker funding — preparation only
 
-Public `WorkerFunding` is CLOSED: `APPROVED_WORKER_REF = None`. The existing free
+Public `WorkerFunding` was initially closed. See the exact bounded approval
+checkpoint below; unrelated or absent approval references still refuse. The existing free
 OpenCode route and NVIDIA supervisor ledger are unchanged. No paid inference,
 credential creation, sandbox creation or activation occurred for this module.
 The private `_WorkerLedger` exists for authored accounting/guard qualification;
@@ -57,3 +58,19 @@ avoid ambiguous dual limits. Existing free and NVIDIA paths remain untouched.
 Fresh rerun on these changed bytes:31 focused passed in0.12s and405 combined
 passed in4.93s. Joined actual CLI qualification is owned by the controller lane;
 no live provider response or paid authorization is implied here.
+
+
+## Exact approval checkpoint — 2026-10-27 12:10 UTC
+
+Owner message `Sentinel_9df859db703081919786cd38c9678f05` at12:06:24 explicitly
+approved the pending one-paired-pilot request: $1TOTAL existing Nebius credit,
+fixed .375baseline/.375PEX/.25shared-supervisor; E2B.10unchanged, no topup,
+subscription, added billing, fallback or unlimited future authority. The public
+constructor now admits only that exact reference. Prior supervisor-only approval,
+the approval-request ID itself, absent references and unrelated references refuse.
+The actual model run still requires root's verified private configuration and
+recording GO; this code checkpoint makes no paid call or new resource request.
+
+Fresh verification on the approved-reference bytes:35 focused authored tests
+passed in0.12s;409 combined transport/process/pilot/worker-accounting tests passed
+in5.49s. Limits and reservations are unchanged. No real inference result claimed.
