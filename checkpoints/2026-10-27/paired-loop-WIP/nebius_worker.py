@@ -14,13 +14,19 @@ from opencode_cli import run_turn
 from opencode_v2_receipt import prior_sequence
 from remote_mcp import serve_remote
 from budget_rpc import serve_budget
-from worker_funding import WorkerFunding
+from worker_funding import WorkerFunding,WorkerBudgetExhausted
+from controller import WorkerBudgetTerminal
 
 PIN='ca9b3ee262e33bb4e7aa0e1230dc61086a474c8c8016b980081d0719712fd2e7'
 MODEL='deepseek-ai/DeepSeek-V4.1-Flash-1017'
 BASE='https://api.tokenfactory.nebius.com/v1'
 TOOLS=['pex_remote_run','pex_remote_read','pex_remote_write','pex_remote_list']
 
+
+def raise_funding_terminal(channel):
+    error=getattr(channel,'last_error',None)
+    if isinstance(error,WorkerBudgetExhausted):
+        raise WorkerBudgetTerminal(error.code) from error
 
 class NebiusCLIWorker:
     def __init__(self, *, remotes, private_root, binary, modules, key_path, pool,
@@ -68,7 +74,7 @@ class NebiusCLIWorker:
                   'system':'Work on the user task autonomously using only pex_remote tools. All task files and commands belong to that isolated remote workspace, not this controller. Do not use local tools.',
                   'permissions':[{'action':'*','resource':'*','effect':'deny'}]+[{'action':n,'resource':'*','effect':'allow'} for n in TOOLS]}}}
         config=case/'opencode.json';config.write_text(json.dumps(conf));config.chmod(0o600)
-        self.states[condition]={'profile':profile,'case':case,'cm':cm,'budget_cm':budget_cm,'seq':0,'stopped':False}
+        self.states[condition]={'profile':profile,'case':case,'cm':cm,'budget_cm':budget_cm,'funding_channel':funding_rpc,'seq':0,'stopped':False}
 
 
     async def turn(self,arm,*,prompt,session_id,remaining):
@@ -87,10 +93,14 @@ class NebiusCLIWorker:
         # run_turn exclusively creates its files; restrictive umask preserves that contract.
         os.umask(0o077)
         cli_started=time.monotonic()
-        receipt=await run_turn(executable=self.binary,workspace=state['case'],model='nebius/'+MODEL,prompt=prompt,
-                              environment=env,stdout_path=profile/f'turn-{index}.jsonl',stderr_path=profile/f'turn-{index}.stderr',
-                              deadline=time.monotonic()+remaining['active_seconds'],session_id=session_id,standalone=True,
-                              agent='paired',terminal_database=db)
+        try:
+            receipt=await run_turn(executable=self.binary,workspace=state['case'],model='nebius/'+MODEL,prompt=prompt,
+                                  environment=env,stdout_path=profile/f'turn-{index}.jsonl',stderr_path=profile/f'turn-{index}.stderr',
+                                  deadline=time.monotonic()+remaining['active_seconds'],session_id=session_id,standalone=True,
+                                  agent='paired',terminal_database=db)
+        except Exception:
+            raise_funding_terminal(state['funding_channel'])
+            raise
         cli_seconds=time.monotonic()-cli_started
         usage={'calls':0,'input_tokens':0,'output_tokens':0}
         with sqlite3.connect(db.as_uri()+'?mode=ro',uri=True) as conn:

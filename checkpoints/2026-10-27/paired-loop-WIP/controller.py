@@ -8,6 +8,12 @@ from dataclasses import dataclass, asdict
 import time
 
 
+class WorkerBudgetTerminal(ValueError):
+    def __init__(self,code):
+        if code not in {'worker_budget_reservation_refused','worker_attempt_cap_refused'}: raise ValueError('invalid_worker_budget_code')
+        self.code=code
+        super().__init__(code)
+
 @dataclass(frozen=True)
 class Budget:
     calls: int = 4
@@ -91,18 +97,22 @@ async def run_pair(arms, worker, review, grader, *, budget=Budget(), mode="autho
                         raise ValueError("empty_model_continuation")
             except Exception as exc:
                 from accounting import PilotBudgetExhausted
-                cause=exc;budget_error=False
+                cause=exc;budget_error=False;worker_budget_error=None
                 for _ in range(8):
+                    if isinstance(cause,WorkerBudgetTerminal): worker_budget_error=cause;break
                     if isinstance(cause,PilotBudgetExhausted): budget_error=True;break
                     cause=getattr(cause,'__cause__',None)
                     if cause is None: break
                 state["status"] = "supervisor_budget_terminal_inconclusive" if budget_error else "infrastructure_error"
+                if worker_budget_error is not None:
+                    state["status"]="worker_budget_terminal_inconclusive"
+                    state["budget_terminal_reason"]=worker_budget_error.code
                 state["error_type"] = type(exc).__name__
             finally:
                 await worker.stop(arm)
             # Grade after this arm is stopped; NEVER expose its grade to the
             # next worker/reviewer or tune the pre-frozen second arm from it.
-            if state["status"] in {"natural_stop", "no_intervention", "verifier_rejected", "budget_terminal_inconclusive", "supervisor_budget_terminal_inconclusive"}:
+            if state["status"] in {"natural_stop", "no_intervention", "verifier_rejected", "budget_terminal_inconclusive", "supervisor_budget_terminal_inconclusive", "worker_budget_terminal_inconclusive"}:
                 try:
                     state["protected_grade"] = await grader.grade(arm)
                     state["grade_qualification"] = ("same_VM_post_stop_anti_tamper_limited" if mode=="live-pilot"

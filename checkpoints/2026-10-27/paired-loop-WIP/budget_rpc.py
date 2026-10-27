@@ -14,8 +14,13 @@ import threading
 MAX_RAW=2*1024*1024
 MAX_REQUEST=3*1024*1024
 
+class FundingChannel(dict):
+    # Trusted server exception object; never serialized into guard config or MCP.
+    last_error=None
+
 @contextlib.contextmanager
 def serve_budget(ledger):
+    channel=FundingChannel()
     token=secrets.token_hex(32)
     lock=threading.Lock()
     state={'closed':False}
@@ -46,13 +51,15 @@ def serve_budget(ledger):
                     else: raise ValueError('operation_denied')
                 reply={'ok':True,'result':result}
             except Exception as error:
+                channel.last_error=error
                 status=403;reply={'ok':False,'category':type(error).__name__}
             payload=json.dumps(reply).encode()
             self.send_response(status);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(payload)));self.end_headers();self.wfile.write(payload)
     server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler)
     server.daemon_threads=True
     thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
-    try: yield {'url':f'http://127.0.0.1:{server.server_port}/funding','token':token}
+    channel.update(url=f'http://127.0.0.1:{server.server_port}/funding',token=token)
+    try: yield channel
     finally:
         with lock: state['closed']=True
         server.shutdown();server.server_close();thread.join()
