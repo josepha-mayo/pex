@@ -91,6 +91,7 @@ async def test_owned_planner_verifier_continuation(tmp_path, rig, approve):
     def request_builder(arm, observation, session_id):
         r=request_fixture(with_boundaries=True)
         r.session.vendor_session_id=session_id
+        r.scores.features["verification"]={"status":"contradicted", "acceptance_status":"contradicted", "source":"authored_public_check"}
         return r
     def factory(role, request, proposal):
         route=Route(ENDPOINT,MODEL,role,Limits(max_usage_tokens=10000))
@@ -104,7 +105,7 @@ async def test_owned_planner_verifier_continuation(tmp_path, rig, approve):
         if n==0:
             return response(payload("get_goal",'{"boundary_page":0}',"goal"))
         if n==1:
-            return response(payload("get_session_state","{}","state"))
+            return response(payload("inspect_acceptance","{}","state"))
         refs=[x.observation_id for x in m.observations]
         args=dict(rationale="Authored protocol decision",evidence=["Authored observed session"],evidence_refs=refs)
         if m.protocol.role=="planner":
