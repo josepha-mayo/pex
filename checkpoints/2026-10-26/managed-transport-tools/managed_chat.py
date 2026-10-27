@@ -313,12 +313,13 @@ def _usage(raw: object, limits: Limits) -> Usage:
                 not _integer(miss, 0, counts[0]) or hit + miss != counts[0]):
             raise Refusal("inconsistent_cache_partition")
         prompt_details = raw.get("prompt_tokens_details")
-        if (type(prompt_details) is dict and "cached_tokens" in prompt_details
+        if (type(prompt_details) is dict and prompt_details.get("cached_tokens") is not None
                 and prompt_details["cached_tokens"] != hit):
             raise Refusal("inconsistent_cache_partition")
     details = []
     allowed = (
-        {"cached_tokens", "cache_write_tokens", "audio_tokens"},
+        {"cached_tokens", "cache_write_tokens", "created_cache_tokens",
+         "audio_tokens", "multimodal_tokens"},
         {
             "reasoning_tokens",
             "audio_tokens",
@@ -335,6 +336,12 @@ def _usage(raw: object, limits: Limits) -> Usage:
             continue
         if type(value) is not dict or value.keys() - keys:
             raise Refusal("invalid_usage_details")
+        # Optional provider detail fields use null for unavailable/not applicable.
+        # Drop absence, not a made-up zero. Aggregate counts remain mandatory.
+        value = {name: count for name, count in value.items() if count is not None}
+        # This text-only transport does not qualify multimodal accounting.
+        if "multimodal_tokens" in value:
+            raise Refusal("unsupported_usage_detail")
         if any(not _integer(count, 0, ceiling) for count in value.values()):
             raise Refusal("inconsistent_usage_details")
         # This request has no audio or predicted-output inputs. Cache-write
@@ -344,6 +351,7 @@ def _usage(raw: object, limits: Limits) -> Usage:
             for name in (
                 "audio_tokens",
                 "cache_write_tokens",
+                "created_cache_tokens",
                 "accepted_prediction_tokens",
                 "rejected_prediction_tokens",
             )

@@ -8,6 +8,10 @@
       "bytes": 5655,
       "sha256": "9cbf5a1c0f72a8220b6c297ad61d535fb4e7da975b13680f2d6a0c7ab904d13f"
     },
+    "NULLABLE_USAGE_DETAILS_WIP.md": {
+      "bytes": 1017,
+      "sha256": "d997166dd8a762c5949a64e2dbaa813288ca8616be018d3125f10c6ccf37c95b"
+    },
     "OFFLINE_QUALIFICATION.md": {
       "bytes": 9200,
       "sha256": "9d0f0944f7925e7ec6b87e4db86b4a5945fda98e80f596304b7b6040bc0ab271"
@@ -25,8 +29,8 @@
       "sha256": "99c9cc7651713275071bb4a3662e8e8e392e79bbed4b3f4b7319043f57c0a7ba"
     },
     "managed_chat.py": {
-      "bytes": 29749,
-      "sha256": "2b3fbd4e490e450eccf156d89fab56eb5002c5ab8f5b090b85f0e3677aaae636"
+      "bytes": 30273,
+      "sha256": "b17c9d2c460cb9c48f1a8215493b7e24157b7f7b8a4aa804e54908c19bc7d078"
     },
     "managed_tool_chat.py": {
       "bytes": 8557,
@@ -51,6 +55,10 @@
     "tests/test_managed_chat.py": {
       "bytes": 28291,
       "sha256": "a5ef89fb0c3aef6a29abe5c511fd953ebdafa74da9091013102fa47f5ed59d71"
+    },
+    "tests/test_nullable_usage_details.py": {
+      "bytes": 1825,
+      "sha256": "c7e50212a08a99d9e6f5f5cebd72c94f63c3ae3b3c13ea06a6f95832fcb84690"
     },
     "tests/test_strands_bridge.py": {
       "bytes": 23759,

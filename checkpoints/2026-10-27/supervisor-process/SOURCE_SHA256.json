@@ -40,9 +40,9 @@
     "sha256": "98d2a75149fbe930386069a1db5195487540bf7250cbc2ec8c5c152cc4006c2a"
   },
   "transport/managed_chat.py": {
-    "bytes": 29749,
-    "git_blob": "55ba43c986d1063dd0b77a85530fc3d91aca1b1f",
-    "sha256": "2b3fbd4e490e450eccf156d89fab56eb5002c5ab8f5b090b85f0e3677aaae636"
+    "bytes": 30273,
+    "git_blob": "d3e2108aaa1f2763a4daa3180efa28dff9742d05",
+    "sha256": "b17c9d2c460cb9c48f1a8215493b7e24157b7f7b8a4aa804e54908c19bc7d078"
   },
   "transport/managed_tool_chat.py": {
     "bytes": 8557,
