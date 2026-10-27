@@ -35,7 +35,10 @@ def test_worker_public_exit_boundaries(monkeypatch,tmp_path,module_name,smoke,di
         def run(self,command):return {'exit_code':smoke if command.startswith('python ') else diff,'stdout':'Authored evidence','stderr':''}
     worker.remotes={'pex':Remote()}
     monkeypatch.setattr(module,'prior_sequence',lambda *a:0)
-    async def fake_turn(**kwargs):return Receipt()
+    async def fake_turn(**kwargs):
+        for name in ('OPENCODE_DISABLE_MODELS_FETCH','OPENCODE_DISABLE_AUTOUPDATE','OPENCODE_DISABLE_FREE_MODELS'):
+            assert kwargs['environment'][name]=='1'
+        return Receipt()
     monkeypatch.setattr(module,'run_turn',fake_turn)
     arm={'condition':'pex','public_sha256':'b'*64,'worker_identity':provider+'/'+module.MODEL,'prompt':'Authored public task'}
     def turn():return asyncio.run(worker.turn(arm,prompt=arm['prompt'],session_id=None,remaining={'active_seconds':1}))

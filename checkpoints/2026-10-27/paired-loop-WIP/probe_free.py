@@ -56,12 +56,13 @@ async def probe(*,binary,modules,key_path,output,base=BASE,live=False):
     (output/'node_modules').symlink_to(modules,target_is_directory=True)
     receipt=output/'wire-usage.json'
     (case/'plugins/guard/index.ts').write_text(GUARD.replace('CONFIG',json.dumps({'base':base,'model':MODEL,'receipt':str(receipt),'keyPath':str(key_path.resolve())})))
-    config={'model':'opencode/'+MODEL,'default_agent':'probe','plugins':['./plugins/guard'],
+    config={'update':'disable','warming':False,'share':'disabled','model':'opencode/'+MODEL,'default_agent':'probe','plugins':['./plugins/guard'],
             'policies':[{'action':'provider.use','resource':'*','effect':'deny'},{'action':'provider.use','resource':'opencode','effect':'allow'},{'action':'tool.use','resource':'*','effect':'deny'}],
             'providers':{'opencode':{'settings':{'baseURL':base,'apiKey':'PEX-INERT-NONSECRET-NOT-A-KEY'},'models':{MODEL:{'body':{'max_tokens':32},'capabilities':{'tools':False,'input':['text'],'output':['text']}}}}},
             'agents':{'probe':{'mode':'primary','model':'opencode/'+MODEL,'steps':1,'permissions':[{'action':'*','resource':'*','effect':'deny'}]}}}
     path=case/'opencode.json';path.write_text(json.dumps(config));path.chmod(0o600)
     env={'PATH':'/usr/bin:/bin','HOME':str(output/'home'),'XDG_CONFIG_HOME':str(output/'config'),'XDG_DATA_HOME':str(output/'data'),'XDG_CACHE_HOME':str(output/'cache'),'XDG_STATE_HOME':str(output/'state'),'LANG':'C.UTF-8','TERM':'dumb'}
+    env.update({'OPENCODE_DISABLE_MODELS_FETCH':'1','OPENCODE_DISABLE_AUTOUPDATE':'1','OPENCODE_DISABLE_FREE_MODELS':'1'})
     for name in ('HTTP_PROXY','HTTPS_PROXY','ALL_PROXY','NO_PROXY','http_proxy','https_proxy','all_proxy','no_proxy'):
         if name in os.environ:env[name]=os.environ[name]
     env['NO_PROXY']=env.get('NO_PROXY','')+',127.0.0.1,localhost'

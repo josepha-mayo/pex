@@ -52,7 +52,7 @@ class CLIWorker:
              'maxCalls':self.max_calls,'outputPerCall':self.output_per_call,'keyPath':self.key_path}
         guard=Path(__file__).with_name('remote_guard.ts').read_text().replace('CONFIGURATION',json.dumps(cfg))
         (case/'plugins/guard/index.ts').write_text(guard)
-        conf={'model':'opencode/'+MODEL,'default_agent':'paired','plugins':['./plugins/guard'],
+        conf={'update':'disable','warming':False,'share':'disabled','model':'opencode/'+MODEL,'default_agent':'paired','plugins':['./plugins/guard'],
               'mcp':{'servers':{'pex_remote':{'type':'local','command':['/usr/bin/python3',str(Path(__file__).with_name('remote_mcp.py').resolve()),'--socket',str(sock)],'codemode':False,'protocol':'legacy','timeout':{'startup':10000,'catalog':10000,'execution':65000}}}},
               'policies':[{'action':'provider.use','resource':'*','effect':'deny'},{'action':'provider.use','resource':'opencode','effect':'allow'},
                           {'action':'tool.use','resource':'*','effect':'deny'}]+[{'action':'tool.use','resource':n+':*','effect':'allow'} for n in TOOLS],
@@ -72,6 +72,7 @@ class CLIWorker:
         index=state['seq'];state['seq']+=1
         env={'PATH':'/usr/bin:/bin','HOME':str(profile/'home'),'XDG_CONFIG_HOME':str(profile/'config'),
              'XDG_DATA_HOME':str(profile/'data'),'XDG_CACHE_HOME':str(profile/'cache'),'XDG_STATE_HOME':str(profile/'state'),'LANG':'C.UTF-8','TERM':'dumb'}
+        env.update({'OPENCODE_DISABLE_MODELS_FETCH':'1','OPENCODE_DISABLE_AUTOUPDATE':'1','OPENCODE_DISABLE_FREE_MODELS':'1'})
         for name in ('HTTP_PROXY','HTTPS_PROXY','ALL_PROXY','NO_PROXY','http_proxy','https_proxy','all_proxy','no_proxy'):
             if name in os.environ: env[name]=os.environ[name]
         env['NO_PROXY']=env.get('NO_PROXY','')+',127.0.0.1,localhost'
