@@ -12,12 +12,12 @@ import hashlib
 import ipaddress
 import json
 import math
+import os
 import re
 import socket
-import os
 import ssl
-from pathlib import Path
 from dataclasses import dataclass, replace
+from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit, urlunsplit
 
@@ -265,8 +265,15 @@ def _usage_shape(raw: object, secret: str) -> tuple[tuple[str, str], ...]:
     """Preserve safe schema diagnostics when accounting validation refuses."""
     if _contains_secret(raw, secret):
         return (("$type", "redacted"),)
-    allowed_types = {dict: "dict", list: "list", str: "str", int: "int",
-                     float: "float", bool: "bool", type(None): "null"}
+    allowed_types = {
+        dict: "dict",
+        list: "list",
+        str: "str",
+        int: "int",
+        float: "float",
+        bool: "bool",
+        type(None): "null",
+    }
     result = [("$type", allowed_types.get(type(raw), "unsupported"))]
     if type(raw) is not dict:
         return tuple(result)
@@ -284,16 +291,28 @@ def _usage_shape(raw: object, secret: str) -> tuple[tuple[str, str], ...]:
                     result.append((key + ".$fields", "outside_diagnostic_bound"))
                 else:
                     for child in sorted(detail):
-                        label = child if re.fullmatch(r"[a-z][a-z0-9_]{0,63}", child) else "<noncanonical>"
-                        result.append((key + "." + label,
-                                       allowed_types.get(type(detail[child]), "unsupported")))
+                        label = (
+                            child
+                            if re.fullmatch(r"[a-z][a-z0-9_]{0,63}", child)
+                            else "<noncanonical>"
+                        )
+                        result.append(
+                            (
+                                key + "." + label,
+                                allowed_types.get(type(detail[child]), "unsupported"),
+                            )
+                        )
     return tuple(result)
 
 
 def _usage(raw: object, limits: Limits) -> Usage:
     required = {"prompt_tokens", "completion_tokens", "total_tokens"}
-    optional = {"prompt_tokens_details", "completion_tokens_details",
-                "prompt_cache_hit_tokens", "prompt_cache_miss_tokens"}
+    optional = {
+        "prompt_tokens_details",
+        "completion_tokens_details",
+        "prompt_cache_hit_tokens",
+        "prompt_cache_miss_tokens",
+    }
     if type(raw) is not dict or not required <= raw.keys() or raw.keys() - required - optional:
         raise Refusal("invalid_usage_shape")
     counts = tuple(raw[k] for k in ("prompt_tokens", "completion_tokens", "total_tokens"))
@@ -307,19 +326,29 @@ def _usage(raw: object, limits: Limits) -> Usage:
     if present:
         if present != cache_keys:
             raise Refusal("incomplete_cache_partition")
-        hit, miss = (raw[name] for name in
-                     ("prompt_cache_hit_tokens", "prompt_cache_miss_tokens"))
-        if (not _integer(hit, 0, counts[0]) or
-                not _integer(miss, 0, counts[0]) or hit + miss != counts[0]):
+        hit, miss = (raw[name] for name in ("prompt_cache_hit_tokens", "prompt_cache_miss_tokens"))
+        if (
+            not _integer(hit, 0, counts[0])
+            or not _integer(miss, 0, counts[0])
+            or hit + miss != counts[0]
+        ):
             raise Refusal("inconsistent_cache_partition")
         prompt_details = raw.get("prompt_tokens_details")
-        if (type(prompt_details) is dict and prompt_details.get("cached_tokens") is not None
-                and prompt_details["cached_tokens"] != hit):
+        if (
+            type(prompt_details) is dict
+            and prompt_details.get("cached_tokens") is not None
+            and prompt_details["cached_tokens"] != hit
+        ):
             raise Refusal("inconsistent_cache_partition")
     details = []
     allowed = (
-        {"cached_tokens", "cache_write_tokens", "created_cache_tokens",
-         "audio_tokens", "multimodal_tokens"},
+        {
+            "cached_tokens",
+            "cache_write_tokens",
+            "created_cache_tokens",
+            "audio_tokens",
+            "multimodal_tokens",
+        },
         {
             "reasoning_tokens",
             "audio_tokens",
@@ -406,6 +435,7 @@ def _new_transport() -> httpx.AsyncBaseTransport:
 @dataclass(frozen=True, repr=False)
 class _PilotProxyBinding:
     """Explicit platform CONNECT only, admitted by independently pinned pilot config."""
+
     proxy_sha256: str
     ca_path: str
     ca_sha256: str
@@ -416,15 +446,22 @@ class _PilotProxyBinding:
     def transport(self, endpoint):
         if endpoint != "https://api.tokenfactory.us-central1.nebius.com/v1/chat/completions":
             raise Refusal("pilot_proxy_endpoint_refused")
-        if any(type(v) is not str or not re.fullmatch(r"[a-f0-9]{64}", v)
-               for v in (self.proxy_sha256, self.ca_sha256)):
+        if any(
+            type(v) is not str or not re.fullmatch(r"[a-f0-9]{64}", v)
+            for v in (self.proxy_sha256, self.ca_sha256)
+        ):
             raise Refusal("pilot_proxy_digest_refused")
         proxy = os.environ.get("HTTPS_PROXY", "")
         if not proxy or hashlib.sha256(proxy.encode()).hexdigest() != self.proxy_sha256:
             raise Refusal("pilot_proxy_identity_changed")
         parts = urlsplit(proxy)
-        if (parts.scheme not in ("http", "https") or not parts.hostname
-                or parts.path not in ("", "/") or parts.query or parts.fragment):
+        if (
+            parts.scheme not in ("http", "https")
+            or not parts.hostname
+            or parts.path not in ("", "/")
+            or parts.query
+            or parts.fragment
+        ):
             raise Refusal("pilot_proxy_format_refused")
         if os.environ.get("SSL_CERT_FILE") != self.ca_path:
             raise Refusal("pilot_ca_path_changed")
@@ -432,12 +469,17 @@ class _PilotProxyBinding:
         if not path.is_absolute() or not path.is_file():
             raise Refusal("pilot_ca_path_refused")
         raw = path.read_bytes()
-        if len(raw) > 4*1024*1024 or hashlib.sha256(raw).hexdigest() != self.ca_sha256:
+        if len(raw) > 4 * 1024 * 1024 or hashlib.sha256(raw).hexdigest() != self.ca_sha256:
             raise Refusal("pilot_ca_identity_changed")
         context = ssl.create_default_context(cadata=raw.decode("ascii"))
-        return httpx.AsyncHTTPTransport(proxy=proxy, verify=context, trust_env=False,
-            retries=0, http2=False,
-            limits=httpx.Limits(max_connections=1, max_keepalive_connections=0))
+        return httpx.AsyncHTTPTransport(
+            proxy=proxy,
+            verify=context,
+            trust_env=False,
+            retries=0,
+            http2=False,
+            limits=httpx.Limits(max_connections=1, max_keepalive_connections=0),
+        )
 
 
 class _GuardedTransport(httpx.AsyncBaseTransport):
@@ -449,8 +491,11 @@ class _GuardedTransport(httpx.AsyncBaseTransport):
         self._proxy = getattr(owner, "_pilot_proxy_binding", None)
         if self._proxy is not None and type(self._proxy) is not _PilotProxyBinding:
             raise Refusal("pilot_proxy_binding_refused")
-        self._inner = (self._proxy.transport(owner.route.endpoint)
-                       if self._proxy is not None else _new_transport())
+        self._inner = (
+            self._proxy.transport(owner.route.endpoint)
+            if self._proxy is not None
+            else _new_transport()
+        )
         self._attempted = False
 
     async def handle_async_request(self, request):
