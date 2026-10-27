@@ -93,12 +93,16 @@ def continuation_fits(audit, worker_calls_each, supervisor_calls, compute_create
                 counts[k]*reserve[k]<=audit["remaining_nano_usd"][k] for k in CAPS))
 
 
-def include_supervisor_diagnostics(audit, snapshots):
-    """Retain every prior diagnostic reservation; interrupted runs are never free.
+def include_supervisor_diagnostics(audit, snapshots, *, allocation_profile="legacy"):
+
+    """Retain interrupted reservations; rebate only validated raw-wire settlements.
 
     Caller supplies the complete independently pinned predecessor list. This
     function is read-only and cannot determine authorization or discover runs.
     """
+    if allocation_profile not in ("legacy","350m-350m-300m-v1"):
+        raise ValueError("unknown preregistered allocation")
+    caps=CAPS if allocation_profile=="legacy" else {"baseline":350000000,"pex":350000000,"supervisor":300000000}
     result=json.loads(json.dumps(audit))
     seen=set()
     for item in snapshots:
@@ -107,13 +111,27 @@ def include_supervisor_diagnostics(audit, snapshots):
         seen.add(item['path'])
         db=_db(item['path'],item['sha256'])
         try:
-            for reserve,charged,state in db.execute('SELECT reserve,charged,state FROM calls'):
+            for reserve,charged,state,raw,call_id,route in db.execute('SELECT reserve,charged,state,receipt,id,route FROM calls'):
                 if reserve!=SUPERVISOR_RESERVATION or _integer(charged)>reserve:
                     raise ValueError('diagnostic reservation mismatch')
-                result['charged_nano_usd']['supervisor']+=reserve
+                if state=='settled_raw_wire':
+                    r=json.loads(raw);u=r['usage']
+                    i,o,t=(_integer(u[k]) for k in ('input_tokens','output_tokens','total_tokens'))
+                    cap={'planner':1200,'verifier':900}.get(r.get('role'),0)
+                    if (r.get('invocation_id')!=call_id or r.get('route_fingerprint')!=route
+                            or r.get('model_id')!='nvidia/nemotron-3-super-120b-a12b'
+                            or r.get('outcome')!='succeeded' or r.get('dispatch_state')!='response_complete'
+                            or r.get('http_status')!=200 or r.get('attempts')!=1
+                            or i>262144 or not cap or o>cap or i+o!=t or charged!=i*300+o*900):
+                        raise ValueError('diagnostic raw-wire settlement invalid')
+                    debit=charged
+                elif state in ('reserved_uncertain','uncertain') and charged==reserve:
+                    debit=reserve
+                else:raise ValueError('diagnostic uncertainty cannot be refunded')
+                result['charged_nano_usd']['supervisor']+=debit
                 result['attempts']['supervisor']+=1
         finally:db.close()
-    result['remaining_nano_usd']={k:CAPS[k]-result['charged_nano_usd'][k] for k in CAPS}
+    result['remaining_nano_usd']={k:caps[k]-result['charged_nano_usd'][k] for k in caps}
     result['remaining_attempts']={k:12-result['attempts'][k] for k in CAPS}
     result['remaining_total_nano_usd']=sum(result['remaining_nano_usd'].values())
     if min(result['remaining_nano_usd'].values())<0 or min(result['remaining_attempts'].values())<0:

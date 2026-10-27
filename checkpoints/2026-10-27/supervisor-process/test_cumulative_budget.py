@@ -95,8 +95,8 @@ def test_wal_format_main_file_not_silently_accepted(ledgers):
 def test_interrupted_diagnostic_reserved_uncertain_is_retained(ledgers,tmp_path):
     from cumulative_budget import include_supervisor_diagnostics
     p=tmp_path/'diagnostic.sqlite'
-    db=sqlite3.connect(p);db.execute('CREATE TABLE calls(reserve,charged,state)')
-    db.execute("INSERT INTO calls VALUES(82329600,82329600,'reserved_uncertain')");db.commit();db.close()
+    db=sqlite3.connect(p);db.execute('CREATE TABLE calls(reserve,charged,state,receipt,id,route)')
+    db.execute("INSERT INTO calls VALUES(82329600,82329600,'reserved_uncertain',NULL,'one','route')");db.commit();db.close()
     result=include_supervisor_diagnostics(audit(ledgers),[{'path':str(p),'sha256':digest(p)}])
     assert result['charged_nano_usd']['supervisor']==164659200
     assert result['remaining_nano_usd']['supervisor']==85340800
@@ -110,3 +110,16 @@ def test_successor_ledger_cannot_be_misread_as_original_only(ledgers,index):
     db=sqlite3.connect(ledgers[index]);db.execute('CREATE TABLE predecessor(charged INTEGER)');db.execute('INSERT INTO predecessor VALUES(82329600)');db.commit();db.close()
     with pytest.raises(ValueError,match='full predecessor-chain'):
         audit(ledgers)
+
+
+def test_diagnostic_rebate_requires_validated_complete_raw_usage(ledgers,tmp_path):
+    from cumulative_budget import include_supervisor_diagnostics
+    p=tmp_path/'completed-diagnostic.sqlite'
+    db=sqlite3.connect(p);db.execute('CREATE TABLE calls(reserve,charged,state,receipt,id,route)')
+    r=dict(invocation_id='one',route_fingerprint='route',model_id='nvidia/nemotron-3-super-120b-a12b',role='planner',outcome='succeeded',dispatch_state='response_complete',http_status=200,attempts=1,usage=dict(input_tokens=100,output_tokens=10,total_tokens=110))
+    db.execute("INSERT INTO calls VALUES(82329600,39000,'settled_raw_wire',?,'one','route')",(json.dumps(r),));db.commit();db.close()
+    result=include_supervisor_diagnostics(audit(ledgers),[{'path':str(p),'sha256':digest(p)}])
+    assert result['charged_nano_usd']['supervisor']==82329600+39000
+    db=sqlite3.connect(p);db.execute("UPDATE calls SET state='uncertain'");db.commit();db.close()
+    with pytest.raises(ValueError,match='uncertainty'):
+        include_supervisor_diagnostics(audit(ledgers),[{'path':str(p),'sha256':digest(p)}])
