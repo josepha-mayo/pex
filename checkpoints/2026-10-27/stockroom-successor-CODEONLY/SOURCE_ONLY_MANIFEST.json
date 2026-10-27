@@ -1,0 +1,10 @@
+{
+  "files": {
+    "README.md": "50fa35bc311f15a57bdf55490628e72d3b0fc73e4bdab1e090fbc2b610873f73",
+    "successor_admission.py": "559410df665dcad4b51ba15484f29ba658d47f0d0bdff11c823420cacf50ea31",
+    "successor_runner.py": "ef224029c88ad13106ac3ef2b457006ae4b7a83b92f683e127d4ebe228452634",
+    "test_successor.py": "df2319afd97b84759104fbda5eeb57dba1b4024954d420689f92a10cfa612a99"
+  },
+  "schema": "pex.stockroom-successor-source-only.v1",
+  "status": "code_only_no_live_supervisor_successor_entry"
+}
