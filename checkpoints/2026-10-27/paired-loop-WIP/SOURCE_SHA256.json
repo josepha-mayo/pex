@@ -1,0 +1,20 @@
+{
+  "files": {
+    "README.md": "cecbebff0a6faeeb46a36c072623d2b9d67f60ce35bfb924be640f03f25f2a90",
+    "cli_worker.py": "fc7a5367e744340747a07cb631c274291e3adbeba30859d6464890925e80d7dc",
+    "controller.py": "29a1a92ef8e72c74c34841d364cb7891eb05d2a9c1338d0f956c7402c2e767db",
+    "mcp_fixture.py": "73e68ae20542dfe2d37d1a4dba80dd154e7072ad8dffe792e23424bcd9cce9dc",
+    "opencode_v2_receipt.py": "de15e8e0c8c72b2b3a3c732d9c95646c6f8f28433321e8c1601c911adf54c24d",
+    "pilot.py": "055191078ae246bb5ccce3b65bf588235e6575b6e71464c8abfdd6d1b3e44fb3",
+    "probe_free.py": "ac07933ab200e69e654916359a2135c2cada2b0f2edbf00381e33a12d70eb165",
+    "public_request.py": "1c111ec6f57b2f2f685f6c75eee53742e80a6ef5d9ed59d90a73dfdb956895ea",
+    "remote_guard.ts": "85fa8e29384dec8681813b9e2b581024ea99f4329ae905f7d81d9bb3e30d8939",
+    "remote_mcp.py": "8c25cf622c6c9db4525d73c8b1e34010e24ba7d088e94e175d755427b1a24124",
+    "review.py": "7aff3ccfd81fbf1c3e8d21f98e76826bdd12c0d4774d7b60d9d844ca654d23b4",
+    "test_cli_worker_authored.py": "f544724e05177b5cba8318bd390b21a594f7cca9d888d4674c6f3d71c54fb0c2",
+    "test_loop.py": "d7ae0c008758c5c3faf1a7b19ca830b899d467b5c372042c8ea8dcadfe0af130",
+    "test_probe_failclosed.py": "69947f51400f1b1dd174fcc2847542ad2fdd2185ca17811ec0b9af98bc075984",
+    "test_remote.py": "e03c72b336220dd68483b0ebc7905c9e6650f08c0823d3228e61ce1f6acb0cc8"
+  },
+  "qualification": "28 authored/local tests; no successful real inference or paired score"
+}
