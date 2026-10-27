@@ -62,9 +62,14 @@ class RemoteWorker:
             # Command is interpreted only inside the isolated VM, never on host.
             wrapped = f'timeout --signal=TERM --kill-after=1s {timeout}s bash -lc {shlex.quote(command)}'
             handle = self._sandbox.commands.run(wrapped, cwd=ROOT, user='user', background=True,
-                timeout=timeout+2, request_timeout=15,
-                on_stdout=capture('stdout'), on_stderr=capture('stderr'))
-            result = handle.wait()
+                timeout=timeout+2, request_timeout=15)
+            try:
+                result = handle.wait(on_stdout=capture('stdout'), on_stderr=capture('stderr'))
+            except Exception as error:
+                from e2b import CommandExitException
+                if not isinstance(error, CommandExitException):
+                    raise
+                result = error
             return {'stdout': ''.join(output['stdout']), 'stderr': ''.join(output['stderr']),
                     'exit_code': result.exit_code}
         except Exception as error:
@@ -187,7 +192,8 @@ class PilotPool:
             return []
         killed = []
         try:
-            pager = self._api.list(query={'metadata':{'pex_pilot':self.run_id}},
+            from e2b import SandboxQuery
+            pager = self._api.list(query=SandboxQuery(metadata={'pex_pilot':self.run_id}),
                 api_key=self._key, retries=0, request_timeout=15)
             while pager.has_next:
                 for info in pager.next_items():
