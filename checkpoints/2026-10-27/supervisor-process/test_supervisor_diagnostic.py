@@ -3,6 +3,7 @@ import ipaddress
 import json
 from pathlib import Path
 import pytest
+from datetime import datetime,timezone
 import supervisor_diagnostic as sd
 from test_managed_chat import no_network as no_network,rig as rig,response
 from test_tool_protocol import request_fixture,final_arguments
@@ -11,6 +12,10 @@ from test_tool_transport import payload
 @pytest.mark.asyncio
 async def test_remaining_budget_real_protocol_authored_only(tmp_path,rig,monkeypatch):
     import managed_chat
+    class AuthoredClock(datetime):
+        @classmethod
+        def now(cls,tz=None):return datetime(2026,10,27,14,0,tzinfo=timezone.utc)
+    monkeypatch.setattr(sd,"datetime",AuthoredClock)
     tmp_path.chmod(0o700)
     request=request_fixture(with_boundaries=True)
     request.notes='PARTIAL HISTORICAL: not exact controller evidence'
