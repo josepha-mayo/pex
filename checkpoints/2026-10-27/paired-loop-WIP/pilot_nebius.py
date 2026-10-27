@@ -16,7 +16,7 @@ from pathlib import Path
 import uuid
 
 APPROVAL=None  # Set only after exact new owner funding approval.
-FILES=('pilot_nebius.py','nebius_worker.py','nebius_guard.ts','budget_rpc.py','remote_mcp.py','controller.py','review.py','public_request.py','opencode_v2_receipt.py')
+FILES=('runtime.py','pilot_nebius.py','nebius_worker.py','nebius_guard.ts','budget_rpc.py','remote_mcp.py','controller.py','review.py','public_request.py','opencode_v2_receipt.py')
 
 
 def read_private(path):

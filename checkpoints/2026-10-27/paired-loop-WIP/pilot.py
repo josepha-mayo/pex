@@ -16,7 +16,7 @@ from pathlib import Path
 import uuid
 
 APPROVAL='Sentinel_a6f9e81f1aa88191a915b10436a3cb06'
-FILES=('pilot.py','cli_worker.py','remote_guard.ts','remote_mcp.py','controller.py','review.py','public_request.py','opencode_v2_receipt.py')
+FILES=('runtime.py','pilot.py','cli_worker.py','remote_guard.ts','remote_mcp.py','controller.py','review.py','public_request.py','opencode_v2_receipt.py')
 
 
 def read_private(path):
