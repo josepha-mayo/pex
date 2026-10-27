@@ -14,10 +14,24 @@ def _db(path, expected):
     path=Path(path)
     if path.is_symlink() or not path.is_file():
         raise ValueError("closed ledger file required")
+    # A main-file digest cannot authenticate WAL or rollback-journal changes.
+    # Require a checkpointed, quiescent predecessor instead of reading sidecars.
+    for suffix in ("-wal", "-journal"):
+        sidecar=Path(str(path)+suffix)
+        if sidecar.is_symlink() or (sidecar.exists() and sidecar.stat().st_size):
+            raise ValueError("uncheckpointed predecessor ledger")
     data=path.read_bytes()
     if hashlib.sha256(data).hexdigest()!=expected:
         raise ValueError("predecessor ledger identity changed")
-    db=sqlite3.connect(path.resolve().as_uri()+"?mode=ro",uri=True)
+    if data[18:20] != b"\x01\x01":
+        raise ValueError("rollback-mode closed ledger snapshot required")
+    # Query exactly the hashed bytes, not a pathname that can change after hashing.
+    db=sqlite3.connect(":memory:")
+    try:
+        db.deserialize(data)
+    except Exception:
+        db.close()
+        raise
     db.execute("PRAGMA query_only=ON")
     return db
 

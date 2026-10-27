@@ -55,3 +55,38 @@ def test_compute_continuation_not_reset(ledgers):
 def test_prior_supervisor_refund_not_trusted(ledgers):
     w,s=ledgers;c=sqlite3.connect(s);c.execute("UPDATE calls SET charged=0");c.commit();c.close()
     assert audit(ledgers)["charged_nano_usd"]["supervisor"]==82329600
+
+
+@pytest.mark.parametrize("suffix", ["-wal", "-journal"])
+def test_unpinned_sidecar_rejected(ledgers, suffix):
+    w,s=ledgers
+    from pathlib import Path
+    Path(str(w)+suffix).write_bytes(b"unhashed accounting updates")
+    with pytest.raises(ValueError, match="uncheckpointed"):
+        audit(ledgers)
+
+
+def test_queries_exact_hashed_snapshot_not_reopened_path(ledgers, monkeypatch):
+    from pathlib import Path
+    w,s=ledgers
+    expected=digest(w)
+    original=Path.read_bytes
+    def replace_after_read(path):
+        data=original(path)
+        if path==w:
+            db=sqlite3.connect(w)
+            db.execute("DELETE FROM calls")
+            db.commit();db.close()
+        return data
+    monkeypatch.setattr(Path,"read_bytes",replace_after_read)
+    result=audit_closed(w,expected,s,digest(s))
+    assert result["attempts"]["baseline"]==10
+    assert result["attempts"]["pex"]==10
+
+
+def test_wal_format_main_file_not_silently_accepted(ledgers):
+    w,s=ledgers
+    data=bytearray(w.read_bytes());data[18:20]=b"\x02\x02"
+    w.write_bytes(data)
+    with pytest.raises(ValueError,match="rollback-mode"):
+        audit(ledgers)
