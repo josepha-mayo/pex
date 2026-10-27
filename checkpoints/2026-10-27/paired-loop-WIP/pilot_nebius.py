@@ -15,7 +15,7 @@ import os
 from pathlib import Path
 import uuid
 
-APPROVAL=None  # Set only after exact new owner funding approval.
+APPROVAL='Sentinel_9df859db703081919786cd38c9678f05'  # Exact one bounded $1 pilot; no future authority.
 FILES=('runtime.py','pilot_nebius.py','nebius_worker.py','nebius_guard.ts','budget_rpc.py','remote_mcp.py','controller.py','review.py','public_request.py','opencode_v2_receipt.py')
 
 
