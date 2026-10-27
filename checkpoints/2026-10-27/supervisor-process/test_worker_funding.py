@@ -206,3 +206,32 @@ def test_prior_scope_or_request_is_not_new_approval(tmp_path,approval):
         wf.WorkerFunding(tmp_path/"refused.sqlite",arm="baseline",approved_config_digest="a"*64,
             approval_ref=approval,pricing_provenance_sha256=wf.PRICING_SHA)
     assert not (tmp_path/"refused.sqlite").exists()
+
+
+def test_successor_retains_prior_charges_and_has_bounded_new_attempts(tmp_path):
+    path=tmp_path/'successor.sqlite';raw,sha=request()
+    prior={'baseline':10081800,'pex':9382800}
+    db=ledger(path,prior_charged_nano_usd=prior,predecessor_sha256='b'*64)
+    for n in range(12):
+        db.reserve(f'new-{n}',sha,raw)
+        db.settle_raw(f'new-{n}',sha,200,'application/json',complete())
+    assert db.summary()['charged_nano_usd']['baseline']==10081800+12*420000
+    with pytest.raises(wf.WorkerBudgetExhausted,match='attempt_cap'):
+        db.reserve('new-13',sha,raw)
+    db.close()
+    with pytest.raises(ValueError,match='predecessor identity'):
+        ledger(path)
+
+
+def test_successor_cannot_spend_prior_retained_dollars(tmp_path):
+    path=tmp_path/'successor.sqlite';raw,sha=request()
+    db=ledger(path,prior_charged_nano_usd={'baseline':60000000,'pex':0},predecessor_sha256='b'*64)
+    with pytest.raises(wf.WorkerBudgetExhausted,match='budget_reservation'):
+        db.reserve('would-exceed-original-cap',sha,raw)
+    assert db.summary()['attempts']['baseline']==0
+    db.close()
+
+
+def test_successor_requires_pinned_prior_identity(tmp_path):
+    with pytest.raises(ValueError,match='digest'):
+        ledger(tmp_path/'invalid.sqlite',prior_charged_nano_usd={'baseline':1,'pex':0})

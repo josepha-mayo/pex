@@ -170,7 +170,8 @@ def _locked(method):
 
 class _WorkerLedger:
     """Private pure-accounting implementation; never grants provider authority."""
-    def __init__(self, path, *, arm, approved_config_digest, approval_ref, pricing_provenance_sha256):
+    def __init__(self, path, *, arm, approved_config_digest, approval_ref, pricing_provenance_sha256,
+                 prior_charged_nano_usd=None, predecessor_sha256=None):
         if arm not in ARMS or pricing_provenance_sha256 != PRICING_SHA:
             raise ValueError("worker arm/pricing identity refused")
         _digest(approved_config_digest)
@@ -189,6 +190,13 @@ class _WorkerLedger:
         info = path.stat()
         if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_uid != os.geteuid()
                 or stat.S_IMODE(info.st_mode) & 0o077): raise ValueError("worker ledger private file required")
+        prior = {a: 0 for a in ARMS} if prior_charged_nano_usd is None else prior_charged_nano_usd
+        if type(prior) is not dict or set(prior) != set(ARMS) or any(type(v) is not int or not 0 <= v <= ARM_BUDGET for v in prior.values()):
+            raise ValueError("invalid prior worker charges")
+        if any(prior.values()): _digest(predecessor_sha256)
+        elif predecessor_sha256 is not None: _digest(predecessor_sha256)
+        self.prior = dict(prior)
+        self.predecessor_identity = (json.dumps(self.prior,sort_keys=True),predecessor_sha256)
         self.arm = arm
         self.identity = (approved_config_digest, approval_ref, PRICING_SHA, ENDPOINT, MODEL,
                          INPUT_BOUND, OUTPUT_BOUND, INPUT_RATE, OUTPUT_RATE, ARM_BUDGET, MAX_ATTEMPTS)
@@ -198,6 +206,12 @@ class _WorkerLedger:
         self.db.execute("PRAGMA journal_mode=DELETE")
         self.db.execute("CREATE TABLE IF NOT EXISTS config (digest TEXT,approval TEXT,pricing TEXT,endpoint TEXT,model TEXT,input_bound INTEGER,output_bound INTEGER,ir INTEGER,outr INTEGER,budget INTEGER,attempts INTEGER)")
         self.db.execute("CREATE TABLE IF NOT EXISTS calls (id TEXT PRIMARY KEY,arm TEXT,request_sha TEXT,reserved INTEGER,charged INTEGER,state TEXT,receipt TEXT)")
+        self.db.execute("CREATE TABLE IF NOT EXISTS predecessor (charges TEXT,sha256 TEXT)")
+        predecessors = self.db.execute("SELECT * FROM predecessor").fetchall()
+        if not predecessors and fresh:
+            self.db.execute("INSERT INTO predecessor VALUES (?,?)",self.predecessor_identity)
+        elif predecessors != [self.predecessor_identity]:
+            self.db.close(); raise ValueError("worker predecessor identity changed")
         stored = self.db.execute("SELECT * FROM config").fetchall()
         if fresh and not stored:
             self.db.execute("INSERT INTO config VALUES (?,?,?,?,?,?,?,?,?,?,?)", self.identity)
@@ -212,7 +226,9 @@ class _WorkerLedger:
     def _validate(self):
         if self.db.execute("SELECT * FROM config").fetchall() != [self.identity]:
             raise ValueError("stored worker config corrupt")
-        totals, counts = {a: 0 for a in ARMS}, {a: 0 for a in ARMS}
+        if self.db.execute("SELECT * FROM predecessor").fetchall() != [self.predecessor_identity]:
+            raise ValueError("stored worker predecessor corrupt")
+        totals, counts = dict(self.prior), {a: 0 for a in ARMS}
         for call, arm, request, reserve, charge, state, receipt in self.db.execute("SELECT * FROM calls"):
             if (type(call) is not str or not re.fullmatch(r"[A-Za-z0-9._:-]{1,128}", call)
                     or arm not in ARMS or _digest(request) != request
