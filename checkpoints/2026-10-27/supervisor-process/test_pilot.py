@@ -147,3 +147,19 @@ def test_source_digest_mismatch_refused(tmp_path, rig):
     with pytest.raises(ValueError, match="source identity"):
         pp.pilot_model(path, request, invocation_id="bad-source", expected_config_sha256=digest)
     assert not rig.created and not rig.calls
+
+
+@pytest.mark.asyncio
+async def test_budget_terminal_type_survives_actual_owned_agent(tmp_path, rig):
+    from accounting import PilotBudgetExhausted
+    request = request_fixture(with_boundaries=True)
+    path, digest, _ = private_config(tmp_path, request)
+    model = pp.pilot_model(path, request, invocation_id="budget-terminal", expected_config_sha256=digest)
+    runtime = pp._RUNTIMES[(str(path), digest)]
+    for index in range(3):
+        runtime.ledger.reserve(f"uncertain-{index}", runtime.routes[index % 2])
+    with pytest.raises(PilotBudgetExhausted) as exc:
+        await model.invoke_async()
+    assert exc.value.code == "budget_reservation_refused"
+    assert not rig.created and not rig.calls
+    assert sum(row["charged"] for row in runtime.ledger.summary()) == 246988800

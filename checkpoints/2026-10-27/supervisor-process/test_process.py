@@ -646,3 +646,16 @@ def test_shared_original_role_caps_are_below_conservative_reservation(tmp_path):
         ledger.settle("verifier", receipt)
     assert ledger.summary()[0]["charged"] == 82329600
     ledger.close()
+
+
+def test_global_attempt_terminal_has_typed_reason(tmp_path):
+    from accounting import PilotBudgetExhausted
+    ledger = shared_ledger(tmp_path / "typed.sqlite")
+    for index in range(12):
+        call = f"typed-{index}"
+        ledger.reserve(call, split_route())
+        ledger.settle(call, split_receipt(call))
+    with pytest.raises(PilotBudgetExhausted) as exc:
+        ledger.reserve("thirteenth", split_route())
+    assert exc.value.code == "global_attempt_cap_refused"
+    ledger.close()
