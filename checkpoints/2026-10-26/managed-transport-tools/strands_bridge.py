@@ -112,13 +112,15 @@ class ManagedPEXModel(Model):
     bounded to three calls, including forced-final, with no reset/retry API.
     """
 
+    _role_limits = _ROLE_LIMITS  # Defaults unchanged; isolated pilot subclass supplies its separately admitted policy.
+
     def __init__(self, route, request, *, invocation_id, proposal=None):
         if type(route) is not Route or version("strands-agents") != "1.53.0":
             raise Refusal("unsupported_bridge_configuration")
         self._bound = bind_existing_pex(
             request, role=route.role, invocation_id=invocation_id, proposal=proposal
         )
-        if route.limits.max_output_tokens > _ROLE_LIMITS[route.role]["output_tokens"]:
+        if route.limits.max_output_tokens > self._role_limits[route.role]["output_tokens"]:
             raise Refusal("role_output_cap_exceeded")
         self._candidate = ManagedToolChatCandidate(route, self._bound.contract)
         self._rounds = 0
@@ -211,7 +213,7 @@ class ManagedPEXModel(Model):
         self._agent_invoked = True
         try:
             result = await self._make_agent().invoke_async(
-                self.protocol.initial_prompt, limits=dict(_ROLE_LIMITS[self.protocol.role])
+                self.protocol.initial_prompt, limits=dict(self._role_limits[self.protocol.role])
             )
             if type(result.structured_output) is not self._bound.output_type:
                 raise Refusal("structured_output_missing")
