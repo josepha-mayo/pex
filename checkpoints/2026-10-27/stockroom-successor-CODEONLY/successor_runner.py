@@ -1,6 +1,7 @@
 """Code-only paired successor composition. No executable CLI or implicit dispatch.
 Live use requires root coordination plus a separately reviewed successor supervisor
-entry, which is not supplied by this package. Legacy expired pilot stays untouched.
+entry. Its source approval gate remains None until parent-coordinated retry
+approval. Legacy expired pilot stays untouched.
 """
 import asyncio
 from dataclasses import asdict,is_dataclass
@@ -117,8 +118,8 @@ async def _compose(cfg,prior,config_digest,supervisor,revalidate,deps,output,*,m
     arms={c:{'condition':c,'workspace':str(output/'staged/workers'/c),'prompt':prompt,
              'public_sha256':frozen['public_sha256'],'worker_identity':'nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017'} for c in ('baseline','pex')}
     private_write(output/'frozen.json',{'task':frozen,'worker_budget_each':asdict(budget),'predecessor':prior,
-       'limits':{'worker_per_arm_nano_usd':375000000,'supervisor_nano_usd':250000000,'compute_nano_usd':100000000},
-       'recording':False,'remaining_money_may_differ_by_arm':True,'infrastructure_or_exhaustion_is_inconclusive':True})
+       'limits':{'worker_per_arm_nano_usd':350000000,'worker_fresh_phase_nano_usd':339918200,'supervisor_nano_usd':300000000,'compute_nano_usd':100000000},
+       'recording':False,'equal_worker_fresh_phase_nano_usd':339918200,'infrastructure_or_exhaustion_is_inconclusive':True})
     compute=pool=worker=None;funding={};remotes={}
     try:
         compute=deps.Compute(output/'compute.sqlite',prior_upper_bound_nano_usd=prior['compute_upper_bound_nano_usd'],evidence_sha256=cfg['predecessor']['sha256'])
@@ -126,7 +127,8 @@ async def _compose(cfg,prior,config_digest,supervisor,revalidate,deps,output,*,m
         for c in arms:
             funding[c]=deps.Funding(output/'worker.sqlite',arm=c,approved_config_digest=config_digest,
                 approval_ref=cfg['funding_approval_ref'],pricing_provenance_sha256=deps.pricing_sha,
-                prior_charged_nano_usd=prior['worker_charged_nano_usd'],predecessor_sha256=cfg['predecessor']['sha256'])
+                prior_charged_nano_usd=prior['worker_charged_nano_usd'],predecessor_sha256=cfg['predecessor']['sha256'],
+                arm_budget_nano_usd=350000000,phase_limit_nano_usd=339918200)
         def prepare(c):
             revalidate()
             remote=pool.create('baseline' if c=='baseline' else 'supervised');remotes[c]=remote

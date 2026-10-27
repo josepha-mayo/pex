@@ -54,7 +54,7 @@ class AdmissionTests(unittest.TestCase):
         a=RootAdmission(self.admission.config_sha256,self.admission.approval_ref,self.admission.funding_approval_ref,self.admission.expires_at,'0'*64,self.admission.supervisor_entry_sha256)
         with self.assertRaises(AdmissionRefused):load(self.path,a)
     def test_overbudget_or_bool_prior_refused(self):
-        for bad in (375000001,True,-1):
+        for bad in (350000001,True,-1):
             self.prior['worker_charged_nano_usd']['baseline']=bad
             self.cfg['predecessor']=write(self.root/'predecessor.json',json.dumps(self.prior).encode());self.pin()
             with self.assertRaises(AdmissionRefused):load(self.path,self.admission)
@@ -130,6 +130,7 @@ class CompositionTests(unittest.TestCase):
             self.assertEqual(seen['compute']['prior_upper_bound_nano_usd'],19965000)
             self.assertIs(seen['pool']['cumulative_budget'].__class__,Compute)
             self.assertTrue(all(f['prior_charged_nano_usd']==prior['worker_charged_nano_usd'] and f['predecessor_sha256']=='a'*64 for f in seen['funding']))
+            self.assertTrue(all(f['arm_budget_nano_usd']==350000000 and f['phase_limit_nano_usd']==339918200 for f in seen['funding']))
             self.assertEqual(seen['worker']['task_profile'],'stockroom-v1')
             self.assertEqual(seen['worker']['public_check_command'],PUBLIC_CHECK_COMMAND)
             self.assertEqual(report['arms']['pex']['status'],'grading_inconclusive');self.assertFalse(report['comparison_complete'])

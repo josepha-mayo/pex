@@ -1,10 +1,15 @@
 {
   "files": {
-    "README.md": "50fa35bc311f15a57bdf55490628e72d3b0fc73e4bdab1e090fbc2b610873f73",
-    "successor_admission.py": "559410df665dcad4b51ba15484f29ba658d47f0d0bdff11c823420cacf50ea31",
-    "successor_runner.py": "ef224029c88ad13106ac3ef2b457006ae4b7a83b92f683e127d4ebe228452634",
-    "test_successor.py": "df2319afd97b84759104fbda5eeb57dba1b4024954d420689f92a10cfa612a99"
+    "CHECKPOINT_QUALIFICATION.md": "dd5583f8a629ad494dd32063f3ab080909ea5828da3406604a25989f9cf96b42",
+    "README.md": "1c7f1600ed7dafb59db5a2dea5a2d16503bd152732f6ff71bad2e627e7426f10",
+    "run_authored_all.py": "f1185bfe89bfaf2b5125d0e35067b65925919ee8f7f27a2041408f4075bf0a53",
+    "run_authored_supervisor.py": "d92cda520fa38ae13966b230ba367836cb5c3c256a85157563b725f1f997883d",
+    "successor_admission.py": "3d5a97582f6500e8fedfa31018aafd625c10140c228f7d7578dc9aad6fce0830",
+    "successor_runner.py": "977a3264eb39cb3bb184212832c7a6db94d12c3e4ff99816d468f20ec6985c2e",
+    "successor_supervisor.py": "3dd5c7f83266e32e43808afc7707af48cb20466bdcf6c7e0a79685b13bba119b",
+    "test_successor.py": "692adc60e0f23e83a541fc11f12ba8542d5be4560252fbca867a446c83c0c4b9",
+    "test_successor_supervisor.py": "c1fb912929474e00cad8d6fa5254dc6c000be106d2d3b19b419f332875f3ddf1"
   },
-  "schema": "pex.stockroom-successor-source-only.v1",
-  "status": "code_only_no_live_supervisor_successor_entry"
+  "schema": "pex.stockroom-successor-source-only.v2",
+  "status": "authored_qualified_default_closed_pending_exact_retry_approval"
 }
