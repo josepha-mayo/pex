@@ -33,9 +33,9 @@ this view displays no grades, lift, success score or general superiority claim.
 - Source checkpoint b86cc2c0: initial source and authored fixtures, WIP.
 - Correctness checkpoint b9a1b296: canonical timestamp parser compatibility;
   69 backend unittest cases passed (authored JSONL and SQLite/ASGI records).
-- Frontend: 485 tests passed, TypeScript check and default/owner builds passed
-  before the two additional DOM regressions in this checkpoint.
-- Added DOM regressions are authored fetch responses, pending execution at push.
+- Final frontend rerun: 487 tests passed (453 existing + 34 owner); TypeScript
+  check and default/owner builds passed. The two new built-DOM regressions use
+  authored fetch responses and pass; they are not real-browser/TLS checks.
 - No new real-browser, authenticated TLS, real provider, paired score, deployed
   UI or payment qualification. Historical browser claims do not cover these bytes.
 - Every checkpoint uses the existing review branch, expected-head nonforce,

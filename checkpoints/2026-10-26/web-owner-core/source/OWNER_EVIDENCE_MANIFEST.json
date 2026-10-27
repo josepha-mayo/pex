@@ -1,0 +1,62 @@
+{
+  "schema": "pex.owner-evidence.wip.v1",
+  "source_checkpoint": "e0bc0717e93e1ac03110d2037ec4dea2f48e72cf",
+  "qualification": "authored JSONL / SQLite / ASGI / built DOM; no live inference, real browser TLS, deployment or benchmark score",
+  "results": {
+    "backend_unittest_pass": 69,
+    "frontend_test_pass": 487,
+    "owner_subset_pass": 34,
+    "typecheck": "passed",
+    "default_build": "passed",
+    "owner_build": "passed",
+    "changed_python_ruff_check": "passed",
+    "changed_python_ruff_format": "passed"
+  },
+  "files": [
+    {
+      "path": "services/bridge/src/pex_bridge/web_owner_evidence.py",
+      "sha256": "cae5bf21a9fa3896744368cbfe36a25a86dba0c6d66f8e284df4b9323e6d44bc",
+      "bytes": 5373
+    },
+    {
+      "path": "services/bridge/src/pex_bridge/web_owner_workspace.py",
+      "sha256": "d5e5c4a3972355f0888f33ce646db2cc9029efbe920575279b293e291ec1f617",
+      "bytes": 6691
+    },
+    {
+      "path": "tests/unit/test_web_owner_evidence.py",
+      "sha256": "cd8b029ab3039df308aff248163238b1a5e1a795a5416c9748287aeef0349db7",
+      "bytes": 4280
+    },
+    {
+      "path": "tests/unit/test_web_owner_workspace.py",
+      "sha256": "d6bf00ffcb4a8f51b0c6aba92b976c1a0214cb209b2313694acdf177f0392f65",
+      "bytes": 12232
+    },
+    {
+      "path": "apps/desktop/src/owner/workspace.ts",
+      "sha256": "0b5e76b26f4e72b60cec74390e5fa06ac1e508761d52fb05d8a25d5196a75543",
+      "bytes": 7582
+    },
+    {
+      "path": "apps/desktop/src/owner/main.ts",
+      "sha256": "d9b508ffabf9dbdde0c96fabdcca35e740376b53834a491cc51553bfe9a09c2e",
+      "bytes": 5942
+    },
+    {
+      "path": "apps/desktop/src/owner/workspace.test.ts",
+      "sha256": "688aef250c75f32b2fe54a833513323e433cd2d13d2098af4cfce12466c07290",
+      "bytes": 5699
+    },
+    {
+      "path": "apps/desktop/tests/ownerAuth.dom.test.mjs",
+      "sha256": "facae1e60094a3533435d91895f55009679917f94b98b2bcb1dc62562ebf934c",
+      "bytes": 9707
+    },
+    {
+      "path": "OWNER_EVIDENCE_WIP.md",
+      "sha256": "be671db00f290fae0e6027dc516d0fd4128b2f08e5821ca1d66fb077ff242765",
+      "bytes": 2680
+    }
+  ]
+}
