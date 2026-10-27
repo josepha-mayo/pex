@@ -50,10 +50,14 @@ def _float(value):
     return parsed
 
 
-def completed_turn(raw: bytes, *, exit_code: int, expected_session: str | None = None) -> CliTurn:
+def completed_turn(
+    raw: bytes, *, exit_code: int, expected_session: str | None = None
+) -> CliTurn:
     """Validate a natural stop in this invocation, never a previous turn's log."""
     if exit_code != 0 or not raw or len(raw) > MAX_OUTPUT_BYTES:
-        raise ValueError("OpenCode turn exited unsuccessfully or exceeded its output bound")
+        raise ValueError(
+            "OpenCode turn exited unsuccessfully or exceeded its output bound"
+        )
     events = []
     messages = []
     session_id = None
@@ -62,8 +66,12 @@ def completed_turn(raw: bytes, *, exit_code: int, expected_session: str | None =
     for line in raw.splitlines():
         if not line or len(line) > MAX_LINE_BYTES or len(events) >= MAX_EVENTS:
             raise ValueError("OpenCode CLI event stream exceeded its bounds")
-        event = json.loads(line.decode("utf-8"), object_pairs_hook=_object,
-                           parse_constant=_constant, parse_float=_float)
+        event = json.loads(
+            line.decode("utf-8"),
+            object_pairs_hook=_object,
+            parse_constant=_constant,
+            parse_float=_float,
+        )
         if not isinstance(event, dict) or event.get("type") == "error":
             raise ValueError("OpenCode CLI event is malformed or reports an error")
         vendor = event.get("sessionID")
@@ -91,21 +99,37 @@ def completed_turn(raw: bytes, *, exit_code: int, expected_session: str | None =
                 raise ValueError("OpenCode CLI text is malformed")
             messages.append(text)
         events.append(event)
-    if not events or events[-1].get("type") != "step_finish" or (
-        events[-1]["part"].get("reason") != "stop"
-        or events[-1]["part"].get("messageID") != latest_message
+    if (
+        not events
+        or events[-1].get("type") != "step_finish"
+        or (
+            events[-1]["part"].get("reason") != "stop"
+            or events[-1]["part"].get("messageID") != latest_message
+        )
     ):
         raise ValueError("OpenCode CLI turn lacks a natural terminal stop")
     return CliTurn(
-        session_id, tuple(messages), len(events), hashlib.sha256(raw).hexdigest(), len(raw),
+        session_id,
+        tuple(messages),
+        len(events),
+        hashlib.sha256(raw).hexdigest(),
+        len(raw),
     )
 
 
 async def run_turn(
-    *, executable: Path, workspace: Path, model: str, prompt: str,
-    environment: dict[str, str], stdout_path: Path, stderr_path: Path,
-    deadline: float, session_id: str | None = None,
-    standalone: bool = True, agent: str | None = None,
+    *,
+    executable: Path,
+    workspace: Path,
+    model: str,
+    prompt: str,
+    environment: dict[str, str],
+    stdout_path: Path,
+    stderr_path: Path,
+    deadline: float,
+    session_id: str | None = None,
+    standalone: bool = True,
+    agent: str | None = None,
     terminal_database: Path | None = None,
 ) -> CliTurn:
     """Own one CLI process group and retain exact, exclusive output artifacts."""
@@ -138,7 +162,15 @@ async def run_turn(
             digest.update(chunk)
         return digest.hexdigest(), total
 
-    if type(standalone) is not bool or (agent is not None and (not isinstance(agent, str) or not agent or len(agent) > 128 or "\x00" in agent)):
+    if type(standalone) is not bool or (
+        agent is not None
+        and (
+            not isinstance(agent, str)
+            or not agent
+            or len(agent) > 128
+            or "\x00" in agent
+        )
+    ):
         raise ValueError("invalid explicit OpenCode runtime mode")
     command = [str(executable), "run", "--format", "json", "--model", model]
     if standalone:
@@ -149,6 +181,7 @@ async def run_turn(
         command.extend(["--session", session_id])
     if terminal_database is not None:
         from opencode_v2_receipt import prior_sequence
+
         if not standalone or prompt.startswith("-"):
             raise ValueError("CLI2 receipt requires standalone and non-option prompt")
         before_sequence = prior_sequence(terminal_database, session_id)
@@ -163,20 +196,29 @@ async def run_turn(
         try:
             remaining()
             process = await asyncio.create_subprocess_exec(
-                *command, cwd=workspace, env=dict(environment),
-                stdin=asyncio.subprocess.PIPE if terminal_database is not None else asyncio.subprocess.DEVNULL,
-                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+                *command,
+                cwd=workspace,
+                env=dict(environment),
+                stdin=asyncio.subprocess.PIPE
+                if terminal_database is not None
+                else asyncio.subprocess.DEVNULL,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
                 start_new_session=True,
             )
             if terminal_database is not None:
                 process.stdin.write(prompt.encode("utf-8"))
                 await asyncio.wait_for(process.stdin.drain(), timeout=remaining())
                 process.stdin.close()
-            tasks = [asyncio.create_task(capture(process.stdout, stdout)),
-                     asyncio.create_task(capture(process.stderr, stderr)),
-                     asyncio.create_task(process.wait())]
+            tasks = [
+                asyncio.create_task(capture(process.stdout, stdout)),
+                asyncio.create_task(capture(process.stderr, stderr)),
+                asyncio.create_task(process.wait()),
+            ]
             wait_budget = remaining()
-            captured = await asyncio.wait_for(asyncio.gather(*tasks), timeout=wait_budget)
+            captured = await asyncio.wait_for(
+                asyncio.gather(*tasks), timeout=wait_budget
+            )
             remaining()
         finally:
             if process is not None:
@@ -206,10 +248,19 @@ async def run_turn(
         raw = stdout.read(MAX_OUTPUT_BYTES + 1)
         if terminal_database is not None:
             from opencode_v2_receipt import completed_turn_v2
-            turn = completed_turn_v2(raw, exit_code=process.returncode, expected_session=session_id,
-                database=terminal_database, prompt=prompt, after_sequence=before_sequence)
+
+            turn = completed_turn_v2(
+                raw,
+                exit_code=process.returncode,
+                expected_session=session_id,
+                database=terminal_database,
+                prompt=prompt,
+                after_sequence=before_sequence,
+            )
         else:
-            turn = completed_turn(raw, exit_code=process.returncode, expected_session=session_id)
+            turn = completed_turn(
+                raw, exit_code=process.returncode, expected_session=session_id
+            )
         if (turn.stdout_sha256, turn.stdout_bytes) != captured[0]:
             raise ValueError("OpenCode CLI captured output changed")
         remaining()
