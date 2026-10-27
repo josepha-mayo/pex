@@ -54,3 +54,25 @@ async def test_valid_usage_and_settlement_contract_are_unchanged(rig):
     assert out.receipt.usage.total_tokens == 15
     assert ('prompt_tokens', 'int') in out.receipt.usage_shape
     assert SYNTHETIC_KEY not in json.dumps(asdict(out.receipt))
+
+
+def test_detail_schema_names_only_and_no_deep_recursion():
+    raw = {'prompt_tokens_details': {'cached_tokens': 111, 'new_counter': 222,
+                                     'nested': {'never_emit_this': 'private'}},
+           'completion_tokens_details': {'reasoning_tokens': 333}}
+    out = mc._usage_shape(raw, SYNTHETIC_KEY)
+    assert ('prompt_tokens_details.new_counter', 'int') in out
+    assert ('prompt_tokens_details.nested', 'dict') in out
+    assert '111' not in repr(out) and '222' not in repr(out)
+    assert 'never_emit_this' not in repr(out) and 'private' not in repr(out)
+
+
+def test_nested_schema_bounds_and_noncanonical_names():
+    out = mc._usage_shape({'prompt_tokens_details': {'x'*1000: 2}}, SYNTHETIC_KEY)
+    assert ('prompt_tokens_details.<noncanonical>', 'int') in out
+    out = mc._usage_shape({'completion_tokens_details': {str(i): i for i in range(33)}}, SYNTHETIC_KEY)
+    assert ('completion_tokens_details.$fields', 'outside_diagnostic_bound') in out
+
+
+def test_nested_secret_still_redacts_whole_schema():
+    assert mc._usage_shape({'prompt_tokens_details': {'cached_tokens': SYNTHETIC_KEY}}, SYNTHETIC_KEY) == (('$type', 'redacted'),)

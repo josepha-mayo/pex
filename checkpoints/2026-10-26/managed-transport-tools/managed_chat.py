@@ -275,6 +275,18 @@ def _usage_shape(raw: object, secret: str) -> tuple[tuple[str, str], ...]:
     for key in sorted(raw):
         name = key if re.fullmatch(r"[a-z][a-z0-9_]{0,63}", key) else "<noncanonical>"
         result.append((name, allowed_types.get(type(raw[key]), "unsupported")))
+        # Inspect names/types only inside the two standard detail containers.
+        # Never retain counter values, text, arbitrary nesting, or response data.
+        if key in {"prompt_tokens_details", "completion_tokens_details"}:
+            detail = raw[key]
+            if type(detail) is dict:
+                if len(detail) > 32 or any(type(k) is not str for k in detail):
+                    result.append((key + ".$fields", "outside_diagnostic_bound"))
+                else:
+                    for child in sorted(detail):
+                        label = child if re.fullmatch(r"[a-z][a-z0-9_]{0,63}", child) else "<noncanonical>"
+                        result.append((key + "." + label,
+                                       allowed_types.get(type(detail[child]), "unsupported")))
     return tuple(result)
 
 

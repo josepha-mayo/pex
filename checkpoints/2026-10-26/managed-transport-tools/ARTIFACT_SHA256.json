@@ -21,12 +21,12 @@
       "sha256": "8c420025e0ad0d4c129ad3cb08cadb915512b232d3220cfb22511d48abe5d351"
     },
     "USAGE_SCHEMA_DIAGNOSTIC_WIP.md": {
-      "bytes": 1006,
-      "sha256": "f5112f40072685104f6bb1020b7c2a15adf13cc7b727415b34d953c7d37c2788"
+      "bytes": 1452,
+      "sha256": "99c9cc7651713275071bb4a3662e8e8e392e79bbed4b3f4b7319043f57c0a7ba"
     },
     "managed_chat.py": {
-      "bytes": 28954,
-      "sha256": "ccaf417a6b4e2a12502679f15aee55c16462e7ec0b71b34b78e610a06801202b"
+      "bytes": 29749,
+      "sha256": "2b3fbd4e490e450eccf156d89fab56eb5002c5ab8f5b090b85f0e3677aaae636"
     },
     "managed_tool_chat.py": {
       "bytes": 8557,
@@ -65,8 +65,8 @@
       "sha256": "a1d1ea7d00abba2ceab2c3f06f6a152bbe7791b24c9563da140bd60cd44032c2"
     },
     "tests/test_usage_shape_diagnostic.py": {
-      "bytes": 2521,
-      "sha256": "aa84e0789e9c601f208c96a08415aa84a47354468514b412ec35c1f56595b86f"
+      "bytes": 3695,
+      "sha256": "cf68cfb01bad772b8028ef6f6da7bc807a5f8e268d1b5c1fa03a7f497874f755"
     },
     "tool_protocol.py": {
       "bytes": 20092,
