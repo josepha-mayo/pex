@@ -1,5 +1,7 @@
 """Authored fake SDK only. These are not E2B or inference results."""
 import unittest
+import sys
+from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace as NS
 from e2b_transport import PilotPool, RemoteWorker, TransportError, path, MAX_BYTES
@@ -10,15 +12,20 @@ class Files:
     def write(self,*args,**kwargs): pass
     def list(self,*args,**kwargs): return [NS(name='task.py',type='file')]
 
+class CommandExitException(Exception):
+    def __init__(self, code): self.exit_code=code
+
 class Handle:
     def __init__(self): self.killed=False
-    def wait(self): return NS(exit_code=0)
+    def wait(self, *, on_stdout, on_stderr):
+        on_stdout('public output')
+        return NS(exit_code=0)
     def kill(self): self.killed=True
 
 class Commands:
     def run(self,command,**kwargs):
         self.command,self.kwargs=command,kwargs
-        kwargs['on_stdout']('public output')
+        assert 'on_stdout' not in kwargs and 'on_stderr' not in kwargs
         self.handle=Handle()
         return self.handle
 
@@ -39,9 +46,29 @@ class Api:
         self.calls.append(kwargs)
         if self.failure:raise RuntimeError('fake request secret must not escape')
         s=Sandbox(*self.alloc);self.instances.append(s);return s
-    def list(self,**kwargs):return NS(has_next=False)
+    def list(self,**kwargs):
+        assert kwargs['query'].metadata
+        return NS(has_next=False)
 
 class Tests(unittest.TestCase):
+    def setUp(self):
+        self.sdk=patch.dict(sys.modules, {'e2b':NS(CommandExitException=CommandExitException,SandboxQuery=NS)})
+        self.sdk.start();self.addCleanup(self.sdk.stop)
+    def test_nonzero_exit_is_functional_result(self):
+        s=Sandbox();w=RemoteWorker(s,{})
+        def fail(handle, *, on_stdout, on_stderr):
+            on_stderr('test failed');raise CommandExitException(1)
+        with patch.object(Handle,'wait',fail):
+            self.assertEqual(w.run('false'),{'stdout':'','stderr':'test failed','exit_code':1})
+        self.assertTrue(s.commands.handle.killed)
+    def test_callback_overflow_kills_command(self):
+        s=Sandbox();w=RemoteWorker(s,{})
+        def overflow(handle, *, on_stdout, on_stderr):
+            on_stdout('x'*(MAX_BYTES+1))
+        with patch.object(Handle,'wait',overflow):
+            with self.assertRaises(TransportError):w.run('too much')
+        self.assertTrue(s.commands.handle.killed)
+
     def test_closed_gate_no_wire(self):
         api=Api()
         with self.assertRaises(TransportError): PilotPool(api,'synthetic').create('baseline')
