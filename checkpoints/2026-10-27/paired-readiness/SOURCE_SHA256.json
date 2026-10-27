@@ -1,0 +1,26 @@
+[
+  {
+    "path": "opencode_cli.py",
+    "size": 9676,
+    "sha256": "0dc5989faa1102c0255b4dad0fd5773283a9881079565d01fbd211f02d687a3a",
+    "git_blob_sha": "04edf239d3c49a73131c459f33d67265743994ff"
+  },
+  {
+    "path": "opencode_v2_receipt.py",
+    "size": 6233,
+    "sha256": "f67d55547a2cab0e185a261859b6b643e76fd5a5f6b499df26142e913ba9ddd5",
+    "git_blob_sha": "e795050d8538dc5d6b5347ab5b51efefb2d127de"
+  },
+  {
+    "path": "preflight.py",
+    "size": 9843,
+    "sha256": "84c68723ad9f1d4d18c36c3ddcd102dd26ffbf579155da9f09a091d00e2a939c",
+    "git_blob_sha": "a2a8e5c61eff1300c0e46fde428c955c1ff7aa50"
+  },
+  {
+    "path": "test_receipt.py",
+    "size": 4589,
+    "sha256": "de55e4e9e9db891358e5632354cac51b3dbbfeecaf3ec82b943dfd8445b9dacc",
+    "git_blob_sha": "9599eb117385e69c75401cbfafff4cad77dc0743"
+  }
+]

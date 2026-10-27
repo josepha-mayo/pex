@@ -1,0 +1,52 @@
+{
+  "kind": "authored_actual_cli_preflight",
+  "real_inference": false,
+  "paired_score": null,
+  "binary_sha256": "ca9b3ee262e33bb4e7aa0e1230dc61086a474c8c8016b980081d0719712fd2e7",
+  "status": "passed",
+  "turn": {
+    "session_id": "ses_e853c11cfffeE2Zjx6B1UL82yf",
+    "messages": [
+      "qualification"
+    ],
+    "event_count": 1,
+    "stdout_sha256": "c50ff113dd2770393ccdbdf7fd35a0e24f1738fb8bab5a4698ca1b728735d076",
+    "stdout_bytes": 319
+  },
+  "continuation": {
+    "session_id": "ses_e853c11cfffeE2Zjx6B1UL82yf",
+    "messages": [
+      "qualification"
+    ],
+    "event_count": 1,
+    "stdout_sha256": "30edc406d4477d07820be55f0971741827159eec240c526f0f7ef555370543f7",
+    "stdout_bytes": 319
+  },
+  "same_session": true,
+  "seconds": 2.171,
+  "requests": [
+    {
+      "path": "/v1/chat/completions",
+      "model": "deepseek-v4.1-flash-free",
+      "max_tokens": 256,
+      "stream": true,
+      "tools": 0,
+      "synthetic_auth": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "deepseek-v4.1-flash-free",
+      "max_tokens": 256,
+      "stream": true,
+      "tools": 0,
+      "synthetic_auth": true
+    }
+  ],
+  "qualification_limits": [
+    "authored local response, not real inference",
+    "tools disabled; one step and256 output tokens per invocation; not benchmark budgets",
+    "same-session transport only; no task score or PEX gain",
+    "DB receipt not trusted for tool-enabled worker without separate isolation",
+    "no syscall network audit: ptrace denied"
+  ]
+}
