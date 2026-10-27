@@ -1,0 +1,76 @@
+{
+  "benchmark_manifest_sha256": "533c7e055167fe6a86c6ed8fed481605405fab96db45bc7dd60f9705fea3d019",
+  "benchmark_package": "/workspace/scratch/c62c151ada7d/pex-owncloud-recovered-baseline-20261026-2010/archived-packages/pex-benchmark-hardening-20261023-v2/pex-benchmark-hardening/pex_real_pilot",
+  "live_gate_open": false,
+  "module_paths": [
+    "/workspace/scratch/c62c151ada7d/pex-supervisor-process-WORKING-20261027-0127",
+    "/workspace/scratch/c62c151ada7d/managed-transport-TOOLS-WORKING-20261026-2126",
+    "/workspace/scratch/c62c151ada7d/pex-paired-loop-WIP-20261027-1012",
+    "/workspace/scratch/c62c151ada7d/pex-paired-readiness-WORKING-20261027-0021",
+    "/workspace/scratch/c62c151ada7d/pex-paired-task-adapter-WORKING-20261027-0100",
+    "/workspace/scratch/c62c151ada7d/pex-e2b-transport-WIP-20261027-1024",
+    "/workspace/scratch/c62c151ada7d/pex-supervisor-model-only-GUARDED-WORKING-20261026-2051/packages/protocol/src",
+    "/workspace/scratch/c62c151ada7d/pex-supervisor-model-only-GUARDED-WORKING-20261026-2051/services/supervisor/src",
+    "/workspace/scratch/c62c151ada7d/pex-supervisor-model-only-GUARDED-WORKING-20261026-2051/services/bridge/src"
+  ],
+  "pilot_source_sha256": {
+    "budget_rpc.py": "fe8f972af12844d8c85eddc1804eb6ba60ed4fe9719b68d66e6aa7e5b2fb413d",
+    "controller.py": "eafdef4d18c0c9dffaa2597a6bdbed79513dc329acd850b52a6db1c94b605dfa",
+    "nebius_guard.ts": "84e1c40f6d5cef409a6946a1cf8d37d771972615358e3323bcd50c3287c9366f",
+    "nebius_worker.py": "5c0db2e2bb7201a3cc78aca8fc485785defc31093ef6f51fe572ca4120ab73df",
+    "opencode_v2_receipt.py": "de15e8e0c8c72b2b3a3c732d9c95646c6f8f28433321e8c1601c911adf54c24d",
+    "pilot_nebius.py": "ce0edefcaccde77b9572aaf5e254efd675ce893d3793555e4a72548a9d8f5808",
+    "public_request.py": "d66e242435fb75b791dd62c1519e772a2cf370cf2783a527c1d9840e435f0bd0",
+    "remote_mcp.py": "8c25cf622c6c9db4525d73c8b1e34010e24ba7d088e94e175d755427b1a24124",
+    "review.py": "7aff3ccfd81fbf1c3e8d21f98e76826bdd12c0d4774d7b60d9d844ca654d23b4",
+    "runtime.py": "18d4effc6b03c2969e22b66727c6f6ba7008a1ff507838cf2fe4d723e9f2b026"
+  },
+  "python": "/workspace/scratch/c62c151ada7d/pex-supervisor-model-only-GUARDED-WORKING-20261026-2051/.venv/bin/python",
+  "python_version": "3.12.14",
+  "resolved_modules": {
+    "budget_rpc": "/workspace/scratch/c62c151ada7d/pex-paired-loop-WIP-20261027-1012/budget_rpc.py",
+    "controller": "/workspace/scratch/c62c151ada7d/pex-paired-loop-WIP-20261027-1012/controller.py",
+    "e2b": "/tmp/pex-e2b-sdk-261/lib/python3.12/site-packages/e2b/__init__.py",
+    "e2b_transport": "/workspace/scratch/c62c151ada7d/pex-e2b-transport-WIP-20261027-1024/e2b_transport.py",
+    "nebius_worker": "/workspace/scratch/c62c151ada7d/pex-paired-loop-WIP-20261027-1012/nebius_worker.py",
+    "opencode_cli": "/workspace/scratch/c62c151ada7d/pex-paired-readiness-WORKING-20261027-0021/opencode_cli.py",
+    "opencode_v2_receipt": "/workspace/scratch/c62c151ada7d/pex-paired-loop-WIP-20261027-1012/opencode_v2_receipt.py",
+    "pilot_nebius": "/workspace/scratch/c62c151ada7d/pex-paired-loop-WIP-20261027-1012/pilot_nebius.py",
+    "pilot_process": "/workspace/scratch/c62c151ada7d/pex-supervisor-process-WORKING-20261027-0127/pilot_process.py",
+    "public_request": "/workspace/scratch/c62c151ada7d/pex-paired-loop-WIP-20261027-1012/public_request.py",
+    "remote_grade": "/workspace/scratch/c62c151ada7d/pex-e2b-transport-WIP-20261027-1024/remote_grade.py",
+    "remote_mcp": "/workspace/scratch/c62c151ada7d/pex-paired-loop-WIP-20261027-1012/remote_mcp.py",
+    "review": "/workspace/scratch/c62c151ada7d/pex-paired-loop-WIP-20261027-1012/review.py",
+    "strands": "/workspace/scratch/c62c151ada7d/pex-supervisor-model-only-GUARDED-WORKING-20261026-2051/.venv/lib/python3.12/site-packages/strands/__init__.py",
+    "task_adapter": "/workspace/scratch/c62c151ada7d/pex-paired-task-adapter-WORKING-20261027-0100/task_adapter.py",
+    "worker_funding": "/workspace/scratch/c62c151ada7d/pex-supervisor-process-WORKING-20261027-0127/worker_funding.py"
+  },
+  "sdk_site_appended": "/tmp/pex-e2b-sdk-261/lib/python3.12/site-packages",
+  "status": "imports_and_frozen_inputs_verified_no_calls",
+  "supervisor_source_sha256": {
+    "accounting": "7319666289631592c97bd7efc26df814126769e10afa82c86e511fbe6e8cce32",
+    "managed_chat": "6172cb4546896c0c569ff21a314410b6f7da12c01f9db2ddd501b3d180abc509",
+    "managed_tool_chat": "569fc5ec35f65e43d25fdce3b6aeab820acf7cdaac858a44f5438198bc31c717",
+    "pex_protocol.actions": "e8aa8fee7540287929d8c913bddc3ac731adc3b71a0d137247bee0877759e2ae",
+    "pex_protocol.supervisor": "9563683abb0ee203dd873cef3b20af4861bb45788bbefe1a41d90cf35637f161",
+    "pex_supervisor.evidence_observations": "8a3eca3f5fd41626d9f4f0b7ef9ead01ebf8709bcc81c37a7e9fad6b0fd10c09",
+    "pex_supervisor.evidence_tools": "681941c259cdfdcea1c24e7eb1ae6acc2dd22838c5df50d80bed2ad44c65c46a",
+    "pex_supervisor.loop": "2c62e5b93aba14ff4f6fb7739f574d364dab83a95a77345d8e0bc7f0d5168768",
+    "pilot_process": "2cbbb2e6d2ad18468410adf347a591b5401e82647d683734815e76dd938a3ee8",
+    "process_adapter": "11e59f315b7a7571d72a8f8f208707f3a458708a50b5901d5549aef4cda6be0b",
+    "strands_bridge": "bcbe547026a9343633d6e8292e084b51081278cd3d7ace88ed0d55402138823b",
+    "tool_protocol": "599dca451423a3f27c8957f665f94a0bd82e3ca1d2ca263cfd143686bceceac1"
+  },
+  "telemetry": {
+    "metrics": "NoOpMeterProvider",
+    "trace": "NoOpTracerProvider"
+  },
+  "versions": {
+    "connectrpc": "0.12.1",
+    "e2b": "2.61.0",
+    "httpx": "0.28.1",
+    "opentelemetry-api": "1.45.1",
+    "pyqwest": "0.12.0",
+    "strands-agents": "1.53.0"
+  }
+}
