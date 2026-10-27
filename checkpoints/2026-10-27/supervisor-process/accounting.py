@@ -38,16 +38,17 @@ class Ledger:
         self.db.execute("PRAGMA synchronous=FULL")
         self.db.execute("PRAGMA journal_mode=DELETE")
         self.db.execute(
-            "CREATE TABLE IF NOT EXISTS config (budget INTEGER, ir INTEGER, outr INTEGER)"
+            "CREATE TABLE IF NOT EXISTS config (budget INTEGER CHECK(typeof(budget)='integer' AND budget>0), ir INTEGER CHECK(typeof(ir)='integer' AND ir>0), outr INTEGER CHECK(typeof(outr)='integer' AND outr>0))"
         )
         self.db.execute(
-            "CREATE TABLE IF NOT EXISTS calls (id TEXT PRIMARY KEY, route TEXT, reserve INTEGER, charged INTEGER, state TEXT, receipt TEXT)"
+            "CREATE TABLE IF NOT EXISTS calls (id TEXT PRIMARY KEY, route TEXT CHECK(typeof(route)='text' AND length(route)=64), reserve INTEGER CHECK(typeof(reserve)='integer' AND reserve>0), charged INTEGER CHECK(typeof(charged)='integer' AND charged>=0 AND charged<=reserve), state TEXT CHECK(state IN ('reserved_uncertain','uncertain','settled_raw_wire')), receipt TEXT)"
         )
         expected = (budget, input_rate, output_rate)
         rows = self.db.execute("SELECT * FROM config").fetchall()
         if fresh and not rows:
             self.db.execute("INSERT INTO config VALUES (?,?,?)", expected)
         elif rows != [expected]:
+            self.db.close()
             raise ValueError("pricing/budget identity changed")
         self.budget, self.ir, self.outr = expected
         try:

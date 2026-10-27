@@ -211,6 +211,8 @@ def test_corrupt_charges_fail_closed(tmp_path, value):
     ledger = Ledger(path, budget=60000, input_rate=2, output_rate=3)
     route = Route(ENDPOINT, MODEL, "planner", Limits(max_usage_tokens=10000))
     ledger.reserve("call", route)
+    # Simulate storage corruption/legacy DB with constraints bypassed.
+    ledger.db.execute("PRAGMA ignore_check_constraints=ON")
     ledger.db.execute("UPDATE calls SET charged=?", (value,))
     with pytest.raises(ValueError):
         ledger.reserve("next", route)
@@ -258,3 +260,16 @@ def test_concurrent_stale_settlement_cannot_overwrite(tmp_path):
     first.db = original
     first.close()
     second.close()
+
+
+def test_schema_rejects_invalid_charge(tmp_path):
+    ledger = Ledger(
+        tmp_path / "ledger.sqlite", budget=60000, input_rate=2, output_rate=3
+    )
+    route = Route(ENDPOINT, MODEL, "planner", Limits(max_usage_tokens=10000))
+    ledger.reserve("call", route)
+    with pytest.raises(sqlite3.IntegrityError):
+        ledger.db.execute("UPDATE calls SET charged=-1")
+    with pytest.raises(sqlite3.IntegrityError):
+        ledger.db.execute("UPDATE calls SET charged=NULL")
+    ledger.close()
