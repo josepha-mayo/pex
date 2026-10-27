@@ -5,9 +5,8 @@ import sqlite3
 
 import pytest
 from accounting import Ledger
-from managed_chat import Limits, Route
+from managed_chat import Limits, Refusal, Route
 from process_adapter import fixture_model, invoke_live
-from strands.types.exceptions import EventLoopException
 from test_managed_chat import ENDPOINT, MODEL, response
 from test_managed_chat import no_network as no_network  # noqa: PLC0414
 from test_managed_chat import rig as rig  # noqa: PLC0414
@@ -97,7 +96,7 @@ async def test_429_retains_reservation_no_retry(tmp_path, rig):
         ledger=ledger,
     )
     rig.handler = lambda request: response(status=429)
-    with pytest.raises(EventLoopException):
+    with pytest.raises(Refusal, match="managed_transport_not_validated"):
         await model.invoke_async()
     assert len(rig.calls) == 1
     assert ledger.summary()[0]["charged"] == 30000
@@ -114,7 +113,7 @@ async def test_budget_refusal_before_transport(tmp_path, rig):
         invocation_id="budget-call",
         ledger=ledger,
     )
-    with pytest.raises(EventLoopException):
+    with pytest.raises(ValueError, match="budget reservation refused"):
         await model.invoke_async()
     assert not rig.calls and not rig.created
     ledger.close()
@@ -204,3 +203,46 @@ def test_nonfixture_route_refused(tmp_path):
         )
     assert ledger.summary() == []
     ledger.close()
+
+
+@pytest.mark.parametrize("value", [None, -1, "1", "oops", 1.5])
+def test_corrupt_charges_fail_closed(tmp_path, value):
+    path = tmp_path / "ledger.sqlite"
+    ledger = Ledger(path, budget=60000, input_rate=2, output_rate=3)
+    route = Route(ENDPOINT, MODEL, "planner", Limits(max_usage_tokens=10000))
+    ledger.reserve("call", route)
+    ledger.db.execute("UPDATE calls SET charged=?", (value,))
+    with pytest.raises(ValueError):
+        ledger.reserve("next", route)
+    ledger.close()
+    with pytest.raises(ValueError):
+        Ledger(path, budget=60000, input_rate=2, output_rate=3)
+
+
+def test_concurrent_stale_settlement_cannot_overwrite(tmp_path):
+    from dataclasses import replace
+
+    from managed_chat import Receipt, Usage
+
+    path = tmp_path / "ledger.sqlite"
+    first = Ledger(path, budget=60000, input_rate=2, output_rate=3)
+    second = Ledger(path, budget=60000, input_rate=2, output_rate=3)
+    route = Route(ENDPOINT, MODEL, "planner", Limits(max_usage_tokens=10000))
+    first.reserve("call", route)
+    receipt = Receipt(
+        "call",
+        route.fingerprint,
+        MODEL,
+        "planner",
+        attempts=1,
+        http_status=200,
+        dispatch_state="response_complete",
+        outcome="succeeded",
+        usage=Usage(12, 3, 15),
+    )
+    first.settle("call", receipt)
+    with pytest.raises(ValueError):
+        second.settle("call", replace(receipt, usage=Usage(1, 1, 2)))
+    assert second.summary()[0]["charged"] == 33
+    first.close()
+    second.close()
