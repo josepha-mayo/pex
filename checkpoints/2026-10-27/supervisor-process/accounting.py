@@ -85,6 +85,10 @@ class Ledger:
         ).fetchone()
         if row is None or row[2] != "reserved_uncertain":
             raise ValueError("missing or previously settled reservation")
+        from managed_chat import Receipt
+
+        if receipt is not None and type(receipt) is not Receipt:
+            raise ValueError("raw-wire receipt required")
         if receipt is None:
             return  # crash/missing response retains FULL reservation, no retry
         if receipt.invocation_id != call_id or receipt.route_fingerprint != row[0]:
@@ -93,6 +97,8 @@ class Ledger:
         state = "uncertain"
         if (
             receipt.outcome == "succeeded"
+            and receipt.attempts == 1
+            and receipt.http_status == 200
             and receipt.dispatch_state == "response_complete"
             and receipt.usage is not None
         ):

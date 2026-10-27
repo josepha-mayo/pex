@@ -1,14 +1,16 @@
 """Authored responses only, in a new process initialized before framework import."""
 
 import json
+import sqlite3
 
 import pytest
 from accounting import Ledger
 from managed_chat import Limits, Route
 from process_adapter import fixture_model, invoke_live
+from strands.types.exceptions import EventLoopException
 from test_managed_chat import ENDPOINT, MODEL, response
-from test_managed_chat import no_network as no_network
-from test_managed_chat import rig as rig
+from test_managed_chat import no_network as no_network  # noqa: PLC0414
+from test_managed_chat import rig as rig  # noqa: PLC0414
 from test_tool_protocol import (
     InterventionType,
     ProposedAction,
@@ -95,7 +97,7 @@ async def test_429_retains_reservation_no_retry(tmp_path, rig):
         ledger=ledger,
     )
     rig.handler = lambda request: response(status=429)
-    with pytest.raises(Exception):
+    with pytest.raises(EventLoopException):
         await model.invoke_async()
     assert len(rig.calls) == 1
     assert ledger.summary()[0]["charged"] == 30000
@@ -112,7 +114,7 @@ async def test_budget_refusal_before_transport(tmp_path, rig):
         invocation_id="budget-call",
         ledger=ledger,
     )
-    with pytest.raises(Exception):
+    with pytest.raises(EventLoopException):
         await model.invoke_async()
     assert not rig.calls and not rig.created
     ledger.close()
@@ -146,7 +148,7 @@ def test_ledger_identity_and_reuse_refused(tmp_path):
     route = Route(ENDPOINT, MODEL, "planner", Limits(max_usage_tokens=10000))
     ledger.reserve("call", route)
     assert path.stat().st_mode & 0o077 == 0
-    with pytest.raises(Exception):
+    with pytest.raises(sqlite3.IntegrityError):
         ledger.reserve("call", route)
     receipt = Receipt(
         "call",
@@ -154,6 +156,7 @@ def test_ledger_identity_and_reuse_refused(tmp_path):
         MODEL,
         "planner",
         attempts=1,
+        http_status=200,
         dispatch_state="response_complete",
         outcome="succeeded",
         usage=Usage(12, 3, 15),
@@ -175,7 +178,7 @@ def test_sdk_telemetry_cannot_settle_wire_receipt(tmp_path):
     )
     route = Route(ENDPOINT, MODEL, "planner", Limits(max_usage_tokens=10000))
     ledger.reserve("call", route)
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         ledger.settle("call", {"usage": {"input_tokens": 12, "output_tokens": 3}})
     assert ledger.summary()[0]["charged"] == 30000
     ledger.close()
