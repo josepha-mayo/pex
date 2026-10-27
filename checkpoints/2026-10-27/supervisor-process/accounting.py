@@ -52,7 +52,7 @@ class Ledger:
                 or route.endpoint != "https://api.tokenfactory.us-central1.nebius.com/v1/chat/completions"
                 or route.model_id != "nvidia/nemotron-3-super-120b-a12b"
                 or route.output_field != "max_completion_tokens"
-                or route.limits.max_output_tokens != 4096
+                or not 1 <= route.limits.max_output_tokens <= 4096
                 or (input_rate, output_rate, currency) != (300, 900, "USD")
             ):
                 raise ValueError("split envelope requires pinned Nebius route/pricing/limits")
@@ -68,7 +68,10 @@ class Ledger:
                 or len(approved_routes) != 2
                 or any(type(r) is not Route for r in approved_routes)
                 or route.role != "planner"
-                or set(approved_routes) != {route, replace(route, role="verifier")}
+                or sorted(r.role for r in approved_routes) != ["planner", "verifier"]
+                or route not in approved_routes
+                or any(replace(r, role=route.role, limits=replace(r.limits, max_output_tokens=route.limits.max_output_tokens)) != route for r in approved_routes)
+                or any(not 1 <= r.limits.max_output_tokens <= 4096 for r in approved_routes)
                 or type(max_attempts) is not int or max_attempts != 12
                 or type(budget) is not int or budget != 250000000
             ):
@@ -229,7 +232,7 @@ class Ledger:
                         integer(usage.get(k))
                         for k in ("input_tokens", "output_tokens", "total_tokens")
                     )
-                    self._validate_usage_bounds(i, o)
+                    self._validate_usage_bounds(i, o, route)
                     if i + o != t or i * self.ir + o * self.outr != charged:
                         raise ValueError("stored usage charge corrupt")
             total += charged
@@ -237,9 +240,9 @@ class Ledger:
             raise ValueError("stored budget exceeded")
         return total
 
-    def _validate_usage_bounds(self, input_tokens, output_tokens):
+    def _validate_usage_bounds(self, input_tokens, output_tokens, route_fingerprint):
         if self.input_bound is not None and (
-            input_tokens > self.input_bound or output_tokens > self.output_bound
+            input_tokens > self.input_bound or output_tokens > min(self.output_bound, self.routes[route_fingerprint].limits.max_output_tokens)
         ):
             raise ValueError("raw-wire usage exceeds split token envelope")
 
@@ -312,7 +315,7 @@ class Ledger:
                 integer(x)
                 for x in (usage.input_tokens, usage.output_tokens, usage.total_tokens)
             )
-            self._validate_usage_bounds(i, o)
+            self._validate_usage_bounds(i, o, row[0])
             if i + o != t:
                 raise ValueError("invalid raw-wire usage")
             charge = integer(i * self.ir + o * self.outr)
