@@ -54,7 +54,6 @@ class CLIWorker:
         conf={'model':'opencode/'+MODEL,'default_agent':'paired','plugins':['./plugins/guard'],
               'mcp':{'servers':{'pex_remote':{'type':'local','command':['/usr/bin/python3',str(Path(__file__).with_name('remote_mcp.py').resolve()),'--socket',str(sock)],'codemode':False,'protocol':'legacy','timeout':{'startup':10000,'catalog':10000,'execution':65000}}}},
               'policies':[{'action':'provider.use','resource':'*','effect':'deny'},{'action':'provider.use','resource':'opencode','effect':'allow'},
-                          {'action':'integration.use','resource':'*','effect':'deny'},{'action':'integration.use','resource':'mcp:pex_remote','effect':'allow'},
                           {'action':'tool.use','resource':'*','effect':'deny'}]+[{'action':'tool.use','resource':n+':*','effect':'allow'} for n in TOOLS],
               'providers':{'opencode':{'settings':{'baseURL':BASE,'apiKey':'PEX-INERT-NONSECRET-NOT-A-KEY'},'models':{MODEL:{'body':{'max_tokens':self.output_per_call},'capabilities':{'tools':True,'input':['text'],'output':['text']}}}}},
               'agents':{'paired':{'mode':'primary','model':'opencode/'+MODEL,'steps':self.max_calls,
