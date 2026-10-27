@@ -280,7 +280,8 @@ def _usage_shape(raw: object, secret: str) -> tuple[tuple[str, str], ...]:
 
 def _usage(raw: object, limits: Limits) -> Usage:
     required = {"prompt_tokens", "completion_tokens", "total_tokens"}
-    optional = {"prompt_tokens_details", "completion_tokens_details"}
+    optional = {"prompt_tokens_details", "completion_tokens_details",
+                "prompt_cache_hit_tokens", "prompt_cache_miss_tokens"}
     if type(raw) is not dict or not required <= raw.keys() or raw.keys() - required - optional:
         raise Refusal("invalid_usage_shape")
     counts = tuple(raw[k] for k in ("prompt_tokens", "completion_tokens", "total_tokens"))
@@ -288,6 +289,21 @@ def _usage(raw: object, limits: Limits) -> Usage:
         raise Refusal("invalid_usage_counter")
     if counts[0] + counts[1] != counts[2]:
         raise Refusal("inconsistent_usage_total")
+    # Provider cache aliases partition prompt tokens; never apply a discount.
+    cache_keys = {"prompt_cache_hit_tokens", "prompt_cache_miss_tokens"}
+    present = cache_keys & raw.keys()
+    if present:
+        if present != cache_keys:
+            raise Refusal("incomplete_cache_partition")
+        hit, miss = (raw[name] for name in
+                     ("prompt_cache_hit_tokens", "prompt_cache_miss_tokens"))
+        if (not _integer(hit, 0, counts[0]) or
+                not _integer(miss, 0, counts[0]) or hit + miss != counts[0]):
+            raise Refusal("inconsistent_cache_partition")
+        prompt_details = raw.get("prompt_tokens_details")
+        if (type(prompt_details) is dict and "cached_tokens" in prompt_details
+                and prompt_details["cached_tokens"] != hit):
+            raise Refusal("inconsistent_cache_partition")
     details = []
     allowed = (
         {"cached_tokens", "cache_write_tokens", "audio_tokens"},

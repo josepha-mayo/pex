@@ -39,7 +39,11 @@
     "git_blob": "eff7c4c2bbb91ad86fce99345682c707ee9c043e",
     "sha256": "98d2a75149fbe930386069a1db5195487540bf7250cbc2ec8c5c152cc4006c2a"
   },
-  "transport/managed_chat.py": "ddfadf591d5bbbf344670f8e62d4c98b0ca001dfdb1a205eee3344557d35b085",
+  "transport/managed_chat.py": {
+    "bytes": 28954,
+    "git_blob": "116224470ccbb0b8d4237cea8b30342cea85cbfe",
+    "sha256": "ccaf417a6b4e2a12502679f15aee55c16462e7ec0b71b34b78e610a06801202b"
+  },
   "transport/managed_tool_chat.py": {
     "bytes": 8557,
     "git_blob": "d6933b41e51fb428d9e159be6e679129faf19cc1",

@@ -1,5 +1,9 @@
 {
   "files": {
+    "CACHE_PARTITION_WIP.md": {
+      "bytes": 702,
+      "sha256": "eb5dea774677f1a570d9d5a9546ea3c9bd674fede878638657ceb1249b77f44c"
+    },
     "DEPENDENCY_SOURCE_MANIFEST.json": {
       "bytes": 5655,
       "sha256": "9cbf5a1c0f72a8220b6c297ad61d535fb4e7da975b13680f2d6a0c7ab904d13f"
@@ -21,8 +25,8 @@
       "sha256": "f5112f40072685104f6bb1020b7c2a15adf13cc7b727415b34d953c7d37c2788"
     },
     "managed_chat.py": {
-      "bytes": 28028,
-      "sha256": "ddfadf591d5bbbf344670f8e62d4c98b0ca001dfdb1a205eee3344557d35b085"
+      "bytes": 28954,
+      "sha256": "ccaf417a6b4e2a12502679f15aee55c16462e7ec0b71b34b78e610a06801202b"
     },
     "managed_tool_chat.py": {
       "bytes": 8557,
@@ -39,6 +43,10 @@
     "strands_bridge.py": {
       "bytes": 19181,
       "sha256": "bcbe547026a9343633d6e8292e084b51081278cd3d7ace88ed0d55402138823b"
+    },
+    "tests/test_cache_partition.py": {
+      "bytes": 1595,
+      "sha256": "a2c565bc59ff57cff19d284b910fde333859da1dda06dc65db3ab12c9404efae"
     },
     "tests/test_managed_chat.py": {
       "bytes": 28291,
