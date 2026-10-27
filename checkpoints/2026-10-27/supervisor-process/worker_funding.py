@@ -1,4 +1,4 @@
-"""OPTIONAL paid worker accounting. No network/key code; public admission CLOSED.
+"""OPTIONAL paid worker accounting. No network/key code; exact approval-bound admission.
 
 Each arm owns $0.375 and twelve attempts. Existing NVIDIA supervisor funding is
 separate and unchanged. Guard-only RPC may call these methods; never expose
@@ -14,8 +14,8 @@ import threading
 from functools import wraps
 from pathlib import Path
 
-# Set only in an independently reviewed source checkpoint after the new approval.
-APPROVED_WORKER_REF = None
+# Exact owner approval of the one $1-total paired pilot; never future/unlimited authority.
+APPROVED_WORKER_REF = "Sentinel_9df859db703081919786cd38c9678f05"
 ENDPOINT = "https://api.tokenfactory.nebius.com/v1/chat/completions"
 MODEL = "deepseek-ai/DeepSeek-V4.1-Flash-1017"
 INPUT_BOUND, OUTPUT_BOUND = 1048576, 4096
@@ -297,7 +297,7 @@ class _WorkerLedger:
 
 
 class WorkerFunding(_WorkerLedger):
-    """Default closed until exact new owner approval is pinned in reviewed source."""
+    """Reject every approval except the exact bounded one-pilot owner approval."""
     def __init__(self, *args, approval_ref=None, **kwargs):
         if APPROVED_WORKER_REF is None or approval_ref != APPROVED_WORKER_REF:
             raise PermissionError("optional_paid_worker_not_authorized")
