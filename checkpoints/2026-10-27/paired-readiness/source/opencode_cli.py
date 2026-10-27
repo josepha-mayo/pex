@@ -151,7 +151,7 @@ async def run_turn(
         from opencode_v2_receipt import prior_sequence
         if not standalone or prompt.startswith("-"):
             raise ValueError("CLI2 receipt requires standalone and non-option prompt")
-        before_sequence = prior_sequence(terminal_database)
+        before_sequence = prior_sequence(terminal_database, session_id)
         # CLI2 positional rendering quotes multiword arguments; use stdin so
         # the stored user message remains byte-for-byte the admitted prompt.
     else:
@@ -170,7 +170,7 @@ async def run_turn(
             )
             if terminal_database is not None:
                 process.stdin.write(prompt.encode("utf-8"))
-                await process.stdin.drain()
+                await asyncio.wait_for(process.stdin.drain(), timeout=remaining())
                 process.stdin.close()
             tasks = [asyncio.create_task(capture(process.stdout, stdout)),
                      asyncio.create_task(capture(process.stderr, stderr)),
@@ -179,7 +179,7 @@ async def run_turn(
             captured = await asyncio.wait_for(asyncio.gather(*tasks), timeout=wait_budget)
             remaining()
         finally:
-            if process is not None and process.returncode is None:
+            if process is not None:
                 try:
                     os.killpg(process.pid, signal.SIGKILL)
                 except ProcessLookupError:

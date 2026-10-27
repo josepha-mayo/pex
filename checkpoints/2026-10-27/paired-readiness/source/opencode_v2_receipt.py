@@ -4,6 +4,7 @@ CLI2 JSON omits legacy step events. A natural stop therefore needs both the
 fresh captured CLI message identity AND committed post-exit local session rows.
 This reader is for an explicitly supplied disposable worker profile only.
 """
+from contextlib import contextmanager
 import hashlib
 import json
 import sqlite3
@@ -11,18 +12,24 @@ from pathlib import Path
 from opencode_cli import CliTurn, _constant, _float, _object, MAX_OUTPUT_BYTES, MAX_LINE_BYTES, MAX_EVENTS
 
 
+@contextmanager
 def _open(path: Path):
     if not path.is_absolute() or path.is_symlink() or path.resolve()!=path or not path.is_file():
         raise ValueError('explicit regular terminal database required')
     db=sqlite3.connect(path.as_uri()+'?mode=ro',uri=True,timeout=1)
     db.execute('PRAGMA query_only=ON')
-    return db
+    try:
+        yield db
+    finally:
+        db.close()
 
 
-def prior_sequence(path: Path) -> int:
+def prior_sequence(path: Path, session_id: str | None = None) -> int:
     if not path.exists():return 0
     with _open(path) as db:
-        value=db.execute('SELECT COALESCE(MAX(seq),0) FROM session_message').fetchone()[0]
+        if session_id is None:
+            raise ValueError('new CLI2 turn requires a fresh disposable profile')
+        value=db.execute('SELECT COALESCE(MAX(seq),0) FROM session_message WHERE session_id=?',(session_id,)).fetchone()[0]
     if type(value) is not int or value<0:raise ValueError('invalid prior sequence')
     return value
 
@@ -63,7 +70,7 @@ def completed_turn_v2(raw: bytes, *, exit_code: int, database: Path, prompt: str
         if not message_ids.issubset({r[0] for r in assistants}):raise ValueError('CLI2 output not in fresh committed lineage')
         final=assistants[-1];payload=_json(final[3]);outcome=_json(idle[-1][3])
         if final[0] not in message_ids or not users[0][2]<final[2]<idle[-1][2] or outcome.get('outcome')!='succeeded':raise ValueError('CLI2 final lineage invalid')
-        if payload.get('finish')!='stop' or payload.get('rawFinish')!='stop' or payload.get('error') or not isinstance(payload.get('time',{}).get('completed'),int):raise ValueError('CLI2 natural terminal stop unproven')
+        if payload.get('finish')!='stop' or payload.get('rawFinish')!='stop' or payload.get('error') or type(payload.get('time',{}).get('completed')) is not int:raise ValueError('CLI2 natural terminal stop unproven')
         content=payload.get('content')
         if not isinstance(content,list):raise ValueError('CLI2 committed content invalid')
         committed=[p.get('text') for p in content if isinstance(p,dict) and p.get('type')=='text']
