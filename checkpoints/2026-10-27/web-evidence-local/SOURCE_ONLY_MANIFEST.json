@@ -1,0 +1,42 @@
+{
+  "status": "WIP_not_deployed",
+  "test_result": "72 passed; scoped lint/format passed; verified TLS real JSONL pass; browser blocked before page load",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "73d75aea18370e7ddc9180984846ccedd1ff6d9d05e8d0aaf6dae4309588f26f"
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "77db7e5fa52c4429d8b9eb29fec3ea76d58614ee52aa019c3b9c9d5b42c9dbb9"
+    },
+    {
+      "path": "serve_owner_evidence.py",
+      "sha256": "7b1e72796f73ea58e1f6752eff86aa0ad24e9262ec6303a15acbdb081111db2e"
+    },
+    {
+      "path": "check_tls.py",
+      "sha256": "1b4ed5a9fe7b5c4d43febdc6a7e087b177b61e2d6cdfef7bc76e4b78cc89285f"
+    },
+    {
+      "path": "test_local_evidence.py",
+      "sha256": "f342c3b96dfc2342751acab3809ad056e8060937ce1ec7efeb45616d8e6fb1a7"
+    },
+    {
+      "path": "browser_check.cjs",
+      "sha256": "330b872ddb5c5a2741adef8b09d0ddf18b284bf1aeb642eab0345f909ba4b7bb"
+    },
+    {
+      "path": "owner.html",
+      "sha256": "c7146dede6c6f4cca5c1d173420f007849fb611939698f6f60f9a6c178d6a211"
+    },
+    {
+      "path": "services/bridge/src/pex_bridge/web_owner_evidence_only.py",
+      "sha256": "67ac9e1d693a415bea459a553d5368ad84ea24e217217ffbbf436daf5b79805b"
+    },
+    {
+      "path": "services/bridge/src/pex_bridge/web_owner_http.py",
+      "sha256": "ec1b3b316a6d9bdb15917b8b6c3cd97f8a0d7984a6b8410cea7bac218059f022"
+    }
+  ]
+}

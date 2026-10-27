@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer"><title>PEX · Owner access</title></head>
+<body><main>
+<header><span class="brand">PEX</span><button id="sign-out" class="secondary" hidden>Sign out</button></header>
+<section class="intro"><span class="label">Your agent workspace</span><h1>Stay in control.<br>Keep the goal in view.</h1><p>A focused place to review what your agents have actually achieved. Start with secure owner access.</p></section>
+<p id="status" role="status" aria-live="polite">Checking your session…</p>
+<section class="panel" id="access"><form id="owner-form" method="post" action="/owner/auth/login" autocomplete="off"><label for="owner-secret">Owner access secret</label><input id="owner-secret" name="owner_secret" type="password" autocomplete="off" spellcheck="false" autocapitalize="none" maxlength="43" disabled required aria-describedby="secret-help"><small id="secret-help">Use your separately provisioned owner secret. Never enter an OpenCode, NVIDIA, Nebius or other provider API key here.</small><button id="sign-in" type="submit" disabled>Sign in</button></form><button id="check-session" class="secondary" hidden>Check session</button>
+<div id="workspace" hidden><span class="badge">Owner verified · Read only</span><h2>Your paired-run metadata</h2><p id="workspace-status" role="status">No bridge workspace is attached. Empty session and goal lists are not run results.</p><button id="refresh-workspace" class="secondary">Refresh workspace</button><div id="workspace-records"></div><small>No bridge workspace is attached. Configured model labels are not proof of completed calls; no verified PEX benefit is established here. No worker control, provider access or inference has been enabled. Recorded status is not a live worker connection.</small></div></section>
+<footer>Local evidence viewer · No bridge workspace attached · No provider calls<br>Private session cookie. No credentials saved in browser storage.</footer>
+</main><script type="module" src="/src/owner/main.ts"></script></body></html>
