@@ -42,6 +42,8 @@ class Ledger:
         output_token_bound: int | None = None,
         approved_routes: tuple | None = None,
         max_attempts: int | None = None,
+        prior_charged_nano_usd: int = 0,
+        predecessor_sha256: str | None = None,
     ):
         # Caller-supplied binding is not authorization. Public live entry still denies.
         from managed_chat import Route
@@ -174,6 +176,16 @@ class Ledger:
             self.db.close()
             raise ValueError("pricing/budget identity changed")
         self.budget, self.ir, self.outr = expected
+        integer(prior_charged_nano_usd)
+        if prior_charged_nano_usd > budget or (prior_charged_nano_usd and (type(predecessor_sha256) is not str or not re.fullmatch(r"[a-f0-9]{64}",predecessor_sha256))):
+            self.db.close(); raise ValueError("pinned prior supervisor charges required")
+        self.predecessor_identity=(prior_charged_nano_usd,predecessor_sha256)
+        self.db.execute("CREATE TABLE IF NOT EXISTS predecessor (charged INTEGER,sha256 TEXT)")
+        prior_rows=self.db.execute("SELECT * FROM predecessor").fetchall()
+        if fresh and not prior_rows:
+            self.db.execute("INSERT INTO predecessor VALUES (?,?)",self.predecessor_identity)
+        elif prior_rows != [self.predecessor_identity]:
+            self.db.close(); raise ValueError("supervisor predecessor identity changed")
         try:
             self._validate_stored()
         except BaseException:
@@ -200,7 +212,9 @@ class Ledger:
             type(x) is not int for x in config[0]
         ):
             raise ValueError("stored pricing/budget corrupt")
-        total = 0
+        if self.db.execute("SELECT * FROM predecessor").fetchall() != [self.predecessor_identity]:
+            raise ValueError("stored supervisor predecessor corrupt")
+        total = self.predecessor_identity[0]
         for call_id, route, reserved, charged, state, raw in self.db.execute(
             "SELECT id,route,reserve,charged,state,receipt FROM calls"
         ):
