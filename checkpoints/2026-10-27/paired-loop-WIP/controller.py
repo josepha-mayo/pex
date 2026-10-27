@@ -88,8 +88,12 @@ async def run_pair(arms, worker, review, grader, *, budget=Budget(), mode="autho
                         break
                     started = clock()
                     emit(event="review_started",arm=condition,worker_calls=state["calls"])
-                    decision = await review.review(arm, turn["public_observation"], session_id=session)
-                    state["supervisor_seconds"] += clock() - started
+                    try:
+                        decision = await review.review(arm, turn["public_observation"], session_id=session)
+                    finally:
+                        # Failed/budget-terminal reviews still consumed supervisor time.
+                        # Keep this overhead separate from the worker allowance.
+                        state["supervisor_seconds"] += clock() - started
                     state["reviews"].append(decision["receipt"])
                     emit(event="review_finished",arm=condition,terminal=decision["status"],worker_calls=state["calls"])
                     if decision["status"] != "approved_continuation":
