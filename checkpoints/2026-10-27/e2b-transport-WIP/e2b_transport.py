@@ -13,6 +13,9 @@ ROOT = '/home/user/pex-task'
 TIMEOUT = 330
 MAX_BYTES = 262144
 SDK_VERSION = '2.61.0'
+BASE_TEMPLATE = 'rki5dems9wqfm4r03t7g'
+CATALOG_BUILD_SNAPSHOT = '9bdf19ae-7960-412d-8518-aff4bcafb8bc'
+EXPECTED_ALLOCATION = (2, 512)
 CPU_SECOND = Decimal('0.000014')
 GIB_SECOND = Decimal('0.0000045')
 MAX_TOTAL = Decimal('0.10')
@@ -154,7 +157,7 @@ class PilotPool:
         self.arms.add(arm)
         sandbox = None
         try:
-            sandbox = self._api.create(template='base', timeout=TIMEOUT,
+            sandbox = self._api.create(template=BASE_TEMPLATE, timeout=TIMEOUT,
                 lifecycle={'on_timeout':'kill', 'auto_resume':False},
                 metadata={'pex_pilot':self.run_id, 'pex_arm':arm},
                 idempotency_key=self.run_id+'-'+arm, api_key=self._key,
@@ -170,12 +173,16 @@ class PilotPool:
             if cost > RESERVATION:
                 raise TransportError('allocation exceeds compute reservation')
             allocation = (cpu, memory)
+            if info.template_id != BASE_TEMPLATE or allocation != EXPECTED_ALLOCATION:
+                raise TransportError('verified template/allocation changed')
             if self.allocation is not None and allocation != self.allocation:
                 raise TransportError('paired allocations differ')
             self.allocation = allocation
             sandbox.files.make_dir(ROOT, user='user', request_timeout=15)
             worker = RemoteWorker(sandbox, {'sandbox_id':info.sandbox_id, 'cpu':cpu,
-                'memory_mb':memory, 'max_seconds':TIMEOUT, 'reserved_usd':str(cost), 'arm':arm})
+                'memory_mb':memory, 'template_id':info.template_id,
+                'catalog_build_snapshot':CATALOG_BUILD_SNAPSHOT, 'immutable_build_pin':False,
+                'max_seconds':TIMEOUT, 'reserved_usd':str(cost), 'arm':arm})
             self.workers.append(worker)
             return worker
         except Exception:

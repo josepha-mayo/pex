@@ -4,7 +4,7 @@ import sys
 from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace as NS
-from e2b_transport import PilotPool, RemoteWorker, TransportError, path, MAX_BYTES
+from e2b_transport import PilotPool, RemoteWorker, TransportError, path, MAX_BYTES, BASE_TEMPLATE, RESERVATION
 
 class Files:
     def make_dir(self,*args,**kwargs): pass
@@ -30,10 +30,10 @@ class Commands:
         return self.handle
 
 class Sandbox:
-    def __init__(self,cpu=2,memory=4096,lifetime=330):
+    def __init__(self,cpu=2,memory=512,lifetime=330):
         start=datetime.now(timezone.utc)
         self.info=NS(cpu_count=cpu,memory_mb=memory,started_at=start,
-            end_at=start+timedelta(seconds=lifetime),sandbox_id='fake-sandbox')
+            end_at=start+timedelta(seconds=lifetime),sandbox_id='fake-sandbox',template_id=BASE_TEMPLATE)
         self.files,self.commands=Files(),Commands()
         self.killed=False
     def get_info(self,**kwargs): return self.info
@@ -41,7 +41,7 @@ class Sandbox:
     def is_running(self,**kwargs): return not self.killed
 
 class Api:
-    def __init__(self): self.calls=[];self.instances=[];self.failure=False;self.alloc=(2,4096,330)
+    def __init__(self): self.calls=[];self.instances=[];self.failure=False;self.alloc=(2,512,330)
     def create(self,**kwargs):
         self.calls.append(kwargs)
         if self.failure:raise RuntimeError('fake request secret must not escape')
@@ -71,12 +71,16 @@ class Tests(unittest.TestCase):
 
     def test_max_hobby_cost_envelope(self):
         from decimal import Decimal
-        api=Api();api.alloc=(8,8192,330)
-        with PilotPool(api,'synthetic',approved=True) as pool:
-            a=pool.create('baseline');b=pool.create('supervised')
-            total=Decimal(a.info['reserved_usd'])+Decimal(b.info['reserved_usd'])
-            self.assertEqual(total,Decimal('0.09768'))
-            self.assertLess(total,Decimal('0.10'))
+        self.assertEqual(RESERVATION*2,Decimal('0.09768'))
+        self.assertLess(RESERVATION*2,Decimal('0.10'))
+
+    def test_template_identity_required(self):
+        api=Api();original=api.create
+        def changed(**kwargs):
+            sandbox=original(**kwargs);sandbox.info.template_id='wrong';return sandbox
+        api.create=changed
+        with self.assertRaises(TransportError):PilotPool(api,'synthetic',approved=True).create('baseline')
+        self.assertTrue(api.instances[0].killed)
 
     def test_closed_gate_no_wire(self):
         api=Api()
@@ -90,6 +94,7 @@ class Tests(unittest.TestCase):
             with self.assertRaises(TransportError):pool.create('baseline')
         self.assertTrue(all(s.killed for s in api.instances))
         for call in api.calls:
+            self.assertEqual(call['template'],BASE_TEMPLATE)
             self.assertEqual(call['timeout'],330);self.assertEqual(call['retries'],0)
             self.assertEqual(call['lifecycle'],{'on_timeout':'kill','auto_resume':False})
             self.assertNotIn('envs',call)
@@ -100,7 +105,7 @@ class Tests(unittest.TestCase):
         self.assertTrue(pool.uncertain)
     def test_pair_allocations_must_match(self):
         api=Api();pool=PilotPool(api,'synthetic',approved=True);pool.create('baseline')
-        api.alloc=(2,512,330)
+        api.alloc=(2,1024,330)
         with self.assertRaises(TransportError):pool.create('supervised')
         pool.close();self.assertTrue(all(x.killed for x in api.instances))
     def test_ambiguous_creation_never_retried(self):
