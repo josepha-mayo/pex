@@ -16,7 +16,7 @@ from pathlib import Path
 import uuid
 
 APPROVAL='Sentinel_a6f9e81f1aa88191a915b10436a3cb06'
-FILES=('pilot.py','cli_worker.py','remote_guard.ts','remote_mcp.py','controller.py','review.py','public_request.py')
+FILES=('pilot.py','cli_worker.py','remote_guard.ts','remote_mcp.py','controller.py','review.py','public_request.py','opencode_v2_receipt.py')
 
 
 def read_private(path):
@@ -91,6 +91,8 @@ async def run_approved(path,digest):
     (output/'frozen.json').write_text(json.dumps({'task':frozen,'worker_budget_each':asdict(budget),
        'go_sha256':digest,'grading_order':'per_arm_after_MCP_revocation_hidden_until_both_terminal',
        'scope':'actual CLI remote-tools engine pilot; not web UI E2E; same VM grading anti-tamper limited'},sort_keys=True))
+    external_sources={name:hashlib.sha256(Path(importlib.import_module(name).__file__).read_bytes()).hexdigest() for name in ('remote_grade','task_adapter','e2b_transport','opencode_cli')}
+    (output/'external-source-sha256.json').write_text(json.dumps(external_sources,sort_keys=True))
     pool=PilotPool(Sandbox,read_private(cfg['e2b_key_path']).decode().strip(),approved=True)
     remotes={}
     def prepare(condition):
@@ -132,8 +134,17 @@ async def run_approved(path,digest):
         emit(event='paired_results_available',terminal='recorded',arms={c:{'status':v['status'],'grade':v.get('protected_grade',{}).get('summary')} for c,v in report['arms'].items()})
         return {'report_path':str(output/'report.json'),'event_path':str(event_path),'status':'terminal'}
     finally:
-        if supervisor_digest is not None: close_pilot(supervisor_path,expected_config_sha256=supervisor_digest)
-        pool.close()
+        cleanup_errors=[]
+        try:
+            if supervisor_digest is not None: close_pilot(supervisor_path,expected_config_sha256=supervisor_digest)
+        except Exception as error:
+            cleanup_errors.append('supervisor:'+type(error).__name__)
+        finally:
+            try: pool.close()
+            except Exception as error: cleanup_errors.append('VM:'+type(error).__name__)
+        if cleanup_errors:
+            emit(event='cleanup_unconfirmed',terminal=';'.join(cleanup_errors))
+            raise RuntimeError('cleanup_unconfirmed:'+','.join(cleanup_errors))
 
 
 if __name__=='__main__':

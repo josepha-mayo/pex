@@ -16,7 +16,7 @@ from remote_mcp import serve_remote
 
 PIN='ca9b3ee262e33bb4e7aa0e1230dc61086a474c8c8016b980081d0719712fd2e7'
 MODEL='deepseek-v4.1-flash-free'
-BASE='https://opencode.ai/zen/v1'
+BASE='https://opencode.ai/inference/openai/v1'
 TOOLS=['pex_remote_run','pex_remote_read','pex_remote_write','pex_remote_list']
 
 
@@ -72,10 +72,12 @@ class CLIWorker:
         index=state['seq'];state['seq']+=1
         env={'PATH':'/usr/bin:/bin','HOME':str(profile/'home'),'XDG_CONFIG_HOME':str(profile/'config'),
              'XDG_DATA_HOME':str(profile/'data'),'XDG_CACHE_HOME':str(profile/'cache'),'XDG_STATE_HOME':str(profile/'state'),'LANG':'C.UTF-8','TERM':'dumb'}
+        cli_started=time.monotonic()
         receipt=await run_turn(executable=self.binary,workspace=state['case'],model='opencode/'+MODEL,prompt=prompt,
                               environment=env,stdout_path=profile/f'turn-{index}.jsonl',stderr_path=profile/f'turn-{index}.stderr',
                               deadline=time.monotonic()+remaining['active_seconds'],session_id=session_id,standalone=True,
                               agent='paired',terminal_database=db)
+        cli_seconds=time.monotonic()-cli_started
         usage={'calls':0,'input_tokens':0,'output_tokens':0}
         with sqlite3.connect(db.as_uri()+'?mode=ro',uri=True) as conn:
             for (data,) in conn.execute("SELECT data FROM session_message WHERE session_id=? AND seq>? AND type='assistant' ORDER BY seq",(receipt.session_id,before)):
@@ -93,7 +95,7 @@ class CLIWorker:
         observation={'assistant_final':'\n'.join(receipt.messages)[-16000:],'public_check':public_check,
                      'public_diff':diff['stdout'][:16000],'receipt_sha256':receipt.stdout_sha256}
         return {'session_id':receipt.session_id,'receipt':asdict(receipt),'usage':usage,
-                'terminal':'natural_stop','public_observation':observation}
+                'terminal':'natural_stop','public_observation':observation,'worker_active_seconds':cli_seconds}
 
     async def stop(self,arm):
         if arm['condition'] not in self.states: return

@@ -53,7 +53,7 @@ async def run_pair(arms, worker, review, grader, *, budget=Budget(), mode="autho
                         break
                     started = clock()
                     turn = await worker.turn(arm, prompt=prompt, session_id=session, remaining=remaining)
-                    state["worker_active_seconds"] += clock() - started
+                    state["worker_active_seconds"] += turn.get("worker_active_seconds",clock() - started)
                     state["turn_receipts"].append(turn["receipt"])
                     for name in ("calls", "input_tokens", "output_tokens"):
                         value = turn["usage"][name]
