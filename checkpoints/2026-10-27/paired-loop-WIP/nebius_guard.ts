@@ -7,7 +7,7 @@ const cfg = CONFIGURATION;
 let pending=null;
 async function funding(payload){
  const r=await fetch(cfg.funding.url,{method:'POST',headers:{'Authorization':'Bearer '+cfg.funding.token,'Content-Type':'application/json'},body:JSON.stringify(payload)});
- const v=await r.json();if(!r.ok||v.ok!==true)throw new Error('WORKER_FUNDING_DENIED');return v;
+ const v=await r.json();if(!r.ok||v.ok!==true)throw new Error('WORKER_FUNDING_DENIED:'+String(v.category||'unknown'));return v;
 }
 const allowed = new Set(['pex_remote_run','pex_remote_read','pex_remote_write','pex_remote_list']);
 export default Plugin.define({id:'pex-remote-only-pilot',async setup(ctx) {
