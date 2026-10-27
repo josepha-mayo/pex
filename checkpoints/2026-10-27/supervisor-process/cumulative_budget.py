@@ -45,6 +45,8 @@ def audit_closed(worker_path, worker_sha256, supervisor_path, supervisor_sha256)
     worker=_db(worker_path,worker_sha256)
     supervisor=_db(supervisor_path,supervisor_sha256)
     try:
+        if any(db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='predecessor'").fetchone() for db in (worker,supervisor)):
+            raise ValueError("successor ledger requires full predecessor-chain audit")
         if supervisor.execute("SELECT state FROM pilot_admission").fetchall()!=[("closed",)]:
             raise ValueError("predecessor pilot not closed")
         for arm,reserve,charge,state,receipt in worker.execute(

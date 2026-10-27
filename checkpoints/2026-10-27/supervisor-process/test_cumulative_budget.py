@@ -103,3 +103,10 @@ def test_interrupted_diagnostic_reserved_uncertain_is_retained(ledgers,tmp_path)
     assert result['remaining_attempts']['supervisor']==10
     with pytest.raises(ValueError,match='unique'):
         include_supervisor_diagnostics(audit(ledgers),[{'path':str(p),'sha256':digest(p)}]*2)
+
+
+@pytest.mark.parametrize("index",[0,1])
+def test_successor_ledger_cannot_be_misread_as_original_only(ledgers,index):
+    db=sqlite3.connect(ledgers[index]);db.execute('CREATE TABLE predecessor(charged INTEGER)');db.execute('INSERT INTO predecessor VALUES(82329600)');db.commit();db.close()
+    with pytest.raises(ValueError,match='full predecessor-chain'):
+        audit(ledgers)
