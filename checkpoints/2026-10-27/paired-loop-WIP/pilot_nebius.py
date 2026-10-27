@@ -133,7 +133,11 @@ async def run_approved(path,digest):
             funding[condition]=WorkerFunding(output/'worker-funding.sqlite',arm=condition,approved_config_digest=digest,approval_ref=cfg['approval_ref'],pricing_provenance_sha256=PRICING_SHA)
         worker=NebiusCLIWorker(remotes={c:(lambda c=c:prepare(c)) for c in arms},private_root=output/'cli',
                          binary=cfg['binary_path'],modules=cfg['modules_path'],key_path=cfg['nebius_key_path'],pool=pool,activate=True,funding=funding)
-        review=OwnedReview(build_public_request,model_factory,mode='live-pilot',admission=admission)
+        def record_request(digest,raw):
+            fd=os.open(output/('public-stop-'+digest+'.json'),os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
+            with os.fdopen(fd,'wb') as receipt_file:
+                receipt_file.write(raw);receipt_file.flush();os.fsync(receipt_file.fileno())
+        review=OwnedReview(build_public_request,model_factory,mode='live-pilot',admission=admission,request_recorder=record_request)
         grader=RemoteGrade(remotes=remotes,package=package,stopped=lambda condition: worker.states.get(condition,{}).get('stopped',False))
         report=await run_pair(arms,worker,review,grader,budget=budget,mode='live-pilot',admission=admission,emit=emit)
         report['worker_funding']=next(iter(funding.values())).summary()

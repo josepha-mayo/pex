@@ -127,7 +127,11 @@ async def run_approved(path,digest):
     try:
         worker=CLIWorker(remotes={c:(lambda c=c:prepare(c)) for c in arms},private_root=output/'cli',
                          binary=cfg['binary_path'],modules=cfg['modules_path'],key_path=cfg['opencode_key_path'],pool=pool,activate=True)
-        review=OwnedReview(build_public_request,model_factory,mode='live-pilot',admission=admission)
+        def record_request(digest,raw):
+            fd=os.open(output/('public-stop-'+digest+'.json'),os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
+            with os.fdopen(fd,'wb') as receipt_file:
+                receipt_file.write(raw);receipt_file.flush();os.fsync(receipt_file.fileno())
+        review=OwnedReview(build_public_request,model_factory,mode='live-pilot',admission=admission,request_recorder=record_request)
         grader=RemoteGrade(remotes=remotes,package=package,stopped=lambda condition: worker.states.get(condition,{}).get('stopped',False))
         report=await run_pair(arms,worker,review,grader,budget=budget,mode='live-pilot',admission=admission,emit=emit)
         (output/'report.json').write_text(json.dumps(report,default=json_default,sort_keys=True,indent=2))

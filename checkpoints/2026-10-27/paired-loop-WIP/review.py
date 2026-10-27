@@ -24,9 +24,10 @@ def evidence(request, model, decision, role):
 
 
 class OwnedReview:
-    def __init__(self, request_builder, model_factory, *, mode="authored-only", admission=None):
+    def __init__(self, request_builder, model_factory, *, mode="authored-only", admission=None, request_recorder=None):
         if mode not in {"authored-only","live-pilot"} or (mode=="live-pilot" and admission is None):
             raise PermissionError("live_review_not_admitted")
+        self.request_recorder=request_recorder
         self.mode=mode
         self.request_builder = request_builder
         self.model_factory = model_factory
@@ -38,6 +39,8 @@ class OwnedReview:
         if request.supervisor_decision_mode != "supervisor_model_only":
             raise ValueError("model_only_required")
         digest = supervisor_request_digest(request)
+        if self.request_recorder is not None:
+            self.request_recorder(digest,request.model_dump_json().encode("utf-8"))
         planner = self.model_factory("planner", request, None)
         result = await planner.invoke_async()
         decision = result.structured_output
