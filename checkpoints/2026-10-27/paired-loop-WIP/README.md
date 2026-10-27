@@ -115,3 +115,13 @@ reason. Infrastructure errors remain separate. Model-authored text cannot trigge
 this classification. Fresh focused11 authored tests passed in11.12s, including
 real local SQLite reservation refusal, private RPC, two actual CLI loopback
 fixtures and spoofed-text rejection. No live gate or resource budget changed.
+
+Public evidence classification: both workers now admit only integer0/1 public
+unittest exits into verification; missing interpreter127, timeout124 and other
+non-test terminals are `infrastructure_inconclusive`, never goal contradictions.
+Git diff/status uses `&&` and requires exit0 before supplying evidence. The request
+builder independently rejects non-test exits. Pilot setup preflights isolated
+Python unittest import and git before starting a model. Fresh25 focused authored
+tests passed in1.73s, including both worker adapters with stubbed CLI/remote results,
+public request validation and controller no-grade infrastructure behavior. No
+provider calls or VM creation were involved in this verification.
