@@ -7,8 +7,8 @@ permissions are hygiene, NOT execution isolation. Live run gates remain external
 import hashlib
 import json
 import os
-from pathlib import Path
 import stat
+from pathlib import Path
 
 TASK = "05_uncertain_commit"
 FILES = (

@@ -1,10 +1,11 @@
 """Trusted authored data fixtures only; no candidate module import/execution."""
 
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
+
 import task_adapter as a
 
 
@@ -40,7 +41,7 @@ class AdapterTests(unittest.TestCase):
         from dataclasses import make_dataclass
 
         Arm = make_dataclass(
-            "Arm", "condition workspace public_sha256 prompt worker".split()
+            "Arm", ["condition", "workspace", "public_sha256", "prompt", "worker"]
         )
         worker = object()
         arms = a.make_arms(self.out, receipt, prompt, worker, Arm)
