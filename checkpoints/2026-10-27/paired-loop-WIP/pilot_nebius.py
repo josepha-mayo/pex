@@ -16,7 +16,7 @@ from pathlib import Path
 import uuid
 
 APPROVAL='Sentinel_9df859db703081919786cd38c9678f05'  # Exact one bounded $1 pilot; no future authority.
-FILES=('runtime.py','pilot_nebius.py','nebius_worker.py','nebius_guard.ts','budget_rpc.py','remote_mcp.py','controller.py','review.py','public_request.py','opencode_v2_receipt.py')
+FILES=('same_exec_launcher.py','runtime.py','pilot_nebius.py','nebius_worker.py','nebius_guard.ts','budget_rpc.py','remote_mcp.py','controller.py','review.py','public_request.py','opencode_v2_receipt.py')
 
 
 def read_private(path):
@@ -65,6 +65,8 @@ def json_default(value):
 
 async def run_approved(path,digest):
     cfg=load(path,digest)
+    from same_exec_launcher import validate_platform_proxy
+    validate_platform_proxy(cfg,read_private) # before any model/VM/client construction
     # Fresh process only: configure telemetry BEFORE importing Strands.
     from process_adapter import initialize_process
     initialize_process()
