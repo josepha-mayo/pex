@@ -77,6 +77,19 @@ class WorkspaceTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(set(result["goals"][0]), {"id", "title", "paused", "completion"})
 
+    async def test_evidence_failure_does_not_blank_workspace(self):
+        await self.seed()
+        event_path = Path(self.directory.name) / "authored-events.jsonl"
+        event_path.write_text("incomplete")
+        reader = OwnerWorkspaceReader(self.path, event_path=event_path)
+        result = await reader.read_workspace()
+        self.assertEqual(result["run_evidence"], {"state": "unavailable"})
+        self.assertEqual(len(result["sessions"]), 1)
+        self.assertEqual(len(result["goals"]), 1)
+        self.assertEqual(
+            (await self.reader.read_workspace())["run_evidence"], {"state": "not_configured"}
+        )
+
     async def test_uncommitted_rows_are_not_visible(self):
         await self.seed()
         await self.writer.db.execute("BEGIN IMMEDIATE")
