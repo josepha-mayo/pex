@@ -1,0 +1,15 @@
+{
+  "schema": "pex.stockroom-adapter-source-only.v1",
+  "classification": "authored_adapter_checkpoint_not_live_qualification",
+  "files": {
+    "README.md": "a5dccacaa06d6b4386279aea474556a0940920416ae887b25ac578702382527a",
+    "export_candidate.py": "e16796e8e804ceae69e8213a149b0757db69f522667528f205ffd4b334df9207",
+    "public_diff.py": "b7ecfa91462f9179119182b0a7634aa8f84b545243491b00fc5026738cabeaee",
+    "stockroom_grade.py": "c340dd80e6d21de26d2969ee05a0756d5f4f5115bd1bb679dda2b0174d11781a",
+    "stockroom_request.py": "a4ffe4f3a1c6a150f9f38830030087d02025d44f32db6ec44f39e0839f62e6c2",
+    "stockroom_task.py": "9afe0bd89d16c028bbc641493329de58a916047c86d7518af876a7aa6bd815fd",
+    "test_stockroom_adapter.py": "47ddd2d00080b28716e16c4632f6208e4d0c74c0dc7c4eb60d065f07ad118ee9",
+    "test_stockroom_request.py": "03abf067176fed371dda47e62482674e7191ab14141639eb2b1eea89c641bf0b"
+  },
+  "frozen_task_manifest_sha256": "c242f9128edd87b34c678e5e0db36527b556f0b2163533577e5c96320c3b5f19"
+}
