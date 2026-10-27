@@ -1,9 +1,9 @@
 [
   {
-    "path": "apps/desktop/dist-owner/assets/owner-Bwr2JIGC.js",
-    "size": 10582,
-    "sha256": "5fc92dea40fda2d5c95e637419fb702ea62a3966a6b92b27a696cb75e8527024",
-    "git_blob_sha": "1d055d6437b8b12bfd188d2b07abdc8b2d05ba93"
+    "path": "apps/desktop/dist-owner/assets/owner-BiMqKFcM.js",
+    "size": 10587,
+    "sha256": "c5a1efb56d5299951e99a2cf36275c78124e7b0e618791161efc230be037875b",
+    "git_blob_sha": "009d469035002a77971a8ce85746ef575e3c7d24"
   },
   {
     "path": "apps/desktop/dist-owner/assets/owner-DLFvZ2VQ.css",
@@ -14,7 +14,7 @@
   {
     "path": "apps/desktop/dist-owner/owner.html",
     "size": 2082,
-    "sha256": "767b9ef36a3ba72a9be9c42ade120a33f9a815d9c0426b020affb3cd0e0a2339",
-    "git_blob_sha": "842093f3712e8175d67723636c9f1ba2c0295bf2"
+    "sha256": "075c9be154f452b1d84fb55f596bfde4186092d31c4ee7036a07fa28de5362e6",
+    "git_blob_sha": "87fb713db0cc548a18fcf649c97c9274a3086ec9"
   }
 ]

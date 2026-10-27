@@ -1,3 +1,5 @@
+> Historical receipt only. As of2026-10-27, Unicode compatibility source69fbefbd rebuilt JS/HTML. This browser result does not qualify those changed bytes. See UNICODE_QUALIFICATION.md and current BUILD_SHA256.json.
+
 # Current actual browser preview qualification
 
 2026-10-26 23:59 UTC. Application source274dcb160942677a006b35b19e70981cfe8c4060; current app artifacts match BUILD_SHA256.json. This replaces the prior auth-only preview receipt, whose history remains in commit2464e179d0d3aaaf561208a31c5d8554b44de798.

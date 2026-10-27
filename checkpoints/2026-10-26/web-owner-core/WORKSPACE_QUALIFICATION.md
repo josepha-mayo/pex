@@ -1,3 +1,5 @@
+> Historical qualification for274dcb1. Current Unicode delta69fbefbd has484 local frontend tests; new browser verification has not run. See UNICODE_QUALIFICATION.md for current exact scope. Backend source unchanged.
+
 # Read-only owner workspace qualification
 
 2026-10-26 23:56 UTC. Current application source checkpoint 274dcb160942677a006b35b19e70981cfe8c4060. This supersedes auth-only/current-build assertions in earlier reports; historical browser receipt is explicitly scoped to its earlier bytes.

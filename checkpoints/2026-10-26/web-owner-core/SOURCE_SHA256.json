@@ -49,21 +49,21 @@
   },
   {
     "path": "apps/desktop/src/owner/workspace.ts",
-    "size": 5528,
-    "sha256": "44368af640a60eb4d38fc5698b55b7862876cb8605062cc32b0ecb69b2a907ab",
-    "git_blob_sha": "4f9a4b39c4b5f111b61a3311ed6c164e621eac9f"
+    "size": 5533,
+    "sha256": "a0d70c0c3c9e5397a28f2b14936cb92622566d08c83c3aec9b1039c495af13e8",
+    "git_blob_sha": "50e67870c78995a1ed576c5baed5dc1e18e56586"
   },
   {
     "path": "apps/desktop/src/owner/workspace.test.ts",
-    "size": 3982,
-    "sha256": "91bfdd1ab26cfee254f32bff1710e62a569918a9f4417788b9f6a48f95a2bdb4",
-    "git_blob_sha": "1c38782dfee12ee3151c568db1f11370c080b5c6"
+    "size": 4586,
+    "sha256": "13cfca957159f6e5f387e9a0d3645e674d351a95255c4daaf42db242366490f3",
+    "git_blob_sha": "d2f1dbd6f8abd4f6082136c5c6d2578dfcbebfd3"
   },
   {
     "path": "apps/desktop/tests/ownerAuth.dom.test.mjs",
-    "size": 6813,
-    "sha256": "b034f4d8314910eb8f69ddc2c98e4585517ced7bf632f7c4e7dd1396e85c3c28",
-    "git_blob_sha": "2cc6a51effdac98f5c3e33956f1cd5b95680fec2"
+    "size": 7427,
+    "sha256": "59b2fd225a481a003bfdce8d21ab7122a8000516352720237e867762e3c68912",
+    "git_blob_sha": "8a979ba4916b0dbbc31f42478c2a34340e931c85"
   },
   {
     "path": "apps/desktop/tests/manual/owner-narrow.html",
