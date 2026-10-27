@@ -1,13 +1,14 @@
 {
   "candidate/DIAGNOSTIC_ALLOCATION_V2_WIP.md": "02c63199a7ac4bf47a3856e0631795d7881009af7f7c7bf4fd5f01c75ed02222",
   "candidate/DIAGNOSTIC_ALLOCATION_V3_WIP.md": "182af072eb9ef88dbbab7d1441a80f87e4087bdc32b2459145655e40191267d3",
+  "candidate/DIAGNOSTIC_ALLOCATION_V4_WIP.md": "dfaf3d341cd8f6adff0f3580d0b857f3662418f77ab49b4dd736398847823a4f",
   "candidate/DIAGNOSTIC_CONTINUATION_WIP.md": "ee0524d4ebd0efd51bf320d6f26dc5266e0b9bca75f7d77593f58957ec7680ba",
   "candidate/accounting.py": {
     "bytes": 17309,
     "git_blob": "221308ee6c44b9d4421c752fdd3956cf21eb1a0c",
     "sha256": "7319666289631592c97bd7efc26df814126769e10afa82c86e511fbe6e8cce32"
   },
-  "candidate/cumulative_budget.py": "bbfdabef0d2516133b06d94d0c2070ca6cb77785641f336683c70f04463ce8f1",
+  "candidate/cumulative_budget.py": "69158e3ae7d431220b3483639b443509c9ec3155b1bd1de52b814a2f0d65eb2d",
   "candidate/launch_authored.py": {
     "bytes": 3320,
     "git_blob": "c98bede53fa82634fce653a6dbfc94a841203b1c",
@@ -28,8 +29,8 @@
     "git_blob": "d462a1b548581b944d847268702966a77553da97",
     "sha256": "01c80623be140c7f45cf74ae691392723210d6f40e3aa6ca71914ce6a2509887"
   },
-  "candidate/supervisor_diagnostic.py": "c13683ceccad18019b4d0469801c0a3e0ccb242e3b0324f519069df827175c1d",
-  "candidate/test_diagnostic_reallocation.py": "fb996fead7a96889f49881deb8bdf4671a18ea35c79fcc3725d72088bbac9139",
+  "candidate/supervisor_diagnostic.py": "3f1dc9afbecccdea0cd5177d1a93535e8460bb32154d5cb512ead98364c75054",
+  "candidate/test_diagnostic_reallocation.py": "95b864c9268373ffaf6a8c5dd64c5cd7e2cf83d8d04434362b3fe8e1d3f912a0",
   "candidate/test_pilot.py": {
     "bytes": 8076,
     "git_blob": "b719c864ae5ffea274be962b3ed3ced5976286d9",

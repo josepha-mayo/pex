@@ -45,3 +45,15 @@ def test_v3_preserves_prior_six_uncertain_calls_and_equal_worker_caps():
     assert result['remaining_total_nano_usd']==486557800
     assert sum(result['charged_nano_usd'].values())+result['remaining_total_nano_usd']==1000000000
     assert result['remaining_attempts']=={'baseline':2,'pex':2,'supervisor':6}
+
+
+def test_v4_retains_seven_uncertain_calls_and_original_total():
+    value=audit();value['charged_nano_usd']['supervisor']=576307200
+    value['attempts']['supervisor']=7
+    result=include_supervisor_diagnostics(value,[],allocation_profile='150m-150m-700m-v4')
+    assert result['charged_nano_usd']==value['charged_nano_usd']
+    assert result['remaining_nano_usd']['supervisor']==123692800
+    assert min(result['remaining_nano_usd'][k] for k in ('baseline','pex'))==139918200
+    assert result['remaining_total_nano_usd']==404228200
+    assert sum(result['charged_nano_usd'].values())+result['remaining_total_nano_usd']==1000000000
+    assert result['remaining_attempts']=={'baseline':2,'pex':2,'supervisor':5}
