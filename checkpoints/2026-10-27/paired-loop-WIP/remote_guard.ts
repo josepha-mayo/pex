@@ -6,13 +6,14 @@ const cfg = CONFIGURATION;
 const allowed = new Set(['pex_remote_run','pex_remote_read','pex_remote_write','pex_remote_list']);
 export default Plugin.define({id:'pex-remote-only-pilot',async setup(ctx) {
   await ctx.tool.transform(editor=>{for(const t of editor.list()) if(!allowed.has(t.id)) editor.remove(t.id);});
+  await ctx.permission.hook('evaluate',e=>{if(!allowed.has(e.action)){e.effect='deny';e.message='Only isolated remote tools are permitted';}});
   await ctx.tool.hook('execute.before',e=>{if(!allowed.has(e.tool)) throw new Error('LOCAL_TOOL_DENIED');});
   await ctx.session.hook('prompt',async()=>{
     const until=Date.now()+10000;
     while(Date.now()<until){
-      await ctx.mcp.list();
+      const servers=await ctx.mcp.list();
       const names=(await ctx.tool.list()).map(t=>t.id);
-      if(names.includes('pex_remote_run') && names.every(n=>allowed.has(n)))return;
+      if(servers.data?.some(s=>s.name==='pex_remote'&&s.status.status==='connected')){await new Promise(r=>setTimeout(r,1000));return;}
       await new Promise(r=>setTimeout(r,50));
     }
     throw new Error('REMOTE_MCP_NOT_READY');
