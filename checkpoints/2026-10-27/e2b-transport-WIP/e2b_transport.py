@@ -137,7 +137,7 @@ class PilotPool:
     Failed create retains full reservation and marks pool uncertain. Reconcile by
     metadata through read-only list and kill, never reconnect/resume/recreate.
     """
-    def __init__(self, sandbox_api, api_key, *, approved=False):
+    def __init__(self, sandbox_api, api_key, *, approved=False, cumulative_budget=None):
         self._api, self._key, self.approved = sandbox_api, api_key, approved
         self.run_id = 'pex-pilot-' + uuid.uuid4().hex
         self.attempts = 0
@@ -145,6 +145,7 @@ class PilotPool:
         self.arms = set()
         self.uncertain = False
         self.allocation = None
+        self.cumulative_budget = cumulative_budget
 
     def create(self, arm):
         if not self.approved or self.uncertain:
@@ -153,6 +154,9 @@ class PilotPool:
             raise TransportError('pilot create bound exceeded')
         if RESERVATION * (self.attempts+1) > MAX_TOTAL:
             raise TransportError('compute reservation exceeded')
+        reservation_id = self.run_id+'-'+arm
+        if self.cumulative_budget is not None:
+            self.cumulative_budget.reserve(reservation_id)
         self.attempts += 1
         self.arms.add(arm)
         sandbox = None
@@ -178,6 +182,8 @@ class PilotPool:
             if self.allocation is not None and allocation != self.allocation:
                 raise TransportError('paired allocations differ')
             self.allocation = allocation
+            if self.cumulative_budget is not None:
+                self.cumulative_budget.settle_verified_allocation(reservation_id, cpu=cpu, memory_mb=memory, max_seconds=TIMEOUT)
             sandbox.files.make_dir(ROOT, user='user', request_timeout=15)
             worker = RemoteWorker(sandbox, {'sandbox_id':info.sandbox_id, 'cpu':cpu,
                 'memory_mb':memory, 'template_id':info.template_id,
