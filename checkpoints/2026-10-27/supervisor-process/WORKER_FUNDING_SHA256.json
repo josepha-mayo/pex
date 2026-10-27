@@ -1,0 +1,12 @@
+{
+  "worker_funding.py": {
+    "bytes": 15793,
+    "sha256": "d19801d6bfcbd7d6823ecece71b86b9ab575000e0921e13de248e4ef80f2bea4",
+    "git_blob": "fb5a2692b389ff11a4300db02b7fb580eb9c0073"
+  },
+  "test_worker_funding.py": {
+    "bytes": 9089,
+    "sha256": "2c1b1812fb5a17eca6e0f7ab0d6898c0dfa05ae719f2efc58dd59e26c7f5c2ad",
+    "git_blob": "8c5db4367c92660b4379898657d0a55658e50332"
+  }
+}
