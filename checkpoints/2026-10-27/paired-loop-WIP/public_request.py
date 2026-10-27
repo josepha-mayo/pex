@@ -8,6 +8,7 @@ unknown until both arms stop. Worker reasoning/thought blocks are not accepted.
 import hashlib
 import json
 from datetime import datetime, timezone
+from controller import PublicEvidenceInfrastructureError
 from pex_protocol.enums import EventType, HarnessType
 from pex_protocol.goal import Goal
 from pex_protocol.session import HarnessEvent, HarnessSession
@@ -28,6 +29,8 @@ def build_public_request(arm, observation, session_id):
         raise ValueError("public_check_receipt_required")
     if type(check["exit_code"]) is not int or type(check["command"]) is not str or type(check["output"]) is not str:
         raise ValueError("invalid_public_check_receipt")
+    if check["exit_code"] not in (0,1):
+        raise PublicEvidenceInfrastructureError("public_check_non_test_terminal")
     if len(check["command"].encode())>1024 or len(check["output"].encode())>16384:
         raise ValueError("public_check_too_large")
     if check["command"] != "python -m unittest discover -s tests -p test_smoke.py":

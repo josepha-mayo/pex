@@ -99,6 +99,8 @@ async def run_approved(path,digest):
         load(path,digest)
         remote=pool.create('baseline' if condition=='baseline' else 'supervised');remotes[condition]=remote
         emit(event='isolated_workspace_created',arm=condition)
+        if remote.run('python -I -c "import unittest" && git --version')['exit_code']!=0:
+            raise RuntimeError('runtime_preflight_infrastructure_inconclusive')
         if remote.run('mkdir -p tests; git init -q')['exit_code']!=0: raise ValueError('remote_setup_failed')
         for name in PUBLIC_FILES:
             data=(staging/'workers'/condition/name).read_text();remote.write(name,data)

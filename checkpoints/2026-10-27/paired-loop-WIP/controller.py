@@ -8,6 +8,9 @@ from dataclasses import dataclass, asdict
 import time
 
 
+class PublicEvidenceInfrastructureError(RuntimeError):
+    pass
+
 class WorkerBudgetTerminal(ValueError):
     def __init__(self,code):
         if code not in {'worker_budget_reservation_refused','worker_attempt_cap_refused'}: raise ValueError('invalid_worker_budget_code')
@@ -107,6 +110,7 @@ async def run_pair(arms, worker, review, grader, *, budget=Budget(), mode="autho
                 if worker_budget_error is not None:
                     state["status"]="worker_budget_terminal_inconclusive"
                     state["budget_terminal_reason"]=worker_budget_error.code
+                if isinstance(exc,PublicEvidenceInfrastructureError): state["status"]="infrastructure_inconclusive"
                 state["error_type"] = type(exc).__name__
             finally:
                 await worker.stop(arm)

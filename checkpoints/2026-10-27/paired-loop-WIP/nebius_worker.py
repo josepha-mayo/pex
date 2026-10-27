@@ -13,6 +13,7 @@ from dataclasses import asdict
 from opencode_cli import run_turn
 from opencode_v2_receipt import prior_sequence
 from remote_mcp import serve_remote
+from controller import PublicEvidenceInfrastructureError
 from budget_rpc import serve_budget
 from worker_funding import WorkerFunding,WorkerBudgetExhausted
 from controller import WorkerBudgetTerminal
@@ -112,10 +113,14 @@ class NebiusCLIWorker:
                 usage['calls']+=1;usage['input_tokens']+=values[0]+values[3]+values[4];usage['output_tokens']+=values[1]+values[2]
         remote=self.remotes[condition]
         check=remote.run('python -m unittest discover -s tests -p test_smoke.py')
+        if type(check.get('exit_code')) is not int or check['exit_code'] not in (0,1):
+            raise PublicEvidenceInfrastructureError('public_check_non_test_terminal')
         public_check={'command':'python -m unittest discover -s tests -p test_smoke.py','exit_code':check['exit_code'],
                       'output':(check['stdout']+'\n'+check['stderr'])[:8000]}
         public_check['receipt_sha256']=hashlib.sha256(json.dumps(public_check,sort_keys=True).encode()).hexdigest()
-        diff=remote.run('git diff -- .; git status --short')
+        diff=remote.run('git diff -- . && git status --short')
+        if type(diff.get('exit_code')) is not int or diff['exit_code']!=0:
+            raise PublicEvidenceInfrastructureError('public_diff_failed')
         observation={'assistant_final':'\n'.join(receipt.messages)[-16000:],'public_check':public_check,
                      'public_diff':diff['stdout'][:16000],'receipt_sha256':receipt.stdout_sha256}
         return {'session_id':receipt.session_id,'receipt':asdict(receipt),'usage':usage,

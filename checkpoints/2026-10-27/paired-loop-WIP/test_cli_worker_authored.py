@@ -53,7 +53,7 @@ def test_actual_cli_remote_only_worker(monkeypatch,tmp_path):
         asyncio.run(run())
         assert created==['pex'] and pool.closed
         assert len(calls)==2 and all(c['sentinel'] and c['model']==cw.MODEL and c['max_tokens']==4096 and set(c['tools'])=={'pex_remote_run','pex_remote_read','pex_remote_write','pex_remote_list'} for c in calls)
-        assert remote_calls==['AUTHORED-REMOTE-ONLY','python -m unittest discover -s tests -p test_smoke.py','git diff -- .; git status --short']
+        assert remote_calls==['AUTHORED-REMOTE-ONLY','python -m unittest discover -s tests -p test_smoke.py','git diff -- . && git status --short']
         config=json.loads((tmp_path/'cli/pex/case/opencode.json').read_text())
         assert config['providers']['opencode']['settings']['apiKey']=='PEX-INERT-NONSECRET-NOT-A-KEY'
     finally:server.shutdown();server.server_close()
