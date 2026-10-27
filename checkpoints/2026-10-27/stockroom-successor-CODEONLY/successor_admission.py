@@ -8,6 +8,9 @@ from pathlib import Path
 import stat
 from urllib.parse import urlsplit
 
+# A fresh pair requires an exact new approval pinned by root, not caller data.
+APPROVED_PAIR_REF = None
+
 TASK_SHA='c242f9128edd87b34c678e5e0db36527b556f0b2163533577e5c96320c3b5f19'
 REQUIRED_SOURCES={'successor_admission','successor_runner','stockroom_task','stockroom_request','stockroom_grade','export_candidate','public_diff','controller','review','nebius_worker','nebius_guard','worker_funding','accounting','cumulative_compute','e2b_transport','remote_mcp','budget_rpc','opencode_cli','opencode_v2_receipt','process_adapter'}
 REQUIRED={'schema','run_id','approval_ref','funding_approval_ref','expires_at','package_path','output_dir','nebius_key','e2b_key','binary','modules_path','sources','predecessor','supervisor','network'}
@@ -53,6 +56,8 @@ class RootAdmission:
 
 def load(path,root,*,now=None):
     if type(root)is not RootAdmission:raise AdmissionRefused('explicit_root_admission_required')
+    if APPROVED_PAIR_REF is None or root.approval_ref != APPROVED_PAIR_REF:
+        raise AdmissionRefused('new_pair_approval_pending')
     raw=private_read(path);cfg=json.loads(raw)
     if type(cfg)is not dict or set(cfg)!=REQUIRED or cfg['schema']!='pex.stockroom-successor.v1':raise AdmissionRefused('successor_config_schema')
     now=now or datetime.now(timezone.utc);root.validate(cfg,raw,now)

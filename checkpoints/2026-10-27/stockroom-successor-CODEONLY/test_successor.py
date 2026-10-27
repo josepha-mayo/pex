@@ -19,6 +19,9 @@ def write(p,b):
     return {'path':str(p),'sha256':sha(b)}
 class AdmissionTests(unittest.TestCase):
     def setUp(self):
+        self.approval_patch = patch('successor_admission.APPROVED_PAIR_REF', 'AUTHORED-RETRY')
+        self.approval_patch.start()
+        self.addCleanup(self.approval_patch.stop)
         self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name);self.root.chmod(0o700)
         self.now=datetime.now(timezone.utc);expiry=(self.now+timedelta(hours=1)).isoformat()
         dummy=write(self.root/'source.py',b'# authored no-op source\n')
@@ -34,6 +37,14 @@ class AdmissionTests(unittest.TestCase):
         self.path=self.root/'config.json';p=write(self.path,json.dumps(self.cfg).encode())
         self.admission=RootAdmission(p['sha256'],self.cfg['approval_ref'],self.cfg['funding_approval_ref'],self.cfg['expires_at'],self.cfg['predecessor']['sha256'],self.cfg['supervisor']['entry']['sha256'])
     def tearDown(self):self.env.stop();self.tmp.cleanup()
+    def test_closed_gate_precedes_every_private_read(self):
+        with patch('successor_admission.APPROVED_PAIR_REF', None), patch('successor_admission.private_read', side_effect=AssertionError('must not read credentials/config')):
+            with self.assertRaisesRegex(AdmissionRefused, 'new_pair_approval_pending'):
+                load(self.path, self.admission)
+    def test_caller_cannot_substitute_other_approval(self):
+        with patch('successor_admission.APPROVED_PAIR_REF', 'DIFFERENT-OWNER-APPROVAL'), patch('successor_admission.private_read', side_effect=AssertionError('must not read')):
+            with self.assertRaisesRegex(AdmissionRefused, 'new_pair_approval_pending'):
+                load(self.path, self.admission)
     def test_valid_authored_data_admission(self):
         cfg,prior=load(self.path,self.admission,now=self.now)
         self.assertEqual(cfg,self.cfg);self.assertEqual(prior,self.prior)
