@@ -3,9 +3,10 @@
   "README.md": "49c6a63ed8c7aaa13562eac2c31b2653d0a7831bdb6e9181a587b318619de17a",
   "RUNTIME_CONTRACT.md": "28d74cc71124c991070261fb2f46dbdb21ce09797d7eec05464005b2d19b8723",
   "SUPERVISOR_OVERHEAD_WIP.md": "565d6e0b2b2ee8f3cabe39ea17cd59af37a2f90e3ca4f76b5a94dfb5058249be",
+  "WORKER_TIME_VALIDATION_WIP.md": "946606327e8c02a262e73ce38f10974ae2e96ea748ad0367d114ecd1c7336783",
   "budget_rpc.py": "fe8f972af12844d8c85eddc1804eb6ba60ed4fe9719b68d66e6aa7e5b2fb413d",
   "cli_worker.py": "8c6b1605d238ea1161c8e192c55573a9b7bf0fd80768f9f681c66d5c59417e03",
-  "controller.py": "b8db2502f8a20dbfce3f9d495700669871eba17088778291fa3c9e4e4468f13c",
+  "controller.py": "4e04356701e795304e1a7229e7f2b3f233fc248782cb9a00f3019c020b9c8206",
   "mcp_fixture.py": "73e68ae20542dfe2d37d1a4dba80dd154e7072ad8dffe792e23424bcd9cce9dc",
   "nebius_guard.ts": "84e1c40f6d5cef409a6946a1cf8d37d771972615358e3323bcd50c3287c9366f",
   "nebius_worker.py": "a4cd2583883769dcd51255d5df67a66cef4659ee36300e1ea4c3b8390b111a10",
@@ -29,5 +30,6 @@
   "test_same_exec_launcher.py": "149db34077a1691050222f1939d5ab7cc11e2fbc4c8cceab997d9d44cbdd8e6a",
   "test_stop_persistence.py": "30170f08d99657c838b7abb5f0a089f484fcc383ce3f9234dc1b9044f9ae30d2",
   "test_supervisor_overhead.py": "1510b03e16a592d8d15b8f816c2ca6fe6cd1862bfdc9570101bfa9f726fadafc",
-  "test_worker_terminal.py": "354fbf03be9944088b19f79e029df5cdc384b91db35ad6e4ec0aff8e26d480fb"
+  "test_worker_terminal.py": "354fbf03be9944088b19f79e029df5cdc384b91db35ad6e4ec0aff8e26d480fb",
+  "test_worker_timing_receipt.py": "5e84a9045ccad7feca088ef6826458dedf2dc398ca1a3ea21bf40e027793d855"
 }

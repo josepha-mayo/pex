@@ -5,6 +5,7 @@ planner + verifier and returns only an admitted, model-authored continuation.
 Neither sees the protected grader or the other arm's privately held result. This module contains no correction prompts.
 """
 from dataclasses import dataclass, asdict
+import math
 import time
 
 
@@ -62,18 +63,32 @@ async def run_pair(arms, worker, review, grader, *, budget=Budget(), mode="autho
                         break
                     started = clock()
                     turn = await worker.turn(arm, prompt=prompt, session_id=session, remaining=remaining)
-                    state["worker_active_seconds"] += turn.get("worker_active_seconds",clock() - started)
+                    elapsed = turn.get("worker_active_seconds",clock() - started)
                     state["turn_receipts"].append(turn["receipt"])
                     for name in ("calls", "input_tokens", "output_tokens"):
                         value = turn["usage"][name]
                         if type(value) is not int or value < 0 or (name == "calls" and value < 1):
                             raise ValueError("invalid_usage_receipt")
                         state[name] += value
+                    # A malformed duration must not increase a remaining allowance
+                    # or turn NaN comparisons into a successful natural stop.
+                    if type(elapsed) not in (int, float):
+                        raise ValueError("invalid_worker_time_receipt")
+                    try:
+                        elapsed = float(elapsed)
+                    except OverflowError:
+                        raise ValueError("invalid_worker_time_receipt") from None
+                    if not math.isfinite(elapsed) or elapsed < 0:
+                        raise ValueError("invalid_worker_time_receipt")
+                    state["worker_active_seconds"] += elapsed
                     if not turn["session_id"] or (session and session != turn["session_id"]):
                         raise ValueError("worker_session_changed")
                     session = turn["session_id"]
                     if any(getattr(budget,k) is not None and state[k] > getattr(budget,k) for k in ("calls", "input_tokens", "output_tokens")):
                         raise ValueError("worker_budget_enforcement_failed")
+                    if state["worker_active_seconds"] > budget.active_seconds:
+                        state["status"] = "budget_terminal_inconclusive"
+                        break
                     if turn["terminal"] == "budget":
                         state["status"] = "budget_terminal_inconclusive"
                         break
