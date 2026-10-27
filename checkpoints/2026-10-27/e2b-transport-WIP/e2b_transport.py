@@ -10,13 +10,14 @@ import shlex
 import uuid
 
 ROOT = '/home/user/pex-task'
-TIMEOUT = 900
+TIMEOUT = 330
 MAX_BYTES = 262144
 SDK_VERSION = '2.61.0'
 CPU_SECOND = Decimal('0.000014')
 GIB_SECOND = Decimal('0.0000045')
 MAX_TOTAL = Decimal('0.10')
-RESERVATION = Decimal('0.0414')
+# Worst-case Hobby allocation: 8 vCPU + 8 GiB, even if base changes.
+RESERVATION = Decimal('0.04884')
 
 class TransportError(RuntimeError):
     pass
@@ -161,7 +162,7 @@ class PilotPool:
             info = sandbox.get_info(request_timeout=15)
             cpu, memory = info.cpu_count, info.memory_mb
             lifetime = (info.end_at-info.started_at).total_seconds()
-            if type(cpu) is not int or type(memory) is not int or not 0 < cpu <= 2 or not 0 < memory <= 4096:
+            if type(cpu) is not int or type(memory) is not int or not 0 < cpu <= 8 or not 0 < memory <= 8192:
                 raise TransportError('unapproved sandbox allocation')
             if not 0 < lifetime <= TIMEOUT:
                 raise TransportError('unapproved sandbox lifetime')

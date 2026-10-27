@@ -30,7 +30,7 @@ class Commands:
         return self.handle
 
 class Sandbox:
-    def __init__(self,cpu=2,memory=4096,lifetime=900):
+    def __init__(self,cpu=2,memory=4096,lifetime=330):
         start=datetime.now(timezone.utc)
         self.info=NS(cpu_count=cpu,memory_mb=memory,started_at=start,
             end_at=start+timedelta(seconds=lifetime),sandbox_id='fake-sandbox')
@@ -41,7 +41,7 @@ class Sandbox:
     def is_running(self,**kwargs): return not self.killed
 
 class Api:
-    def __init__(self): self.calls=[];self.instances=[];self.failure=False;self.alloc=(2,4096,900)
+    def __init__(self): self.calls=[];self.instances=[];self.failure=False;self.alloc=(2,4096,330)
     def create(self,**kwargs):
         self.calls.append(kwargs)
         if self.failure:raise RuntimeError('fake request secret must not escape')
@@ -69,6 +69,15 @@ class Tests(unittest.TestCase):
             with self.assertRaises(TransportError):w.run('too much')
         self.assertTrue(s.commands.handle.killed)
 
+    def test_max_hobby_cost_envelope(self):
+        from decimal import Decimal
+        api=Api();api.alloc=(8,8192,330)
+        with PilotPool(api,'synthetic',approved=True) as pool:
+            a=pool.create('baseline');b=pool.create('supervised')
+            total=Decimal(a.info['reserved_usd'])+Decimal(b.info['reserved_usd'])
+            self.assertEqual(total,Decimal('0.09768'))
+            self.assertLess(total,Decimal('0.10'))
+
     def test_closed_gate_no_wire(self):
         api=Api()
         with self.assertRaises(TransportError): PilotPool(api,'synthetic').create('baseline')
@@ -81,17 +90,17 @@ class Tests(unittest.TestCase):
             with self.assertRaises(TransportError):pool.create('baseline')
         self.assertTrue(all(s.killed for s in api.instances))
         for call in api.calls:
-            self.assertEqual(call['timeout'],900);self.assertEqual(call['retries'],0)
+            self.assertEqual(call['timeout'],330);self.assertEqual(call['retries'],0)
             self.assertEqual(call['lifecycle'],{'on_timeout':'kill','auto_resume':False})
             self.assertNotIn('envs',call)
     def test_overallocation_killed(self):
-        api=Api();api.alloc=(4,4096,900);pool=PilotPool(api,'synthetic',approved=True)
+        api=Api();api.alloc=(9,4096,330);pool=PilotPool(api,'synthetic',approved=True)
         with self.assertRaises(TransportError):pool.create('baseline')
         self.assertTrue(api.instances[0].killed)
         self.assertTrue(pool.uncertain)
     def test_pair_allocations_must_match(self):
         api=Api();pool=PilotPool(api,'synthetic',approved=True);pool.create('baseline')
-        api.alloc=(2,512,900)
+        api.alloc=(2,512,330)
         with self.assertRaises(TransportError):pool.create('supervised')
         pool.close();self.assertTrue(all(x.killed for x in api.instances))
     def test_ambiguous_creation_never_retried(self):
@@ -115,7 +124,7 @@ class Tests(unittest.TestCase):
         self.assertEqual(s.commands.kwargs['user'],'user')
         self.assertIn('timeout --signal=TERM --kill-after=1s 12s',s.commands.command)
     def test_lifetime_extension_rejected(self):
-        api=Api();api.alloc=(2,4096,901)
+        api=Api();api.alloc=(2,4096,331)
         with self.assertRaises(TransportError):PilotPool(api,'synthetic',approved=True).create('baseline')
         self.assertTrue(api.instances[0].killed)
 
