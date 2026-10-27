@@ -198,6 +198,8 @@ class Receipt:
     reason: str = "pending"
     http_status: int | None = None
     usage: Usage | None = None
+    # Bounded names/types only, never counters, values, response text or headers.
+    usage_shape: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -257,6 +259,23 @@ def _strict_json(raw: bytes):
         if type(exc) is Refusal:
             raise
         raise Refusal("invalid_json") from None
+
+
+def _usage_shape(raw: object, secret: str) -> tuple[tuple[str, str], ...]:
+    """Preserve safe schema diagnostics when accounting validation refuses."""
+    if _contains_secret(raw, secret):
+        return (("$type", "redacted"),)
+    allowed_types = {dict: "dict", list: "list", str: "str", int: "int",
+                     float: "float", bool: "bool", type(None): "null"}
+    result = [("$type", allowed_types.get(type(raw), "unsupported"))]
+    if type(raw) is not dict:
+        return tuple(result)
+    if len(raw) > 32 or any(type(key) is not str for key in raw):
+        return tuple(result + [("$fields", "outside_diagnostic_bound")])
+    for key in sorted(raw):
+        name = key if re.fullmatch(r"[a-z][a-z0-9_]{0,63}", key) else "<noncanonical>"
+        result.append((name, allowed_types.get(type(raw[key]), "unsupported")))
+    return tuple(result)
 
 
 def _usage(raw: object, limits: Limits) -> Usage:
@@ -650,6 +669,10 @@ class ManagedChatCandidate:
                             or raw.get("object") != "chat.completion"
                         ):
                             raise Refusal("response_identity_mismatch")
+                        self._receipts[invocation.invocation_id] = replace(
+                            self.receipt(invocation.invocation_id),
+                            usage_shape=_usage_shape(raw.get("usage"), credential._value),
+                        )
                         usage = _usage(raw.get("usage"), self.route.limits)
                         self._receipts[invocation.invocation_id] = replace(
                             self.receipt(invocation.invocation_id), usage=usage
