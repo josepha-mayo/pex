@@ -101,7 +101,7 @@ https://github.com/nebius/token-factory-cookbook/blob/main/models/nemotron/nemot
 Public regional routing can change: no automatic fallback or retry is authorized.
 The split profile grants no authority; invoke_live still refuses unconditionally.
 
-## Shared pilot funding candidate — 10:35 UTC (WIP, tests pending)
+## Shared pilot funding candidate — 10:37 UTC (WIP, authored verification passed)
 
 Use ONE private Ledger database/instance for the pilot, primary route=planner,
 approved_routes=(planner_route, verifier_route), max_attempts=12, budget=250000000,
@@ -115,4 +115,6 @@ Pre-shared-profile ledger databases require new private storage; never reuse a f
 DB to bypass an already begun pilot. Controller must retain this exact DB across
 both roles and process restarts. Live process admission remains closed.
 New authored tests for cross-role receipts, interleaved/concurrent shared costs,
-global attempt exhaustion and reopen/corruption are pending execution.
+global attempt exhaustion and reopen/corruption passed: 58 focused clean-child
+checks in 0.97s; 357 combined current transport/process checks in 5.31s.
+All responses authored; no actual inference or payment.
