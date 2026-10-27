@@ -1,3 +1,5 @@
+> Current status: CLOSED pending new USD 2 total approval. See PENDING_TWO_DOLLAR_PROFILE_WIP.md for the new code-only profile and exact retained liabilities. The USD 1 / 350m/350m/300m descriptions below are historical design context, not the current proposed ceiling. All three new-run approval gates remain None.
+
 # Stockroom paired successor — CODE ONLY, not activated
 
 This new directory composes the existing actual Nebius worker, Stockroom task
@@ -58,7 +60,12 @@ reservation—not the original-only audit_closed helper applied to a successor.
 The root-pinned predecessor receipt, all cumulative charges and config digest are
 preserved in frozen/report outputs. This directory does not invent live totals.
 
-Root must independently verify the complete predecessor evidence bundle. Private runtime evidence is excluded from this source checkpoint.
+Known handoff from runtime owner: separately pinned prior-compute evidence is
+`runtime-private/pex-pilot-20261027/prior-compute-bound-evidence.json`, SHA256
+`47ea57b09fb8bdc02523cfafc55e61adc17d4e83028a066ad7a13b34fa66c361`, asserting
+19,965,000 nano-USD full-lifetime upper bound. This is not an invoice or elapsed
+estimate. Parent must verify it and bind it with all other predecessor evidence;
+the runner accepts only the independent aggregate predecessor pin.
 
 ## Composition behavior
 

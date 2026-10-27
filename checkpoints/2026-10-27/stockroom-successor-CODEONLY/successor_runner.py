@@ -13,8 +13,9 @@ from pathlib import Path
 import shlex
 from types import SimpleNamespace
 from successor_admission import RootAdmission,AdmissionRefused,load,private_read,sha
+from successor_budget import WORKER_SHARED_OUTER, WORKER_FRESH, WORKER_CUMULATIVE, SUPERVISOR_CUMULATIVE, SUPERVISOR_FRESH, TOTAL_NANO_USD
 
-IMPORTS=('process_adapter','stockroom_task','stockroom_request','stockroom_grade','controller','review','nebius_worker','worker_funding','cumulative_compute','e2b_transport','accounting','remote_mcp','budget_rpc','opencode_cli','opencode_v2_receipt')
+IMPORTS=('successor_budget','process_adapter','stockroom_task','stockroom_request','stockroom_grade','controller','review','nebius_worker','worker_funding','cumulative_compute','e2b_transport','accounting','remote_mcp','budget_rpc','opencode_cli','opencode_v2_receipt')
 
 def private_write(path,value):
     raw=value if isinstance(value,bytes) else (json.dumps(value,sort_keys=True,default=json_default)+'\n').encode()
@@ -118,8 +119,8 @@ async def _compose(cfg,prior,config_digest,supervisor,revalidate,deps,output,*,m
     arms={c:{'condition':c,'workspace':str(output/'staged/workers'/c),'prompt':prompt,
              'public_sha256':frozen['public_sha256'],'worker_identity':'nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017'} for c in ('baseline','pex')}
     private_write(output/'frozen.json',{'task':frozen,'worker_budget_each':asdict(budget),'predecessor':prior,
-       'limits':{'worker_per_arm_nano_usd':350000000,'worker_fresh_phase_nano_usd':339918200,'supervisor_nano_usd':300000000,'compute_nano_usd':100000000},
-       'recording':False,'equal_worker_fresh_phase_nano_usd':339918200,'infrastructure_or_exhaustion_is_inconclusive':True})
+       'limits':{'worker_shared_outer_nano_usd':WORKER_SHARED_OUTER,'worker_effective_cumulative_nano_usd':WORKER_CUMULATIVE,'worker_fresh_phase_nano_usd':WORKER_FRESH,'supervisor_nano_usd':SUPERVISOR_CUMULATIVE,'supervisor_fresh_nano_usd':SUPERVISOR_FRESH,'total_nebius_nano_usd':TOTAL_NANO_USD,'compute_nano_usd':100000000},
+       'recording':False,'equal_worker_fresh_phase_nano_usd':WORKER_FRESH,'infrastructure_or_exhaustion_is_inconclusive':True})
     compute=pool=worker=None;funding={};remotes={}
     try:
         compute=deps.Compute(output/'compute.sqlite',prior_upper_bound_nano_usd=prior['compute_upper_bound_nano_usd'],evidence_sha256=cfg['predecessor']['sha256'])
@@ -128,7 +129,7 @@ async def _compose(cfg,prior,config_digest,supervisor,revalidate,deps,output,*,m
             funding[c]=deps.Funding(output/'worker.sqlite',arm=c,approved_config_digest=config_digest,
                 approval_ref=cfg['funding_approval_ref'],pricing_provenance_sha256=deps.pricing_sha,
                 prior_charged_nano_usd=prior['worker_charged_nano_usd'],predecessor_sha256=cfg['predecessor']['sha256'],
-                arm_budget_nano_usd=350000000,phase_limit_nano_usd=339918200)
+                arm_budget_nano_usd=WORKER_SHARED_OUTER,phase_limit_nano_usd=WORKER_FRESH)
         def prepare(c):
             revalidate()
             remote=pool.create('baseline' if c=='baseline' else 'supervised');remotes[c]=remote

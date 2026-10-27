@@ -5,9 +5,9 @@
   "candidate/DIAGNOSTIC_CONTINUATION_WIP.md": "ee0524d4ebd0efd51bf320d6f26dc5266e0b9bca75f7d77593f58957ec7680ba",
   "candidate/LIVE_TRANSPORT_PARTIAL_20261027_WIP.md": "6dd7eea8f7b57f6c169bca3e34e1c91c34e9b29c4301d95efbdff42648b6f6e5",
   "candidate/accounting.py": {
-    "bytes": 17309,
-    "git_blob": "221308ee6c44b9d4421c752fdd3956cf21eb1a0c",
-    "sha256": "7319666289631592c97bd7efc26df814126769e10afa82c86e511fbe6e8cce32"
+    "bytes": 18612,
+    "git_blob": "ac4b37df26866aeb2524c337d49f46da9795197b",
+    "sha256": "2d142190c8876d6e1b21fbb8645f5dc723f58f8ddb58a25747dc7883d051ffef"
   },
   "candidate/cumulative_budget.py": "69158e3ae7d431220b3483639b443509c9ec3155b1bd1de52b814a2f0d65eb2d",
   "candidate/launch_authored.py": {
@@ -41,6 +41,11 @@
     "bytes": 24177,
     "git_blob": "eff7c4c2bbb91ad86fce99345682c707ee9c043e",
     "sha256": "98d2a75149fbe930386069a1db5195487540bf7250cbc2ec8c5c152cc4006c2a"
+  },
+  "candidate/worker_funding.py": {
+    "bytes": 18540,
+    "git_blob": "f53d33f828242d1139909a301d63e9afde8c4b80",
+    "sha256": "989f851eec0a979313235e17b1f73f713a1f73200e77a9c01442d5a689bdb973"
   },
   "transport/managed_chat.py": {
     "bytes": 30835,

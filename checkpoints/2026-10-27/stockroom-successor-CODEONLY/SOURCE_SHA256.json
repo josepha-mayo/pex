@@ -4,19 +4,27 @@
     "ALL_AUTHORED_TESTS.txt": "b3fd64265a0ee3f2a7dba9524776f1793b31db7066087d9f454b46ff43d997a9",
     "AUTHORED_TESTS.txt": "fd7f1b396af509c1c41a96879995a8f02a9abf135c74180d1c54fd3e15eed93e",
     "PAIR_APPROVAL_GATE_WIP.md": "91c415dc80c288dd7285c8f2b2a1bb371a2cbc0e7a74dfebbabd9dab588b7142",
-    "README.md": "d3215c1c9d1fbd00cc447efa7021f0b507cdabc7b85b3b855509c32e05326015",
+    "PENDING_TWO_DOLLAR_PROFILE_WIP.md": "dddb13465dd33af24d285ec5b09ae00d7d1c42298de46ef9ebdf0987eedf33d1",
+    "README.md": "feffb233fefe5accbfc8c00789178ad8789a4534c51f0a720c35b7da37a476e6",
     "SUPERVISOR_AUTHORED_TESTS.txt": "e54306ba5008c1042112208b27cf3171b4877b1008ff529d3ece656a20a6814b",
     "run_authored_all.py": "f1185bfe89bfaf2b5125d0e35067b65925919ee8f7f27a2041408f4075bf0a53",
     "run_authored_supervisor.py": "d92cda520fa38ae13966b230ba367836cb5c3c256a85157563b725f1f997883d",
-    "successor_admission.py": "8f593345a58fe7491adba242d15e5cc8ffccaf2a9e81b7ea0a7655a7dc6e1c91",
-    "successor_runner.py": "977a3264eb39cb3bb184212832c7a6db94d12c3e4ff99816d468f20ec6985c2e",
-    "successor_supervisor.py": "3dd5c7f83266e32e43808afc7707af48cb20466bdcf6c7e0a79685b13bba119b",
-    "test_successor.py": "79ef7721cd2c5302e115d31497b4e491763eb50f0e83680f752dd711d0c1de41",
-    "test_successor_supervisor.py": "c1fb912929474e00cad8d6fa5254dc6c000be106d2d3b19b419f332875f3ddf1"
+    "successor_admission.py": "75ae3c93825c827304e4bec5936a6c4a7fff183ac65626122d1eb8ad306b565e",
+    "successor_budget.py": "388f8154da768a51d0d2f689991187de90f73a3a56ee7ef1ee63b0957985f86c",
+    "successor_runner.py": "9b950e273c65f6b504bfe7346297bb81753bb327adfcf648a5a3052f4ba7fe46",
+    "successor_supervisor.py": "150dc9026243fded29fab0df27bbd3483ade1ecb8ca271519b5de9d08dfa1338",
+    "test_pending_budget.py": "0b37989e612ab0d1a0401052b9d97c565c7110dff71cb519762ff5a92634ccbb",
+    "test_successor.py": "fa1f78cc1cf0919a5d38edbc3d304529840b32c468b45a08e49a4d7076420dc9",
+    "test_successor_supervisor.py": "dfc947a98ba1603a78390d9d7786d6be7e588a433881d835515e60dd93d6ebb7"
   },
+  "proposed_total_nebius_cap_nano_usd": 2000000000,
   "schema": "pex.stockroom-successor-code.v2",
-  "status": "authored_qualified_default_closed_pending_exact_retry_approval",
-  "supervisor_cap_nano_usd": 300000000,
-  "worker_arm_cap_nano_usd": 350000000,
-  "worker_common_fresh_phase_nano_usd": 339918200
+  "status": "WIP_pending_new_USD2_approval_and_independent_review_default_closed",
+  "supervisor_cap_nano_usd": 1180535400,
+  "worker_arm_cap_nano_usd": 410081800,
+  "worker_common_fresh_phase_nano_usd": 400000000,
+  "worker_effective_cumulative_caps": {
+    "baseline": 410081800,
+    "pex": 409382800
+  }
 }

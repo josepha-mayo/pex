@@ -28,7 +28,7 @@ class AdmissionTests(unittest.TestCase):
         key=write(self.root/'key',b'NOT-A-REAL-CREDENTIAL')
         ca=write(self.root/'ca.pem',b'AUTHORED CA NOT USED')
         supervisor=write(self.root/'supervisor-config.json',b'{}')
-        self.prior={'schema':'pex.cumulative-predecessor.v1','closed':True,'worker_charged_nano_usd':{'baseline':100,'pex':200},'supervisor_charged_nano_usd':300,'compute_upper_bound_nano_usd':19965000,'closed_evidence_sha256':'a'*64}
+        self.prior={'schema':'pex.cumulative-predecessor.v1','closed':True,'worker_charged_nano_usd':{'baseline':10081800,'pex':9382800},'supervisor_charged_nano_usd':659514900,'compute_upper_bound_nano_usd':19965000,'closed_evidence_sha256':'a'*64}
         pred=write(self.root/'predecessor.json',json.dumps(self.prior).encode())
         self.cfg={'schema':'pex.stockroom-successor.v1','run_id':'authored','approval_ref':'AUTHORED-RETRY','funding_approval_ref':'AUTHORED-FUNDING','expires_at':expiry,'package_path':str(TASK),'output_dir':str(self.root/'output'),'nebius_key':key,'e2b_key':key,'binary':dummy,'modules_path':str(self.root),'sources':{n:dummy for n in REQUIRED_SOURCES},'predecessor':pred,'supervisor':{'entry':dummy,'config':supervisor},'network':{'proxy_sha256':sha(b'http://authored.invalid:8080'),'ca':ca}}
         self.env=patch.dict(os.environ,{'HTTPS_PROXY':'http://authored.invalid:8080','SSL_CERT_FILE':ca['path']});self.env.start()
@@ -141,7 +141,7 @@ class CompositionTests(unittest.TestCase):
             self.assertEqual(seen['compute']['prior_upper_bound_nano_usd'],19965000)
             self.assertIs(seen['pool']['cumulative_budget'].__class__,Compute)
             self.assertTrue(all(f['prior_charged_nano_usd']==prior['worker_charged_nano_usd'] and f['predecessor_sha256']=='a'*64 for f in seen['funding']))
-            self.assertTrue(all(f['arm_budget_nano_usd']==350000000 and f['phase_limit_nano_usd']==339918200 for f in seen['funding']))
+            self.assertTrue(all(f['arm_budget_nano_usd']==410081800 and f['phase_limit_nano_usd']==400000000 for f in seen['funding']))
             self.assertEqual(seen['worker']['task_profile'],'stockroom-v1')
             self.assertEqual(seen['worker']['public_check_command'],PUBLIC_CHECK_COMMAND)
             self.assertEqual(report['arms']['pex']['status'],'grading_inconclusive');self.assertFalse(report['comparison_complete'])

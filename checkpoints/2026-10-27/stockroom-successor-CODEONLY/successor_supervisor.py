@@ -13,6 +13,7 @@ from contextlib import aclosing
 from datetime import datetime,timezone
 import uuid
 from urllib.parse import urlsplit
+from successor_budget import SUPERVISOR_CUMULATIVE, PRIOR_SUPERVISOR
 
 SUCCESSOR_ENTRY_SCHEMA='pex.managed-supervisor-successor.v1'
 APPROVED_RETRY_REF=None
@@ -20,7 +21,7 @@ ENDPOINT='https://api.tokenfactory.us-central1.nebius.com/v1/chat/completions'
 MODEL='nvidia/nemotron-3-super-120b-a12b'
 WORKER='nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017'
 PACKAGES={'strands-agents':'1.53.0','httpx':'0.28.1','opentelemetry-api':'1.45.1'}
-SOURCE_MODULES=('successor_supervisor','successor_admission','stockroom_task','stockroom_request','process_adapter','accounting','managed_chat','managed_tool_chat','strands_bridge','tool_protocol','pex_protocol.actions','pex_protocol.supervisor','pex_supervisor.loop','pex_supervisor.evidence_tools','pex_supervisor.evidence_observations')
+SOURCE_MODULES=('successor_budget','successor_supervisor','successor_admission','stockroom_task','stockroom_request','process_adapter','accounting','managed_chat','managed_tool_chat','strands_bridge','tool_protocol','pex_protocol.actions','pex_protocol.supervisor','pex_supervisor.loop','pex_supervisor.evidence_tools','pex_supervisor.evidence_observations')
 
 def _pairs(pairs):
     out={}
@@ -44,9 +45,9 @@ def _load(path,expected,approval,predecessor,prior,ledger_path,expires_at):
     cfg=json.loads(raw,object_pairs_hook=_pairs)
     required={'schema','approval_ref','run_id','expires_at','endpoint','model','budget_nano_usd','max_attempts','input_rate','output_rate','pricing_provenance_sha256','key','ledger_path','source_sha256','package_path','public_sha256','predecessor_sha256','prior_charged_nano_usd','platform_proxy'}
     if type(cfg)is not dict or set(cfg)!=required:raise ValueError('successor_supervisor_schema')
-    exact={'schema':'pex.supervisor-successor.v1','approval_ref':approval,'endpoint':ENDPOINT,'model':MODEL,'budget_nano_usd':300000000,'max_attempts':12,'input_rate':300,'output_rate':900,'predecessor_sha256':predecessor,'prior_charged_nano_usd':prior,'ledger_path':str(ledger_path),'expires_at':expires_at}
+    exact={'schema':'pex.supervisor-successor.v1','approval_ref':approval,'endpoint':ENDPOINT,'model':MODEL,'budget_nano_usd':SUPERVISOR_CUMULATIVE,'max_attempts':12,'input_rate':300,'output_rate':900,'predecessor_sha256':predecessor,'prior_charged_nano_usd':prior,'ledger_path':str(ledger_path),'expires_at':expires_at}
     if any(type(cfg[k])is not type(v) or cfg[k]!=v for k,v in exact.items()):raise ValueError('successor_supervisor_admission_mismatch')
-    if type(prior)is not int or not 0<=prior<=300000000 or datetime.now(timezone.utc)>=timestamp(expires_at):raise ValueError('successor_expired_or_prior_invalid')
+    if type(prior)is not int or prior!=PRIOR_SUPERVISOR or datetime.now(timezone.utc)>=timestamp(expires_at):raise ValueError('successor_expired_or_prior_invalid')
     if type(cfg['run_id'])is not str or not cfg['run_id'] or len(cfg['run_id'])>80 or not digest(cfg['pricing_provenance_sha256']):raise ValueError('run_or_pricing_identity_required')
     sources=cfg['source_sha256']
     if type(sources)is not dict or set(sources)!=set(SOURCE_MODULES):raise ValueError('complete_successor_source_pins_required')
@@ -81,7 +82,7 @@ class ManagedSuccessor:
         from accounting import Ledger
         self.args=args;self.config=cfg;self.objective=objective;self.closed=False
         self.routes=_routes()
-        self.ledger=Ledger(Path(args['ledger_path']),budget=300000000,input_rate=300,output_rate=900,
+        self.ledger=Ledger(Path(args['ledger_path']),budget=SUPERVISOR_CUMULATIVE,input_rate=300,output_rate=900,
             route=self.routes[0],currency='USD',pricing_provenance_sha256=cfg['pricing_provenance_sha256'],
             input_token_bound=262144,output_token_bound=4096,approved_routes=self.routes,max_attempts=12,
             prior_charged_nano_usd=args['prior_charged_nano_usd'],predecessor_sha256=args['predecessor_sha256'])
@@ -176,7 +177,7 @@ class ManagedSuccessor:
     def summary(self):
         self.revalidate();rows=self.ledger.summary()
         total=self.args['prior_charged_nano_usd']+sum(r['charged'] for r in rows)
-        return {'prior_charged_nano_usd':self.args['prior_charged_nano_usd'],'charged_nano_usd':total,'cap_nano_usd':300000000,'predecessor_sha256':self.args['predecessor_sha256'],'attempts_current_successor':len(rows),'calls':rows}
+        return {'prior_charged_nano_usd':self.args['prior_charged_nano_usd'],'charged_nano_usd':total,'cap_nano_usd':SUPERVISOR_CUMULATIVE,'predecessor_sha256':self.args['predecessor_sha256'],'attempts_current_successor':len(rows),'calls':rows}
     def close(self):
         if self.closed:return
         db=self.ledger.db

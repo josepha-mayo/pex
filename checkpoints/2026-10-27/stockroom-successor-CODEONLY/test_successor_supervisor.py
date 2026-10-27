@@ -22,7 +22,7 @@ def configured(tmp_path,monkeypatch,rig):
     ca=tmp_path/'ca';ca.write_text('fixture-ca-no-network')
     proxy='http://authored.invalid:8080';monkeypatch.setenv('HTTPS_PROXY',proxy);monkeypatch.setenv('SSL_CERT_FILE',str(ca))
     data=load_package(TASK);public=digest(encoded({n:digest(data['public/'+n]) for n in FILES}))
-    config={'schema':'pex.supervisor-successor.v1','approval_ref':'AUTHORED-NOT-LIVE','run_id':'authored-successor','expires_at':(datetime.now(timezone.utc)+timedelta(hours=1)).isoformat(),'endpoint':ss.ENDPOINT,'model':ss.MODEL,'budget_nano_usd':300000000,'max_attempts':12,'input_rate':300,'output_rate':900,'pricing_provenance_sha256':'d'*64,'key':{'path':str(key),'sha256':digest(key.read_bytes())},'ledger_path':str(tmp_path/'supervisor.sqlite'),'source_sha256':{name:digest(Path(importlib.import_module(name).__file__).read_bytes()) for name in ss.SOURCE_MODULES},'package_path':str(TASK),'public_sha256':public,'predecessor_sha256':'e'*64,'prior_charged_nano_usd':10000000,'platform_proxy':{'proxy_sha256':digest(proxy.encode()),'ca_path':str(ca),'ca_sha256':digest(ca.read_bytes())}}
+    config={'schema':'pex.supervisor-successor.v1','approval_ref':'AUTHORED-NOT-LIVE','run_id':'authored-successor','expires_at':(datetime.now(timezone.utc)+timedelta(hours=1)).isoformat(),'endpoint':ss.ENDPOINT,'model':ss.MODEL,'budget_nano_usd':1180535400,'max_attempts':12,'input_rate':300,'output_rate':900,'pricing_provenance_sha256':'d'*64,'key':{'path':str(key),'sha256':digest(key.read_bytes())},'ledger_path':str(tmp_path/'supervisor.sqlite'),'source_sha256':{name:digest(Path(importlib.import_module(name).__file__).read_bytes()) for name in ss.SOURCE_MODULES},'package_path':str(TASK),'public_sha256':public,'predecessor_sha256':'e'*64,'prior_charged_nano_usd':659514900,'platform_proxy':{'proxy_sha256':digest(proxy.encode()),'ca_path':str(ca),'ca_sha256':digest(ca.read_bytes())}}
     path=tmp_path/'supervisor.json'
     def save():path.write_text(json.dumps(config,sort_keys=True));path.chmod(0o600);return digest(path.read_bytes())
     sha=save()
@@ -48,7 +48,7 @@ def test_default_gate_precedes_everything(monkeypatch,rig):
 def test_admission_no_transport_and_closed_cannot_reopen(configured,rig):
     cfg,args,save,admit,request=configured
     runtime=admit();assert not rig.created and not rig.calls
-    assert runtime.summary()['charged_nano_usd']==10000000
+    assert runtime.summary()['charged_nano_usd']==659514900
     runtime.close()
     with pytest.raises(ValueError,match='closed'):admit()
     assert not rig.created and not rig.calls
@@ -72,8 +72,8 @@ async def test_full_owned_planner_verifier_authored_wire_cumulative_ledger(confi
         assert result.structured_output is not None and len(model.receipts)==2
         assert all(r.outcome=='succeeded' and r.attempts==1 for r in model.receipts)
     summary=runtime.summary()
-    assert summary['prior_charged_nano_usd']==10000000
-    assert summary['charged_nano_usd']==10025200
+    assert summary['prior_charged_nano_usd']==659514900
+    assert summary['charged_nano_usd']==659540100
     assert summary['attempts_current_successor']==4 and len(rig.calls)==4
 
 @pytest.mark.parametrize('field,value', [('endpoint','https://other.invalid/v1/chat/completions'),('model','other/model'),('budget_nano_usd',300000001),('max_attempts',13),('input_rate',301),('source_sha256',{}),('public_sha256','0'*64)])
@@ -104,10 +104,10 @@ def test_verifier_cannot_precede_bound_planner(configured,rig):
 async def test_uncertain_prior_reservation_blocks_without_transport(configured,rig):
     from accounting import PilotBudgetExhausted
     cfg,args,save,admit,request=configured;runtime=admit()
-    for i in range(3):runtime.ledger.reserve('uncertain-'+str(i),runtime.routes[i%2])
+    for i in range(6):runtime.ledger.reserve('uncertain-'+str(i),runtime.routes[i%2])
     model=runtime.model_factory('planner',request,None)
     with pytest.raises(PilotBudgetExhausted):await model.invoke_async()
-    assert runtime.summary()['charged_nano_usd']==10000000+3*82329600
+    assert runtime.summary()['charged_nano_usd']==659514900+6*82329600
     assert not rig.created and not rig.calls
 
 @pytest.mark.asyncio

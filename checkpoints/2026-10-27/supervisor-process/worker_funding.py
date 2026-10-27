@@ -15,6 +15,7 @@ from functools import wraps
 from pathlib import Path
 
 # Exact owner approval of the one $1-total paired pilot; never future/unlimited authority.
+APPROVED_SUCCESSOR_WORKER_REF = None  # Pending new ceiling; cannot reuse original approval.
 APPROVED_WORKER_REF = "Sentinel_9df859db703081919786cd38c9678f05"
 ENDPOINT = "https://api.tokenfactory.nebius.com/v1/chat/completions"
 MODEL = "deepseek-ai/DeepSeek-V4.1-Flash-1017"
@@ -191,7 +192,7 @@ class _WorkerLedger:
         info = path.stat()
         if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_uid != os.geteuid()
                 or stat.S_IMODE(info.st_mode) & 0o077): raise ValueError("worker ledger private file required")
-        if type(arm_budget_nano_usd) is not int or arm_budget_nano_usd not in (375000000,350000000):
+        if type(arm_budget_nano_usd) is not int or arm_budget_nano_usd not in (375000000,350000000,410081800):
             raise ValueError("exact legacy or successor worker split required")
         self.arm_budget = arm_budget_nano_usd
         prior = {a: 0 for a in ARMS} if prior_charged_nano_usd is None else prior_charged_nano_usd
@@ -205,6 +206,10 @@ class _WorkerLedger:
             raise ValueError("common phase allowance exceeds original arm pool")
         if self.arm_budget == 350000000 and phase != 339918200:
             raise ValueError("exact preregistered successor phase allowance required")
+        if self.arm_budget == 410081800 and (
+            phase != 400000000 or prior != {"baseline":10081800,"pex":9382800}
+        ):
+            raise ValueError("exact pending USD2 predecessor and equal fresh phase required")
         self.phase_limit = phase
         self.predecessor_identity = (json.dumps(self.prior,sort_keys=True),predecessor_sha256,phase)
         self.arm = arm
@@ -325,6 +330,9 @@ class _WorkerLedger:
 class WorkerFunding(_WorkerLedger):
     """Reject every approval except the exact bounded one-pilot owner approval."""
     def __init__(self, *args, approval_ref=None, **kwargs):
-        if APPROVED_WORKER_REF is None or approval_ref != APPROVED_WORKER_REF:
+        expected = (APPROVED_SUCCESSOR_WORKER_REF
+                    if kwargs.get("arm_budget_nano_usd") == 410081800
+                    else APPROVED_WORKER_REF)
+        if expected is None or approval_ref != expected:
             raise PermissionError("optional_paid_worker_not_authorized")
         super().__init__(*args, approval_ref=approval_ref, **kwargs)
