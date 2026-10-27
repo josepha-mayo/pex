@@ -78,7 +78,7 @@ separate admission gates. A valid structured reply does not authorize interventi
 Ledger now optionally accepts input_token_bound=262144 and output_token_bound=4096.
 This exact profile requires the catalog Nemotron Super model, US endpoint, USD,
 300/900 nano-USD per input/output token, max_completion_tokens output field and
-4096 output limit. It reserves 82,329,600 nano-USD before each dispatch. Validated
+request output limit at most 4096. It reserves 82,329,600 nano-USD before each dispatch. Validated
 actual usage settles lower, so six small calls can fit a 250,000,000 nano-USD cap;
 three full/uncertain reservations prevent a fourth. This does not guarantee enough
 budget to complete a review. Missing/uncertain receipts retain full reservations.
@@ -106,7 +106,7 @@ The split profile grants no authority; invoke_live still refuses unconditionally
 Use ONE private Ledger database/instance for the pilot, primary route=planner,
 approved_routes=(planner_route, verifier_route), max_attempts=12, budget=250000000,
 input_token_bound=262144, output_token_bound=4096. The two routes must be identical
-except role. Shared mode refuses any different ceiling, attempt limit or role set.
+except role and their individually pinned output limits. Shared mode refuses any different ceiling, attempt limit or role set.
 It persists both fingerprints and the global attempt limit; each receipt must match
 its own reserved route AND role. The same SQLite transaction checks aggregate
 settled/uncertain cost and all attempted reservations before admitting either role.
@@ -118,3 +118,40 @@ New authored tests for cross-role receipts, interleaved/concurrent shared costs,
 global attempt exhaustion and reopen/corruption passed: 58 focused clean-child
 checks in 0.97s; 357 combined current transport/process checks in 5.31s.
 All responses authored; no actual inference or payment.
+
+
+## Private one-pilot entry — 2026-10-27 10:51 UTC
+
+`pilot_process.pilot_model(private_config_path, request, invocation_id=...,
+proposal=None, expected_config_sha256=...)` is a separately scoped, root-only
+entry. The ordinary `invoke_live` and production model gates remain denied.
+The independent expected configuration SHA is mandatory: do not derive it from
+an untrusted worker's supplied file. The controller must create and pin the file
+inside a mode-0700 directory, mode-0600 config and credential files. Exact schema
+is code-owned in `_load_config`; complete source module hashes are mandatory.
+
+Admission pins the recorded one-pilot approval, fixed pilot identity, exact
+model/US endpoint/prices/budget/attempt count, private key digest, shared ledger
+path, and goal/session/vendor-session. A fresh process must initialize NoOp
+telemetry before framework imports. The internal execution expiry is no later
+than 2026-10-27 14:00 UTC (not a user-stated deadline). All bindings are rechecked
+before each call. Existing planner1200/verifier900 output limits are unchanged;
+4096 remains only the conservative output reservation bound. Original bridge
+source was restored unchanged; no global role-policy override remains.
+
+Factory construction makes no provider request. Calling `await model.invoke_async()`
+uses the owned full prompts/tools and exact authenticated HTTP transport with one
+completion, no retries/redirects/fallback/custom tier. Each call reserves first in
+ONE shared durable ledger. Root cleanup MUST call `close_pilot(path,
+expected_config_sha256=...)` after success or failure, revoke temporary keys, and
+retain the ledger as private evidence. Close persists a terminal state; reopening
+cannot spend again. Never reset/delete the ledger to bypass exhaustion.
+
+Fresh checks: 73 focused clean-child tests passed in 1.42s; 372 combined current
+transport/process/pilot tests passed in 4.98s. Four authored HTTP responses drive
+actual owned planner/verifier protocols through the same ledger; config/approval,
+expiry, source identity, request binding, file permissions, key changes and
+terminal reopen failures are exercised. External sockets are forbidden by tests.
+These are authored fixtures, NOT live inference, provider billing verification,
+a completed paired benchmark or demonstrated PEX improvement. Runtime config,
+credentials, ledger and recordings remain private and are never source pushes.

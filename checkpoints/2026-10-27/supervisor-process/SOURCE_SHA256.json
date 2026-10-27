@@ -1,8 +1,8 @@
 {
   "candidate/accounting.py": {
-    "bytes": 16392,
-    "git_blob": "36c54b3ce56142e4e40a72afc7b4a8fb76d8b31e",
-    "sha256": "a81dfe0b12e204814b6756a4636da93e4a8764ea7dfcb29e5784042cc0afb1fe"
+    "bytes": 16802,
+    "git_blob": "1452462aa9844b87b826903704b0c2572ac1f1c1",
+    "sha256": "6761330721f00f4942e384bdb7a03a4c8918d656029547bad316c4ba1a6f0c69"
   },
   "candidate/launch_authored.py": {
     "bytes": 3320,
@@ -15,14 +15,14 @@
     "sha256": "11e59f315b7a7571d72a8f8f208707f3a458708a50b5901d5549aef4cda6be0b"
   },
   "candidate/run_authored.py": {
-    "bytes": 430,
-    "git_blob": "b303b6e4a70e27ff7b389dff224a26e34ae38f58",
-    "sha256": "38fb17898e5d08eb392cc4b8da874cccca640143060110ed7bb6ed06d82ee32b"
+    "bytes": 478,
+    "git_blob": "d462a1b548581b944d847268702966a77553da97",
+    "sha256": "01c80623be140c7f45cf74ae691392723210d6f40e3aa6ca71914ce6a2509887"
   },
   "candidate/test_process.py": {
-    "bytes": 22960,
-    "git_blob": "5fd5b8991ffb99296fb69dc352b9c23e1890512e",
-    "sha256": "8cae8c06c9747a43e8eb29eee2b1524dd6e0a95d577a8cba61a38c1ce6595d59"
+    "bytes": 23677,
+    "git_blob": "5cf7963ea5993a13de7433b0e959a29f2c42ccb0",
+    "sha256": "d4362ab0f3861115c1c880ba67fd3b87ae20d9aa91b12b8a21c1142104b26675"
   },
   "transport/managed_chat.py": {
     "bytes": 24544,
@@ -43,5 +43,15 @@
     "bytes": 20092,
     "git_blob": "bd4d2fc5a383a7b83183d919b70f0a77a341ef82",
     "sha256": "599dca451423a3f27c8957f665f94a0bd82e3ca1d2ca263cfd143686bceceac1"
+  },
+  "candidate/pilot_process.py": {
+    "bytes": 10862,
+    "git_blob": "49728047f522abe29b51f33614ea956f77f38df2",
+    "sha256": "2cbbb2e6d2ad18468410adf347a591b5401e82647d683734815e76dd938a3ee8"
+  },
+  "candidate/test_pilot.py": {
+    "bytes": 7285,
+    "git_blob": "67f38f58dbcd59de22b4c525da8e518ed929d467",
+    "sha256": "bbba9973eb816288f9a2378c178afd9b6a157bfaa4a8225435235c139f06efbe"
   }
 }
