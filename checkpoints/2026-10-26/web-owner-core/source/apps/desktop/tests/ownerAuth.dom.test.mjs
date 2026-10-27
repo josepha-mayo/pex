@@ -103,3 +103,14 @@ test('built page hides cached records when refresh fails',async()=>{
   f.el('refresh-workspace').click();assert.equal(f.el('workspace-records').textContent,'');await flush();
   assert.match(f.el('workspace-status').textContent,/could not be read safely/);
 });
+
+test('built page renders valid long Unicode titles instead of losing all records',async()=>{
+  for(const title of ['😀'.repeat(161),'界a😀'.repeat(106)+'é😀']) {
+    const payload=JSON.parse(await workspaceReply().text());payload.goals[0].title=title;
+    const f=setup([good(),new Response(JSON.stringify(payload))]);await flush();
+    f.el('refresh-workspace').click();await flush();
+    assert.ok(f.el('workspace-records').textContent.includes(title));
+    assert.match(f.el('workspace-records').textContent,/opencode/);
+    assert.match(f.el('workspace-status').textContent,/Recorded state/);
+  }
+});

@@ -18,7 +18,7 @@ export function parseWorkspace(value: unknown): Workspace {
       !Array.isArray(value.sessions) || value.sessions.length > 20 || !Array.isArray(value.goals) || value.goals.length > 20 ||
       !keys(value.truncated, ["sessions", "goals"]) || typeof value.truncated.sessions !== "boolean" || typeof value.truncated.goals !== "boolean") throw new Error("invalid");
   for (const s of value.sessions) if (!keys(s, ["id", "harness_type", "status", "goal_id", "last_activity"]) || !id(s.id) || !harnesses.has(s.harness_type) || !statuses.has(s.status) || (s.goal_id !== null && !id(s.goal_id)) || (s.last_activity !== null && !stamp(s.last_activity))) throw new Error("invalid");
-  for (const g of value.goals) if (!keys(g, ["id", "title", "paused", "completion"]) || !id(g.id) || typeof g.title !== "string" || !g.title.length || g.title.length > 320 || /[\x00-\x1f]/.test(g.title) || typeof g.paused !== "boolean" || !keys(g.completion, ["status", "reason", "as_of"]) || !completions.has(g.completion.status) || !reasons.has(g.completion.reason) || !stamp(g.completion.as_of)) throw new Error("invalid");
+  for (const g of value.goals) if (!keys(g, ["id", "title", "paused", "completion"]) || !id(g.id) || typeof g.title !== "string" || !g.title.length || [...g.title].length > 320 || /[\x00-\x1f]/.test(g.title) || typeof g.paused !== "boolean" || !keys(g.completion, ["status", "reason", "as_of"]) || !completions.has(g.completion.status) || !reasons.has(g.completion.reason) || !stamp(g.completion.as_of)) throw new Error("invalid");
   return value as Workspace;
 }
 

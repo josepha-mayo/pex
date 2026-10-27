@@ -39,3 +39,15 @@ test("schema rejects private fields, unknown truth labels, excessive rows and ma
   const nested = snapshot(); Object.assign(nested.sessions[0], {metadata:{secret:"hidden"}}); assert.throws(() => parseWorkspace(nested));
   assert.throws(() => createWorkspaceClient({origin:"http://localhost",authorized:()=>true,changed(){},denied(){}}));
 });
+
+// Python server title limits count Unicode code points, not UTF-16 units.
+test("title length agrees with server for astral and mixed Unicode", () => {
+  for (const title of ["😀".repeat(160), "😀".repeat(161), "😀".repeat(320), "界a😀".repeat(106) + "é😀"]) {
+    const value = snapshot(); value.goals[0].title = title;
+    assert.equal(parseWorkspace(value).goals[0].title, title);
+  }
+  for (const title of ["😀".repeat(321), "界a😀".repeat(107), "a".repeat(321)]) {
+    const value = snapshot(); value.goals[0].title = title;
+    assert.throws(() => parseWorkspace(value));
+  }
+});
