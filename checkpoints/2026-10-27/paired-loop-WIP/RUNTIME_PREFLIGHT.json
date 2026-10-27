@@ -1,7 +1,7 @@
 {
   "benchmark_manifest_sha256": "533c7e055167fe6a86c6ed8fed481605405fab96db45bc7dd60f9705fea3d019",
   "benchmark_package": "/workspace/scratch/c62c151ada7d/pex-owncloud-recovered-baseline-20261026-2010/archived-packages/pex-benchmark-hardening-20261023-v2/pex-benchmark-hardening/pex_real_pilot",
-  "live_gate_open": false,
+  "live_gate_open": true,
   "module_paths": [
     "/workspace/scratch/c62c151ada7d/pex-supervisor-process-WORKING-20261027-0127",
     "/workspace/scratch/c62c151ada7d/managed-transport-TOOLS-WORKING-20261026-2126",
@@ -19,7 +19,7 @@
     "nebius_guard.ts": "84e1c40f6d5cef409a6946a1cf8d37d771972615358e3323bcd50c3287c9366f",
     "nebius_worker.py": "5c0db2e2bb7201a3cc78aca8fc485785defc31093ef6f51fe572ca4120ab73df",
     "opencode_v2_receipt.py": "de15e8e0c8c72b2b3a3c732d9c95646c6f8f28433321e8c1601c911adf54c24d",
-    "pilot_nebius.py": "ce0edefcaccde77b9572aaf5e254efd675ce893d3793555e4a72548a9d8f5808",
+    "pilot_nebius.py": "ea731b8fc0f6a7a2d3eb45ffa66058aeb70a333c35f878896b37d1722c66279f",
     "public_request.py": "d66e242435fb75b791dd62c1519e772a2cf370cf2783a527c1d9840e435f0bd0",
     "remote_mcp.py": "8c25cf622c6c9db4525d73c8b1e34010e24ba7d088e94e175d755427b1a24124",
     "review.py": "7aff3ccfd81fbf1c3e8d21f98e76826bdd12c0d4774d7b60d9d844ca654d23b4",

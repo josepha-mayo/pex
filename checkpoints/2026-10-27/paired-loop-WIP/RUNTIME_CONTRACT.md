@@ -1,4 +1,4 @@
-# Optional paid pilot runtime contract — default closed
+# Optional paid pilot runtime contract — exact approval bound, execution gated
 
 ## Interpreter and paths
 
@@ -37,7 +37,7 @@ executing candidate code. Hidden inputs stay out of generation/model context.
 
 - `schema`: integer1
 - `approval_ref`: exact new owner approval, which must first be pinned into
-  `pilot_nebius.APPROVAL` and `worker_funding.APPROVED_WORKER_REF`. Both remain closed.
+  `pilot_nebius.APPROVAL` and `worker_funding.APPROVED_WORKER_REF`. Both are now bound to `Sentinel_9df859db703081919786cd38c9678f05`; this grants no unlimited future spending.
 - `expires_at`: timezone-aware ISO timestamp no later than2026-10-27T14:00:00+00:00;
   driver requires at least330seconds remaining.
 - `source_sha256`: exact map from preflight `pilot_source_sha256` (including runtime.py)
@@ -85,6 +85,6 @@ umask 077
 
 This command is a contract, NOT an executed run or permission grant. Root must keep
 stdout/stderr private; only output_dir/events.jsonl is recorder-facing. No same-process
-preflight+launch. The source default remains closed until exact approval is pinned.
+preflight+launch. The exact approval is pinned; dispatch still requires the independently hashed private config and root recording/launch GO.
 On termination root verifies pool cleanup before credential revocation. Raw CLI/SQLite
 may contain provider reasoning and must never enter recording/source publication.

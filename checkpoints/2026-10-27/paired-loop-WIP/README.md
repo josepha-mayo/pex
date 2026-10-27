@@ -125,3 +125,15 @@ Python unittest import and git before starting a model. Fresh25 focused authored
 tests passed in1.73s, including both worker adapters with stubbed CLI/remote results,
 public request validation and controller no-grade infrastructure behavior. No
 provider calls or VM creation were involved in this verification.
+
+
+## Exact approval binding (12:08–12:12 UTC)
+
+Owner message `Sentinel_9df859db703081919786cd38c9678f05` approved the explicitly
+requested changed-route $1TOTAL Nebius paired pilot and unchanged$0.10 E2B cap.
+`pilot_nebius` and `WorkerFunding` now pin that exact reference; budgets, attempts
+and14:00 internal expiry remain unchanged. No unlimited future authority inferred.
+Fresh composed imports/frozen-input preflight passed1.07s after these pins; see
+`RUNTIME_PREFLIGHT.json`. Dispatch still requires exact private config/source/key
+bindings and root final recording/launch GO. No actual paid inference or VM was
+started by this checkpoint. Earlier closed-gate descriptions above are historical.

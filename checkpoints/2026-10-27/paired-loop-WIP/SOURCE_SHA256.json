@@ -1,6 +1,6 @@
 {
-  "README.md": "a3c04b4dc3ff559ff0c91a21b5a65f33ece6fe579c078b7670592a5e9d6404d1",
-  "RUNTIME_CONTRACT.md": "6930ee9b605c4a727ec17ab0eba90bd14d7083dd104302b4b75438d5895ebb14",
+  "README.md": "49c6a63ed8c7aaa13562eac2c31b2653d0a7831bdb6e9181a587b318619de17a",
+  "RUNTIME_CONTRACT.md": "28d74cc71124c991070261fb2f46dbdb21ce09797d7eec05464005b2d19b8723",
   "budget_rpc.py": "fe8f972af12844d8c85eddc1804eb6ba60ed4fe9719b68d66e6aa7e5b2fb413d",
   "cli_worker.py": "6de608f70607c747fdcd9ecfe53d53873a38f904aa98fae302b1d83729a7d5d2",
   "controller.py": "eafdef4d18c0c9dffaa2597a6bdbed79513dc329acd850b52a6db1c94b605dfa",
@@ -9,7 +9,7 @@
   "nebius_worker.py": "5c0db2e2bb7201a3cc78aca8fc485785defc31093ef6f51fe572ca4120ab73df",
   "opencode_v2_receipt.py": "de15e8e0c8c72b2b3a3c732d9c95646c6f8f28433321e8c1601c911adf54c24d",
   "pilot.py": "41da4f6c74ed53eed743a5d5ca0430753e2ba39c04045ef991267ce061404a94",
-  "pilot_nebius.py": "ce0edefcaccde77b9572aaf5e254efd675ce893d3793555e4a72548a9d8f5808",
+  "pilot_nebius.py": "ea731b8fc0f6a7a2d3eb45ffa66058aeb70a333c35f878896b37d1722c66279f",
   "probe_free.py": "ac07933ab200e69e654916359a2135c2cada2b0f2edbf00381e33a12d70eb165",
   "public_request.py": "d66e242435fb75b791dd62c1519e772a2cf370cf2783a527c1d9840e435f0bd0",
   "remote_guard.ts": "85fa8e29384dec8681813b9e2b581024ea99f4329ae905f7d81d9bb3e30d8939",
