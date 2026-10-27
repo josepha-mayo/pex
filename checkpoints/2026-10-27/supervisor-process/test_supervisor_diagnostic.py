@@ -37,3 +37,9 @@ async def test_remaining_budget_real_protocol_authored_only(tmp_path,rig,monkeyp
     assert result['attempts']==2 and result['charged_nano_usd']==12600
     assert result['worker_or_VM_dispatches']==result['continuation_dispatches']==0
     assert result['cumulative_nebius_nano_usd']==101806800
+
+
+def test_default_retry_gate_refuses_before_private_reads(monkeypatch,tmp_path):
+    monkeypatch.setattr(sd,'APPROVED_RETRY_REF',None)
+    with pytest.raises(PermissionError,match='approval_pending'):
+        sd.load(tmp_path/'does-not-exist.json','a'*64)
