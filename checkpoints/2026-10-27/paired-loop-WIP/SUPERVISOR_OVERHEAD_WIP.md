@@ -16,3 +16,17 @@ qualified by these tests. Prior live receipts must not be relabeled as results
 for these changed bytes. Independently refresh any source pins that include the
 controller before a later explicitly authorized run. Historical receipts and
 closed predecessor evidence remain unchanged.
+
+## Fresh verification after the timing fix
+
+93 tests and 14 subtests passed against the changed controller, covering owned
+mock planner/verifier composition, successor admission, Stockroom adapters, public
+evidence boundaries, and stop persistence. The initial broader invocation lacked
+the opencode_cli import root and stopped during collection; the corrected explicit
+source-root invocation passed. No CLI binary, real provider, or VM was launched.
+
+Five pre-existing stale manifest entries (cli_worker.py, nebius_worker.py,
+probe_free.py, test_loop.py, test_public_infrastructure.py) were refreshed only
+after local Git blob identities matched the existing remote files. This is source
+identity correction, not new runtime qualification. The three actual-CLI test
+modules remain unverified and excluded.
