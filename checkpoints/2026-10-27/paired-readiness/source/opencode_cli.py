@@ -152,7 +152,8 @@ async def run_turn(
         if not standalone or prompt.startswith("-"):
             raise ValueError("CLI2 receipt requires standalone and non-option prompt")
         before_sequence = prior_sequence(terminal_database)
-        command.append(prompt)
+        # CLI2 positional rendering quotes multiword arguments; use stdin so
+        # the stored user message remains byte-for-byte the admitted prompt.
     else:
         command.extend(["--", prompt])
     remaining()
@@ -163,10 +164,14 @@ async def run_turn(
             remaining()
             process = await asyncio.create_subprocess_exec(
                 *command, cwd=workspace, env=dict(environment),
-                stdin=asyncio.subprocess.DEVNULL,
+                stdin=asyncio.subprocess.PIPE if terminal_database is not None else asyncio.subprocess.DEVNULL,
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
                 start_new_session=True,
             )
+            if terminal_database is not None:
+                process.stdin.write(prompt.encode("utf-8"))
+                await process.stdin.drain()
+                process.stdin.close()
             tasks = [asyncio.create_task(capture(process.stdout, stdout)),
                      asyncio.create_task(capture(process.stderr, stderr)),
                      asyncio.create_task(process.wait())]
