@@ -4,7 +4,7 @@ import json
 import sqlite3
 
 import pytest
-from accounting import Ledger
+from accounting import Ledger as RealLedger
 from managed_chat import Limits, Refusal, Route
 from process_adapter import fixture_model, invoke_live
 from test_managed_chat import ENDPOINT, MODEL, response
@@ -17,6 +17,29 @@ from test_tool_protocol import (
     request_fixture,
 )
 from test_tool_transport import payload
+
+
+def Ledger(
+    path,
+    *,
+    budget,
+    input_rate,
+    output_rate,
+    route=None,
+    currency="USD",
+    provenance="a" * 64,
+):
+    """Explicitly authored pricing fixture; never a fetched/authorized rate."""
+    return RealLedger(
+        path,
+        budget=budget,
+        input_rate=input_rate,
+        output_rate=output_rate,
+        route=route
+        or Route(ENDPOINT, MODEL, "planner", Limits(max_usage_tokens=10000)),
+        currency=currency,
+        pricing_provenance_sha256=provenance,
+    )
 
 
 @pytest.mark.asyncio
@@ -34,7 +57,11 @@ async def test_real_owned_tools_with_durable_wire_receipts(tmp_path, rig, role):
         else None
     )
     ledger = Ledger(
-        tmp_path / "ledger.sqlite", budget=100000, input_rate=2, output_rate=3
+        tmp_path / "ledger.sqlite",
+        budget=100000,
+        input_rate=2,
+        output_rate=3,
+        route=Route(ENDPOINT, MODEL, role, Limits(max_usage_tokens=10000)),
     )
     model = fixture_model(
         Route(ENDPOINT, MODEL, role, Limits(max_usage_tokens=10000)),
@@ -76,7 +103,11 @@ async def test_real_owned_tools_with_durable_wire_receipts(tmp_path, rig, role):
     )
     ledger.close()
     reopened = Ledger(
-        tmp_path / "ledger.sqlite", budget=100000, input_rate=2, output_rate=3
+        tmp_path / "ledger.sqlite",
+        budget=100000,
+        input_rate=2,
+        output_rate=3,
+        route=Route(ENDPOINT, MODEL, role, Limits(max_usage_tokens=10000)),
     )
     assert len(reopened.summary()) == 2
     reopened.close()
@@ -108,7 +139,7 @@ async def test_429_retains_reservation_no_retry(tmp_path, rig):
 async def test_budget_refusal_before_transport(tmp_path, rig):
     ledger = Ledger(tmp_path / "ledger.sqlite", budget=1, input_rate=2, output_rate=3)
     model = fixture_model(
-        Route(ENDPOINT, MODEL, "planner"),
+        Route(ENDPOINT, MODEL, "planner", Limits(max_usage_tokens=10000)),
         request_fixture(with_boundaries=True),
         invocation_id="budget-call",
         ledger=ledger,
@@ -273,3 +304,75 @@ def test_schema_rejects_invalid_charge(tmp_path):
     with pytest.raises(sqlite3.IntegrityError):
         ledger.db.execute("UPDATE calls SET charged=NULL")
     ledger.close()
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"model_id": "fixture/expensive-other-model"},
+        {"endpoint": "https://different.invalid/v1/chat/completions"},
+        {"role": "verifier"},
+        {"limits": Limits(max_usage_tokens=20000)},
+    ],
+)
+def test_different_route_cannot_reuse_pricing(tmp_path, change):
+    from dataclasses import replace
+
+    route = Route(ENDPOINT, MODEL, "planner", Limits(max_usage_tokens=10000))
+    ledger = Ledger(
+        tmp_path / "ledger.sqlite",
+        budget=60000,
+        input_rate=2,
+        output_rate=3,
+        route=route,
+    )
+    with pytest.raises(ValueError, match="pinned pricing"):
+        ledger.reserve("call", replace(route, **change))
+    assert ledger.summary() == []
+    ledger.close()
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"currency": "EUR"},
+        {"provenance": "b" * 64},
+        {
+            "route": Route(
+                ENDPOINT,
+                "fixture/expensive-other-model",
+                "planner",
+                Limits(max_usage_tokens=10000),
+            )
+        },
+    ],
+)
+def test_reopen_pricing_identity_mismatch_refused(tmp_path, change):
+    path = tmp_path / "ledger.sqlite"
+    ledger = Ledger(path, budget=60000, input_rate=2, output_rate=3)
+    ledger.close()
+    with pytest.raises(ValueError, match="identity changed"):
+        Ledger(path, budget=60000, input_rate=2, output_rate=3, **change)
+
+
+def test_stored_pricing_provenance_corruption_refused(tmp_path):
+    path = tmp_path / "ledger.sqlite"
+    ledger = Ledger(path, budget=60000, input_rate=2, output_rate=3)
+    ledger.db.execute("UPDATE pricing_identity SET currency='EUR'")
+    with pytest.raises(ValueError, match="corrupt"):
+        ledger.reserve(
+            "call", Route(ENDPOINT, MODEL, "planner", Limits(max_usage_tokens=10000))
+        )
+    ledger.close()
+    with pytest.raises(ValueError, match="identity changed"):
+        Ledger(path, budget=60000, input_rate=2, output_rate=3)
+
+
+@pytest.mark.parametrize(
+    "change", [{"currency": ""}, {"currency": "usd"}, {"provenance": "unverified"}]
+)
+def test_invalid_pricing_identity_refused_before_file(tmp_path, change):
+    path = tmp_path / "ledger.sqlite"
+    with pytest.raises(ValueError):
+        Ledger(path, budget=60000, input_rate=2, output_rate=3, **change)
+    assert not path.exists()
