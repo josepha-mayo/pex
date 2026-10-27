@@ -85,7 +85,8 @@ async def preflight(binary: Path, modules: Path, output: Path):
         turn=await run_turn(executable=binary,workspace=case,model='opencode/'+MODEL,
                             prompt='Return the word qualification. This is an authored local wire fixture, not a benchmark task.',
                             environment=environment,stdout_path=output/'stdout.jsonl',stderr_path=output/'stderr.txt',
-                            deadline=started+45,standalone=True,agent='qualification')
+                            deadline=started+45,standalone=True,agent='qualification',
+                            terminal_database=output/'data/opencode/opencode.db')
         receipt.update(status='passed',turn=asdict(turn))
     except Exception as error:
         receipt.update(status='blocked',error_type=type(error).__name__,error=str(error))

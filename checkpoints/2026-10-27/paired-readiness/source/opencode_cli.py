@@ -106,6 +106,7 @@ async def run_turn(
     environment: dict[str, str], stdout_path: Path, stderr_path: Path,
     deadline: float, session_id: str | None = None,
     standalone: bool = True, agent: str | None = None,
+    terminal_database: Path | None = None,
 ) -> CliTurn:
     """Own one CLI process group and retain exact, exclusive output artifacts."""
     if sys.platform != "linux":
@@ -146,7 +147,14 @@ async def run_turn(
         command.extend(["--agent", agent])
     if session_id:
         command.extend(["--session", session_id])
-    command.extend(["--", prompt])
+    if terminal_database is not None:
+        from opencode_v2_receipt import prior_sequence
+        if not standalone or prompt.startswith("-"):
+            raise ValueError("CLI2 receipt requires standalone and non-option prompt")
+        before_sequence = prior_sequence(terminal_database)
+        command.append(prompt)
+    else:
+        command.extend(["--", prompt])
     remaining()
     process = None
     tasks = []
@@ -191,7 +199,12 @@ async def run_turn(
             raise ValueError("OpenCode CLI output path changed")
         stdout.seek(0)
         raw = stdout.read(MAX_OUTPUT_BYTES + 1)
-        turn = completed_turn(raw, exit_code=process.returncode, expected_session=session_id)
+        if terminal_database is not None:
+            from opencode_v2_receipt import completed_turn_v2
+            turn = completed_turn_v2(raw, exit_code=process.returncode, expected_session=session_id,
+                database=terminal_database, prompt=prompt, after_sequence=before_sequence)
+        else:
+            turn = completed_turn(raw, exit_code=process.returncode, expected_session=session_id)
         if (turn.stdout_sha256, turn.stdout_bytes) != captured[0]:
             raise ValueError("OpenCode CLI captured output changed")
         remaining()
