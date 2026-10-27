@@ -9,6 +9,11 @@
     "git_blob": "c98bede53fa82634fce653a6dbfc94a841203b1c",
     "sha256": "c7d21b909f33a5e53f565723a90844ae7b39453db6057a25b7317146023f7be5"
   },
+  "candidate/pilot_process.py": {
+    "bytes": 11713,
+    "git_blob": "7fc8c302f68e9a924b2f2ab23f2e851f1505d709",
+    "sha256": "9a1a7162ff8ea74cfed05b12be0af34f6c49ef189454ff346dbdd70e302e3ca8"
+  },
   "candidate/process_adapter.py": {
     "bytes": 3383,
     "git_blob": "3e551ac3e60f59ea323b97ea73adb218950c9388",
@@ -19,15 +24,20 @@
     "git_blob": "d462a1b548581b944d847268702966a77553da97",
     "sha256": "01c80623be140c7f45cf74ae691392723210d6f40e3aa6ca71914ce6a2509887"
   },
+  "candidate/test_pilot.py": {
+    "bytes": 8076,
+    "git_blob": "b719c864ae5ffea274be962b3ed3ced5976286d9",
+    "sha256": "690add165ec2442022ad06960f5cbe68fdeb5e06d4702c0c24c14ed0302537d5"
+  },
   "candidate/test_process.py": {
     "bytes": 24177,
     "git_blob": "eff7c4c2bbb91ad86fce99345682c707ee9c043e",
     "sha256": "98d2a75149fbe930386069a1db5195487540bf7250cbc2ec8c5c152cc4006c2a"
   },
   "transport/managed_chat.py": {
-    "bytes": 24544,
-    "git_blob": "d631b67869d531578537baab86959ee787d963ce",
-    "sha256": "6172cb4546896c0c569ff21a314410b6f7da12c01f9db2ddd501b3d180abc509"
+    "bytes": 26769,
+    "git_blob": "641128e763568c8a90637d93da0133b5449a6c47",
+    "sha256": "ad7daea1a05bcf11e16713bcfaa58808754e119144bc2448bbf36ba0725e6b0b"
   },
   "transport/managed_tool_chat.py": {
     "bytes": 8557,
@@ -39,19 +49,14 @@
     "git_blob": "fb758e197a610edb57b1d373b3848023d2c38c02",
     "sha256": "bcbe547026a9343633d6e8292e084b51081278cd3d7ace88ed0d55402138823b"
   },
+  "transport/tests/test_pilot_proxy.py": {
+    "bytes": 2946,
+    "git_blob": "23a3bfa5451272397548e60253bf230ffa939f5d",
+    "sha256": "3a81fdcafbdb48fff645f33a63547d8af988e6195dfab1a7c1dc771c5917db72"
+  },
   "transport/tool_protocol.py": {
     "bytes": 20092,
     "git_blob": "bd4d2fc5a383a7b83183d919b70f0a77a341ef82",
     "sha256": "599dca451423a3f27c8957f665f94a0bd82e3ca1d2ca263cfd143686bceceac1"
-  },
-  "candidate/pilot_process.py": {
-    "bytes": 10862,
-    "git_blob": "49728047f522abe29b51f33614ea956f77f38df2",
-    "sha256": "2cbbb2e6d2ad18468410adf347a591b5401e82647d683734815e76dd938a3ee8"
-  },
-  "candidate/test_pilot.py": {
-    "bytes": 8076,
-    "git_blob": "b719c864ae5ffea274be962b3ed3ced5976286d9",
-    "sha256": "690add165ec2442022ad06960f5cbe68fdeb5e06d4702c0c24c14ed0302537d5"
   }
 }
