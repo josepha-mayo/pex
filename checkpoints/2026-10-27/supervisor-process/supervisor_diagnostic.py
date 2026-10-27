@@ -17,8 +17,8 @@ CONTINUATION = '2026-10-27T13:37:00Z'
 APPROVED_RETRY_REF = 'Sentinel_9b519763a9dc8191b55d0519a82d9c52'
 # Fresh user direction to continue PEX; original scoped dollar approval above
 # remains authoritative. This admits only the synthetic supervisor diagnostic.
-SUCCESSOR_SUPERVISOR_POOL = 500000000
-ALLOCATION_PROFILE = '250m-250m-500m-v2'
+SUCCESSOR_SUPERVISOR_POOL = 600000000
+ALLOCATION_PROFILE = '200m-200m-600m-v3'
 END = '2026-10-27T22:45:00+00:00' # internal window, not new user spending
 SOURCES = ('supervisor_diagnostic','cumulative_budget','accounting','managed_chat','managed_tool_chat','strands_bridge','tool_protocol','pilot_process','process_adapter','pex_protocol.actions','pex_protocol.supervisor','pex_supervisor.loop','pex_supervisor.evidence_tools','pex_supervisor.evidence_observations')
 

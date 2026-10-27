@@ -33,3 +33,15 @@ def test_new_profile_does_not_refund_or_reset_an_exhausted_pool():
 def test_unknown_profile_remains_refused():
     with pytest.raises(ValueError,match='unknown preregistered'):
         include_supervisor_diagnostics(audit(),[],allocation_profile='unbounded')
+
+
+def test_v3_preserves_prior_six_uncertain_calls_and_equal_worker_caps():
+    value=audit();value['charged_nano_usd']['supervisor']=493977600
+    value['attempts']['supervisor']=6
+    result=include_supervisor_diagnostics(value,[],allocation_profile='200m-200m-600m-v3')
+    assert result['charged_nano_usd']==value['charged_nano_usd']
+    assert result['remaining_nano_usd']['supervisor']==106022400
+    assert min(result['remaining_nano_usd'][k] for k in ('baseline','pex'))==189918200
+    assert result['remaining_total_nano_usd']==486557800
+    assert sum(result['charged_nano_usd'].values())+result['remaining_total_nano_usd']==1000000000
+    assert result['remaining_attempts']=={'baseline':2,'pex':2,'supervisor':6}

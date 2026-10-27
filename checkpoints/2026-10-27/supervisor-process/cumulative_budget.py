@@ -100,12 +100,13 @@ def include_supervisor_diagnostics(audit, snapshots, *, allocation_profile="lega
     Caller supplies the complete independently pinned predecessor list. This
     function is read-only and cannot determine authorization or discover runs.
     """
-    if allocation_profile not in ("legacy","350m-350m-300m-v1","250m-250m-500m-v2"):
+    if allocation_profile not in ("legacy","350m-350m-300m-v1","250m-250m-500m-v2","200m-200m-600m-v3"):
         raise ValueError("unknown preregistered allocation")
     caps={
         "legacy":CAPS,
         "350m-350m-300m-v1":{"baseline":350000000,"pex":350000000,"supervisor":300000000},
         "250m-250m-500m-v2":{"baseline":250000000,"pex":250000000,"supervisor":500000000},
+        "200m-200m-600m-v3":{"baseline":200000000,"pex":200000000,"supervisor":600000000},
     }[allocation_profile]
     result=json.loads(json.dumps(audit))
     seen=set()
