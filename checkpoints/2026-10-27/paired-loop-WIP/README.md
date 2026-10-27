@@ -107,3 +107,11 @@ were added before the successful normal reviewed rerun. Minimal environment omit
 OTEL exporter endpoints/headers. This is protocol qualification, not model quality
 or production/web end-to-end evidence. The optional complete live pilot entry is
 not yet run or fully qualified.
+
+Worker funding refusal now remains a trusted server-side exception object (not
+serialized to model/MCP/config), passes through the CLI adapter as a typed terminal,
+and is reported as `worker_budget_terminal_inconclusive`, with exact budget/attempt
+reason. Infrastructure errors remain separate. Model-authored text cannot trigger
+this classification. Fresh focused11 authored tests passed in11.12s, including
+real local SQLite reservation refusal, private RPC, two actual CLI loopback
+fixtures and spoofed-text rejection. No live gate or resource budget changed.
