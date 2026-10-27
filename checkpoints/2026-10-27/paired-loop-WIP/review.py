@@ -24,9 +24,10 @@ def evidence(request, model, decision, role):
 
 
 class OwnedReview:
-    def __init__(self, request_builder, model_factory, *, mode="authored-only"):
-        if mode != "authored-only":
+    def __init__(self, request_builder, model_factory, *, mode="authored-only", admission=None):
+        if mode not in {"authored-only","live-pilot"} or (mode=="live-pilot" and admission is None):
             raise PermissionError("live_review_not_admitted")
+        self.mode=mode
         self.request_builder = request_builder
         self.model_factory = model_factory
 
@@ -44,7 +45,7 @@ class OwnedReview:
             raise ValueError("planner_schema_mismatch")
         receipt = {"request_digest": digest, "planner_receipts": list(planner.receipts),
                    "planner_invocation": planner.protocol.invocation_id,
-                   "verifier_receipts": [], "mode": "authored-only"}
+                   "verifier_receipts": [], "mode": self.mode}
         refs, valid, _ = evidence(request, planner, decision, "planner")
         proposal = loop._decision_proposal(decision)
         if not proposal["evidence"] and valid:

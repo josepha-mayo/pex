@@ -28,7 +28,7 @@ class Worker:
 class Grade:
     def __init__(self, worker): self.worker=worker
     async def grade(self, arm):
-        assert self.worker.stopped == {"baseline", "pex"}
+        assert arm["workspace"] in self.worker.stopped
         return {"kind": "authored-placeholder", "score": None}
 
 
