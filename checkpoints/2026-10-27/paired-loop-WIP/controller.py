@@ -69,6 +69,9 @@ async def run_pair(arms, worker, review, grader, *, budget=Budget(), mode="autho
                     if condition == "baseline":
                         state["status"] = "natural_stop"
                         break
+                    if any(state[k] >= getattr(budget, k) for k in ("calls", "input_tokens", "output_tokens")) or state["worker_active_seconds"] >= budget.active_seconds:
+                        state["status"] = "budget_terminal_inconclusive"
+                        break
                     started = clock()
                     decision = await review.review(arm, turn["public_observation"], session_id=session)
                     state["supervisor_seconds"] += clock() - started

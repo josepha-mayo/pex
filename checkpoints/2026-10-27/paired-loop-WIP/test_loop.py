@@ -52,7 +52,7 @@ def test_supervisor_time_does_not_reduce_worker_allowance():
     w=Worker()
     r=asyncio.run(run_pair(arms(),w,Review(),Grade(w),budget=Budget(calls=2),clock=lambda: next(ticks)))
     assert w.calls[2][1]["remaining"]["active_seconds"] == 89
-    assert r["arms"]["pex"]["supervisor_seconds"] == 140
+    assert r["arms"]["pex"]["supervisor_seconds"] == 70
 
 
 def test_live_denied_before_callbacks():
@@ -95,8 +95,8 @@ async def test_owned_planner_verifier_continuation(tmp_path, rig, approve):
         return r
     def factory(role, request, proposal):
         route=Route(ENDPOINT,MODEL,role,Limits(max_usage_tokens=10000))
-        ledger=Ledger(tmp_path/(role+".sqlite"),budget=100000,input_rate=2,output_rate=3,route=route)
-        m=fixture_model(route,request,invocation_id="joined-"+role,ledger=ledger,proposal=proposal)
+        ledger=Ledger(tmp_path/(str(len(models))+role+".sqlite"),budget=100000,input_rate=2,output_rate=3,route=route)
+        m=fixture_model(route,request,invocation_id="joined-"+str(len(models))+role,ledger=ledger,proposal=proposal)
         models.append(m)
         return m
     def handler(request):
@@ -115,7 +115,12 @@ async def test_owned_planner_verifier_continuation(tmp_path, rig, approve):
         return response(payload(m.protocol.final_name,json.dumps(args),"final"))
     rig.handler=handler
     review=OwnedReview(request_builder,factory)
-    result=await review.review(arms()["pex"],{},session_id="fixture-vendor")
+    worker=Worker()
+    report=await run_pair(arms(),worker,review,Grade(worker),budget=Budget(calls=2))
+    result=report["arms"]["pex"]
+    assert result["status"] == ("budget_terminal_inconclusive" if approve else "verifier_rejected")
+    assert len(worker.calls) == (3 if approve else 2)
+    result={"status": "approved_continuation" if approve else result["status"], "receipt":result["reviews"][0], "text":worker.calls[-1][1]["prompt"]}
     assert result["status"] == ("approved_continuation" if approve else "verifier_rejected")
     assert len(models)==2 and len(rig.calls)==6
     assert all(len(m.observations)==2 for m in models)
