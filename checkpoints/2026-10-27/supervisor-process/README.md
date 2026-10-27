@@ -20,7 +20,9 @@ synthetic model/credential; no provider credentials are loaded.
   single-dispatch raw-wire receipts settle usage; SDK-derived worker metrics are
   NOT accepted as supervisor wire evidence. Missing/uncertain/429/refused outcomes
   retain the entire reservation; no retry/rebate or missing-as-zero cost.
-- Exact pricing/budget identity persists across reopen. Schema constraints plus
+- Exact route fingerprint, endpoint, model, role, currency, pricing provenance digest
+  and numeric pricing/budget identity persist across reopen. Mismatched routes
+  cannot reuse another route's rates, even when numeric prices are identical. Schema constraints plus
   validation of every existing row/receipt before new reservation refuse corrupt
   NULL/negative/noninteger charges, invalid state/identity and altered settlement.
   Atomic expected-state UPDATE prevents stale concurrent settlement overwrite.
@@ -30,12 +32,15 @@ synthetic model/credential; no provider credentials are loaded.
   production runtime images.
 
 ## Latest verification
-17 authored checks passed in the clean child (0.58s). Combined existing transport
-299 plus new17 tests: 316 passed. No real network/provider/model calls; all response
-bodies authored. No lift, cost savings, worker quality or paired result claimed.
-The original299 results were rerun on current dependency sources, not transferred
-from an older report. SOURCE_SHA256.json records this candidate and four transport
-source files; full PEX/dependency admission remains separate.
+Fresh independent verification at 2026-10-27 02:18 UTC: 28 authored checks
+passed in the clean child (0.65s), including route/model/currency/provenance
+mismatch and reopen refusals. Source blobs accounting.py and test_process.py
+exactly matched remote checkpoint 1c431323b0b85f45c2185843ec991e087f28d150.
+The earlier combined 316-test result was for the previous 17-test candidate;
+it is historical, not a fresh combined pass for these changed bytes. No real
+network/provider/model calls; all response bodies authored. No lift, cost savings,
+worker quality or paired result claimed. SOURCE_SHA256.json now identifies this
+candidate and four transport source files; full dependency admission is separate.
 
 ## Run
 From this directory (absolute paths to the existing trusted source/runtime):

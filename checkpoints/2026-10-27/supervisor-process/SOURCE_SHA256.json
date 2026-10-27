@@ -1,8 +1,8 @@
 {
   "candidate/accounting.py": {
-    "bytes": 8706,
-    "git_blob": "4811a02542d7f225e444dd806b608cd9a2b3ea3b",
-    "sha256": "bcbd9090fbf99006760ffe26fb1404423b9b8e5afe219b32115e28be50414ca7"
+    "bytes": 11059,
+    "git_blob": "ee50ba210539e590f98d37025916909491c4722c",
+    "sha256": "4a3ae996f09b2bd964d612ebd29cacc84790af482064f0bfcef2df76bba913b8"
   },
   "candidate/launch_authored.py": {
     "bytes": 3320,
@@ -20,9 +20,9 @@
     "sha256": "38fb17898e5d08eb392cc4b8da874cccca640143060110ed7bb6ed06d82ee32b"
   },
   "candidate/test_process.py": {
-    "bytes": 9443,
-    "git_blob": "d2a8b849fa17922431f4461c4f2d8bd85348565d",
-    "sha256": "b210aa5f7c98591303fd48fdf7a5b831a03e8c3e1d2fb25f63c79835da8ab2bb"
+    "bytes": 12566,
+    "git_blob": "d90a40669fb829014d2fc050aecfb36e24e9208e",
+    "sha256": "9708d9913ba148c96bc297337f72a3117c3abd9b6e43336827fbc5a7ca70a2f2"
   },
   "transport/managed_chat.py": {
     "bytes": 24544,
