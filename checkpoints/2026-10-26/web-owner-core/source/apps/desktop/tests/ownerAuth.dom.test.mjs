@@ -114,3 +114,33 @@ test('built page renders valid long Unicode titles instead of losing all records
     assert.match(f.el('workspace-status').textContent,/Recorded state/);
   }
 });
+
+// Authored metadata only. These DOM tests do not make provider requests.
+const runMetadata=()=>({state:'recorded',phase:'arm_terminal',observed_at:'2026-10-27T12:00:00Z',worker_model:'opencode/deepseek-v4.1-flash-free',supervisor_model:'nvidia/nemotron-3-super-120b-a12b',paired_terminal:false,arms:{baseline:{status:'natural_stop',worker_calls:1},pex:{status:'not_started',worker_calls:null}}});
+const evidenceReply=async(evidence)=>{
+  const payload=JSON.parse(await workspaceReply().text());payload.run_evidence=evidence;
+  return new Response(JSON.stringify(payload));
+};
+test('authored evidence states never invent a score or hide valid workspace rows',async()=>{
+  for(const evidence of [{state:'not_configured'},{state:'unavailable'},runMetadata()]) {
+    const f=setup([good(),await evidenceReply(evidence)]);await flush();f.el('refresh-workspace').click();await flush();
+    const text=f.el('workspace-records').textContent;
+    assert.match(text,/s1/);assert.match(text,/uncertain/);
+    if(evidence.state==='recorded') {assert.match(text,/Paired run is not terminal/);assert.match(text,/Recorded worker calls: 1/);assert.match(text,/not a verified score/);assert.match(text,/anti-tamper-limited/);}
+    else assert.match(text,evidence.state==='unavailable'?/Run evidence is unavailable/:/No paired run recorded/);
+  }
+});
+test('authored evidence clears on hide, expiry, logout and failed manual refresh',async()=>{
+  for(const action of ['hidden','expiry','logout','refresh']) {
+    const responses=[good(),await evidenceReply(runMetadata())];
+    if(action==='logout')responses.push(new Response('{"authenticated":false}'));
+    if(action==='refresh')responses.push(new Response('',{status:503}));
+    const f=setup(responses);await flush();f.el('refresh-workspace').click();await flush();
+    assert.match(f.el('workspace-records').textContent,/deepseek/);
+    if(action==='hidden'){f.document.hidden=true;f.document.dispatchEvent(new f.window.Event('visibilitychange'));}
+    else if(action==='expiry'){for(const fn of [...f.timers.values()])fn();}
+    else f.el(action==='logout'?'sign-out':'refresh-workspace').click();
+    assert.equal(f.el('workspace-records').textContent,'');await flush();
+    assert.equal(f.el('workspace-records').textContent,'');
+  }
+});
