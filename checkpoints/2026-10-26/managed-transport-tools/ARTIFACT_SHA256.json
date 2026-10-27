@@ -12,6 +12,10 @@
       "bytes": 1017,
       "sha256": "d997166dd8a762c5949a64e2dbaa813288ca8616be018d3125f10c6ccf37c95b"
     },
+    "NULL_FUNCTION_CALL_WIP.md": {
+      "bytes": 879,
+      "sha256": "ca6e935af3018cdf30210c6989859a7a47ae69b8cf98115e27c5b6701ac1a224"
+    },
     "OFFLINE_QUALIFICATION.md": {
       "bytes": 9200,
       "sha256": "9d0f0944f7925e7ec6b87e4db86b4a5945fda98e80f596304b7b6040bc0ab271"
@@ -29,12 +33,12 @@
       "sha256": "99c9cc7651713275071bb4a3662e8e8e392e79bbed4b3f4b7319043f57c0a7ba"
     },
     "managed_chat.py": {
-      "bytes": 30273,
-      "sha256": "b17c9d2c460cb9c48f1a8215493b7e24157b7f7b8a4aa804e54908c19bc7d078"
+      "bytes": 30287,
+      "sha256": "900c1df82ca51507ef74ad400b1c2d8045741653f649b46052cb0eebdbaf6eeb"
     },
     "managed_tool_chat.py": {
-      "bytes": 8557,
-      "sha256": "569fc5ec35f65e43d25fdce3b6aeab820acf7cdaac858a44f5438198bc31c717"
+      "bytes": 8571,
+      "sha256": "cec69ae7a010ae7de006a946bfc89c1fbf34ae219eb01b39439247bb84d105c5"
     },
     "pyproject.toml": {
       "bytes": 509,
@@ -55,6 +59,10 @@
     "tests/test_managed_chat.py": {
       "bytes": 28291,
       "sha256": "a5ef89fb0c3aef6a29abe5c511fd953ebdafa74da9091013102fa47f5ed59d71"
+    },
+    "tests/test_null_function_call.py": {
+      "bytes": 1474,
+      "sha256": "102cebbd7ab609c844dd0a8d1678adbb76ed3578c5771fa2e8719db7d1bcaa94"
     },
     "tests/test_nullable_usage_details.py": {
       "bytes": 1825,

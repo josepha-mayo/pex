@@ -1,0 +1,4 @@
+# Optional legacy function-call placeholder WIP
+The next live diagnostic validated real usage (2702input,81output,2783total) but refused unsupported_response_message. Exact offending message field is NOT retained/proven. Independent code review found any presence of function_call was refused, even JSONnull. OpenAI's response schema explicitly permitsnull: https://github.com/openai/openai-python/blob/main/src/openai/types/chat/chat_completion_message.py .
+
+Both text/tool paths now accept only an absent or null legacy placeholder; every nonnull legacy call remains refused. Existing tool identity, arguments, choice, refusal, finish and content checks unchanged. This fixes a verified local compatibility defect, not yet a verified cause/resolution of the live refusal. Authored mocked tests only. Prior uncertain reservations unchanged; no new paid call in this checkpoint.

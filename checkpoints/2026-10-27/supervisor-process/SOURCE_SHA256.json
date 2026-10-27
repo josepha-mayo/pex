@@ -41,14 +41,14 @@
     "sha256": "98d2a75149fbe930386069a1db5195487540bf7250cbc2ec8c5c152cc4006c2a"
   },
   "transport/managed_chat.py": {
-    "bytes": 30273,
-    "git_blob": "d3e2108aaa1f2763a4daa3180efa28dff9742d05",
-    "sha256": "b17c9d2c460cb9c48f1a8215493b7e24157b7f7b8a4aa804e54908c19bc7d078"
+    "bytes": 30287,
+    "git_blob": "d8f20a0952a7ab6052b5cd1c1bf634287440ed86",
+    "sha256": "900c1df82ca51507ef74ad400b1c2d8045741653f649b46052cb0eebdbaf6eeb"
   },
   "transport/managed_tool_chat.py": {
-    "bytes": 8557,
-    "git_blob": "d6933b41e51fb428d9e159be6e679129faf19cc1",
-    "sha256": "569fc5ec35f65e43d25fdce3b6aeab820acf7cdaac858a44f5438198bc31c717"
+    "bytes": 8571,
+    "git_blob": "e9f20dd34de1dccf7486a9d67d7f99eb4733738b",
+    "sha256": "cec69ae7a010ae7de006a946bfc89c1fbf34ae219eb01b39439247bb84d105c5"
   },
   "transport/strands_bridge.py": {
     "bytes": 19181,

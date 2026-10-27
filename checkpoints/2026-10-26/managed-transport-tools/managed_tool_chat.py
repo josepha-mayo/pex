@@ -157,7 +157,7 @@ class ManagedToolChatCandidate(ManagedChatCandidate):
             type(message) is not dict
             or message.get("role") != "assistant"
             or message.get("refusal") is not None
-            or "function_call" in message
+            or message.get("function_call") is not None
         ):
             raise Refusal("unsupported_response_message")
         content = message.get("content")
