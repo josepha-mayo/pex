@@ -376,3 +376,130 @@ def test_invalid_pricing_identity_refused_before_file(tmp_path, change):
     with pytest.raises(ValueError):
         Ledger(path, budget=60000, input_rate=2, output_rate=3, **change)
     assert not path.exists()
+
+# Split-envelope tests are authored accounting checks: no provider calls.
+def split_route():
+    return Route(
+        "https://api.tokenfactory.us-central1.nebius.com/v1/chat/completions",
+        "nvidia/nemotron-3-super-120b-a12b", "planner",
+        Limits(max_output_tokens=4096, max_usage_tokens=266240),
+    )
+
+
+def split_ledger(path, **changes):
+    args = dict(budget=250000000, input_rate=300, output_rate=900,
+                route=split_route(), currency="USD",
+                pricing_provenance_sha256="c" * 64,
+                input_token_bound=262144, output_token_bound=4096)
+    args.update(changes)
+    return RealLedger(path, **args)
+
+
+def split_receipt(call_id, input_tokens=1000, output_tokens=100):
+    from managed_chat import Receipt, Usage
+    route = split_route()
+    return Receipt(call_id, route.fingerprint, route.model_id, route.role,
+                   attempts=1, http_status=200, dispatch_state="response_complete",
+                   outcome="succeeded", usage=Usage(input_tokens, output_tokens,
+                                                   input_tokens + output_tokens))
+
+
+def test_six_small_settlements_fit_quarter_dollar(tmp_path):
+    path = tmp_path / "split.sqlite"
+    ledger = split_ledger(path)
+    for index in range(6):
+        call = f"small-{index}"
+        ledger.reserve(call, split_route())
+        assert ledger.summary()[-1]["reserved"] == 82329600
+        ledger.settle(call, split_receipt(call))
+    assert sum(row["charged"] for row in ledger.summary()) == 2340000
+    assert all(row["state"] == "settled_raw_wire" for row in ledger.summary())
+    ledger.close()
+    reopened = split_ledger(path)
+    assert len(reopened.summary()) == 6
+    reopened.close()
+
+
+@pytest.mark.parametrize("uncertain", [True, False])
+def test_three_full_reservations_refuse_fourth_before_dispatch(tmp_path, uncertain):
+    ledger = split_ledger(tmp_path / "split.sqlite")
+    for index in range(3):
+        call = f"large-{index}"
+        ledger.reserve(call, split_route())
+        ledger.settle(call, None if uncertain else split_receipt(call, 262144, 4096))
+    assert sum(row["charged"] for row in ledger.summary()) == 246988800
+    with pytest.raises(ValueError, match="budget reservation refused"):
+        ledger.reserve("fourth", split_route())
+    assert len(ledger.summary()) == 3
+    ledger.close()
+
+
+def test_concurrent_split_reservations_never_exceed_ceiling(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    path = tmp_path / "split.sqlite"
+    initial = split_ledger(path)
+    initial.close()
+    barrier = Barrier(6)
+    def attempt(index):
+        ledger = split_ledger(path)
+        try:
+            barrier.wait(timeout=10)
+            try:
+                ledger.reserve(f"parallel-{index}", split_route())
+                return True
+            except ValueError as exc:
+                assert str(exc) == "budget reservation refused"
+                return False
+        finally:
+            ledger.close()
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        assert sum(pool.map(attempt, range(6))) == 3
+    ledger = split_ledger(path)
+    assert sum(row["charged"] for row in ledger.summary()) == 246988800
+    ledger.close()
+
+
+@pytest.mark.parametrize("change", [
+    {"input_rate": 301}, {"output_rate": 899}, {"currency": "EUR"},
+    {"input_token_bound": 200000}, {"output_token_bound": 4095},
+    {"input_token_bound": None}, {"output_token_bound": None},
+])
+def test_split_profile_mismatch_refused_before_storage(tmp_path, change):
+    path = tmp_path / "split.sqlite"
+    with pytest.raises(ValueError, match="pinned Nebius"):
+        split_ledger(path, **change)
+    assert not path.exists()
+
+
+@pytest.mark.parametrize("change", [
+    {"endpoint": "https://api.tokenfactory.nebius.com/v1/chat/completions"},
+    {"model_id": "nvidia/other-model"}, {"output_field": "max_tokens"},
+    {"limits": Limits(max_output_tokens=512)},
+])
+def test_split_route_mismatch_refused(tmp_path, change):
+    from dataclasses import replace
+    with pytest.raises(ValueError, match="pinned Nebius"):
+        split_ledger(tmp_path / "split.sqlite", route=replace(split_route(), **change))
+
+
+@pytest.mark.parametrize("counts", [(262145, 0), (0, 4097)])
+def test_split_usage_bounds_reject_even_when_cost_fits(tmp_path, counts):
+    ledger = split_ledger(tmp_path / "split.sqlite")
+    ledger.reserve("call", split_route())
+    with pytest.raises(ValueError, match="split token envelope"):
+        ledger.settle("call", split_receipt("call", *counts))
+    assert ledger.summary()[0]["charged"] == 82329600
+    assert ledger.summary()[0]["state"] == "reserved_uncertain"
+    ledger.close()
+
+
+def test_split_envelope_persisted_and_corruption_refused(tmp_path):
+    path = tmp_path / "split.sqlite"
+    ledger = split_ledger(path)
+    ledger.db.execute("UPDATE reservation_identity SET input_bound=1")
+    with pytest.raises(ValueError, match="envelope corrupt"):
+        ledger.reserve("call", split_route())
+    ledger.close()
+    with pytest.raises(ValueError, match="envelope identity changed"):
+        split_ledger(path)

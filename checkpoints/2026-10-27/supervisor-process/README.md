@@ -59,7 +59,7 @@ Uses existing local packages; no install, network or resource provisioning.
 Ledger files and test output remain private temporary artifacts, never source pushes.
 
 ## Limits and next live gates
-Reservation currently uses configured `max_usage_tokens * max(rate)` as a
+The legacy authored profile uses configured `max_usage_tokens * max(rate)` as a
 CONSERVATIVE FIXTURE ENVELOPE ONLY. max_usage_tokens validates observed responses;
 it does not enforce provider input tokens, pricing, cash cap or account overage.
 Live transport therefore remains denied even if a caller supplies flags/credentials.
@@ -72,3 +72,29 @@ The two roles are independently exercised, not yet a fully admitted planner ->
 verifier -> actuation pipeline. Policy/evidence authorization, durable whole-run
 accounting, immutable request/proposal binding and baseline comparability remain
 separate admission gates. A valid structured reply does not authorize intervention.
+
+## Split-envelope candidate — 2026-10-27 10:30 UTC (WIP, tests pending)
+
+Ledger now optionally accepts input_token_bound=262144 and output_token_bound=4096.
+This exact profile requires the catalog Nemotron Super model, US endpoint, USD,
+300/900 nano-USD per input/output token, max_completion_tokens output field and
+4096 output limit. It reserves 82,329,600 nano-USD before each dispatch. Validated
+actual usage settles lower, so six small calls can fit a 250,000,000 nano-USD cap;
+three full/uncertain reservations prevent a fourth. This does not guarantee enough
+budget to complete a review. Missing/uncertain receipts retain full reservations.
+Cached input is priced fully; reasoning is included in output, not added twice.
+
+Profile identity is persisted; pre-profile databases require a NEW private ledger,
+not silent migration. Focused authored tests cover dynamic settlements, concurrent
+reservations, full/uncertain caps, route/rate/profile identity, and token overflow.
+They are pending execution for these bytes. No live inference or provider-enforced
+cash cap is claimed. Finite whole-pilot attempt count and combined planner/verifier
+budget coordination remain controller responsibilities, not this single-route DB.
+
+Contractual sources: official public catalog /api/public/models_info on
+https://tokenfactory.nebius.com and canonical Chat Completions documentation
+https://docs.tokenfactory.nebius.com/api-reference/inference/create-chat-completion .
+Official cookbook pins the US endpoint/model:
+https://github.com/nebius/token-factory-cookbook/blob/main/models/nemotron/nemotron3-super-120B.md .
+Public regional routing can change: no automatic fallback or retry is authorized.
+The split profile grants no authority; invoke_live still refuses unconditionally.
