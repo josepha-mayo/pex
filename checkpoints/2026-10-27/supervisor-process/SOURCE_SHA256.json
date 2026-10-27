@@ -1,10 +1,12 @@
 {
-  "candidate/DIAGNOSTIC_CONTINUATION_WIP.md": "fc1a599e2b56fdc0c5267906ac7a62bb3358c63973fcbb74c50d424fdb5857f8",
+  "candidate/DIAGNOSTIC_ALLOCATION_V2_WIP.md": "02c63199a7ac4bf47a3856e0631795d7881009af7f7c7bf4fd5f01c75ed02222",
+  "candidate/DIAGNOSTIC_CONTINUATION_WIP.md": "ee0524d4ebd0efd51bf320d6f26dc5266e0b9bca75f7d77593f58957ec7680ba",
   "candidate/accounting.py": {
     "bytes": 17309,
     "git_blob": "221308ee6c44b9d4421c752fdd3956cf21eb1a0c",
     "sha256": "7319666289631592c97bd7efc26df814126769e10afa82c86e511fbe6e8cce32"
   },
+  "candidate/cumulative_budget.py": "8acde8769349a20c9b4463e41ce124ff181565d396f4514b75155ea87efae401",
   "candidate/launch_authored.py": {
     "bytes": 3320,
     "git_blob": "c98bede53fa82634fce653a6dbfc94a841203b1c",
@@ -25,7 +27,8 @@
     "git_blob": "d462a1b548581b944d847268702966a77553da97",
     "sha256": "01c80623be140c7f45cf74ae691392723210d6f40e3aa6ca71914ce6a2509887"
   },
-  "candidate/supervisor_diagnostic.py": "2c1e39d2015fd0a66c027bbe9a3ec9136ef3948499f6fc9ca076143a20503454",
+  "candidate/supervisor_diagnostic.py": "c06e331a5667756ac941a83bf16a0107a8133dbc36e21c1a108f6aa78e7b0c22",
+  "candidate/test_diagnostic_reallocation.py": "459e91cfe4d7f4fe54414688efbd93a9750311c65107d6b67e9c8bd145dea4a1",
   "candidate/test_pilot.py": {
     "bytes": 8076,
     "git_blob": "b719c864ae5ffea274be962b3ed3ced5976286d9",

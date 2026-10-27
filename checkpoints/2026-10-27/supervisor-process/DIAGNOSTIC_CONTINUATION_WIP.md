@@ -1,5 +1,9 @@
 # Bounded supervisor-only continuation — WIP runtime qualification
 
+This records the first continued diagnostic's v1 admission. The separately named
+v2 internal allocation and its unchanged total ceiling are documented in
+`DIAGNOSTIC_ALLOCATION_V2_WIP.md`; historical ledgers remain unchanged.
+
 The user directed PEX continuation after the status identifying the live-test
 blocker. The original scoped Nebius total cap remains USD 1; no new cap, paid
 fallback, VM, worker or model-authored continuation dispatch is admitted here.
