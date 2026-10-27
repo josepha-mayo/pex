@@ -32,7 +32,10 @@ def raise_funding_terminal(channel):
 class NebiusCLIWorker:
     def __init__(self, *, remotes, private_root, binary, modules, key_path, pool,
                  max_calls=12, output_per_call=4096, activate=False, funding=None, authored=False,
-                 public_check_command="python -m unittest discover -s tests -p test_smoke.py"):
+                 public_check_command="python -m unittest discover -s tests -p test_smoke.py", task_profile="legacy-task05"):
+        if task_profile not in ("legacy-task05","stockroom-v1"):raise ValueError("frozen_task_profile_required")
+        if task_profile=="stockroom-v1" and public_check_command!="python -m unittest discover -s tests -v":raise ValueError("stockroom_public_check_required")
+        self.task_profile=task_profile
         if public_check_command not in ("python -m unittest discover -s tests -p test_smoke.py", "python -m unittest discover -s tests -v"):
             raise ValueError("frozen_public_check_command_required")
         self.public_check_command = public_check_command
@@ -116,6 +119,11 @@ class NebiusCLIWorker:
                 if any(type(v) is not int or v<0 for v in values): raise ValueError('worker_usage_unproven')
                 usage['calls']+=1;usage['input_tokens']+=values[0]+values[3]+values[4];usage['output_tokens']+=values[1]+values[2]
         remote=self.remotes[condition]
+        if getattr(self,'task_profile','legacy-task05')=='stockroom-v1':
+            from stockroom_request import collect_public_observation
+            observation=collect_public_observation(remote,receipt)
+            return {'session_id':receipt.session_id,'receipt':asdict(receipt),'usage':usage,
+                    'terminal':'natural_stop','public_observation':observation,'worker_active_seconds':cli_seconds}
         command=getattr(self,'public_check_command','python -m unittest discover -s tests -p test_smoke.py')
         check=remote.run(command)
         if type(check.get('exit_code')) is not int or check['exit_code'] not in (0,1):
@@ -136,7 +144,10 @@ class NebiusCLIWorker:
         state=self.states[arm['condition']]
         if not state['stopped']:
             state['stopped']=True
-            try: state['cm'].__exit__(None,None,None)
+            state['mcp_revoked']=False
+            try:
+                state['cm'].__exit__(None,None,None)
+                state['mcp_revoked']=True
             finally: state['budget_cm'].__exit__(None,None,None)
         # Remote background processes are NOT proven quiescent by MCP revocation.
         # The isolated protected grader must enforce its own post-stop boundary.
