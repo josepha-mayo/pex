@@ -8,6 +8,19 @@ from dataclasses import asdict, replace
 from pathlib import Path
 
 
+class PilotBudgetExhausted(ValueError):
+    """Typed terminal admission result; never a worker/task-quality failure."""
+    def __init__(self, code):
+        messages = {
+            "budget_reservation_refused": "budget reservation refused",
+            "global_attempt_cap_refused": "global attempt cap refused",
+        }
+        if code not in messages:
+            raise ValueError("invalid budget terminal code")
+        self.code = code
+        super().__init__(messages[code])
+
+
 def integer(value, limit=10**15):
     if type(value) is not int or not 0 <= value <= limit:
         raise ValueError("invalid accounting integer")
@@ -262,9 +275,9 @@ class Ledger:
         try:
             spent = self._validate_stored()
             if self.max_attempts is not None and self.db.execute("SELECT COUNT(*) FROM calls").fetchone()[0] >= self.max_attempts:
-                raise ValueError("global attempt cap refused")
+                raise PilotBudgetExhausted("global_attempt_cap_refused")
             if amount + spent > self.budget:
-                raise ValueError("budget reservation refused")
+                raise PilotBudgetExhausted("budget_reservation_refused")
             self.db.execute(
                 "INSERT INTO calls VALUES (?,?,?,?,?,?)",
                 (
