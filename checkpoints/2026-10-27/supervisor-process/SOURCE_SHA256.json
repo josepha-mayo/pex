@@ -1,4 +1,5 @@
 {
+  "candidate/DIAGNOSTIC_CONTINUATION_WIP.md": "fc1a599e2b56fdc0c5267906ac7a62bb3358c63973fcbb74c50d424fdb5857f8",
   "candidate/accounting.py": {
     "bytes": 17309,
     "git_blob": "221308ee6c44b9d4421c752fdd3956cf21eb1a0c",
@@ -24,6 +25,7 @@
     "git_blob": "d462a1b548581b944d847268702966a77553da97",
     "sha256": "01c80623be140c7f45cf74ae691392723210d6f40e3aa6ca71914ce6a2509887"
   },
+  "candidate/supervisor_diagnostic.py": "2c1e39d2015fd0a66c027bbe9a3ec9136ef3948499f6fc9ca076143a20503454",
   "candidate/test_pilot.py": {
     "bytes": 8076,
     "git_blob": "b719c864ae5ffea274be962b3ed3ced5976286d9",
