@@ -11,7 +11,7 @@ from successor_budget import PRIOR_WORKERS, PRIOR_SUPERVISOR, PRIOR_COMPUTE, WOR
 
 # A fresh pair requires an exact new approval pinned by root, not caller data.
 APPROVED_PAIR_REF = "Sentinel_b42b3bfcf2d48191adae4988661e9a42"
-APPROVED_RUN_ID = "stockroom-approved-pair-20261028-01"
+APPROVED_RUN_ID = "stockroom-approved-pair-20261028-02"
 APPROVED_PRIVATE_ROOT = Path(__file__).resolve().parents[1] / "runtime-private" / "pex-pilot-20261027" / APPROVED_RUN_ID
 
 TASK_SHA='c242f9128edd87b34c678e5e0db36527b556f0b2163533577e5c96320c3b5f19'

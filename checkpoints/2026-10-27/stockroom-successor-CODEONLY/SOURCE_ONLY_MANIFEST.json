@@ -7,7 +7,7 @@
     "README.md": "bd2d2d078c3e0d86a3681d8cfd1494f00428de859e766db944ad4d014349a4fc",
     "run_authored_all.py": "70ce9bf095614b850e33ad37c71ca63e84f98ca816d912877e825ac3c08800ff",
     "run_authored_supervisor.py": "d92cda520fa38ae13966b230ba367836cb5c3c256a85157563b725f1f997883d",
-    "successor_admission.py": "3f251aed5ec8de04f24468afda261aa8a5fbaab6f40ba2714d29bec4dfb9f662",
+    "successor_admission.py": "4ef57697d3a863a3b18201445befd2ce9818dc33906ff2aabb302c6c17a774d8",
     "successor_budget.py": "388f8154da768a51d0d2f689991187de90f73a3a56ee7ef1ee63b0957985f86c",
     "successor_runner.py": "9b950e273c65f6b504bfe7346297bb81753bb327adfcf648a5a3052f4ba7fe46",
     "successor_supervisor.py": "35b9c1c7f7b20ada63e5779e567a628f8e38134c2cdc6358c10805a92c6118eb",
@@ -16,5 +16,5 @@
     "test_successor_supervisor.py": "dfc947a98ba1603a78390d9d7786d6be7e588a433881d835515e60dd93d6ebb7"
   },
   "schema": "pex.stockroom-successor-source-only.v3",
-  "status": "WIP_benchmark_not_run_fixed_preparation_window_closed_zero_new_dispatch"
+  "status": "WIP_same_unused_approved_pair_mechanical_preparation02_refresh_root_conditional_GO"
 }
