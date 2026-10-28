@@ -39,9 +39,9 @@ def bound(candidate,monkeypatch,tmp_path):
             if mode=='retryable':return Response(status=503,headers=Headers({'Should-Retry':'true'}),content=b'{"code":503,"message":"AUTHORED"}')
             if mode=='cancel':await asyncio.Event().wait()
             if mode=='suppress_cancel':
-                try:await behavior['finish'].wait()
-                except asyncio.CancelledError:
-                    behavior['cancelled'].set();await behavior['finish'].wait()
+                while not behavior['finish'].is_set():
+                    try:await behavior['finish'].wait()
+                    except asyncio.CancelledError:behavior['cancelled'].set()
             p=urlsplit(request.url).path
             if p=='/v2/sandboxes':
                 body=json.loads(request.content)
@@ -49,6 +49,7 @@ def bound(candidate,monkeypatch,tmp_path):
                        'clientID':'authored','envdVersion':'0.5.7','envdAccessToken':'SYNTHETIC-ENVD','domain':'e2b.app'}
                 if mode=='constructor_failure':value['envdVersion']='invalid'
                 return Response(status=201,headers=Headers({'content-type':'application/json'}),content=json.dumps(value).encode())
+            if p.endswith('/List'):return Response(status=200,headers=Headers({'content-type':'application/json'}),content=b'{"processes":[]}')
             if request.method=='DELETE':return Response(status=204)
             if p=='/health':return Response(status=502,content=b'{"message":"sandbox not found"}')
             if p.startswith('/sandboxes/'):
@@ -158,3 +159,85 @@ def test_atomic_claim_cannot_be_reused(bound):
     (Path(scope.admitted.grant.config_path).parent/'launch.claim').write_text('occupied')
     with pytest.raises(FileExistsError):scope.__enter__()
     assert scope.active is False
+
+
+@pytest.mark.parametrize('proxy',[
+    'http://authored-user:authored-pass@proxy.example:8888',
+    'http://authored-user:p%40ss%3Aword@proxy.example:8888/',
+    'https://proxy.example:443',
+])
+def test_actual_SDK_preserves_explicit_string_proxy_without_auth_split(proxy):
+    # Synthetic FORMAT probe only. Never inspect or copy actual platform values.
+    from e2b.connection_config import ConnectionConfig
+    from e2b.api import proxy_to_config
+    config=ConnectionConfig(api_key='SYNTHETIC',proxy=proxy,domain='e2b.app',debug=False,retries=0,http_version='1.1')
+    parsed=proxy_to_config(config.proxy)
+    assert parsed.url==proxy and parsed.auth is None and parsed.headers==()
+    assert a.sha(parsed.url.encode())==a.sha(proxy.encode())
+
+@pytest.mark.asyncio
+async def test_actual_RPC_factory_uses_same_guarded_mock_transport(bound):
+    scope,compute,wire,pools,behavior=bound
+    with scope:
+        sdk=await create(scope,compute)
+        assert await sdk.commands.list(request_timeout=1)==[]
+        assert urlsplit(wire[-1][1]).path.endswith('/List') and len(wire)==2
+        # The SDK REST, health, filesystem and ConnectRPC factories share the
+        # same guarded pool for their common options, with no direct fallback.
+        assert len(pools)==2
+
+@pytest.mark.asyncio
+async def test_actual_SDK_suppressed_cancel_returns_bounded_keeps_late_owned_id(bound):
+    scope,compute,wire,pools,behavior=bound
+    behavior.update(mode='suppress_cancel',finish=asyncio.Event(),cancelled=asyncio.Event())
+    with scope:
+        opts=scope.options()
+        task=asyncio.create_task(create(scope,compute))
+        try:
+            done,_=await asyncio.wait([task],timeout=.03)
+            assert not done and len(wire)==1
+            task.cancel()
+            await asyncio.wait_for(behavior['cancelled'].wait(),timeout=.2)
+            # Orchestrator returns without waiting for SDK cancellation. The
+            # SDK's internal wait_for can remain pending; not remote stop proof.
+            assert not task.done() and scope.uncertain and compute.total()==100+RESERVATION
+            behavior['finish'].set()
+            await asyncio.wait([task],timeout=.3)
+            assert task.done()
+            if not task.cancelled():task.result()
+            assert scope.owned=={'authored-baseline'} and scope.uncertain
+            assert compute.total()==100+RESERVATION
+            behavior['mode']='normal';scope.begin_cleanup()
+            await AsyncSandbox.kill('authored-baseline',request_timeout=1,**opts)
+            assert wire[-1][0]=='DELETE'
+        finally:
+            behavior['finish'].set()
+            await asyncio.wait([task],timeout=.3)
+
+@pytest.mark.asyncio
+async def test_actual_RPC_cancel_bound_poisoned_bridge_not_stop_claim(bound):
+    from staged_async_remote import BoundedAsyncRemote,BoundedRemoteError
+    import time
+    scope,compute,wire,pools,behavior=bound
+    with scope:
+        sdk=await create(scope,compute)
+        behavior.update(mode='suppress_cancel',finish=asyncio.Event(),cancelled=asyncio.Event())
+        remote=BoundedAsyncRemote(sdk,vm_deadline=time.monotonic()+2)
+        remote.set_scope_deadline(time.monotonic()+.03)
+        started=time.monotonic()
+        try:
+            with pytest.raises(BoundedRemoteError):
+                await asyncio.to_thread(remote._call,lambda:sdk.commands.list(request_timeout=1))
+            assert time.monotonic()-started < .5 and remote.poisoned
+            assert len(wire)==2 and compute.total()==100+RESERVATION
+        finally:
+            behavior['finish'].set()
+            await remote.end_scope()
+            behavior['mode']='normal';await remote.close()
+            assert remote.closed
+
+def test_mutated_binding_config_refused_before_credential_read(bound):
+    scope,*_=bound
+    with scope:
+        scope.cfg['profile']['equal_worker_fresh']+=1
+        with pytest.raises(a.AdmissionRefused,match='immutable'):scope.options()

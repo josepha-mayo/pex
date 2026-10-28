@@ -63,6 +63,8 @@ class SDKTransportBinding:
 
     def _check(self):
         if not self.active: raise AdmissionRefused('SDK_binding_closed')
+        if sha(canonical(self.cfg)) != self.admitted.grant.config_sha256:
+            raise AdmissionRefused('immutable_admitted_config_changed')
         validate_transport(self.cfg['network'])
         if self.cleanup_deadline is None: check_authority(self.admitted)
         elif self.clock() >= self.cleanup_deadline: raise AdmissionRefused('cleanup_only_window_exhausted')
@@ -189,7 +191,9 @@ class SDKTransportBinding:
                     raise AdmissionRefused('owned_response_identity_unproven')
                 self.owned.add(sid)
                 if value.get('domain') not in (None,'e2b.app'): raise AdmissionRefused('owned_response_domain_changed')
-                self.uncertain=False
+                # A late response establishes ownership, not successful cancellation
+                # or permission for another create. Preserve its full reservation.
+                self.uncertain=bool(asyncio.current_task().cancelling())
             from pyqwest import Response
             return Response(status=response.status,headers=response.headers,content=data)
         return response
