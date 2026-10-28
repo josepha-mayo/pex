@@ -10,7 +10,9 @@ from urllib.parse import urlsplit
 from successor_budget import PRIOR_WORKERS, PRIOR_SUPERVISOR, PRIOR_COMPUTE, WORKER_SHARED_OUTER
 
 # A fresh pair requires an exact new approval pinned by root, not caller data.
-APPROVED_PAIR_REF = None
+APPROVED_PAIR_REF = "Sentinel_b42b3bfcf2d48191adae4988661e9a42"
+APPROVED_RUN_ID = "stockroom-approved-pair-20261028-01"
+APPROVED_PRIVATE_ROOT = Path(__file__).resolve().parents[1] / "runtime-private" / "pex-pilot-20261027" / APPROVED_RUN_ID
 
 TASK_SHA='c242f9128edd87b34c678e5e0db36527b556f0b2163533577e5c96320c3b5f19'
 REQUIRED_SOURCES={'successor_budget','successor_admission','successor_runner','stockroom_task','stockroom_request','stockroom_grade','export_candidate','public_diff','controller','review','nebius_worker','nebius_guard','worker_funding','accounting','cumulative_compute','e2b_transport','remote_mcp','budget_rpc','opencode_cli','opencode_v2_receipt','process_adapter'}
@@ -59,8 +61,10 @@ def load(path,root,*,now=None):
     if type(root)is not RootAdmission:raise AdmissionRefused('explicit_root_admission_required')
     if APPROVED_PAIR_REF is None or root.approval_ref != APPROVED_PAIR_REF:
         raise AdmissionRefused('new_pair_approval_pending')
+    if Path(path) != APPROVED_PRIVATE_ROOT/'pair.json':raise AdmissionRefused('one_approved_config_path_required')
     raw=private_read(path);cfg=json.loads(raw)
     if type(cfg)is not dict or set(cfg)!=REQUIRED or cfg['schema']!='pex.stockroom-successor.v1':raise AdmissionRefused('successor_config_schema')
+    if cfg['run_id'] != APPROVED_RUN_ID or cfg['output_dir'] != str(APPROVED_PRIVATE_ROOT/'run'):raise AdmissionRefused('one_approved_run_identity_required')
     now=now or datetime.now(timezone.utc);root.validate(cfg,raw,now)
     if type(cfg['run_id'])is not str or not cfg['run_id'] or len(cfg['run_id'])>80:raise AdmissionRefused('run_identity_required')
     if type(cfg['sources'])is not dict or set(cfg['sources'])!=REQUIRED_SOURCES:raise AdmissionRefused('complete_source_identity_required')

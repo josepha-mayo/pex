@@ -23,6 +23,8 @@ class AdmissionTests(unittest.TestCase):
         self.approval_patch.start()
         self.addCleanup(self.approval_patch.stop)
         self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name);self.root.chmod(0o700)
+        for name,value in [('APPROVED_RUN_ID','authored'),('APPROVED_PRIVATE_ROOT',self.root)]:
+            item=patch('successor_admission.'+name,value);item.start();self.addCleanup(item.stop)
         self.now=datetime.now(timezone.utc);expiry=(self.now+timedelta(hours=1)).isoformat()
         dummy=write(self.root/'source.py',b'# authored no-op source\n')
         key=write(self.root/'key',b'NOT-A-REAL-CREDENTIAL')
@@ -30,11 +32,11 @@ class AdmissionTests(unittest.TestCase):
         supervisor=write(self.root/'supervisor-config.json',b'{}')
         self.prior={'schema':'pex.cumulative-predecessor.v1','closed':True,'worker_charged_nano_usd':{'baseline':10081800,'pex':9382800},'supervisor_charged_nano_usd':659514900,'compute_upper_bound_nano_usd':19965000,'closed_evidence_sha256':'a'*64}
         pred=write(self.root/'predecessor.json',json.dumps(self.prior).encode())
-        self.cfg={'schema':'pex.stockroom-successor.v1','run_id':'authored','approval_ref':'AUTHORED-RETRY','funding_approval_ref':'AUTHORED-FUNDING','expires_at':expiry,'package_path':str(TASK),'output_dir':str(self.root/'output'),'nebius_key':key,'e2b_key':key,'binary':dummy,'modules_path':str(self.root),'sources':{n:dummy for n in REQUIRED_SOURCES},'predecessor':pred,'supervisor':{'entry':dummy,'config':supervisor},'network':{'proxy_sha256':sha(b'http://authored.invalid:8080'),'ca':ca}}
+        self.cfg={'schema':'pex.stockroom-successor.v1','run_id':'authored','approval_ref':'AUTHORED-RETRY','funding_approval_ref':'AUTHORED-FUNDING','expires_at':expiry,'package_path':str(TASK),'output_dir':str(self.root/'run'),'nebius_key':key,'e2b_key':key,'binary':dummy,'modules_path':str(self.root),'sources':{n:dummy for n in REQUIRED_SOURCES},'predecessor':pred,'supervisor':{'entry':dummy,'config':supervisor},'network':{'proxy_sha256':sha(b'http://authored.invalid:8080'),'ca':ca}}
         self.env=patch.dict(os.environ,{'HTTPS_PROXY':'http://authored.invalid:8080','SSL_CERT_FILE':ca['path']});self.env.start()
         self.pin()
     def pin(self):
-        self.path=self.root/'config.json';p=write(self.path,json.dumps(self.cfg).encode())
+        self.path=self.root/'pair.json';p=write(self.path,json.dumps(self.cfg).encode())
         self.admission=RootAdmission(p['sha256'],self.cfg['approval_ref'],self.cfg['funding_approval_ref'],self.cfg['expires_at'],self.cfg['predecessor']['sha256'],self.cfg['supervisor']['entry']['sha256'])
     def tearDown(self):self.env.stop();self.tmp.cleanup()
     def test_closed_gate_precedes_every_private_read(self):
@@ -45,6 +47,16 @@ class AdmissionTests(unittest.TestCase):
         with patch('successor_admission.APPROVED_PAIR_REF', 'DIFFERENT-OWNER-APPROVAL'), patch('successor_admission.private_read', side_effect=AssertionError('must not read')):
             with self.assertRaisesRegex(AdmissionRefused, 'new_pair_approval_pending'):
                 load(self.path, self.admission)
+    def test_one_run_binding_refuses_alternate_path_before_reads(self):
+        with patch('successor_admission.private_read', side_effect=AssertionError('must not read')):
+            with self.assertRaisesRegex(AdmissionRefused, 'one_approved_config_path_required'):
+                load(self.root/'alternate.json',self.admission)
+    def test_one_run_binding_refuses_alternate_identity(self):
+        for field,value in [('run_id','other'),('output_dir',str(self.root/'other'))]:
+            original=self.cfg[field];self.cfg[field]=value;self.pin()
+            with self.assertRaisesRegex(AdmissionRefused,'one_approved_run_identity_required'):
+                load(self.path,self.admission)
+            self.cfg[field]=original
     def test_valid_authored_data_admission(self):
         cfg,prior=load(self.path,self.admission,now=self.now)
         self.assertEqual(cfg,self.cfg);self.assertEqual(prior,self.prior)
