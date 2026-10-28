@@ -44,13 +44,16 @@ def review_observed(decision, observation_digest, session_id):
 def add_usage(state, usage, elapsed, limit):
     if (type(usage) is not dict or set(usage) != {'calls','input_tokens','output_tokens'}
             or any(type(v) is not int or v < 0 for v in usage.values())
-            or not 1 <= usage['calls'] <= limit.calls or usage['output_tokens'] > limit.output_tokens):
+            or usage['calls'] < 1):
         raise ProtocolInconclusive('phase_usage_invalid_or_over_cap')
-    if type(elapsed) not in (int,float) or not math.isfinite(elapsed) or not 0 <= elapsed <= limit.active_seconds:
+    if type(elapsed) not in (int,float) or not math.isfinite(elapsed) or elapsed < 0:
         raise ProtocolInconclusive('phase_time_invalid_or_over_cap')
     for field, value in usage.items():
         state[field] += value
     state['worker_active_seconds'] += elapsed
+    if (usage['calls'] > limit.calls or usage['output_tokens'] > limit.output_tokens
+            or elapsed > limit.active_seconds):
+        raise ProtocolInconclusive('phase_enforcement_failed')
 
 
 async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only', clock=time.monotonic):
@@ -66,6 +69,7 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
         raise ValueError('independent_pristine_workspaces_required')
     report = {'mode':mode,'protocol':'staged-8+4-WIP','worker_budget_each':asdict(TOTAL),
               'phases_each':[asdict(p) for p in PHASES], 'arms':{},
+              'required_worker_adapter_policy':'symmetric_counted_final_request_tool_choice_none_not_spontaneous_task_completion',
               'real_inference_calls':0,'pex_lift':None,'presentation_eligible':False}
     life = None
     try:
@@ -82,6 +86,7 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
             cleanup_elapsed = 0.0
             cleanup_failed = False
             pending_worker_phase = False
+            current_limit = None
 
             async def bounded(call, seconds, retain=0, *, setup=False):
                 now = clock()
@@ -98,6 +103,7 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
                 await bounded(lambda:worker.prepare(arm, deadline=life.deadline), SETUP_SECONDS,
                               retain=310, setup=True)
                 for index, limit in enumerate(PHASES):
+                    current_limit = limit
                     retain = 190 if index == 0 else GRADE_SECONDS + CLEANUP_SECONDS
                     pending_worker_phase = True
                     turn = await bounded(lambda:worker.phase(arm, prompt=prompt, session_id=session,
@@ -155,6 +161,15 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
                     state['worker_active_time_exact']=False
                 else:
                     state['worker_active_seconds'] += error.worker_active_seconds
+                partial=error.usage
+                if (current_limit is None
+                        or (partial is not None and (partial['calls'] > current_limit.calls
+                            or partial['output_tokens'] > current_limit.output_tokens))
+                        or (error.worker_active_seconds is not None and error.worker_active_seconds > current_limit.active_seconds)
+                        or state['calls'] > TOTAL.calls or state['output_tokens'] > TOTAL.output_tokens
+                        or state['worker_active_seconds'] > TOTAL.active_seconds):
+                    state['status']='protocol_inconclusive'
+                    state['error_type']='worker_phase_enforcement_failed'
             except (TimeoutError, WallBudgetExhausted) as error:
                 state['status']='wall_budget_terminal_inconclusive'
                 state['error_type']=type(error).__name__

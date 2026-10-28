@@ -171,3 +171,32 @@ def test_final_cleanup_is_bounded_and_failure_retained():
         async def cleanup(self): ticks[0]+=16
     _,r=run(Slow(),clock=lambda:ticks[0])
     assert r['cleanup_confirmed'] is False and r['cleanup_error']=='TimeoutError'
+
+
+@pytest.mark.parametrize('phase,calls,output,seconds',[(0,9,1,1),(1,5,1,1),
+    (0,8,32769,1),(1,4,16385,1),(0,8,1,121),(1,4,1,61)])
+def test_partial_overrun_is_retained_but_not_ordinary_budget_exhaustion(phase,calls,output,seconds):
+    class Overrun(Worker):
+        async def phase(self,*a,**kw):
+            if kw['phase_index']==phase:
+                raise WorkerBudgetTerminal('worker_attempt_cap_refused',usage=dict(calls=calls,
+                    input_tokens=10,output_tokens=output,uncertain_calls=0),worker_active_seconds=seconds)
+            return await super().phase(*a,**kw)
+    _,r=run(Overrun())
+    for s in r['arms'].values():
+        assert s['status']=='protocol_inconclusive'
+        assert s['error_type']=='worker_phase_enforcement_failed'
+        assert s['calls']==calls+(8 if phase else 0)
+        assert s['worker_active_seconds']==seconds+(1 if phase else 0)
+
+
+def test_partial_second_phase_does_not_duplicate_first_phase_usage():
+    class Partial(Worker):
+        async def phase(self,*a,**kw):
+            if kw['phase_index']==1:
+                raise WorkerBudgetTerminal('worker_attempt_cap_refused',usage=dict(calls=4,
+                    input_tokens=20,output_tokens=2,uncertain_calls=0),worker_active_seconds=2)
+            return await super().phase(*a,**kw)
+    _,r=run(Partial())
+    assert all(s['calls']==12 and s['input_tokens']==30 and s['worker_active_seconds']==3 for s in r['arms'].values())
+    assert all(s['status']=='worker_budget_terminal_inconclusive' for s in r['arms'].values())
