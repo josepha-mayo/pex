@@ -124,6 +124,9 @@ class NebiusCLIWorker:
             if name in os.environ: env[name]=os.environ[name]
         env['NO_PROXY']=env.get('NO_PROXY','')+',127.0.0.1,localhost'
         env['no_proxy']=env.get('no_proxy',env['NO_PROXY'])+',127.0.0.1,localhost'
+        if self.staged_binding is not None:
+            from staged_worker_admission import bind_child_environment
+            env=bind_child_environment(self.staged_binding,env)
         # run_turn exclusively creates its files; restrictive umask preserves that contract.
         os.umask(0o077)
         funding=getattr(self,'funding',{}).get(condition)
