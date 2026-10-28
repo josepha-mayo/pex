@@ -1,9 +1,9 @@
 {
   "schema": "pex.owner-evidence.wip.v1",
-  "source_checkpoint": "parent:ef62c8a495eace410b2b7af84610c9c9716a71ba; owner-only UTC newest20 ordering fix",
-  "qualification": "WIP: 75 current backend unittests; authored JSONL/SQLite/ASGI only. Owner sessions are ordered by bounded fixed-width UTC microseconds before SQL LIMIT, retaining stable id ties and null-last behavior. Shared Store and goal ordering are unchanged. Frontend results below are historical, not rerun. No new live inference, browser, deployment or benchmark.",
+  "source_checkpoint": "parent:e738dfc4fa7b2e0008cfc090296cf5d9afd17071; owner-only UTC newest20 goal ordering fix",
+  "qualification": "WIP: 80 current backend unittests; authored JSONL/SQLite/ASGI only. Owner sessions and goals use bounded fixed-width UTC microseconds before SQL LIMIT. Goal selection checks quarantine on that exact page, reuses snapshot-validated per-ID intent views, and checks selected/load authority plus existing completion CAS. Shared Store ordering and lineage are unchanged. Frontend results below are historical, not rerun. No new live inference, browser, TLS, deployment or benchmark.",
   "results": {
-    "backend_unittest_pass": 75,
+    "backend_unittest_pass": 80,
     "changed_python_ruff_check": "passed",
     "changed_python_ruff_format": "passed"
   },
@@ -15,8 +15,8 @@
     },
     {
       "path": "services/bridge/src/pex_bridge/web_owner_workspace.py",
-      "sha256": "d356b69c15f3d775ade6f260b0efb28f3941f7ac4d34fda0da68df7200ffcab5",
-      "bytes": 8129
+      "sha256": "011c1df14ebc2d158cdb53bf60dba4adb46ae88497675f7e104b847e3b8fcbf6",
+      "bytes": 9026
     },
     {
       "path": "tests/unit/test_web_owner_evidence.py",
@@ -25,8 +25,8 @@
     },
     {
       "path": "tests/unit/test_web_owner_workspace.py",
-      "sha256": "6bba88904fe245ec3b4d35097d2b74e5ea998aecd7f7609ab4aa0ac070806bb4",
-      "bytes": 16351
+      "sha256": "b118eeaaadbcc0a7049548e5d87d5db39361656f54b713a5ab9c33391e42bd03",
+      "bytes": 22853
     },
     {
       "path": "apps/desktop/src/owner/workspace.ts",

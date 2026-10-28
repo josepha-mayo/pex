@@ -128,7 +128,10 @@ class WorkspaceTests(unittest.IsolatedAsyncioTestCase):
             db.execute(
                 "CREATE TABLE goals(id TEXT,intent_revision INTEGER,intent_hash TEXT,json TEXT)"
             )
-            db.execute("INSERT INTO goals VALUES ('g1',NULL,NULL,'{}')")
+            db.execute(
+                "INSERT INTO goals VALUES ('g1',NULL,NULL,?)",
+                (json.dumps({"created_at": NOW.isoformat(), "updated_at": NOW.isoformat()}),),
+            )
         with self.assertRaises(ValueError):
             await OwnerWorkspaceReader(legacy).read_workspace()
         with sqlite3.connect(legacy) as db:
@@ -207,6 +210,108 @@ class WorkspaceTests(unittest.IsolatedAsyncioTestCase):
                     "WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL "
                     "SELECT x+1 FROM n WHERE x < 1000000) SELECT sum(x) FROM n"
                 )
+
+    async def store_goal(self, goal_id, updated, *, created=None, paused=False):
+        await self.writer.create_goal_with_ledger(
+            Goal(
+                id=goal_id,
+                project_id="authored-project",
+                title="Authored " + goal_id,
+                objective="Authored fixture only",
+                created_at=datetime.fromisoformat(created or updated),
+                updated_at=datetime.fromisoformat(updated),
+                paused=paused,
+            ),
+            [],
+        )
+
+    async def test_newest_twenty_goals_orders_utc_before_limit_and_keeps_completion(self):
+        for number in range(20):
+            await self.store_goal(f"older-{number:02}", "2026-10-27T01:00:00+14:00")
+        await self.store_goal("newest", "2026-10-26T23:59:00+00:00", paused=True)
+        result = await self.reader.read_workspace()
+        self.assertEqual(len(result["goals"]), 20)
+        self.assertTrue(result["truncated"]["goals"])
+        self.assertEqual(result["goals"][0]["id"], "newest")
+        self.assertTrue(result["goals"][0]["paused"])
+        self.assertEqual(result["goals"][0]["completion"]["status"], "uncertain")
+        self.assertEqual(
+            result["goals"][0]["completion"]["reason"], "goal_not_currently_executable"
+        )
+        self.assertEqual(
+            [goal["id"] for goal in result["goals"][1:]],
+            [f"older-{number:02}" for number in range(19, 0, -1)],
+        )
+
+    async def test_goal_order_retains_both_timestamp_microseconds_and_id_ties(self):
+        for goal_id, updated, created in (
+            ("u-newer", "00:00:00.000003+00:00", "00:00:00+00:00"),
+            ("c-newer", "00:00:00.000002+00:00", "00:00:00.000002+00:00"),
+            ("tie-z", "01:00:00.000002+01:00", "01:00:00.000001+01:00"),
+            ("tie-a", "00:00:00.000002+00:00", "00:00:00.000001+00:00"),
+            ("z-created-older", "00:00:00.000002+00:00", "00:00:00+00:00"),
+            ("z-updated-older", "00:00:00.000001+00:00", "00:00:00+00:00"),
+        ):
+            await self.store_goal(goal_id, "2026-10-26T" + updated, created="2026-10-26T" + created)
+        result = await self.reader.read_workspace()
+        self.assertEqual(
+            [goal["id"] for goal in result["goals"]],
+            ["u-newer", "c-newer", "tie-z", "tie-a", "z-created-older", "z-updated-older"],
+        )
+
+    async def test_required_goal_timestamp_scalar_rejects_authored_invalid_inputs(self):
+        # Authored scalar inputs, not corruptions admitted by ordinary Store writes.
+        async with _ReadView(self.path)._pooled_connection() as db:
+            for stamp in (
+                None,
+                "PRIVATE invalid timestamp",
+                "2026-10-26T00:00:00",
+                "X" * 41,
+                123,
+                True,
+                "0001-01-01T00:00:00+01:00",
+                "9999-12-31T23:59:59-01:00",
+            ):
+                with self.subTest(stamp=stamp), self.assertRaises(sqlite3.Error):
+                    await db.execute("SELECT owner_goal_timestamp_key(?)", (stamp,))
+            row = await (
+                await db.execute("SELECT owner_goal_timestamp_key('2026-10-26T01:00:00+01:00')")
+            ).fetchone()
+            self.assertEqual(row[0], "2026-10-26T00:00:00.000000+00:00")
+
+    async def test_selected_goal_authority_rejects_changed_missing_and_quarantined_views(self):
+        await self.store_goal("g1", "2026-10-26T00:00:00+00:00")
+        view = _ReadView(self.path)
+        original = await view.get_goal_intent_view("g1")
+        for loaded in (
+            None,
+            {**original, "intent_revision": original["intent_revision"] + 1},
+            {**original, "intent_hash": "0" * 64},
+        ):
+            with (
+                self.subTest(loaded=loaded),
+                patch.object(view, "get_goal_intent_view", AsyncMock(return_value=loaded)),
+                self.assertRaises(ValueError),
+            ):
+                await view.list_owner_goal_intent_views()
+        # Schema guards normally prevent these selected rows: authored projections
+        # cover legacy quarantine and ensure no rows are silently dropped.
+        for revision, semantic_hash in ((None, None), (None, "0" * 64), (1, None)):
+            with (
+                patch.object(
+                    view,
+                    "_committed_fetchall",
+                    AsyncMock(
+                        return_value=[
+                            {"id": "g1", "intent_revision": revision, "intent_hash": semantic_hash}
+                        ]
+                    ),
+                ),
+                patch.object(view, "get_goal_intent_view", AsyncMock()) as load,
+                self.assertRaises(ValueError),
+            ):
+                await view.list_owner_goal_intent_views()
+            load.assert_not_awaited()
 
     async def test_relative_path_rejected(self):
         with self.assertRaises(ValueError):
@@ -362,6 +467,35 @@ class WorkspaceHttpTests(unittest.IsolatedAsyncioTestCase):
         await self.writer.db.commit()
         _, payload = self.http.response(await self.workspace_request(cookie), 200)
         self.assertEqual(payload["sessions"][0]["id"], "s1")
+
+    async def test_goal_load_and_completion_authority_failures_hide_details(self):
+        await self.seed()
+        cookie, _ = await self.http.signed_in()
+        original = await _ReadView(self.path).get_goal_intent_view("g1")
+        # Authored interrupted reads; no schema guards or real data are changed.
+        for loaded in (
+            None,
+            {**original, "intent_revision": original["intent_revision"] + 1},
+            {**original, "intent_hash": "PRIVATE changed hash"},
+            ValueError("PRIVATE quarantined authority"),
+        ):
+            response = (
+                AsyncMock(side_effect=loaded)
+                if isinstance(loaded, Exception)
+                else AsyncMock(return_value=loaded)
+            )
+            with patch.object(_ReadView, "get_goal_intent_view", response):
+                _, payload = self.http.response(await self.workspace_request(cookie), 503)
+                self.assertEqual(payload, {"error": "owner_workspace_unavailable"})
+        completion = await _ReadView(self.path).goal_completion_projection("g1")
+        with patch.object(
+            _ReadView,
+            "goal_completion_projection",
+            AsyncMock(return_value={**completion, "goal_intent_hash": "PRIVATE changed hash"}),
+        ):
+            _, payload = self.http.response(await self.workspace_request(cookie), 503)
+            self.assertEqual(payload, {"error": "owner_workspace_unavailable"})
+        self.http.response(await self.workspace_request(cookie), 200)
 
 
 if __name__ == "__main__":

@@ -59,6 +59,11 @@ def _session_activity_key(value: object) -> str | None:
     return None if value is None else _timestamp(value, timespec="microseconds")
 
 
+def _goal_timestamp_key(value: object) -> str:
+    # Unlike a session's last activity, both goal timestamps are required.
+    return _timestamp(value, timespec="microseconds")
+
+
 class _ReadView(Store):
     """Only the facade below is exposed, not this Store-shaped implementation."""
 
@@ -85,6 +90,9 @@ class _ReadView(Store):
             await db.create_function(
                 "owner_session_activity_key", 1, _session_activity_key, deterministic=True
             )
+            await db.create_function(
+                "owner_goal_timestamp_key", 1, _goal_timestamp_key, deterministic=True
+            )
             try:
                 yield db
             finally:
@@ -107,6 +115,30 @@ class _ReadView(Store):
         )
         return [HarnessSession.model_validate_json(row["json"]) for row in rows]
 
+    async def list_owner_goal_intent_views(self) -> list[dict]:
+        rows = await self._committed_fetchall(
+            "SELECT id, intent_revision, intent_hash FROM goals "
+            "ORDER BY owner_goal_timestamp_key(json_extract(json, '$.updated_at')) DESC, "
+            "owner_goal_timestamp_key(json_extract(json, '$.created_at')) DESC, "
+            "id DESC LIMIT ?",
+            (ROW_LIMIT + 1,),
+        )
+        # Select and quarantine-check the same normalized page. Never drop a
+        # quarantined row, or substitute a different row after a concurrent edit.
+        if any(row["intent_revision"] is None or row["intent_hash"] is None for row in rows):
+            raise ValueError("workspace goal authority unavailable")
+        goals = []
+        for row in rows:
+            goal = await self.get_goal_intent_view(_identifier(row["id"]))
+            if (
+                goal is None
+                or goal["intent_revision"] != row["intent_revision"]
+                or goal["intent_hash"] != row["intent_hash"]
+            ):
+                raise ValueError("workspace goal changed or authority unavailable")
+            goals.append(goal)
+        return goals
+
 
 class OwnerWorkspaceReader:
     """Explicit server-owned path; construction performs no DB or network I/O."""
@@ -123,18 +155,8 @@ class OwnerWorkspaceReader:
 
     async def read_workspace(self) -> dict:
         view = self.__view
-        # Do not silently omit quarantined rows from the authoritative listing.
-        async with view._pooled_connection() as db:
-            cursor = await db.execute(
-                "SELECT intent_revision, intent_hash FROM goals "
-                "ORDER BY json_extract(json, '$.updated_at') DESC, "
-                "json_extract(json, '$.created_at') DESC, id DESC LIMIT ?",
-                (ROW_LIMIT + 1,),
-            )
-            if any(row[0] is None or row[1] is None for row in await cursor.fetchall()):
-                raise ValueError("workspace goal authority unavailable")
+        goals = await view.list_owner_goal_intent_views()
         sessions = await view.list_sessions(limit=ROW_LIMIT + 1)
-        goals = await view.list_goal_intent_views_page(limit=ROW_LIMIT + 1)
         projected_sessions = []
         for session in sessions[:ROW_LIMIT]:
             projected_sessions.append(
