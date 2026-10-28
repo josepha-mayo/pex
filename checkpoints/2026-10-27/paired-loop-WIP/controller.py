@@ -13,9 +13,22 @@ class PublicEvidenceInfrastructureError(RuntimeError):
     pass
 
 class WorkerBudgetTerminal(ValueError):
-    def __init__(self,code):
+    def __init__(self,code,*,usage=None,worker_active_seconds=None):
         if code not in {'worker_budget_reservation_refused','worker_attempt_cap_refused'}: raise ValueError('invalid_worker_budget_code')
+        if usage is not None:
+            if (type(usage) is not dict or set(usage) != {'calls','input_tokens','output_tokens','uncertain_calls'}
+                    or any(type(x) is not int or x < 0 for x in usage.values())
+                    or usage['uncertain_calls'] > usage['calls']):
+                raise ValueError('invalid_terminal_usage_receipt')
+            usage=dict(usage)
+        if worker_active_seconds is not None:
+            if type(worker_active_seconds) not in (int,float): raise ValueError('invalid_terminal_time_receipt')
+            try: worker_active_seconds=float(worker_active_seconds)
+            except OverflowError: raise ValueError('invalid_terminal_time_receipt') from None
+            if not math.isfinite(worker_active_seconds) or worker_active_seconds < 0: raise ValueError('invalid_terminal_time_receipt')
         self.code=code
+        self.usage=usage
+        self.worker_active_seconds=worker_active_seconds
         super().__init__(code)
 
 @dataclass(frozen=True)
@@ -48,7 +61,8 @@ async def run_pair(arms, worker, review, grader, *, budget=Budget(), mode="autho
             arm = arms[condition]
             state = {"status": "running", "calls": 0, "input_tokens": 0, "output_tokens": 0,
                      "worker_active_seconds": 0.0, "supervisor_seconds": 0.0,
-                     "reviews": [], "turn_receipts": []}
+                     "reviews": [], "turn_receipts": [], "worker_call_count_exact": True,
+                     "worker_token_usage_exact": True, "worker_active_time_exact": True}
             report["arms"][condition] = state
             emit(event="arm_started",arm=condition)
             session, prompt = None, arm["prompt"]
@@ -129,6 +143,26 @@ async def run_pair(arms, worker, review, grader, *, budget=Budget(), mode="autho
                 if worker_budget_error is not None:
                     state["status"]="worker_budget_terminal_inconclusive"
                     state["budget_terminal_reason"]=worker_budget_error.code
+                    # The failed turn never returned its normal receipt. Preserve
+                    # the trusted ledger delta and measured CLI duration instead.
+                    partial=worker_budget_error.usage
+                    if partial is None:
+                        state['worker_call_count_exact']=False
+                        state['worker_token_usage_exact']=False
+                    else:
+                        for name in ('calls','input_tokens','output_tokens'):
+                            state[name] += partial[name]
+                        state['worker_uncertain_calls']=state.get('worker_uncertain_calls',0)+partial['uncertain_calls']
+                        state['worker_token_usage_exact'] &= partial['uncertain_calls']==0
+                        state['terminal_usage_source']='durable_funding_ledger_validated_wire_or_explicit_uncertainty'
+                    elapsed=worker_budget_error.worker_active_seconds
+                    if elapsed is None: state['worker_active_time_exact']=False
+                    else: state['worker_active_seconds'] += elapsed
+                    if (state['calls'] > budget.calls or state['output_tokens'] > budget.output_tokens
+                            or (budget.input_tokens is not None and state['input_tokens'] > budget.input_tokens)):
+                        state['status']='infrastructure_error'
+                        state['error_type']='worker_budget_enforcement_failed'
+
                 if isinstance(exc,PublicEvidenceInfrastructureError): state["status"]="infrastructure_inconclusive"
                 state["error_type"] = type(exc).__name__
             finally:
@@ -147,7 +181,10 @@ async def run_pair(arms, worker, review, grader, *, budget=Budget(), mode="autho
                     state["status"] = "grading_inconclusive"
             emit(event="arm_terminal",arm=condition,terminal=state["status"],worker_calls=state["calls"])
         if mode == "live-pilot":
-            report["real_worker_inference_calls"] = sum(s["calls"] for s in report["arms"].values())
+            count_exact=all(s['worker_call_count_exact'] for s in report['arms'].values())
+            requests=sum(s['calls'] for s in report['arms'].values()) if count_exact else None
+            report['real_worker_request_attempts']=requests
+            report["real_worker_inference_calls"] = requests if count_exact and all(s['worker_token_usage_exact'] for s in report['arms'].values()) else None
             report["real_inference_calls"] = None  # combined count requires validated supervisor receipts
         emit(event="paired_terminal",terminal="finished",worker_calls=sum(s["calls"] for s in report["arms"].values()))
         return report

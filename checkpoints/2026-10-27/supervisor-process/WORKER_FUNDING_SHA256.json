@@ -5,8 +5,8 @@
     "sha256": "cec357b03b103e85953b63d819e83423eb6ea5f59453c7f085438b4c0a342a17"
   },
   "worker_funding.py": {
-    "bytes": 18541,
-    "git_blob": "2c82a4f596356a5e5b8d6c9bcf6b0d7ce6de2af3",
-    "sha256": "2be535a9d19f0d09c2d284b38ef26f5e6b782b083379794dd90715265f4f97a8"
+    "bytes": 19471,
+    "git_blob": "34678ef11dd0209f7f1bd618d992fb079425908d",
+    "sha256": "9587d2c4a807b275b6b306e900bfe4cc819382ae75c30d0e7dc952b18fe2db47"
   }
 }

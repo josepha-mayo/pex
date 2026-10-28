@@ -319,6 +319,27 @@ class _WorkerLedger:
         return {"charged_nano_usd":charge,"state":state,"arm":self.arm,"call_id":call_id}
 
     @_locked
+    def usage_snapshot(self):
+        """Trusted controller accounting only; unknown wire usage stays explicit.
+
+        Counts accepted reservations for this arm, including uncertain delivery.
+        Token sums include only validated raw-wire receipts, never guessed usage.
+        This method is not exposed by the guard RPC or any model/remote tool.
+        """
+        self._validate()
+        result = dict(calls=0, input_tokens=0, output_tokens=0, uncertain_calls=0)
+        for state, receipt in self.db.execute(
+                "SELECT state,receipt FROM calls WHERE arm=?", (self.arm,)):
+            result["calls"] += 1
+            if state != "settled_raw_wire":
+                result["uncertain_calls"] += 1
+                continue
+            usage = _json(receipt)["usage"]
+            for name in ("input_tokens", "output_tokens"):
+                result[name] += usage[name]
+        return result
+
+    @_locked
     def summary(self):
         totals,counts=self._validate()
         return {"charged_nano_usd":totals,"attempts":counts,"per_arm_budget_nano_usd":self.arm_budget}

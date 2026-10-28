@@ -6,10 +6,10 @@
   "WORKER_TIME_VALIDATION_WIP.md": "946606327e8c02a262e73ce38f10974ae2e96ea748ad0367d114ecd1c7336783",
   "budget_rpc.py": "fe8f972af12844d8c85eddc1804eb6ba60ed4fe9719b68d66e6aa7e5b2fb413d",
   "cli_worker.py": "8c6b1605d238ea1161c8e192c55573a9b7bf0fd80768f9f681c66d5c59417e03",
-  "controller.py": "4e04356701e795304e1a7229e7f2b3f233fc248782cb9a00f3019c020b9c8206",
+  "controller.py": "897b9f3860627cbda85094685bbd51f7de1f347bda7fcb2eaeac077c72cd5144",
   "mcp_fixture.py": "73e68ae20542dfe2d37d1a4dba80dd154e7072ad8dffe792e23424bcd9cce9dc",
   "nebius_guard.ts": "84e1c40f6d5cef409a6946a1cf8d37d771972615358e3323bcd50c3287c9366f",
-  "nebius_worker.py": "a4cd2583883769dcd51255d5df67a66cef4659ee36300e1ea4c3b8390b111a10",
+  "nebius_worker.py": "a4b6423a7324fc485ed50a9c319c0d8d7481b9b7b54c5f993b666ab247c71fab",
   "opencode_v2_receipt.py": "de15e8e0c8c72b2b3a3c732d9c95646c6f8f28433321e8c1601c911adf54c24d",
   "pilot.py": "fda7807807e906e68a450c41d3110f73f31f0c32f55e782c55281ed39df691c1",
   "pilot_nebius.py": "791604157594594406c629bbecb41db15255da5182adbda1a0324942725f64cb",
@@ -31,5 +31,6 @@
   "test_stop_persistence.py": "30170f08d99657c838b7abb5f0a089f484fcc383ce3f9234dc1b9044f9ae30d2",
   "test_supervisor_overhead.py": "1510b03e16a592d8d15b8f816c2ca6fe6cd1862bfdc9570101bfa9f726fadafc",
   "test_worker_terminal.py": "354fbf03be9944088b19f79e029df5cdc384b91db35ad6e4ec0aff8e26d480fb",
+  "test_worker_terminal_accounting.py": "da47307f1ab4283702b89220f299de9e75cbd129b8d8a930ebd0c030f85b2da3",
   "test_worker_timing_receipt.py": "5e84a9045ccad7feca088ef6826458dedf2dc398ca1a3ea21bf40e027793d855"
 }

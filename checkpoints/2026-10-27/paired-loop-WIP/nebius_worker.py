@@ -24,10 +24,23 @@ BASE='https://api.tokenfactory.nebius.com/v1'
 TOOLS=['pex_remote_run','pex_remote_read','pex_remote_write','pex_remote_list']
 
 
-def raise_funding_terminal(channel):
+def raise_funding_terminal(channel,*,usage=None,worker_active_seconds=None):
     error=getattr(channel,'last_error',None)
     if isinstance(error,WorkerBudgetExhausted):
-        raise WorkerBudgetTerminal(error.code) from error
+        raise WorkerBudgetTerminal(error.code,usage=usage,
+                                  worker_active_seconds=worker_active_seconds) from error
+
+
+def funding_usage_delta(before,after):
+    if before is None or after is None: return None
+    fields={'calls','input_tokens','output_tokens','uncertain_calls'}
+    if (set(before)!=fields or set(after)!=fields
+            or any(type(v) is not int or v < 0 for obj in (before,after) for v in obj.values())):
+        raise ValueError('invalid_funding_usage_snapshot')
+    delta={k:after[k]-before[k] for k in fields}
+    if any(v < 0 for v in delta.values()) or delta['uncertain_calls'] > delta['calls']:
+        raise ValueError('funding_usage_snapshot_regressed')
+    return delta
 
 class NebiusCLIWorker:
     def __init__(self, *, remotes, private_root, binary, modules, key_path, pool,
@@ -100,6 +113,9 @@ class NebiusCLIWorker:
         env['no_proxy']=env.get('no_proxy',env['NO_PROXY'])+',127.0.0.1,localhost'
         # run_turn exclusively creates its files; restrictive umask preserves that contract.
         os.umask(0o077)
+        funding=getattr(self,'funding',{}).get(condition)
+        snapshot=getattr(funding,'usage_snapshot',None)
+        usage_before=snapshot() if callable(snapshot) else None
         cli_started=time.monotonic()
         try:
             receipt=await run_turn(executable=self.binary,workspace=state['case'],model='nebius/'+MODEL,prompt=prompt,
@@ -107,7 +123,12 @@ class NebiusCLIWorker:
                                   deadline=time.monotonic()+remaining['active_seconds'],session_id=session_id,standalone=True,
                                   agent='paired',terminal_database=db)
         except Exception:
-            raise_funding_terminal(state['funding_channel'])
+            elapsed=time.monotonic()-cli_started
+            channel=state['funding_channel']
+            if isinstance(getattr(channel,'last_error',None),WorkerBudgetExhausted):
+                usage_after=snapshot() if callable(snapshot) else None
+                raise_funding_terminal(channel,usage=funding_usage_delta(usage_before,usage_after),
+                                       worker_active_seconds=elapsed)
             raise
         cli_seconds=time.monotonic()-cli_started
         usage={'calls':0,'input_tokens':0,'output_tokens':0}
