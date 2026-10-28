@@ -20,10 +20,19 @@ def bound(candidate,monkeypatch,tmp_path,request):
     cfg['sdk_sources']=b.installed_source_pins()
     key=tmp_path/'SYNTHETIC-KEY';key.write_bytes(b'AUTHORED-NOT-A-CREDENTIAL');key.chmod(0o600)
     cfg['e2b_key']={'path':str(key),'sha256':a.sha(key.read_bytes())}
-    if getattr(request,'param',None)=='stockroom':
+    if getattr(request,'param',None) in ('stockroom','composition'):
         task=Path(__file__).resolve().parents[1]/'pex-hard-task-candidate-20261027-1421/MANIFEST.json'
         cfg['task']={'path':str(task),'sha256':a.sha(task.read_bytes())}
         cfg['nebius_key']=dict(cfg['e2b_key'])  # Synthetic authored key, not a real provider key.
+    if getattr(request,'param',None)=='composition':
+        from staged_composition import source_pins
+        root=Path(__file__).resolve().parents[1]
+        binary=root/'opencode-qualification-20261027/install/node_modules/@opencode/cli-linux-x64/bin/opencode'
+        modules=root/'opencode-qualification-20261027/mock/node_modules'
+        plugin=modules/'@opencode/plugin/package.json'
+        cfg['cli']={'binary':{'path':str(binary),'sha256':a.sha(binary.read_bytes())},'modules_path':str(modules),
+                    'plugin_package':{'path':str(plugin),'sha256':a.sha(plugin.read_bytes())}}
+        cfg['sources']=source_pins()
     raw,grant=freeze();monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',grant)
     admitted=a.load()
     import e2b.api.client_async as c

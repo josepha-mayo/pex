@@ -56,10 +56,12 @@ def add_usage(state, usage, elapsed, limit):
         raise ProtocolInconclusive('phase_enforcement_failed')
 
 
-async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only', clock=time.monotonic):
-    # No authority object can open this entry. A future live binding requires
-    # separate source/admission review and a fresh specific user grant.
-    if mode != 'authored-only':
+async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only', clock=time.monotonic, _composition=None):
+    if mode=='closed-admitted':
+        from staged_composition import Composition
+        if type(_composition) is not Composition:raise PermissionError('closed_owned_composition_required')
+        _composition.verify(arms,worker,review,grader)
+    elif mode!='authored-only' or _composition is not None or getattr(worker,'mode','authored-only')!='authored-only':
         raise PermissionError('staged_live_entry_not_implemented_or_authorized')
     if set(arms) != {'baseline','pex'}:
         raise ValueError('exactly_two_arms_required')
@@ -70,7 +72,7 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
     report = {'mode':mode,'protocol':'staged-8+4-WIP','worker_budget_each':asdict(TOTAL),
               'phases_each':[asdict(p) for p in PHASES], 'arms':{},
               'required_worker_adapter_policy':'symmetric_counted_final_request_tool_choice_none_not_spontaneous_task_completion',
-              'real_inference_calls':0,'pex_lift':None,'presentation_eligible':False}
+              'real_inference_calls':0 if mode=='authored-only' else None,'pex_lift':None,'presentation_eligible':False}
     life = None
     try:
         for condition in ('baseline','pex'):
@@ -89,6 +91,7 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
             current_limit = None
 
             async def bounded(call, seconds, retain=0, *, setup=False):
+                if _composition is not None:_composition.verify(arms,worker,review,grader)
                 now = clock()
                 if setup:
                     seconds = min(seconds, life.deadline - now - retain)
@@ -198,7 +201,7 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
                 try:
                     state['protected_grade'] = await bounded(lambda:grader.grade(arm), GRADE_SECONDS,
                                               retain=max(0,CLEANUP_SECONDS-cleanup_elapsed))
-                    state['grade_qualification']='authored_only_not_task_success'
+                    state['grade_qualification']='authored_only_not_task_success' if mode=='authored-only' else 'same_VM_grade_with_explicit_anti_tamper_limits'
                 except Exception as error:
                     state['status']='grading_inconclusive'
                     state['grade_error']=type(error).__name__
