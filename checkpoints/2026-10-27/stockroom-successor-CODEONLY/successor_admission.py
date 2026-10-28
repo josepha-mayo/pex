@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 from successor_budget import PRIOR_WORKERS, PRIOR_SUPERVISOR, PRIOR_COMPUTE, WORKER_SHARED_OUTER
 
 # A fresh pair requires an exact new approval pinned by root, not caller data.
-APPROVED_PAIR_REF = "Sentinel_b42b3bfcf2d48191adae4988661e9a42"
+APPROVED_PAIR_REF = None  # One authorized pair consumed; no additional dispatch.
 APPROVED_RUN_ID = "stockroom-approved-pair-20261028-03"
 APPROVED_PRIVATE_ROOT = Path(__file__).resolve().parents[1] / "runtime-private" / "pex-pilot-20261027" / APPROVED_RUN_ID
 
