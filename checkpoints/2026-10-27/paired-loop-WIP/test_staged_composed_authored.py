@@ -25,12 +25,16 @@ from test_process import Ledger as SupervisorLedger
 from test_managed_chat import ENDPOINT,MODEL,response,rig,no_network
 from test_tool_protocol import request_fixture
 from test_tool_transport import payload
+from test_staged_sdk_lifecycle import lifecycle
+from test_staged_sdk_binding import bound
+from test_staged_admission import candidate
 
 ROOT=Path(__file__).resolve().parents[1]
 
 
 @pytest.mark.asyncio
-async def test_composed_pinned_CLI_owned_review_fake_SDK(monkeypatch,tmp_path,rig):
+@pytest.mark.parametrize('remote_kind',['authored-fake','actual-sdk-mocked'])
+async def test_composed_pinned_CLI_owned_review_fake_SDK(monkeypatch,tmp_path,rig,request,remote_kind):
     wire=[];events=[];models=[]
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_POST(self):
@@ -73,7 +77,10 @@ async def test_composed_pinned_CLI_owned_review_fake_SDK(monkeypatch,tmp_path,ri
         def reserve(self,*a):events.append(('compute_reserve',a[0]))
         def settle_verified_allocation(self,*a,**kw):events.append(('compute_verified',a[0]))
     async def stage(arm,remote):events.append(('stage',arm['condition']))
-    lifecycle=StagedLifecycle(API(),Compute(),stage,run_id='authored-composed')
+    if remote_kind=='actual-sdk-mocked':
+        lifecycle,sdk_bound,stage_events=request.getfixturevalue('lifecycle')
+    else:
+        lifecycle=StagedLifecycle(API(),Compute(),stage,run_id='authored-composed')
     key=tmp_path/'synthetic.key';key.write_text('SYNTHETIC-COMPOSED-ONLY');key.chmod(0o600)
     ledgers={c:_WorkerLedger(tmp_path/'workers.sqlite',arm=c,approved_config_digest='a'*64,
         approval_ref='AUTHORED-NOT-APPROVAL',pricing_provenance_sha256=PRICING_SHA) for c in ('baseline','pex')}
@@ -115,7 +122,17 @@ async def test_composed_pinned_CLI_owned_review_fake_SDK(monkeypatch,tmp_path,ri
         assert report['arms']['pex']['supervisor_observed'] and report['cleanup_confirmed']
         assert len(wire)==24 and len(rig.calls)==6
         assert all(e[2]==20 for e in events if e[0]=='review')
-        assert events.index(('kill','baseline'))<events.index(('create','pex'))
+        if remote_kind=='actual-sdk-mocked':
+            from urllib.parse import urlsplit
+            from cumulative_compute import VERIFIED_FULL_LIFETIME
+            scope,compute,sdk_wire,pools,behavior=sdk_bound
+            baseline_kill=next(i for i,(method,url,body) in enumerate(sdk_wire) if method=='DELETE' and url.endswith('/authored-baseline'))
+            pex_create=next(i for i,(method,url,body) in enumerate(sdk_wire) if method=='POST' and urlsplit(url).path=='/v2/sandboxes' and json.loads(body)['metadata']['pex_arm']=='pex')
+            assert baseline_kill<pex_create and scope.owned==scope.stopped
+            assert compute.total()==100+2*VERIFIED_FULL_LIFETIME
+            assert stage_events==[('stage','baseline'),('stage','pex')]
+        else:
+            assert events.index(('kill','baseline'))<events.index(('create','pex'))
         assert report['real_inference_calls']==0 and report['pex_lift'] is None
         assert all(r.closed for r in lifecycle.remotes.values())
     finally:
