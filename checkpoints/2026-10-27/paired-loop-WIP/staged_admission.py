@@ -100,7 +100,7 @@ def inspect_candidate(raw, grant, *, now=None):
         raise AdmissionRefused('independent_exact_grant_identity_required')
     if sha(raw) != grant.config_sha256: raise AdmissionRefused('config_identity_changed')
     cfg = json.loads(raw)
-    required = {'schema','approval_ref','run_id','expires_at','profile','predecessor','sources','task','network','output_dir','e2b_key','sdk_sources'}
+    required = {'schema','approval_ref','run_id','expires_at','profile','predecessor','sources','task','network','output_dir','e2b_key','nebius_key','sdk_sources'}
     if type(cfg) is not dict or set(cfg) != required or cfg['schema'] != 'pex.staged.closed-candidate.v1':
         raise AdmissionRefused('staged_candidate_schema')
     if (not grant.approval_ref or cfg['approval_ref'] != grant.approval_ref or cfg['run_id'] != grant.run_id
@@ -141,8 +141,9 @@ def inspect_candidate(raw, grant, *, now=None):
             or config.parent.stat().st_mode & 0o077):
         raise AdmissionRefused('fresh_private_single_run_required')
     # Key pin syntax only; no key read until separately admitted SDK use.
-    if set(cfg['e2b_key']) != {'path','sha256'} or not digest(cfg['e2b_key']['sha256']):
-        raise AdmissionRefused('existing_private_key_pin_required')
+    for key in ('e2b_key','nebius_key'):
+        if set(cfg[key]) != {'path','sha256'} or not digest(cfg[key]['sha256']):
+            raise AdmissionRefused('existing_private_key_pin_required')
     return reservation_envelope(prior_provider=prior['provider_nano_usd'],equal_worker_fresh=profile['equal_worker_fresh'],
         supervisor_fresh=profile['supervisor_fresh'],provider_ceiling=PROVIDER_CAP,prior_compute=prior['compute_nano_usd'],
         verified_vm_bound=9_982_500,uncertain_create_reserve=48_840_000,compute_ceiling=COMPUTE_CAP)

@@ -110,6 +110,8 @@ class WorkerPhaseLedger:
 
 class SupervisorPhaseLedger:
     def __init__(self,owner):self.owner=owner
+    @property
+    def db(self):return self.owner.supervisor.db
     def reserve(self,*args):self.owner.before_reserve();return self.owner.supervisor.reserve(*args)
     def settle(self,*args):self.owner.validate_identity();return self.owner.supervisor.settle(*args)
     def summary(self):self.owner.validate_identity();return self.owner.supervisor.summary()

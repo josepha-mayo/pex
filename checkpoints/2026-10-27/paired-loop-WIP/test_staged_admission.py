@@ -24,6 +24,7 @@ def candidate(tmp_path,monkeypatch):
         'expires_at':(datetime.now(timezone.utc)+timedelta(hours=1)).isoformat(),'profile':profile,
         'predecessor':pin('prior.json',a.canonical(prior)),'sources':{'synthetic':pin('source.py')},
         'sdk_sources':{'synthetic':pin('sdk.py')},'task':pin('task-manifest'),'network':{'proxy_sha256':a.sha(proxy.encode()),'ca':ca},
+        'nebius_key':{'path':str(tmp_path/'NEBIUS-KEY-MUST-NOT-EXIST'),'sha256':'c'*64},
         'output_dir':str(tmp_path/'run'),'e2b_key':{'path':str(tmp_path/'KEY-MUST-NOT-EXIST'),'sha256':'a'*64}}
     def freeze():
         raw=a.canonical(cfg);pin('pair.json',raw)
