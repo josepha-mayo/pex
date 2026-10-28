@@ -99,6 +99,13 @@ class NebiusCLIWorker:
 
 
     async def turn(self,arm,*,prompt,session_id,remaining):
+        result=await self.execute_cli(arm,prompt=prompt,session_id=session_id,remaining=remaining)
+        receipt=result.pop('_terminal_receipt')
+        result['public_observation']=self.collect_observation(arm,receipt)
+        return result
+
+    async def execute_cli(self,arm,*,prompt,session_id,remaining):
+        """CLI-only measured phase; staged orchestration collects public evidence later."""
         condition=arm['condition'];self._start(condition);state=self.states[condition]
         if state['stopped']: raise ValueError('worker_already_stopped')
         profile=state['profile'];db=profile/'data/opencode/opencode.db'
@@ -139,12 +146,15 @@ class NebiusCLIWorker:
                 values=[tokens.get('input'),tokens.get('output'),tokens.get('reasoning'),tokens.get('cache',{}).get('read'),tokens.get('cache',{}).get('write')]
                 if any(type(v) is not int or v<0 for v in values): raise ValueError('worker_usage_unproven')
                 usage['calls']+=1;usage['input_tokens']+=values[0]+values[3]+values[4];usage['output_tokens']+=values[1]+values[2]
-        remote=self.remotes[condition]
+        return {'session_id':receipt.session_id,'receipt':asdict(receipt),'usage':usage,
+                'terminal':'natural_stop','worker_active_seconds':cli_seconds,'_terminal_receipt':receipt}
+
+    def collect_observation(self,arm,receipt):
+        remote=self.remotes[arm['condition']]
         if getattr(self,'task_profile','legacy-task05')=='stockroom-v1':
             from stockroom_request import collect_public_observation
             observation=collect_public_observation(remote,receipt)
-            return {'session_id':receipt.session_id,'receipt':asdict(receipt),'usage':usage,
-                    'terminal':'natural_stop','public_observation':observation,'worker_active_seconds':cli_seconds}
+            return observation
         command=getattr(self,'public_check_command','python -m unittest discover -s tests -p test_smoke.py')
         check=remote.run(command)
         if type(check.get('exit_code')) is not int or check['exit_code'] not in (0,1):
@@ -157,8 +167,7 @@ class NebiusCLIWorker:
             raise PublicEvidenceInfrastructureError('public_diff_failed')
         observation={'assistant_final':'\n'.join(receipt.messages)[-16000:],'public_check':public_check,
                      'public_diff':diff['stdout'][:16000],'receipt_sha256':receipt.stdout_sha256}
-        return {'session_id':receipt.session_id,'receipt':asdict(receipt),'usage':usage,
-                'terminal':'natural_stop','public_observation':observation,'worker_active_seconds':cli_seconds}
+        return observation
 
     async def stop(self,arm):
         if arm['condition'] not in self.states: return
