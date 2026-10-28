@@ -23,6 +23,7 @@ from test_staged_admission import candidate
 from test_managed_chat import rig,no_network,response
 from test_tool_transport import payload
 from staged_composition import build_composition,run_composition
+from successor_runner import json_default
 from staged_supervisor import StagedSupervisor
 from staged_worker import StagedWorker
 from stockroom_task import FILES,PROTECTED,load_package
@@ -106,6 +107,7 @@ async def test_exact_builder_runner_CLI_SDK_public_and_protected_boundaries(fund
             n=len(workers)+1;final=n in (8,12,20,24)
             assert self.headers.get('Authorization')=='Bearer AUTHORED-NOT-A-CREDENTIAL'
             assert (body.get('tool_choice')=='none')==final
+            assert all(json.dumps(task[n].decode())[1:-1] not in json.dumps(body) for n in PROTECTED)
             workers.append(body)
             if final:delta={'role':'assistant','content':'Authored forced phase finalization'};finish='stop'
             else:
@@ -145,7 +147,7 @@ globalThis.fetch=async(input,init)=>{
     def tracked(self,role,request,proposal):
         assert 'not spontaneous task completion' in request.event.message_delta
         assert task['public/TASK.md'].decode() in request.goal.objective
-        assert all(task[n].decode() not in request.model_dump_json() for n in PROTECTED)
+        assert all(json.dumps(task[n].decode())[1:-1] not in request.model_dump_json() for n in PROTECTED)
         reviews.append((role,len(workers)))
         model=model_factory(self,role,request,proposal);models.append(model);return model
     monkeypatch.setattr(StagedSupervisor,'model_factory',tracked)
@@ -161,10 +163,21 @@ globalThis.fetch=async(input,init)=>{
         data['model']=composition.supervisor.routes[0].model_id
         return response(data)
     rig.handler=handler
+    from review import OwnedReview
+    from staged_admission import Admitted,check_authority
+    original_review_init=OwnedReview.__init__
+    admissions=[]
+    def checked_review(self,*args,**kwargs):
+        admitted=kwargs.get('admission')
+        assert type(admitted) is Admitted and admitted is scope.admitted
+        check_authority(admitted);admissions.append(admitted)
+        original_review_init(self,*args,**kwargs)
+    monkeypatch.setattr(OwnedReview,'__init__',checked_review)
     try:
         composition=build_composition(accounting)
         assert composition.worker.mode=='closed-admitted' and composition.review.mode=='live-pilot'
         assert composition.review.model_factory.__self__ is composition.supervisor
+        assert admissions==[scope.admitted]
         assert not sdk_wire and not rig.calls and not workers
         report=await run_composition(composition)
         assert all(s['status']=='staged_natural_stop' and s['calls']==12 for s in report['arms'].values()),report
@@ -180,7 +193,7 @@ globalThis.fetch=async(input,init)=>{
         summary=report['cumulative_accounting']
         assert summary['worker_fresh_nano_usd']['baseline']==summary['worker_fresh_nano_usd']['pex']>0
         assert summary['supervisor_wire_attempts']==4 and summary['supervisor_fresh_overhead_nano_usd']>0
-        assert json.loads((accounting.root/'report.json').read_bytes())==report
+        assert json.loads((accounting.root/'report.json').read_bytes())==json.loads(json.dumps(report,default=json_default))
         assert len(list(accounting.root.glob('public-observation-*.json')))==1
     finally:
         if composition is not None:
