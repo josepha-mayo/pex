@@ -16,7 +16,7 @@ from urllib.parse import urlsplit
 from successor_budget import SUPERVISOR_CUMULATIVE, PRIOR_SUPERVISOR
 
 SUCCESSOR_ENTRY_SCHEMA='pex.managed-supervisor-successor.v1'
-APPROVED_RETRY_REF=None
+APPROVED_RETRY_REF="Sentinel_b42b3bfcf2d48191adae4988661e9a42"
 ENDPOINT='https://api.tokenfactory.us-central1.nebius.com/v1/chat/completions'
 MODEL='nvidia/nemotron-3-super-120b-a12b'
 WORKER='nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017'
