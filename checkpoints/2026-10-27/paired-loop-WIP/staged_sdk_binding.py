@@ -54,7 +54,7 @@ class SDKTransportBinding:
         if type(compute) is not ComputeBudget or compute.expected != (prior['compute_nano_usd'],self.cfg['predecessor']['sha256']):
             raise AdmissionRefused('pinned_cumulative_compute_ledger_required')
         self.compute=compute;self.active=False;self.cleanup_deadline=None
-        self.creates=set();self.owned=set();self.stopped=set();self.kill_attempted=set();self.uncertain=False;self.pools={}
+        self.creates=set();self.owned=set();self.owned_by_arm={};self.stopped=set();self.kill_attempted=set();self.uncertain=False;self.pools={}
         self.control=importlib.import_module('e2b.api.client_async')
         self.rpc=importlib.import_module('e2b.envd.client_async')
         self.original=None
@@ -233,7 +233,7 @@ class SDKTransportBinding:
                 value=json.loads(data);sid=value.get('sandboxID')
                 if not isinstance(sid,str) or not re.fullmatch('[a-z0-9-]{1,128}',sid):
                     raise AdmissionRefused('owned_response_identity_unproven')
-                self.owned.add(sid)
+                self.owned.add(sid);self.owned_by_arm[arm]=sid
                 if value.get('domain') not in (None,'e2b.app'): raise AdmissionRefused('owned_response_domain_changed')
                 # A late response establishes ownership, not successful cancellation
                 # or permission for another create. Preserve its full reservation.

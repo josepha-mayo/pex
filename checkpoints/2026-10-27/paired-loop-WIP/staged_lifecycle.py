@@ -15,9 +15,15 @@ from staged_async_remote import BoundedAsyncRemote, BoundedRemoteError, validate
 
 class StagedLifecycle:
     def __init__(self, sdk_api, compute, stage_public, *, run_id, mode='authored-only', clock=time.monotonic):
-        if (mode != 'authored-only' or getattr(sdk_api,'AUTHORED_FAKE_ONLY',False) is not True
+        if mode == 'closed-admitted-sdk':
+            from staged_sdk_lifecycle import SDKLifecycleAPI
+            if type(sdk_api) is not SDKLifecycleAPI or compute is not sdk_api.binding.compute or run_id != sdk_api.binding.admitted.grant.run_id:
+                raise PermissionError('exact_closed_admitted_SDK_binding_required')
+            sdk_api.binding._check()
+        elif (mode != 'authored-only' or getattr(sdk_api,'AUTHORED_FAKE_ONLY',False) is not True
                 or getattr(sdk_api,'__module__','').startswith('e2b')):
             raise PermissionError('staged_live_lifecycle_not_admitted')
+        self.mode=mode
         if not inspect.iscoroutinefunction(stage_public) or not re.fullmatch('[a-z0-9-]{1,128}',run_id):
             raise ValueError('bounded_async_public_stager_and_run_identity_required')
         self.api=sdk_api;self.compute=compute;self.stage_public=stage_public;self.run_id=run_id;self.clock=clock
@@ -55,7 +61,7 @@ class StagedLifecycle:
             sdk=await self.api.create(template=BASE_TEMPLATE,timeout=VM_SECONDS,
                 lifecycle={'on_timeout':'kill','auto_resume':False},
                 metadata={'pex_pilot':self.run_id,'pex_arm':c},idempotency_key=identity,
-                api_key='AUTHORED-NOT-A-CREDENTIAL',retries=0,
+                **({'api_key':'AUTHORED-NOT-A-CREDENTIAL'} if self.mode=='authored-only' else {}),retries=0,
                 request_timeout=max(.001,setup_deadline-self.clock()))
             # Store the raw owned handle BEFORE validating a worker deadline.
             # A late response must remain cleanable even when no worker wrapper
@@ -109,12 +115,12 @@ class StagedLifecycle:
             if condition in self.remotes: self.remotes[condition].closed=True
         await self._bounded(stop(),cleanup_deadline)
 
-    async def cleanup(self):
+    async def cleanup(self, *, deadline=None):
         errors=[]
         # Explicit cleanup-only window: closed arms' old worker deadlines do not
         # prevent killing another owned VM. No create/worker/review/resume/extend
         # is permitted here, including after a worker deadline has expired.
-        cleanup_deadline=self.clock()+15
+        cleanup_deadline=min(self.clock()+15,deadline) if deadline is not None else self.clock()+15
         for task in list(self.pending): task.cancel()
         if self.pending:
             _,still=await asyncio.wait(list(self.pending),timeout=max(0,min(1,cleanup_deadline-self.clock())))
