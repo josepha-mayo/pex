@@ -1,6 +1,6 @@
 {
   "status": "WIP_not_deployed",
-  "test_result": "72 passed; scoped lint/format passed; verified TLS real JSONL pass; browser blocked before page load",
+  "test_result": "74 current local authored unit/ASGI tests passed; scoped lint/format passed. Timestamp overflow now returns unavailable evidence and recovers after valid file replacement. No new browser/TLS/provider/benchmark claim.",
   "files": [
     {
       "path": "README.md",
@@ -20,7 +20,7 @@
     },
     {
       "path": "test_local_evidence.py",
-      "sha256": "f342c3b96dfc2342751acab3809ad056e8060937ce1ec7efeb45616d8e6fb1a7"
+      "sha256": "796d1d0c046b9a8ff372274c08c142ce3bf0a397bedbfbc72476e23d7c76574d"
     },
     {
       "path": "browser_check.cjs",
@@ -38,5 +38,7 @@
       "path": "services/bridge/src/pex_bridge/web_owner_http.py",
       "sha256": "ec1b3b316a6d9bdb15917b8b6c3cd97f8a0d7984a6b8410cea7bac218059f022"
     }
-  ]
+  ],
+  "prior_test_result": "72 passed; scoped lint/format passed; verified TLS real JSONL pass; browser blocked before page load",
+  "upstream_evidence_reader_sha256": "1843a4307032f25c46497e3f0f9cd6dfa8e46f023eca67bd0ec84a15876079e0"
 }

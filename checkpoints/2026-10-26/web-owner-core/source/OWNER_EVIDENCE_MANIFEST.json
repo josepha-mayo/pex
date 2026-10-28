@@ -1,22 +1,17 @@
 {
   "schema": "pex.owner-evidence.wip.v1",
-  "source_checkpoint": "e0bc0717e93e1ac03110d2037ec4dea2f48e72cf",
-  "qualification": "authored JSONL / SQLite / ASGI / built DOM; no live inference, real browser TLS, deployment or benchmark score",
+  "source_checkpoint": "parent:f14e35edcf8777a41b67829a208d4ae577230a0d; timestamp-overflow fix",
+  "qualification": "WIP: 70 current backend unittests; authored JSONL/SQLite/ASGI only. Frontend results below are historical, not rerun. No new live inference, browser, deployment or benchmark.",
   "results": {
-    "backend_unittest_pass": 69,
-    "frontend_test_pass": 487,
-    "owner_subset_pass": 34,
-    "typecheck": "passed",
-    "default_build": "passed",
-    "owner_build": "passed",
+    "backend_unittest_pass": 70,
     "changed_python_ruff_check": "passed",
     "changed_python_ruff_format": "passed"
   },
   "files": [
     {
       "path": "services/bridge/src/pex_bridge/web_owner_evidence.py",
-      "sha256": "cae5bf21a9fa3896744368cbfe36a25a86dba0c6d66f8e284df4b9323e6d44bc",
-      "bytes": 5373
+      "sha256": "1843a4307032f25c46497e3f0f9cd6dfa8e46f023eca67bd0ec84a15876079e0",
+      "bytes": 5388
     },
     {
       "path": "services/bridge/src/pex_bridge/web_owner_workspace.py",
@@ -25,8 +20,8 @@
     },
     {
       "path": "tests/unit/test_web_owner_evidence.py",
-      "sha256": "cd8b029ab3039df308aff248163238b1a5e1a795a5416c9748287aeef0349db7",
-      "bytes": 4280
+      "sha256": "ad1b5c8e23f4b9556d570290e9b6b451383f0ba64b34585097e8cf92be798560",
+      "bytes": 4653
     },
     {
       "path": "tests/unit/test_web_owner_workspace.py",
@@ -58,5 +53,18 @@
       "sha256": "be671db00f290fae0e6027dc516d0fd4128b2f08e5821ca1d66fb077ff242765",
       "bytes": 2680
     }
-  ]
+  ],
+  "prior_qualification": {
+    "source_checkpoint": "e0bc0717e93e1ac03110d2037ec4dea2f48e72cf",
+    "results": {
+      "backend_unittest_pass": 69,
+      "frontend_test_pass": 487,
+      "owner_subset_pass": 34,
+      "typecheck": "passed",
+      "default_build": "passed",
+      "owner_build": "passed",
+      "changed_python_ruff_check": "passed",
+      "changed_python_ruff_format": "passed"
+    }
+  }
 }

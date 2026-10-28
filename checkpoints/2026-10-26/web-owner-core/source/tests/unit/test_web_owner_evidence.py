@@ -115,3 +115,11 @@ class EvidenceTests(unittest.TestCase):
             [{"event": "arm_started", "arm": "baseline", "ts": "20261027T120000+0000"}]
         )
         self.assertEqual(value["observed_at"], "2026-10-27T12:00:00+00:00")
+
+    def test_utc_conversion_overflow_fails_closed(self):
+        for stamp in ("0001-01-01T00:00:00+01:00", "9999-12-31T23:59:59-01:00"):
+            with self.subTest(stamp=stamp):
+                self.assertEqual(
+                    self.write([{"event": "arm_started", "arm": "baseline", "ts": stamp}]),
+                    {"state": "unavailable"},
+                )

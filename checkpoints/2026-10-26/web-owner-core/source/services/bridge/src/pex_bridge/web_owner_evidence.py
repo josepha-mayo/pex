@@ -132,6 +132,6 @@ def read_evidence(path: Path | None) -> dict:
             "paired_terminal": paired,
             "arms": arms,
         }
-    except (OSError, ValueError, TypeError, RecursionError):
+    except (OSError, ValueError, TypeError, OverflowError, RecursionError):
         # Do not leak paths, provider error strings or stale metadata.
         return {"state": "unavailable"}

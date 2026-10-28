@@ -73,6 +73,22 @@ class EvidenceTests(unittest.IsolatedAsyncioTestCase):
             {"state": "unavailable"},
         )
 
+    async def test_timestamp_overflow_keeps_authenticated_workspace_available(self):
+        await self.login()
+        for stamp in ("0001-01-01T00:00:00+01:00", "9999-12-31T23:59:59-01:00"):
+            with self.subTest(stamp=stamp):
+                self.write_event(1)
+                event = json.loads(self.path.read_text())
+                event["ts"] = stamp
+                self.path.write_text(json.dumps(event) + "\n")
+                response = await self.client.get("/owner/workspace")
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()["run_evidence"], {"state": "unavailable"})
+                self.assertNotIn("NEVER_EXPOSE", response.text)
+        self.write_event(2)
+        recovered = await self.client.get("/owner/workspace")
+        self.assertEqual(recovered.json()["run_evidence"]["arms"]["baseline"]["worker_calls"], 2)
+
     async def test_boundaries_logout_and_static(self):
         page = await self.client.get("/")
         self.assertEqual(page.status_code, 200)
