@@ -103,7 +103,11 @@ export default Plugin.define({id:'authored-tls-only',async setup(){
                              '--','Authored TLS probe only'],cwd=case,env=env,input='',text=True,
                              capture_output=True,timeout=10)
     assert result.is_file(),(completed.returncode,completed.stderr[-2000:])
-    assert completed.returncode==0
+    # The plugin host intentionally exits before inference; CLI's supervisor
+    # may consequently report its closed local IPC channel with exit1. The
+    # completed probe receipt and loopback wire assertions, not CLI exit0,
+    # qualify TLS. This is NOT a successful worker/CLI turn.
+    assert completed.returncode in (0,1)
     return json.loads(result.read_text()),connects,requests
 
 
