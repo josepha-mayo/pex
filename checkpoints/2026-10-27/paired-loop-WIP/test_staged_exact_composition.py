@@ -73,6 +73,8 @@ async def test_exact_builder_runner_CLI_SDK_public_and_protected_boundaries(fund
                     from protobuf import Oneof
                     from e2b.envd.process import process_pb as pb
                     raw=req.content
+                    if not isinstance(raw,bytes):raw=b''.join([bytes(chunk) async for chunk in raw])
+                    assert len(raw)<65536
                     body=json.loads(raw if raw.startswith(b'{') else raw[5:])
                     command=shlex.split(body['process']['args'][-1])[-1]
                     output='AUTHORED command receipt';code=0
