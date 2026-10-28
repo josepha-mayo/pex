@@ -8,14 +8,16 @@
     "README.md": "a6a3b05b8b97a92a25de04203c16c439481fd9a0252d4330089aee9aa6e03625",
     "run_authored_all.py": "70ce9bf095614b850e33ad37c71ca63e84f98ca816d912877e825ac3c08800ff",
     "run_authored_supervisor.py": "d92cda520fa38ae13966b230ba367836cb5c3c256a85157563b725f1f997883d",
+    "same_exec_handoff.py": "03d3c86bf04df280f696e473baf7b7a3e89ac9a641c51905ae18d5982aa93103",
     "successor_admission.py": "4c63c83c2b30c8ce6ff4cdede2199389b5754a11875ce7e03d4c11f1cd172055",
     "successor_budget.py": "388f8154da768a51d0d2f689991187de90f73a3a56ee7ef1ee63b0957985f86c",
     "successor_runner.py": "9b950e273c65f6b504bfe7346297bb81753bb327adfcf648a5a3052f4ba7fe46",
     "successor_supervisor.py": "35b9c1c7f7b20ada63e5779e567a628f8e38134c2cdc6358c10805a92c6118eb",
     "test_pending_budget.py": "a7ef5d3f4eb32759caa42cbf72c5faa77564496030fa1fe48f5d1d8f24e5b7cd",
+    "test_same_exec_handoff.py": "a2d5d3ae443dd25eb8ef6c6bca80c565883ee4cfeec14e242b0f347c93953171",
     "test_successor.py": "419457e48a6cfe62f604f7b28fb3d53614b6b309fafd704b24c7620bc86b5936",
     "test_successor_supervisor.py": "dfc947a98ba1603a78390d9d7786d6be7e588a433881d835515e60dd93d6ebb7"
   },
   "schema": "pex.stockroom-successor-source-only.v3",
-  "status": "WIP_same_unused_approved_pair_preparation03_same_execution_handoff_pending"
+  "status": "WIP_same_environment_execv_handoff_guarded_no_resource_dispatch"
 }
