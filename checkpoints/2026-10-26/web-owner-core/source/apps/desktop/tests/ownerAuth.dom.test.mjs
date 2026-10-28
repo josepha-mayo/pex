@@ -156,4 +156,20 @@ test('synthetic budget terminal must not imply supervision or live provenance',a
  assert.match(text,/Supervisor calls: not reported/);
  assert.match(text,/Recorded worker calls: 0/); assert.match(text,/Recorded worker calls: not reported/);
  assert.match(text,/worker budget terminal inconclusive/);
+ assert.match(text,/Inconclusive: a recorded budget limit stopped this comparison/);
  });
+
+test('recorded terminal summary distinguishes infrastructure, cleanup and unproven success',async()=>{
+ for(const [armStatus,phase,expected] of [
+   ['infrastructure_inconclusive','paired_terminal',/Inconclusive: infrastructure or grading/],
+   ['grading_inconclusive','paired_terminal',/Inconclusive: infrastructure or grading/],
+   ['worker_budget_terminal_inconclusive','cleanup_unconfirmed',/Cleanup is unconfirmed/],
+   ['natural_stop','paired_terminal',/Task success is not established here/]
+ ]) {
+   const evidence=runMetadata(); evidence.paired_terminal=true; evidence.phase=phase;
+   evidence.arms.baseline.status=armStatus; evidence.arms.pex.status=armStatus;
+   const f=setup([good(),await evidenceReply(evidence)]); await flush();
+   f.el('refresh-workspace').click(); await flush();
+   assert.match(f.el('workspace-records').textContent,expected);
+ }
+});

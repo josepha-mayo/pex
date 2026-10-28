@@ -27,7 +27,17 @@ function renderWorkspace(view: WorkspaceView) {
   if (!evidence || evidence.state === "not_configured" || evidence.state === "empty") add("p", "No paired run recorded in this configured view.");
   else if (evidence.state === "unavailable") add("p", "Run evidence is unavailable. No cached results are shown.");
   else if (evidence.state === "recorded") {
-    add("p", `${evidence.paired_terminal ? "Both arms recorded terminal states" : "Paired run is not terminal"} · ${evidence.phase.replaceAll("_", " ")}`);
+    const armStates = Object.values(evidence.arms).map(arm => arm.status);
+    const summary = evidence.phase === "cleanup_unconfirmed"
+      ? "Cleanup is unconfirmed. This comparison is inconclusive."
+      : armStates.some(value => value.includes("budget_terminal"))
+        ? "Inconclusive: a recorded budget limit stopped this comparison."
+        : armStates.some(value => ["infrastructure_error", "infrastructure_inconclusive", "grading_inconclusive"].includes(value))
+          ? "Inconclusive: infrastructure or grading stopped this comparison."
+          : evidence.paired_terminal
+            ? "Both arms recorded terminal states. Task success is not established here."
+            : "Paired run is not terminal.";
+    add("p", `${summary} · ${evidence.phase.replaceAll("_", " ")}`);
     add("small", `Controller-recorded at ${evidence.observed_at}. Recorded worker model ID: ${evidence.worker_model}. Recorded supervisor model ID: ${evidence.supervisor_model}.`);
     for (const name of ["baseline", "pex"] as const) {
       const arm = evidence.arms[name];
