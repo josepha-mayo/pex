@@ -1,0 +1,153 @@
+"""Authored inert collaborators; no real worker, provider or VM execution."""
+import asyncio
+import copy
+import pytest
+from staged_controller import *
+
+
+def arms():
+    return {c:dict(condition=c,prompt='same task',public_sha256='a'*64,
+        worker_identity='same worker',workspace=c) for c in ('baseline','pex')}
+
+
+class Worker:
+    def __init__(self): self.events=[]; self.cleaned=False
+    async def prepare(self,arm,**kw): self.events.append(('prepare',arm['condition']))
+    async def phase(self,arm,**kw):
+        c=arm['condition']; self.events.append(('phase',c,kw))
+        limit=kw['limit']
+        return dict(session_id=c+'session',receipt='authored',terminal='natural_stop',
+            worker_active_seconds=1,usage=dict(calls=limit.calls,input_tokens=10,output_tokens=limit.calls))
+    async def observe(self,arm,turn): return {'public':'authored observation'}
+    async def stop(self,arm): self.events.append(('stop',arm['condition']))
+    async def release(self,arm): self.events.append(('release',arm['condition']))
+    async def cleanup(self): self.cleaned=True
+
+
+class Review:
+    def __init__(self,worker): self.worker=worker
+    async def review(self,arm,observation,*,session_id):
+        self.worker.events.append(('review',arm['condition']))
+        return dict(status='approved_continuation',text='Authored non-answer continuation',receipt={
+            'observation_sha256':digest(observation),'worker_session_id':session_id,
+            'planner_observed':True,'verifier_observed':True,
+            'planner_receipts':['authored'],'verifier_receipts':['authored'],
+            'planner_evidence_refs':['authored'],'verifier_evidence_refs':['authored']})
+
+
+class Grade:
+    async def grade(self,arm): return {'authored':True}
+
+
+def run(w=None,r=None,**kw):
+    w=w or Worker()
+    return w,asyncio.run(run_staged_pair(arms(),w,r or Review(w),Grade(),**kw))
+
+
+def test_exact_equal_phases_review_order_same_session_and_neutral_baseline():
+    w,report=run()
+    turns=[e for e in w.events if e[0]=='phase']
+    assert [e[2]['limit'] for e in turns]==list(PHASES)*2
+    assert [e[2]['session_id'] for e in turns]==[None,'baselinesession',None,'pexsession']
+    assert turns[1][2]['prompt']==BASELINE_RESUME
+    assert w.events.index(('review','pex')) < w.events.index(turns[3])
+    assert w.events.index(('release','baseline')) < w.events.index(('prepare','pex'))
+    assert all(s['calls']==12 for s in report['arms'].values())
+    assert report['arms']['pex']['supervisor_observed'] and not report['arms']['baseline']['supervisor_observed']
+    assert w.cleaned and report['pex_lift'] is None and not report['presentation_eligible']
+
+
+@pytest.mark.parametrize('mode',['live-pilot','live',None])
+def test_no_live_admission_before_callbacks(mode):
+    with pytest.raises(PermissionError): asyncio.run(run_staged_pair(arms(),None,None,None,mode=mode))
+
+
+@pytest.mark.parametrize('field,value',[('planner_observed',False),('verifier_observed',False),
+    ('observation_sha256','wrong'),('worker_session_id','other'),('planner_receipts',[]),('verifier_evidence_refs',[])])
+def test_missing_or_unbound_review_forbids_second_phase(field,value):
+    w=Worker()
+    class Bad(Review):
+        async def review(self,*args,**kw):
+            d=await super().review(*args,**kw); d['receipt'][field]=value; return d
+    _,r=run(w,Bad(w))
+    assert r['arms']['pex']['status']=='protocol_inconclusive'
+    assert len([e for e in w.events if e[:2]==('phase','pex')])==1
+    assert w.cleaned
+
+
+@pytest.mark.parametrize('terminal',['budget','error','checkpoint'])
+def test_failed_phase_is_not_a_checkpoint(terminal):
+    class Bad(Worker):
+        async def phase(self,*args,**kw):
+            d=await super().phase(*args,**kw); d['terminal']=terminal; return d
+    w,r=run(Bad())
+    assert not any(e[0]=='review' for e in w.events)
+    assert all(s['status']=='protocol_inconclusive' for s in r['arms'].values())
+
+
+def test_mutated_observation_forbids_continuation():
+    w=Worker()
+    class Bad(Review):
+        async def review(self,arm,observation,**kw):
+            d=await super().review(arm,observation,**kw); observation['public']='changed'; return d
+    _,r=run(w,Bad(w)); assert r['arms']['pex']['status']=='protocol_inconclusive'
+
+
+def test_review_timeout_overhead_is_not_worker_time_and_no_continuation():
+    ticks=[0.0]
+    w=Worker()
+    class Bad(Review):
+        async def review(self,*a,**kw):
+            ticks[0]+=61
+            raise TimeoutError('authored timeout')
+    _,r=run(w,Bad(w),clock=lambda:ticks[0])
+    p=r['arms']['pex']; assert p['supervisor_seconds']==61 and p['worker_active_seconds']==1
+    assert p['status']=='wall_budget_terminal_inconclusive'
+    assert len([e for e in w.events if e[:2]==('phase','pex')])==1
+
+
+def test_cleanup_failure_never_starts_second_arm():
+    class Bad(Worker):
+        async def release(self,arm): raise ConnectionError('authored cleanup ambiguity')
+    w,r=run(Bad()); assert list(r['arms'])==['baseline']
+    assert r['arms']['baseline']['status']=='cleanup_unconfirmed' and w.cleaned
+
+
+def test_budget_exception_preserves_partial_receipt_without_review():
+    class Bad(Worker):
+        async def phase(self,*a,**kw):
+            raise WorkerBudgetTerminal('worker_attempt_cap_refused',usage=dict(calls=8,
+                input_tokens=10,output_tokens=4,uncertain_calls=0),worker_active_seconds=9)
+    w,r=run(Bad())
+    assert all(s['calls']==8 and s['worker_active_seconds']==9 for s in r['arms'].values())
+    assert not any(e[0]=='review' for e in w.events)
+
+
+def test_unused_phase_allowance_never_rolls_into_second_phase():
+    class Early(Worker):
+        async def phase(self,*a,**kw):
+            d=await super().phase(*a,**kw)
+            if kw['phase_index']==0: d['usage']['calls']=1
+            return d
+    w,r=run(Early())
+    assert all(s['calls']==5 for s in r['arms'].values())
+    assert all(e[2]['limit']==PHASES[1] for e in w.events if e[0]=='phase' and e[2]['phase_index']==1)
+
+
+def test_unknown_phase_error_never_claims_zero_usage_exact():
+    class Bad(Worker):
+        async def phase(self,*a,**kw): raise ConnectionError('unknown partial progress')
+    _,r=run(Bad())
+    assert all(not s['worker_usage_exact'] and not s['worker_active_time_exact'] for s in r['arms'].values())
+
+
+def test_review_does_not_reset_wall_headroom_or_worker_counters():
+    ticks=[0.0]; w=Worker()
+    class Bad(Review):
+        async def review(self,*a,**kw):
+            d=await super().review(*a,**kw); ticks[0]+=211; return d
+    _,r=run(w,Bad(w),clock=lambda:ticks[0])
+    p=r['arms']['pex']
+    assert p['status']=='wall_budget_terminal_inconclusive' and p['calls']==8
+    assert p['worker_usage_exact'] and p['worker_active_seconds']==1
+    assert len([e for e in w.events if e[:2]==('phase','pex')])==1
