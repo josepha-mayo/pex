@@ -30,7 +30,7 @@ def body():
 
 
 def test_original_approval_cannot_activate_new_worker_profile(tmp_path):
-    assert wf.APPROVED_SUCCESSOR_WORKER_REF is None
+    assert wf.APPROVED_SUCCESSOR_WORKER_REF != wf.APPROVED_WORKER_REF
     with pytest.raises(PermissionError):
         wf.WorkerFunding(tmp_path/'never.sqlite',approval_ref=wf.APPROVED_WORKER_REF,arm_budget_nano_usd=b.WORKER_SHARED_OUTER)
     assert not (tmp_path/'never.sqlite').exists()

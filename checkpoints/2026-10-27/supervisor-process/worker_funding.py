@@ -15,7 +15,7 @@ from functools import wraps
 from pathlib import Path
 
 # Exact owner approval of the one $1-total paired pilot; never future/unlimited authority.
-APPROVED_SUCCESSOR_WORKER_REF = None  # Pending new ceiling; cannot reuse original approval.
+APPROVED_SUCCESSOR_WORKER_REF = "Sentinel_b42b3bfcf2d48191adae4988661e9a42"  # One fresh reviewed USD2-total pair.
 APPROVED_WORKER_REF = "Sentinel_9df859db703081919786cd38c9678f05"
 ENDPOINT = "https://api.tokenfactory.nebius.com/v1/chat/completions"
 MODEL = "deepseek-ai/DeepSeek-V4.1-Flash-1017"

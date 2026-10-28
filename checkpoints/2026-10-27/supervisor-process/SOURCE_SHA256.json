@@ -43,9 +43,9 @@
     "sha256": "98d2a75149fbe930386069a1db5195487540bf7250cbc2ec8c5c152cc4006c2a"
   },
   "candidate/worker_funding.py": {
-    "bytes": 18540,
-    "git_blob": "f53d33f828242d1139909a301d63e9afde8c4b80",
-    "sha256": "989f851eec0a979313235e17b1f73f713a1f73200e77a9c01442d5a689bdb973"
+    "bytes": 18562,
+    "git_blob": "ac24c521439c80b552edf808a950c5d0869770f1",
+    "sha256": "e702f82d528f81ba38837bdcc0d2231c830597cb146758ad23478dab11d1b27f"
   },
   "transport/managed_chat.py": {
     "bytes": 30835,
