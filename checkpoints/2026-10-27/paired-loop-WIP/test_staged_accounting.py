@@ -23,8 +23,8 @@ def funded(bound,monkeypatch):
     raw=canonical(cfg);Path(scope.admitted.grant.config_path).write_bytes(raw)
     from dataclasses import replace
     grant=replace(scope.admitted.grant,config_sha256=sha(raw),profile_sha256=sha(canonical(cfg['profile'])),predecessor_sha256=cfg['predecessor']['sha256'])
-    monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',grant)
-    replacement=SDKTransportBinding(a.load(),compute)
+    monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',a.GrantGate.identity(grant))
+    replacement=SDKTransportBinding(a.load(grant),compute)
     with replacement:
         bundle=StagedAccounting(replacement)
         try:yield bundle,replacement

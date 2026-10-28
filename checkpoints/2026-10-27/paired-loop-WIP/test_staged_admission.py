@@ -71,8 +71,29 @@ def test_semantic_admission_refusals(candidate,monkeypatch,change):
     with pytest.raises((a.AdmissionRefused,ValueError)):a.inspect_candidate(raw,grant)
 
 def test_synthetic_gate_exact_config_revalidation(candidate,monkeypatch):
-    cfg,freeze=candidate;raw,grant=freeze();monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',grant)
-    admitted=a.load();copy=admitted.config();copy['run_id']='changed'
+    cfg,freeze=candidate;raw,grant=freeze();monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',a.GrantGate.identity(grant))
+    admitted=a.load(grant);copy=admitted.config();copy['run_id']='changed'
     assert admitted.config()['run_id']=='authored-new'
     monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',None)
     with pytest.raises(a.AdmissionRefused):admitted.config()
+
+
+def test_gate_identity_has_no_source_or_config_hash_cycle(candidate,monkeypatch):
+    cfg,freeze=candidate;raw,grant=freeze()
+    gate=a.GrantGate.identity(grant)
+    assert set(vars(gate))=={'approval_ref','run_id','config_path','expires_at'}
+    monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',gate)
+    with pytest.raises(a.AdmissionRefused,match='independent_exact'):a.load()
+    with pytest.raises(a.AdmissionRefused,match='gate_identity'):
+        a.load(replace(grant,run_id='another-run'))
+    with pytest.raises(a.AdmissionRefused,match='pinned_file_changed'):
+        a.load(replace(grant,config_sha256='0'*64))
+    assert a.load(grant).grant is grant
+
+
+def test_gate_revocation_rechecked_with_independent_grant(candidate,monkeypatch):
+    cfg,freeze=candidate;raw,grant=freeze()
+    gate=a.GrantGate.identity(grant);monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',gate)
+    admitted=a.load(grant)
+    monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',replace(gate,approval_ref='OTHER'))
+    with pytest.raises(a.AdmissionRefused,match='approval_pending'):admitted.config()

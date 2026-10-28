@@ -48,6 +48,25 @@ def read_pin(pin, *, private=False, limit=8*1024*1024):
     return raw
 
 @dataclass(frozen=True)
+class GrantGate:
+    """Source-reviewed identity, deliberately excludes hashes of this source.
+
+    Exact immutable hashes come from a separately trusted root launcher Grant;
+    embedding config_sha256 here would make config->source->config circular.
+    Neither candidate JSON nor an environment value can supply this gate.
+    """
+    approval_ref: str
+    run_id: str
+    config_path: str
+    expires_at: str
+
+    @classmethod
+    def identity(cls, grant):
+        if type(grant) is not Grant:
+            raise AdmissionRefused('independent_exact_grant_identity_required')
+        return cls(grant.approval_ref,grant.run_id,grant.config_path,grant.expires_at)
+
+@dataclass(frozen=True)
 class Grant:
     approval_ref: str
     run_id: str
@@ -71,7 +90,8 @@ class Admitted:
 
 def check_authority(admitted):
     if (type(admitted) is not Admitted or admitted._seal is not _SEAL
-            or type(APPROVED_STAGED_GRANT) is not Grant or admitted.grant != APPROVED_STAGED_GRANT):
+            or type(APPROVED_STAGED_GRANT) is not GrantGate
+            or GrantGate.identity(admitted.grant) != APPROVED_STAGED_GRANT):
         raise AdmissionRefused('fresh_staged_pair_approval_pending')
     expiry = datetime.fromisoformat(admitted.grant.expires_at)
     if expiry.tzinfo is None or datetime.now(timezone.utc) >= expiry:
@@ -156,10 +176,14 @@ def inspect_candidate(raw, grant, *, now=None):
         supervisor_fresh=profile['supervisor_fresh'],provider_ceiling=PROVIDER_CAP,prior_compute=prior['compute_nano_usd'],
         verified_vm_bound=9_982_500,uncertain_create_reserve=48_840_000,compute_ceiling=COMPUTE_CAP)
 
-def load():
-    # This check precedes even config reads. No caller-supplied approval switch.
-    grant = APPROVED_STAGED_GRANT
-    if type(grant) is not Grant: raise AdmissionRefused('fresh_staged_pair_approval_pending')
+def load(grant=None):
+    # CLOSED source gate precedes reads and caller input. A future trusted root
+    # launcher must supply its independently reviewed immutable full Grant, NOT
+    # deserialize authority from candidate bytes, worker input or environment.
+    gate = APPROVED_STAGED_GRANT
+    if type(gate) is not GrantGate: raise AdmissionRefused('fresh_staged_pair_approval_pending')
+    if GrantGate.identity(grant) != gate:
+        raise AdmissionRefused('independent_grant_gate_identity_changed')
     raw = read_pin({'path':grant.config_path,'sha256':grant.config_sha256},private=True)
     inspect_candidate(raw,grant)
     return Admitted(grant,raw,_SEAL)

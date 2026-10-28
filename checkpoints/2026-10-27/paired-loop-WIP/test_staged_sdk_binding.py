@@ -33,8 +33,8 @@ def bound(candidate,monkeypatch,tmp_path,request):
         cfg['cli']={'binary':{'path':str(binary),'sha256':a.sha(binary.read_bytes())},'modules_path':str(modules),
                     'plugin_package':{'path':str(plugin),'sha256':a.sha(plugin.read_bytes())}}
         cfg['sources']=source_pins()
-    raw,grant=freeze();monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',grant)
-    admitted=a.load()
+    raw,grant=freeze();monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',a.GrantGate.identity(grant))
+    admitted=a.load(grant)
     import e2b.api.client_async as c
     for n in ('_transports','_pools','_httpx_transports'):monkeypatch.setattr(c,n,{})
     compute=ComputeBudget(tmp_path/'compute.sqlite',prior_upper_bound_nano_usd=100,evidence_sha256=cfg['predecessor']['sha256'])
