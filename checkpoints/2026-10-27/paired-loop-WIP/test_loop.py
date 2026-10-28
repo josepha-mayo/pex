@@ -122,6 +122,9 @@ async def test_owned_planner_verifier_continuation(tmp_path, rig, approve):
     assert len(worker.calls) == (3 if approve else 2)
     result={"status": "approved_continuation" if approve else result["status"], "receipt":result["reviews"][0], "text":worker.calls[-1][1]["prompt"]}
     assert result["status"] == ("approved_continuation" if approve else "verifier_rejected")
+    from staged_controller import review_observed, digest
+    review_observed(result, digest({"kind":"authored-public-observation"}), "pex-session")
+    assert result["receipt"]["planner_observed"] and result["receipt"]["verifier_observed"]
     assert len(models)==2 and len(rig.calls)==6
     assert all(len(m.observations)==2 for m in models)
     assert result["receipt"]["planner_invocation"] != result["receipt"]["verifier_invocation"]

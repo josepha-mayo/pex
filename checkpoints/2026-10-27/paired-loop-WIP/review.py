@@ -3,6 +3,8 @@
 Offline orchestration only. Factories must use existing owned process models;
 there is no live provider, credential, or execution admission here.
 """
+import hashlib
+import json
 from pex_supervisor import loop
 from pex_protocol.actions import InterventionType
 from pex_protocol.supervisor import supervisor_request_digest
@@ -33,6 +35,8 @@ class OwnedReview:
         self.model_factory = model_factory
 
     async def review(self, arm, observation, *, session_id):
+        observation_digest = hashlib.sha256(json.dumps(observation, sort_keys=True,
+            separators=(",", ":"), allow_nan=False).encode()).hexdigest()
         request = self.request_builder(arm, observation, session_id)
         if request.session.vendor_session_id != session_id:
             raise ValueError("request_worker_session_mismatch")
@@ -48,8 +52,14 @@ class OwnedReview:
             raise ValueError("planner_schema_mismatch")
         receipt = {"request_digest": digest, "planner_receipts": list(planner.receipts),
                    "planner_invocation": planner.protocol.invocation_id,
-                   "verifier_receipts": [], "mode": self.mode}
+                   "verifier_receipts": [], "mode": self.mode,
+                   "worker_session_id": session_id, "observation_sha256": observation_digest,
+                   "planner_observed": False, "verifier_observed": False}
         refs, valid, _ = evidence(request, planner, decision, "planner")
+        receipt["planner_evidence_refs"] = refs
+        receipt["planner_observed"] = valid
+        if supervisor_request_digest(request) != digest:
+            raise ValueError("request_mutated_during_review")
         proposal = loop._decision_proposal(decision)
         if not proposal["evidence"] and valid:
             proposal["evidence"] = refs
@@ -70,6 +80,10 @@ class OwnedReview:
         observed = tools & {"get_context", "get_recent_events", "get_scores", "get_session_state",
                             "inspect_acceptance", "inspect_workspace", "inspect_git", "inspect_file",
                             "inspect_artifact", "inspect_process", "run_verification"}
+        receipt["verifier_evidence_refs"] = vrefs
+        receipt["verifier_observed"] = bool(valid and observed and not loop._uncertain_verification_only(request, tools))
+        if supervisor_request_digest(request) != digest:
+            raise ValueError("request_mutated_during_review")
         if (not verdict.approved or not verdict.evidence or not valid or not observed
                 or loop._uncertain_verification_only(request, tools)):
             return {"status": "verifier_rejected", "receipt": receipt}
