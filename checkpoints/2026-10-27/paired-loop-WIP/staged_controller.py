@@ -67,6 +67,7 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
     report = {'mode':mode,'protocol':'staged-8+4-WIP','worker_budget_each':asdict(TOTAL),
               'phases_each':[asdict(p) for p in PHASES], 'arms':{},
               'real_inference_calls':0,'pex_lift':None,'presentation_eligible':False}
+    life = None
     try:
         for condition in ('baseline','pex'):
             arm = arms[condition]
@@ -171,7 +172,10 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
                 started = clock()
                 try:
                     # Stop/revoke before protected grading; teardown shares15s.
-                    await asyncio.wait_for(worker.stop(arm), timeout=CLEANUP_SECONDS)
+                    stop_window = min(CLEANUP_SECONDS, max(0,life.deadline-clock()))
+                    await asyncio.wait_for(worker.stop(arm), timeout=stop_window)
+                    if clock()-started > stop_window:
+                        raise TimeoutError('stop_exceeded_absolute_deadline')
                 except Exception:
                     cleanup_failed = True
                 cleanup_elapsed += max(0,clock()-started)
@@ -184,10 +188,13 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
                     state['status']='grading_inconclusive'
                     state['grade_error']=type(error).__name__
             try:
-                remaining = CLEANUP_SECONDS - cleanup_elapsed
+                remaining = min(CLEANUP_SECONDS - cleanup_elapsed, life.deadline-clock())
                 if remaining <= 0:
                     raise TimeoutError('shared_cleanup_window_exhausted')
+                started = clock()
                 await asyncio.wait_for(worker.release(arm), timeout=remaining)
+                if clock()-started > remaining:
+                    raise TimeoutError('release_exceeded_absolute_deadline')
             except Exception:
                 cleanup_failed = True
             if cleanup_failed:
@@ -195,4 +202,16 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
                 break  # Never create the next VM on ambiguous cleanup.
         return report
     finally:
-        await worker.cleanup()
+        # This is an authored contract, not a proof that blocking SDK work obeys
+        # cancellation. A future live adapter also needs provider-side expiry.
+        remaining = CLEANUP_SECONDS if life is None else min(CLEANUP_SECONDS,max(0,life.deadline-clock()))
+        started = clock()
+        try:
+            await asyncio.wait_for(worker.cleanup(), timeout=remaining)
+            if clock()-started > remaining:
+                raise TimeoutError('final_cleanup_exceeded_absolute_deadline')
+            report['cleanup_confirmed'] = all(s['status'] != 'cleanup_unconfirmed' for s in report['arms'].values())
+        except Exception as error:
+            report['cleanup_confirmed'] = False
+            report['cleanup_error'] = type(error).__name__
+

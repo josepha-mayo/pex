@@ -151,3 +151,23 @@ def test_review_does_not_reset_wall_headroom_or_worker_counters():
     assert p['status']=='wall_budget_terminal_inconclusive' and p['calls']==8
     assert p['worker_usage_exact'] and p['worker_active_seconds']==1
     assert len([e for e in w.events if e[:2]==('phase','pex')])==1
+
+
+def test_release_and_global_cleanup_share_absolute_VM_deadline():
+    ticks=[0.0]
+    class Slow(Worker):
+        async def release(self,arm):
+            await super().release(arm)
+            ticks[0]=331
+    w,r=run(Slow(),clock=lambda:ticks[0])
+    assert list(r['arms'])==['baseline']
+    assert r['arms']['baseline']['status']=='cleanup_unconfirmed'
+    assert r['cleanup_confirmed'] is False
+
+
+def test_final_cleanup_is_bounded_and_failure_retained():
+    ticks=[0.0]
+    class Slow(Worker):
+        async def cleanup(self): ticks[0]+=16
+    _,r=run(Slow(),clock=lambda:ticks[0])
+    assert r['cleanup_confirmed'] is False and r['cleanup_error']=='TimeoutError'
