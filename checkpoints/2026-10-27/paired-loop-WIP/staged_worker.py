@@ -119,6 +119,10 @@ class StagedWorker:
             except Exception: errors.append(c)
             try: await self.release({'condition':c})
             except Exception: errors.append(c)
+        cleanup=getattr(self.lifecycle,'cleanup',None)
+        if callable(cleanup):
+            try: await cleanup()
+            except Exception: errors.append('lifecycle')
         if errors: raise ProtocolInconclusive('staged_owned_cleanup_unconfirmed')
 
 
