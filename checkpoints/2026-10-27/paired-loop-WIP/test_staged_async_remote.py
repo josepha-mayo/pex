@@ -69,3 +69,43 @@ async def test_cleanup_not_confirmed_when_provider_still_running():
     r=BoundedAsyncRemote(SimpleNamespace(kill=kill,is_running=running),vm_deadline=time.monotonic()+1)
     with pytest.raises(BoundedRemoteError): await r.close()
     assert not r.closed
+
+
+@pytest.mark.asyncio
+async def test_cancellation_suppressing_SDK_returns_bounded_and_still_kills_owned_VM():
+    stop=asyncio.Event();events=[]
+    async def write(*a,**kw):
+        while not stop.is_set():
+            try: await asyncio.sleep(.01)
+            except asyncio.CancelledError: pass
+    async def kill(**kw): events.append('kill');stop.set();return True
+    async def running(**kw): events.append('is_running');return False
+    r=BoundedAsyncRemote(SimpleNamespace(files=SimpleNamespace(write=write),kill=kill,is_running=running),
+        vm_deadline=time.monotonic()+3)
+    r.set_scope_deadline(time.monotonic()+.03)
+    started=time.monotonic()
+    with pytest.raises(BoundedRemoteError): await asyncio.to_thread(r.write,'safe.txt','authored')
+    assert time.monotonic()-started < .5 and r.poisoned
+    try:
+        await r.close()
+        assert time.monotonic()-started < 1.5
+        assert r.closed and r.cancellation_unconfirmed
+        assert r.cleanup_evidence['kill_attempted'] and r.cleanup_evidence['stopped_confirmed']
+        assert events==['kill','is_running']
+    finally:
+        stop.set()
+        if r.active: await asyncio.wait(list(r.active),timeout=.1)
+
+
+@pytest.mark.asyncio
+async def test_cancellation_ambiguity_cannot_skip_cleanup_attempt():
+    events=[]
+    async def kill(**kw):events.append('kill')
+    async def running(**kw):return False
+    r=BoundedAsyncRemote(SimpleNamespace(kill=kill,is_running=running),vm_deadline=time.monotonic()+1)
+    async def broken():
+        r.cancellation_unconfirmed=True
+        raise BoundedRemoteError('SDK_cancellation_unconfirmed')
+    r.end_scope=broken
+    await r.close()
+    assert events==['kill'] and r.closed and r.cleanup_evidence['cancellation_unconfirmed']

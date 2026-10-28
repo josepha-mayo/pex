@@ -43,6 +43,7 @@ class BoundedAsyncRemote:
         self._sdk=sandbox;self.clock=clock;self.vm_deadline=vm_deadline
         self.loop=asyncio.get_running_loop();self.owner_thread=threading.get_ident()
         self.deadline=None;self.poisoned=False;self.closed=False;self.active=set()
+        self.cancellation_unconfirmed=False;self.cleanup_evidence={}
         self._sandbox=SimpleNamespace(files=SimpleNamespace(make_dir=self._make_dir,write=self._write_absolute))
 
     def set_scope_deadline(self, deadline):
@@ -59,15 +60,27 @@ class BoundedAsyncRemote:
         if remaining <= 0: raise BoundedRemoteError('remote_deadline_exhausted')
         return remaining
 
+    def _track(self, task):
+        self.active.add(task)
+        def done(value):
+            self.active.discard(value)
+            if not value.cancelled(): value.exception()  # Consume late failures.
+        task.add_done_callback(done)
+        return task
+
     async def _invoke(self, factory):
-        task=asyncio.current_task();self.active.add(task)
+        # wait_for waits for cancellation to finish and therefore is not a hard
+        # return bound when an SDK suppresses cancellation. Track the underlying
+        # task separately and retain ambiguity instead of awaiting it forever.
+        timeout=self.remaining()
+        task=self._track(asyncio.create_task(factory()))
         try:
-            return await asyncio.wait_for(factory(),timeout=self.remaining())
+            done,_=await asyncio.wait([task],timeout=timeout)
+            if not done: raise TimeoutError('SDK_stage_deadline')
+            return task.result()
         except BaseException:
-            self.poisoned=True
+            task.cancel();self.poisoned=True
             raise
-        finally:
-            self.active.discard(task)
 
     def _call(self, factory):
         if threading.get_ident()==self.owner_thread:
@@ -87,7 +100,7 @@ class BoundedAsyncRemote:
         if tasks:
             _,pending=await asyncio.wait(tasks,timeout=max(0,min(1,self.vm_deadline-self.clock())))
             if pending:
-                self.poisoned=True
+                self.poisoned=True;self.cancellation_unconfirmed=True
                 raise BoundedRemoteError('SDK_cancellation_unconfirmed')
 
     def run(self, command, timeout=60):
@@ -158,12 +171,30 @@ class BoundedAsyncRemote:
 
     async def close(self):
         if self.closed: return
-        await self.end_scope()
+        scope_error=None
+        try:
+            await self.end_scope()
+        except BoundedRemoteError as error:
+            # A stuck operation must NEVER prevent an independent owned-VM kill.
+            scope_error=type(error).__name__
         left=self.vm_deadline-self.clock()
+        self.cleanup_evidence={'cancellation_unconfirmed':self.cancellation_unconfirmed,
+                               'scope_error':scope_error,'kill_attempted':False,'stopped_confirmed':False}
         if left<=0: raise BoundedRemoteError('cleanup_deadline_exhausted_not_confirmed')
         async def cleanup():
+            self.cleanup_evidence['kill_attempted']=True
             await self._sdk.kill(request_timeout=min(15,self.vm_deadline-self.clock()))
-            if await self._sdk.is_running(request_timeout=min(15,self.vm_deadline-self.clock())) is not False:
+            remaining=self.vm_deadline-self.clock()
+            if remaining<=0: raise BoundedRemoteError('cleanup_confirmation_deadline_exhausted')
+            if await self._sdk.is_running(request_timeout=min(15,remaining)) is not False:
                 raise BoundedRemoteError('owned_VM_cleanup_unconfirmed')
-        await asyncio.wait_for(cleanup(),timeout=left)
-        self.closed=True
+            self.cleanup_evidence['stopped_confirmed']=True
+        task=self._track(asyncio.create_task(cleanup()))
+        try:
+            done,_=await asyncio.wait([task],timeout=left)
+            if not done: raise BoundedRemoteError('cleanup_return_deadline_exhausted')
+            task.result()
+        except BaseException:
+            task.cancel();self.poisoned=True
+            raise
+        self.closed=True  # Independent stop confirmation, not cancellation success.
