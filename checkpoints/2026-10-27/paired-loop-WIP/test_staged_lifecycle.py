@@ -76,3 +76,45 @@ def test_lifecycle_cannot_open_live_authority(mode):
 
 def test_actual_SDK_class_not_accepted_as_authored_fake():
     with pytest.raises(PermissionError):StagedLifecycle(object(),None,stage,run_id='authored')
+
+
+@pytest.mark.asyncio
+async def test_closed_first_deadline_cannot_prevent_current_owned_VM_cleanup():
+    clock=[0.0];api=API();life=StagedLifecycle(api,Ledger(),stage,run_id='authored',clock=lambda:clock[0])
+    first=await life.prepare({'condition':'baseline'},deadline=330)
+    await first.close()
+    clock[0]=400
+    second=await life.prepare({'condition':'pex'},deadline=730)
+    await life.cleanup()
+    assert first.closed and second.closed and life.raw_stopped=={'baseline','pex'}
+
+
+@pytest.mark.asyncio
+async def test_after_deadline_create_handle_is_retained_killed_and_never_refunded():
+    clock=[0.0]
+    class Late(API):
+        async def create(self,**kw):
+            self.sdk=SDK();clock[0]=331;return self.sdk
+    api=Late();ledger=Ledger();life=StagedLifecycle(api,ledger,stage,run_id='authored',clock=lambda:clock[0])
+    with pytest.raises(BoundedRemoteError):await life.prepare({'condition':'baseline'},deadline=330)
+    assert life.raw_owned['baseline'] is api.sdk and api.sdk.killed
+    assert life.cleanup_evidence['baseline']['stopped_confirmed']
+    assert life.cleanup_evidence['baseline']['cleanup_only_after_worker_deadline']
+    assert len(ledger.reserved)==1 and not ledger.settled and life.uncertain
+    assert 'baseline' not in life.remotes  # No worker wrapper or continuation.
+    await life.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_cancellation_suppressed_late_create_is_still_owned_and_cleaned():
+    class Late(API):
+        async def create(self,**kw):
+            try:await asyncio.sleep(10)
+            except asyncio.CancelledError:await asyncio.sleep(.01)
+            self.sdk=SDK();return self.sdk
+    api=Late();ledger=Ledger();life=StagedLifecycle(api,ledger,stage,run_id='authored')
+    with pytest.raises(TimeoutError):await life.prepare({'condition':'baseline'},deadline=time.monotonic()+.02)
+    await asyncio.sleep(.05)
+    assert life.raw_owned['baseline'] is api.sdk and api.sdk.killed
+    assert 'baseline' in life.raw_stopped and not ledger.settled
+    await life.cleanup()

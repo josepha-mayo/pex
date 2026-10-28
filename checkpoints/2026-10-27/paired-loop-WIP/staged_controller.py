@@ -219,7 +219,10 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
     finally:
         # This is an authored contract, not a proof that blocking SDK work obeys
         # cancellation. A future live adapter also needs provider-side expiry.
-        remaining = CLEANUP_SECONDS if life is None else min(CLEANUP_SECONDS,max(0,life.deadline-clock()))
+        # A bounded cleanup-only grace is allowed even AFTER worker expiry.
+        # It may kill/query owned resources, never create/resume/extend them.
+        remaining = CLEANUP_SECONDS
+        report['cleanup_only_after_worker_deadline'] = life is not None and clock() >= life.deadline
         started = clock()
         try:
             await asyncio.wait_for(worker.cleanup(), timeout=remaining)

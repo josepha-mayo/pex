@@ -200,3 +200,12 @@ def test_partial_second_phase_does_not_duplicate_first_phase_usage():
     _,r=run(Partial())
     assert all(s['calls']==12 and s['input_tokens']==30 and s['worker_active_seconds']==3 for s in r['arms'].values())
     assert all(s['status']=='worker_budget_terminal_inconclusive' for s in r['arms'].values())
+
+
+def test_expired_worker_deadline_still_attempts_cleanup_only_callback():
+    ticks=[0.0]
+    class Expired(Worker):
+        async def release(self,arm): ticks[0]=331
+    w,r=run(Expired(),clock=lambda:ticks[0])
+    assert w.cleaned and r['cleanup_only_after_worker_deadline']
+    assert r['cleanup_confirmed'] is False  # Release proof was not supplied.

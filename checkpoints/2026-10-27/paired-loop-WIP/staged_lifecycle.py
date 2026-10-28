@@ -22,7 +22,8 @@ class StagedLifecycle:
             raise ValueError('bounded_async_public_stager_and_run_identity_required')
         self.api=sdk_api;self.compute=compute;self.stage_public=stage_public;self.run_id=run_id;self.clock=clock
         self.attempts=set();self.remotes={};self.pending=set();self.uncertain=False;self.deadlines={}
-        self.provider_evidence={};self.unknown_create=False
+        self.provider_evidence={};self.unknown_creates=set()
+        self.raw_owned={};self.raw_stopped=set();self.cleanup_evidence={}
 
     async def _bounded(self, awaitable, deadline):
         task=asyncio.create_task(awaitable);self.pending.add(task)
@@ -56,13 +57,17 @@ class StagedLifecycle:
                 metadata={'pex_pilot':self.run_id,'pex_arm':c},idempotency_key=identity,
                 api_key='AUTHORED-NOT-A-CREDENTIAL',retries=0,
                 request_timeout=max(.001,setup_deadline-self.clock()))
-            # Retain even a late owned response so cleanup can still find it.
+            # Store the raw owned handle BEFORE validating a worker deadline.
+            # A late response must remain cleanable even when no worker wrapper
+            # can be constructed. Cleanup never grants a continuation or refund.
+            self.raw_owned[c]=sdk;self.unknown_creates.discard(c)
+            if self.uncertain or deadline<=self.clock():
+                self.uncertain=True
+                try: await self._cleanup_raw(c,self.clock()+15)
+                except Exception: pass
+                raise BoundedRemoteError('late_create_after_deadline_or_uncertainty_no_resume')
             remote=BoundedAsyncRemote(sdk,vm_deadline=deadline,clock=self.clock)
             self.remotes[c]=remote
-            if self.uncertain:
-                try: await self._bounded(remote.close(),min(deadline,self.clock()+15))
-                except Exception: pass
-                raise BoundedRemoteError('late_create_after_uncertainty_no_resume')
             return sdk,remote
         try:
             sdk,remote=await self._bounded(create(),setup_deadline)
@@ -80,20 +85,50 @@ class StagedLifecycle:
             return remote
         except BaseException:
             self.uncertain=True
-            if c not in self.remotes: self.unknown_create=True
+            if c not in self.raw_owned: self.unknown_creates.add(c)
             # The owner's finally path calls cleanup; don't make setup timeout
             # wait indefinitely for SDK cancellation/cleanup inside this handler.
             raise
 
+    async def _cleanup_raw(self, condition, cleanup_deadline):
+        if condition in self.raw_stopped: return
+        sdk=self.raw_owned[condition]
+        proof=self.cleanup_evidence.setdefault(condition,{'kill_attempted':False,'stopped_confirmed':False,
+            'cleanup_only_after_worker_deadline':self.clock()>=self.deadlines[condition]})
+        async def stop():
+            remaining=cleanup_deadline-self.clock()
+            if remaining<=0: raise BoundedRemoteError('cleanup_only_window_exhausted')
+            proof['kill_attempted']=True
+            await sdk.kill(request_timeout=min(15,remaining))
+            remaining=cleanup_deadline-self.clock()
+            if remaining<=0: raise BoundedRemoteError('cleanup_stop_proof_window_exhausted')
+            if await sdk.is_running(request_timeout=min(15,remaining)) is not False:
+                raise BoundedRemoteError('owned_VM_still_running')
+            proof['stopped_confirmed']=True
+            self.raw_stopped.add(condition)
+            if condition in self.remotes: self.remotes[condition].closed=True
+        await self._bounded(stop(),cleanup_deadline)
+
     async def cleanup(self):
         errors=[]
-        cleanup_deadline=min([self.clock()+15,*self.deadlines.values()])
+        # Explicit cleanup-only window: closed arms' old worker deadlines do not
+        # prevent killing another owned VM. No create/worker/review/resume/extend
+        # is permitted here, including after a worker deadline has expired.
+        cleanup_deadline=self.clock()+15
         for task in list(self.pending): task.cancel()
         if self.pending:
             _,still=await asyncio.wait(list(self.pending),timeout=max(0,min(1,cleanup_deadline-self.clock())))
             if still: errors.append('lifecycle_cancellation_unconfirmed')
-        for remote in self.remotes.values():
-            try: await self._bounded(remote.close(),cleanup_deadline)
+        for c in list(self.raw_owned):
+            remote=self.remotes.get(c)
+            if remote is not None and remote.closed:
+                self.raw_stopped.add(c)
+                continue
+            if remote is not None:
+                try: await self._bounded(remote.end_scope(),min(cleanup_deadline,self.clock()+1))
+                except Exception: errors.append('operation_cancellation_unconfirmed')
+            # Always attempt independent owned kill, even after drain ambiguity.
+            try: await self._cleanup_raw(c,cleanup_deadline)
             except Exception: errors.append('owned_VM_cleanup_unconfirmed')
-        if self.unknown_create: errors.append('unknown_create_outcome_no_refund')
+        if self.unknown_creates: errors.append('unknown_create_outcome_no_refund')
         if errors: raise BoundedRemoteError('staged_lifecycle_cleanup_unconfirmed')
