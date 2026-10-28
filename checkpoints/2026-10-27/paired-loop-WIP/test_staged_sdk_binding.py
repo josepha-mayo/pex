@@ -53,6 +53,7 @@ def bound(candidate,monkeypatch,tmp_path):
             if request.method=='DELETE':return Response(status=204)
             if p=='/health':return Response(status=502,content=b'{"message":"sandbox not found"}')
             if p.startswith('/sandboxes/'):
+                if mode=='ambiguous_info':return Response(status=502,content=b'{"message":"unreachable"}')
                 return Response(status=404,content=b'{"code":404,"message":"sandbox not found"}')
             return Response(status=200,content=b'authored file')
     import pyqwest
@@ -67,9 +68,10 @@ def bound(candidate,monkeypatch,tmp_path):
 async def create(scope,compute,arm='baseline'):
     identity=scope.admitted.grant.run_id+'-'+arm
     compute.reserve(identity)
-    return await AsyncSandbox.create(template=b.BASE_TEMPLATE,timeout=330,
+    sdk=await AsyncSandbox.create(template=b.BASE_TEMPLATE,timeout=330,
         lifecycle={'on_timeout':'kill','auto_resume':False},metadata={'pex_pilot':scope.admitted.grant.run_id,'pex_arm':arm},
         idempotency_key=identity,request_timeout=1,**scope.options())
+    return scope.bind_owned(sdk)
 
 def test_closed_before_SDK_or_credential_access(monkeypatch):
     monkeypatch.setattr(b,'installed_source_pins',lambda:pytest.fail('SDK must not load'))
@@ -241,3 +243,50 @@ def test_mutated_binding_config_refused_before_credential_read(bound):
     with scope:
         scope.cfg['profile']['equal_worker_fresh']+=1
         with pytest.raises(a.AdmissionRefused,match='immutable'):scope.options()
+
+
+@pytest.mark.asyncio
+async def test_raw_SDK_generic_502_cannot_mark_bounded_remote_closed(bound):
+    import time
+    from staged_async_remote import BoundedAsyncRemote
+    scope,compute,wire,pools,behavior=bound
+    with scope:
+        identity=scope.admitted.grant.run_id+'-baseline';compute.reserve(identity)
+        raw=await AsyncSandbox.create(template=b.BASE_TEMPLATE,timeout=330,lifecycle={'on_timeout':'kill','auto_resume':False},
+            metadata={'pex_pilot':scope.admitted.grant.run_id,'pex_arm':'baseline'},idempotency_key=identity,**scope.options())
+        remote=BoundedAsyncRemote(raw,vm_deadline=time.monotonic()+2)
+        with pytest.raises(a.AdmissionRefused,match='502'):await remote.close()
+        assert not remote.closed and not remote.cleanup_evidence['stopped_confirmed'] and not scope.stopped
+        assert compute.total()==100+RESERVATION
+        # Same owned raw handle can be wrapped; no connect, resume or replacement.
+        safer=BoundedAsyncRemote(scope.bind_owned(raw),vm_deadline=remote.vm_deadline)
+        await safer.close()
+        assert safer.closed and safer.cleanup_evidence['stopped_confirmed']
+        assert scope.stopped==scope.owned
+
+@pytest.mark.asyncio
+async def test_control_plane_ambiguity_cannot_confirm_cleanup_or_next_create(bound):
+    import time
+    from staged_async_remote import BoundedAsyncRemote
+    scope,compute,wire,pools,behavior=bound
+    with scope:
+        sdk=await create(scope,compute);remote=BoundedAsyncRemote(sdk,vm_deadline=time.monotonic()+2)
+        behavior['mode']='ambiguous_info'
+        with pytest.raises(Exception):await remote.close()
+        assert not remote.closed and not remote.cleanup_evidence['stopped_confirmed'] and not scope.stopped
+        n=len(wire)
+        with pytest.raises(a.AdmissionRefused,match='stop_unproven'):await create(scope,compute,'pex')
+        assert len(wire)==n
+
+@pytest.mark.asyncio
+async def test_second_arm_requires_first_owned_control_plane_stop(bound):
+    scope,compute,wire,pools,behavior=bound
+    with scope:
+        sdk=await create(scope,compute)
+        identity=scope.admitted.grant.run_id+'-pex';compute.reserve(identity)
+        kwargs=dict(template=b.BASE_TEMPLATE,timeout=330,lifecycle={'on_timeout':'kill','auto_resume':False},
+            metadata={'pex_pilot':scope.admitted.grant.run_id,'pex_arm':'pex'},idempotency_key=identity,**scope.options())
+        with pytest.raises(a.AdmissionRefused,match='stop_unproven'):await AsyncSandbox.create(**kwargs)
+        await sdk.kill(request_timeout=1);assert await sdk.is_running(request_timeout=1) is False
+        second=await AsyncSandbox.create(**kwargs)
+        assert second.sandbox_id in scope.owned and len(scope.creates)==2

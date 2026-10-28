@@ -54,7 +54,7 @@ class SDKTransportBinding:
         if type(compute) is not ComputeBudget or compute.expected != (prior['compute_nano_usd'],self.cfg['predecessor']['sha256']):
             raise AdmissionRefused('pinned_cumulative_compute_ledger_required')
         self.compute=compute;self.active=False;self.cleanup_deadline=None
-        self.creates=set();self.owned=set();self.uncertain=False;self.pools={}
+        self.creates=set();self.owned=set();self.stopped=set();self.kill_attempted=set();self.uncertain=False;self.pools={}
         self.control=importlib.import_module('e2b.api.client_async')
         self.rpc=importlib.import_module('e2b.envd.client_async')
         self.original=None
@@ -117,6 +117,38 @@ class SDKTransportBinding:
         return {'api_key':key,'proxy':os.environ['HTTPS_PROXY'],'domain':'e2b.app',
             'api_url':'https://api.e2b.app','debug':False,'retries':0,'http_version':'1.1'}
 
+    def bind_owned(self, sdk):
+        """Use exact owned control-plane not-found proof, never generic health 502.
+
+        The SDK's native is_running treats ANY health 502 as False. Do not pass
+        the raw SDK to BoundedAsyncRemote: this restricted owned facade supplies
+        stronger stop evidence and exposes no connect/resume/extend operations.
+        """
+        self._check()
+        from e2b import AsyncSandbox
+        if type(sdk) is not AsyncSandbox or sdk.sandbox_id not in self.owned:
+            raise AdmissionRefused('owned_SDK_response_handle_required')
+        owner=self
+        class Owned:
+            def __repr__(self): return '<owned staged SDK facade>'
+            @property
+            def sandbox_id(self): return sdk.sandbox_id
+            @property
+            def commands(self): return sdk.commands
+            @property
+            def files(self): return sdk.files
+            async def get_info(self,**kwargs): return await sdk.get_info(**kwargs)
+            async def kill(self,**kwargs): return await sdk.kill(**kwargs)
+            async def is_running(self,**kwargs):
+                from e2b.exceptions import SandboxNotFoundException
+                try: await sdk.get_info(**kwargs)
+                except SandboxNotFoundException:
+                    if sdk.sandbox_id not in owner.stopped:
+                        raise AdmissionRefused('owned_control_plane_stop_unproven') from None
+                    return False
+                return True  # Existing/paused is not stopped; elapsed time is not proof.
+        return Owned()
+
     def _factory(self, proxy, read_timeout=None, *, http_version='2', retry_connect=True):
         self._check()
         # SDK retries=0 disables control-plane retry. Returning a raw guarded
@@ -148,6 +180,7 @@ class SDKTransportBinding:
             if method=='POST' and u.path=='/v2/sandboxes' and not u.query:
                 check_authority(self.admitted)
                 if self.cleanup_deadline is not None or self.uncertain: raise AdmissionRefused('uncertain_or_cleanup_create_refused')
+                if self.owned-self.stopped: raise AdmissionRefused('prior_owned_VM_stop_unproven')
                 raw=request.content
                 if type(raw) is not bytes or len(raw)>8192: raise AdmissionRefused('bounded_create_body_required')
                 body=json.loads(raw);meta=body.get('metadata',{});arm=meta.get('pex_arm')
@@ -155,6 +188,7 @@ class SDKTransportBinding:
                 expected={'templateID':BASE_TEMPLATE,'timeout':330,'autoPause':False,'autoResume':{'enabled':False},
                           'metadata':{'pex_pilot':self.admitted.grant.run_id,'pex_arm':arm},'envVars':{}}
                 if (body!=expected or arm not in ('baseline','pex') or arm in self.creates or len(self.creates)>=2
+                        or (not self.creates and arm!='baseline')
                         or request.headers.get('idempotency-key')!=identity):
                     raise AdmissionRefused('frozen_single_create_body_required')
                 # Existing durable reservation is required BEFORE wire dispatch.
@@ -164,6 +198,7 @@ class SDKTransportBinding:
                 self.creates.add(arm);self.uncertain=True;creating=True
             elif method in ('GET','DELETE') and not u.query and u.path.startswith('/sandboxes/') and u.path.count('/')==2:
                 if u.path.split('/')[-1] not in self.owned: raise AdmissionRefused('only_owned_control_plane_cleanup_or_info')
+                if method=='DELETE':self.kill_attempted.add(u.path.split('/')[-1])
             else: raise AdmissionRefused('SDK_control_plane_route_refused')
         else:
             # Only domains/identities learned from this scope's actual create
@@ -175,6 +210,15 @@ class SDKTransportBinding:
             if self.cleanup_deadline is not None and (method!='GET' or u.path!='/health'):
                 raise AdmissionRefused('cleanup_only_no_worker_or_resume')
         response=await inner.execute(request)
+        if u.hostname=='api.e2b.app' and method=='GET' and response.status==404:
+            sid=u.path.split('/')[-1]
+            if sid in self.owned and sid in self.kill_attempted:self.stopped.add(sid)
+        elif u.hostname!='api.e2b.app' and u.path=='/health' and response.status==502:
+            # The SDK would turn every 502 into False. Close the response and
+            # refuse that inference even if it happens to say 'not found'. Only
+            # an authenticated GET of the exact owned control-plane ID counts.
+            async with response: pass
+            raise AdmissionRefused('generic_health_502_is_not_owned_stop_proof')
         if creating:
             # Retain ownership BEFORE SDK parsing/constructor can fail. Unknown
             # or canceled responses retain the generic reservation permanently.
