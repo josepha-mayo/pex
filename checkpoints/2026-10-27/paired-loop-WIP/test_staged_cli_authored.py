@@ -2,7 +2,7 @@
 
 Qualifies forced textual finalization within8+4 accepted reservations and
 validated CLI natural stops, not spontaneous task completion. Same-session
-resume is exercised symmetrically for both condition labels.
+resume is exercised through StagedWorker symmetrically for both condition labels.
 This does not qualify a live VM adapter or guarantee arbitrary model compliance.
 """
 import asyncio
@@ -10,9 +10,11 @@ import http.server
 import json
 from pathlib import Path
 import threading
+import time
 import pytest
 from worker_funding import _WorkerLedger, PRICING_SHA
 from staged_funding import PhaseFunding
+from staged_worker import StagedWorker
 from staged_envelope import PHASES
 import nebius_worker as cw
 
@@ -50,6 +52,13 @@ def test_actual_cli_natural_checkpoint_finalization_and_same_session(monkeypatch
     threading.Thread(target=server.serve_forever,daemon=True).start()
     monkeypatch.setattr(cw,'BASE',f'http://127.0.0.1:{server.server_port}/v1')
     class Remote:
+        vm_deadline=None
+        scope=None
+        closed=False
+        def set_scope_deadline(self,value):
+            assert self.scope is None and value<=self.vm_deadline;self.scope=value
+        async def end_scope(self):self.scope=None
+        async def close(self):self.closed=True
         def run(self,command): remote_calls.append(command);return {'stdout':'authored','stderr':'','exit_code':0}
         def read(self,*a): return 'authored'
         def write(self,*a): return {'written':True}
@@ -65,32 +74,29 @@ def test_actual_cli_natural_checkpoint_finalization_and_same_session(monkeypatch
         modules=ROOT/'opencode-qualification-20261027/mock/node_modules',key_path=key,pool=Pool(),
         activate=True,funding=funding,authored=True)
     arm=dict(condition=condition,prompt='Authored task',worker_identity='nebius/'+cw.MODEL,public_sha256='a'*64)
+    class Lifecycle:
+        async def prepare(self,arm,*,deadline):
+            remote=worker.remotes[arm['condition']];remote.vm_deadline=deadline;return remote
+    adapter=StagedWorker(worker,Lifecycle())
     async def exercise():
         session=None;results=[]
         try:
-            worker._start(condition)
-            config=worker.states[condition]['case']/'opencode.json'
+            await adapter.prepare(arm,deadline=time.monotonic()+330)
             for index,limit in enumerate(PHASES):
                 stage[0]=index
-                funding[condition].begin(index)
-                value=json.loads(config.read_text())
-                value['agents']['paired']['steps']=limit.calls
-                guard_cfg={'baseURL':cw.BASE,'endpoint':cw.BASE+'/chat/completions',
-                    'model':cw.MODEL,'funding':worker.states[condition]['funding_channel'],
-                    'maxCalls':12,'outputPerCall':4096,'keyPath':str(key),'phaseCalls':limit.calls}
-                source=Path(__file__).with_name('staged_nebius_guard.ts').read_text()
-                (worker.states[condition]['case']/'plugins/guard/index.ts').write_text(source.replace('CONFIGURATION',json.dumps(guard_cfg)))
-                config.write_text(json.dumps(value))
-                result=await worker.turn(arm,prompt='Authored first phase' if index==0 else 'Authored same-session continuation',
-                    session_id=session,remaining={'active_seconds':limit.active_seconds})
+                result=await adapter.phase(arm,prompt='Authored first phase' if index==0 else 'Authored same-session continuation',
+                    session_id=session,phase_index=index,limit=limit)
                 assert result['terminal']=='natural_stop'
-                delta=funding[condition].finish(natural_stop=True)
-                assert delta['calls']==limit.calls and delta['uncertain_calls']==0
+                assert result['usage']['calls']==limit.calls
+                assert result['phase_stop_policy']=='counted_forced_textual_finalization_not_task_completion'
+                if index==0:
+                    observation=await adapter.observe(arm,result)
+                    assert observation['public_check']['exit_code']==0
                 if session is not None: assert result['session_id']==session
                 session=result['session_id'];results.append(result)
             assert sum(r['usage']['calls'] for r in results)==12
         finally:
-            await worker.cleanup()
+            await adapter.cleanup()
     try:
         if violates_finalization:
             with pytest.raises(ValueError): asyncio.run(exercise())
