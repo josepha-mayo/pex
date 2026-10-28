@@ -114,8 +114,9 @@ def inspect_candidate(raw, grant, *, now=None):
     fixed = {'provider_cap':PROVIDER_CAP,'compute_cap':COMPUTE_CAP,'worker_model':WORKER_MODEL,
         'supervisor_model':SUPERVISOR_MODEL,'phases':[vars(p) for p in PHASES],
         'vm_seconds':VM_SECONDS,'supervisor_attempts':12,'forced_textual_finalization':True}
-    if set(profile) != set(fixed)|{'equal_worker_fresh','supervisor_fresh'} or any(profile[k] != v for k,v in fixed.items()):
+    if set(profile) != set(fixed)|{'equal_worker_fresh','supervisor_fresh','supervisor_pricing_sha256'} or any(profile[k] != v for k,v in fixed.items()):
         raise AdmissionRefused('equal_frozen_staged_protocol_required')
+    if not digest(profile['supervisor_pricing_sha256']): raise AdmissionRefused('frozen_supervisor_pricing_identity_required')
     if cfg['predecessor']['sha256'] != grant.predecessor_sha256: raise AdmissionRefused('predecessor_identity_changed')
     prior = json.loads(read_pin(cfg['predecessor'],private=True))
     if (type(prior) is not dict or set(prior) != {'schema','provider_nano_usd','compute_nano_usd','ledgers','uncertain_reservations_retained'}
