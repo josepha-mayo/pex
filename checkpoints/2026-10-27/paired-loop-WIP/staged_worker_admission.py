@@ -54,12 +54,14 @@ def bind_child_environment(binding, environment):
             if not token:continue
             if token=='*':raise AdmissionRefused('provider_proxy_bypass_refused')
             # A port-specific bypass can match the canonical HTTPS endpoint.
-            if ':' in token:
-                token,port=token.rsplit(':',1)
-                if port!='443':continue
-            suffix=token.removeprefix('*.').lstrip('.')
+            port=None
+            if ':' in token:token,port=token.rsplit(':',1)
+            suffix=token.removeprefix('*.').lstrip('.').rstrip('.')
             if host==suffix or host.endswith('.'+suffix):
-                raise AdmissionRefused('provider_proxy_bypass_refused')
+                # Accept only a proven different numeric port; ambiguous or
+                # zero-padded default ports must never become route bypasses.
+                if port is None or not port.isdecimal() or int(port)==443:
+                    raise AdmissionRefused('provider_proxy_bypass_refused')
     if result.get('NODE_TLS_REJECT_UNAUTHORIZED') not in (None,'1'):
         raise AdmissionRefused('child_TLS_verification_required')
     if any(result.get(n) for n in ('NODE_EXTRA_CA_CERTS','SSL_CERT_DIR','NODE_OPTIONS','BUN_OPTIONS')):

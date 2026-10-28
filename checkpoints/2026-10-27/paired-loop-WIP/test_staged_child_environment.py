@@ -28,7 +28,9 @@ def test_current_ordinary_CA_inherited_without_copy_or_parent_mutation(funded,mo
     ('HTTPS_PROXY','http://other.invalid'),('https_proxy','http://other.invalid'),
     ('HTTP_PROXY','http://other.invalid'),('ALL_PROXY','socks5://other.invalid'),
     ('NO_PROXY','*'),('no_proxy','.nebius.com'),('NO_PROXY','*.tokenfactory.nebius.com'),
-    ('NO_PROXY','api.tokenfactory.nebius.com:443'),('NODE_TLS_REJECT_UNAUTHORIZED','0'),
+    ('NO_PROXY','api.tokenfactory.nebius.com:443'),('NO_PROXY','.nebius.com.:0443'),
+    ('NO_PROXY','api.tokenfactory.nebius.com:*'),('NO_PROXY','NEBIUS.COM.'),
+    ('NODE_TLS_REJECT_UNAUTHORIZED','0'),
     ('NODE_EXTRA_CA_CERTS','/unreviewed'),('SSL_CERT_DIR','/unreviewed'),
     ('NODE_OPTIONS','--unreviewed'),('BUN_OPTIONS','--unreviewed'),('SSL_CERT_FILE','/unreviewed')])
 def test_conflicting_child_proxy_or_CA_is_refused_not_normalized(funded,name,value):
