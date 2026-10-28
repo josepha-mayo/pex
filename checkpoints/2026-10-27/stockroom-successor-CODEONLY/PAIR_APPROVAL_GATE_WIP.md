@@ -1,5 +1,11 @@
-# Fresh pair approval gate WIP
+# One approved fresh pair — activation WIP
 
-The fresh Stockroom pair now refuses before configuration or credential-file reads unless root pins the exact new pair approval in source. A caller-supplied RootAdmission cannot grant itself authority. APPROVED_PAIR_REF remains None; the separate supervisor gate also remains None. Authored fixtures patch the reference in memory only.
+The exact 2026-10-28 owner grant is pinned in the pair, supervisor and new worker
+source references. Pair admission binds one deterministic config path, run ID and
+output path; the existing exclusive output claim prevents a second dispatch.
+The private RootAdmission still pins the complete config and predecessor hashes.
 
-The current original USD1 funding envelope cannot admit a fresh pair after retained prior uncertainty. The proposed USD2 ceiling is awaiting user approval and is NOT activated by this code. Existing stale budget profiles are not silently updated or reused. No model call, VM, credential access or new runtime configuration is created by this checkpoint.
+The reviewed USD 2 TOTAL Nebius ceiling and USD 0.10 E2B ceiling are unchanged.
+All historical uncertainty remains charged. Private manifest review and root GO
+are separate from user authorization and are still required before execution.
+No fallback, top-up, replacement, old diagnostic resume, deployment or submission.

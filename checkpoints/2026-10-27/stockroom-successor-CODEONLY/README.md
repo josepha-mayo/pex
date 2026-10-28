@@ -1,21 +1,20 @@
-# Stockroom paired successor — CLOSED, code-only WIP
+# Stockroom paired successor — approved one-run activation WIP
 
-The proposed **USD 2 total Nebius ceiling is awaiting user approval**. The actual
-approved ceiling remains USD 1. This code does not authorize spending, create
-credentials, launch a worker, start a sandbox, resume an interrupted run, deploy
-anything, or submit a hackathon project.
+The owner approved the previously reviewed **USD 2 total Nebius ceiling** on
+2026-10-28. This is one fresh paired benchmark, including all prior liabilities,
+not USD 2 additional credit. E2B remains capped at USD 0.10.
 
-Three source gates remain `None`:
-- `successor_admission.APPROVED_PAIR_REF`
-- `successor_supervisor.APPROVED_RETRY_REF`
-- `worker_funding.APPROVED_SUCCESSOR_WORKER_REF`
+All three source references pin that exact approval. Pair admission additionally
+binds one deterministic private config path, run identity, and output claim.
+A previously claimed output cannot be reopened or rebound. The original USD 1
+worker grant cannot activate this profile. Caller flags cannot raise any cap.
 
-Pair admission rejects before configuration or credential-file reads. The
-supervisor independently rejects before its configuration, keys, ledger or
-transport. The original USD 1 worker approval cannot open the larger profile.
-Caller configuration or environment variables cannot open these gates.
+A private config and complete predecessor evidence bundle have been prepared.
+Independent root review and exact-digest GO remain required before dispatch.
+No provider call or VM was made by these activation checkpoints. Credentials,
+private configs, raw databases and runtime evidence are not in this repository.
 
-## Frozen proposed funding profile
+## Frozen approved funding profile
 
 All amounts below are integer nanoUSD. These are cumulative ceilings, not extra
 money on top of prior work. Historical uncertainty is not refunded.
@@ -31,7 +30,7 @@ The worker ledger's common outer guard is 410,081,800. Each arm's separate
 400,000,000 phase guard is also enforced, so PEX cannot borrow the 699,000
 difference. There is no cross-arm pooling. Supervisor overhead remains separate.
 
-The proposed phase permits twelve fresh requests, 49,152 output tokens and
+The approved phase permits twelve fresh requests, 49,152 output tokens and
 180 active seconds per worker, including continuations, plus twelve shared
 supervisor wire attempts. Historical attempt counts 10/10/9 remain evidence;
 they are not represented as these new phase counts. Dollar charges never reset.
@@ -67,7 +66,7 @@ full-lifetime bound is 39,930,000. No extension or replacement is authorized.
 ## Qualification
 
 The documented `run_authored_all.py` entrypoint now includes the pending-budget
-regressions: **66 local tests and 14 subtests passed**. An independent reviewer
+regressions: **68 local tests and 14 subtests passed**. An independent reviewer
 reproduced that result and a focused 41-test guard suite, checked all listed
 source identities, and added synthetic boundary checks for the tighter PEX phase
 guard and twelve-request limit. The broader current transport/process/adapter
@@ -77,9 +76,8 @@ inert factories and synthetic credentials, not real provider/VM execution.
 The scoped post-edit review found no blocking code defect. It did not independently
 re-audit historical ledgers or remote commit identity; those remain separately
 verified root evidence. Fresh live configuration, complete predecessor pins and
-resource viability must still be independently checked after exact user approval
-and before any execution. All three activation gates remain closed.
+resource viability must still be independently checked before any execution. The one-run activation is pending independent private-manifest GO.
 
 See `PENDING_TWO_DOLLAR_PROFILE_WIP.md`, `PAIR_APPROVAL_GATE_WIP.md` and
 `SOURCE_SHA256.json`. Earlier USD 0.35/0.35/0.30 plans and their test counts are
-historical checkpoints in version control, not the current proposed profile.
+historical checkpoints in version control, not the current approved profile.

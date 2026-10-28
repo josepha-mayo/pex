@@ -1,15 +1,19 @@
 {
   "files": {
-    "CHECKPOINT_QUALIFICATION.md": "dd5583f8a629ad494dd32063f3ab080909ea5828da3406604a25989f9cf96b42",
-    "README.md": "1c7f1600ed7dafb59db5a2dea5a2d16503bd152732f6ff71bad2e627e7426f10",
-    "run_authored_all.py": "f1185bfe89bfaf2b5125d0e35067b65925919ee8f7f27a2041408f4075bf0a53",
+    "APPROVED_PAIR_SCOPE_WIP.md": "efac6b659cefb576f56140f0007e8a647b4670ce1c250e00e1bb70eaa4b1b16f",
+    "PAIR_APPROVAL_GATE_WIP.md": "90762a5f84bec8104768c1060d0fe8d0eca157bf1a26732299df4d3013ad9764",
+    "PENDING_TWO_DOLLAR_PROFILE_WIP.md": "8489e8fa565471112672c3805a4f70929542d49d65a6e723c659e3eb864b950f",
+    "README.md": "1c8b79a6281162c4bbb859a4ed67dcd19ba8417de8eefef71975fabc384b06a4",
+    "run_authored_all.py": "70ce9bf095614b850e33ad37c71ca63e84f98ca816d912877e825ac3c08800ff",
     "run_authored_supervisor.py": "d92cda520fa38ae13966b230ba367836cb5c3c256a85157563b725f1f997883d",
-    "successor_admission.py": "3d5a97582f6500e8fedfa31018aafd625c10140c228f7d7578dc9aad6fce0830",
-    "successor_runner.py": "977a3264eb39cb3bb184212832c7a6db94d12c3e4ff99816d468f20ec6985c2e",
-    "successor_supervisor.py": "3dd5c7f83266e32e43808afc7707af48cb20466bdcf6c7e0a79685b13bba119b",
-    "test_successor.py": "692adc60e0f23e83a541fc11f12ba8542d5be4560252fbca867a446c83c0c4b9",
-    "test_successor_supervisor.py": "c1fb912929474e00cad8d6fa5254dc6c000be106d2d3b19b419f332875f3ddf1"
+    "successor_admission.py": "3f251aed5ec8de04f24468afda261aa8a5fbaab6f40ba2714d29bec4dfb9f662",
+    "successor_budget.py": "388f8154da768a51d0d2f689991187de90f73a3a56ee7ef1ee63b0957985f86c",
+    "successor_runner.py": "9b950e273c65f6b504bfe7346297bb81753bb327adfcf648a5a3052f4ba7fe46",
+    "successor_supervisor.py": "35b9c1c7f7b20ada63e5779e567a628f8e38134c2cdc6358c10805a92c6118eb",
+    "test_pending_budget.py": "a7ef5d3f4eb32759caa42cbf72c5faa77564496030fa1fe48f5d1d8f24e5b7cd",
+    "test_successor.py": "419457e48a6cfe62f604f7b28fb3d53614b6b309fafd704b24c7620bc86b5936",
+    "test_successor_supervisor.py": "dfc947a98ba1603a78390d9d7786d6be7e588a433881d835515e60dd93d6ebb7"
   },
-  "schema": "pex.stockroom-successor-source-only.v2",
-  "status": "authored_qualified_default_closed_pending_exact_retry_approval"
+  "schema": "pex.stockroom-successor-source-only.v3",
+  "status": "WIP_one_approved_pair_prepared_root_GO_pending_no_live_claim"
 }
