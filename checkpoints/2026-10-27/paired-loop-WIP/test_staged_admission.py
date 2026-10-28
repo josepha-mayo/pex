@@ -18,7 +18,12 @@ def candidate(tmp_path,monkeypatch):
         'supervisor_model':a.SUPERVISOR_MODEL,'phases':[vars(p) for p in a.PHASES],'vm_seconds':a.VM_SECONDS,
         'supervisor_attempts':12,'forced_textual_finalization':True,'equal_worker_fresh':400000000,'supervisor_fresh':500000000,'supervisor_pricing_sha256':'b'*64}
     ca=pin('synthetic-ca');proxy='http://authored.invalid:8888'
-    monkeypatch.setenv('HTTPS_PROXY',proxy);monkeypatch.setenv('SSL_CERT_FILE',ca['path'])
+    # All transport aliases are synthetic. Do not accidentally inherit actual
+    # host proxy credentials into the local CLI/mock SDK fixture environment.
+    for name in ('HTTPS_PROXY','HTTP_PROXY','ALL_PROXY','https_proxy','http_proxy','all_proxy'):
+        monkeypatch.setenv(name,proxy)
+    for name in ('NO_PROXY','no_proxy'):monkeypatch.setenv(name,'127.0.0.1,localhost')
+    monkeypatch.setenv('SSL_CERT_FILE',ca['path'])
     for n in ('E2B_API_URL','E2B_SANDBOX_URL','E2B_DOMAIN','E2B_DEBUG'):monkeypatch.delenv(n,raising=False)
     (tmp_path/'modules/@opencode/plugin').mkdir(parents=True)
     plugin=pin('modules/@opencode/plugin/package.json',b'{"version":"2.1.4"}')
@@ -97,3 +102,10 @@ def test_gate_revocation_rechecked_with_independent_grant(candidate,monkeypatch)
     admitted=a.load(grant)
     monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',replace(gate,approval_ref='OTHER'))
     with pytest.raises(a.AdmissionRefused,match='approval_pending'):admitted.config()
+
+
+def test_fixture_transport_aliases_are_all_synthetic(candidate):
+    import os
+    for name in ('HTTPS_PROXY','HTTP_PROXY','ALL_PROXY','https_proxy','http_proxy','all_proxy'):
+        assert os.environ[name]=='http://authored.invalid:8888'
+    assert os.environ['NO_PROXY']==os.environ['no_proxy']=='127.0.0.1,localhost'
