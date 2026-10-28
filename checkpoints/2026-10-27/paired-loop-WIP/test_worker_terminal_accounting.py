@@ -30,6 +30,7 @@ def test_actual_worker_exception_retains_only_failed_turn_delta_and_active_time(
     db=ledger(tmp_path/'funding.sqlite','pex');channel=FundingChannel()
     settle(db,'previous-0');settle(db,'previous-1')
     worker=object.__new__(cw.NebiusCLIWorker);worker.funding={'pex':db}
+    worker.staged_binding=None  # Match __init__'s legacy default; no staged authority.
     worker.states={'pex':{'profile':tmp_path,'case':tmp_path,'stopped':False,'seq':0,'funding_channel':channel}}
     worker._start=lambda c:None;worker.binary=tmp_path/'never-executed'
     monkeypatch.setattr(cw,'prior_sequence',lambda *a:0)
