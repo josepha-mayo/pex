@@ -59,7 +59,10 @@ async def test_exact_builder_runner_CLI_SDK_public_and_protected_boundaries(fund
                     name=parse_qs(u.query)['path'][0]
                     if req.method=='GET':return Response(status=200,content=files[(arm,name)])
                     assert req.method=='POST'
-                    message=BytesParser(policy=default).parsebytes(('Content-Type: '+req.headers['content-type']+'\r\n\r\n').encode()+req.content)
+                    raw=req.content
+                    if not isinstance(raw,bytes):raw=b''.join([bytes(chunk) async for chunk in raw])
+                    assert len(raw)<262144
+                    message=BytesParser(policy=default).parsebytes(('Content-Type: '+req.headers['content-type']+'\r\n\r\n').encode()+raw)
                     parts=list(message.iter_parts());assert len(parts)==1
                     data=parts[0].get_payload(decode=True);files[(arm,name)]=data;uploaded.append((arm,name,data))
                     if Path(name).name in protected:
