@@ -16,8 +16,14 @@ from staged_controller import ProtocolInconclusive
 
 class StagedWorker:
     def __init__(self, worker, lifecycle, *, mode='authored-only', clock=time.monotonic):
-        if mode != 'authored-only':
+        if mode=='closed-admitted':
+            binding=getattr(worker,'staged_binding',None)
+            if binding is None or getattr(getattr(lifecycle,'api',None),'binding',None) is not binding:
+                raise PermissionError('closed_staged_worker_lifecycle_binding_required')
+            binding._check()
+        elif mode!='authored-only' or getattr(worker,'staged_binding',None) is not None:
             raise PermissionError('staged_worker_live_admission_unimplemented')
+        self.mode=mode
         if set(worker.funding) != {'baseline','pex'} or any(type(f) is not PhaseFunding for f in worker.funding.values()):
             raise ValueError('trusted_phase_funding_required')
         self.worker=worker;self.lifecycle=lifecycle;self.clock=clock

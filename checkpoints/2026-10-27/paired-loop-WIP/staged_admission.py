@@ -100,7 +100,7 @@ def inspect_candidate(raw, grant, *, now=None):
         raise AdmissionRefused('independent_exact_grant_identity_required')
     if sha(raw) != grant.config_sha256: raise AdmissionRefused('config_identity_changed')
     cfg = json.loads(raw)
-    required = {'schema','approval_ref','run_id','expires_at','profile','predecessor','sources','task','network','output_dir','e2b_key','nebius_key','sdk_sources'}
+    required = {'schema','approval_ref','run_id','expires_at','profile','predecessor','sources','task','network','output_dir','e2b_key','nebius_key','sdk_sources','cli'}
     if type(cfg) is not dict or set(cfg) != required or cfg['schema'] != 'pex.staged.closed-candidate.v1':
         raise AdmissionRefused('staged_candidate_schema')
     if (not grant.approval_ref or cfg['approval_ref'] != grant.approval_ref or cfg['run_id'] != grant.run_id
@@ -133,6 +133,14 @@ def inspect_candidate(raw, grant, *, now=None):
         raise AdmissionRefused('reviewed_source_set_changed')
     if cfg['task']['sha256'] != grant.task_sha256: raise AdmissionRefused('frozen_task_changed')
     read_pin(cfg['task'])
+    cli=cfg['cli']
+    if type(cli) is not dict or set(cli)!={'binary','modules_path','plugin_package'}:
+        raise AdmissionRefused('frozen_CLI_identity_required')
+    read_pin(cli['binary'],limit=512*1024*1024);read_pin(cli['plugin_package'])
+    modules=Path(cli['modules_path'])
+    if (not modules.is_absolute() or modules.resolve()!=modules or not modules.is_dir()
+            or cli['plugin_package']['path']!=str(modules/'@opencode/plugin/package.json')):
+        raise AdmissionRefused('frozen_plugin_path_required')
     validate_transport(cfg['network'])
     output = Path(cfg['output_dir'])
     config = Path(grant.config_path)

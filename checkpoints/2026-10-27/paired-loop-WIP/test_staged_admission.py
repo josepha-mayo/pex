@@ -20,7 +20,9 @@ def candidate(tmp_path,monkeypatch):
     ca=pin('synthetic-ca');proxy='http://authored.invalid:8888'
     monkeypatch.setenv('HTTPS_PROXY',proxy);monkeypatch.setenv('SSL_CERT_FILE',ca['path'])
     for n in ('E2B_API_URL','E2B_SANDBOX_URL','E2B_DOMAIN','E2B_DEBUG'):monkeypatch.delenv(n,raising=False)
-    cfg={'schema':'pex.staged.closed-candidate.v1','approval_ref':'AUTHORED-NOT-LIVE','run_id':'authored-new',
+    (tmp_path/'modules/@opencode/plugin').mkdir(parents=True)
+    plugin=pin('modules/@opencode/plugin/package.json',b'{"version":"2.1.4"}')
+    cfg={'cli':{'binary':pin('synthetic-binary'),'modules_path':str(tmp_path/'modules'),'plugin_package':plugin},'schema':'pex.staged.closed-candidate.v1','approval_ref':'AUTHORED-NOT-LIVE','run_id':'authored-new',
         'expires_at':(datetime.now(timezone.utc)+timedelta(hours=1)).isoformat(),'profile':profile,
         'predecessor':pin('prior.json',a.canonical(prior)),'sources':{'synthetic':pin('source.py')},
         'sdk_sources':{'synthetic':pin('sdk.py')},'task':pin('task-manifest'),'network':{'proxy_sha256':a.sha(proxy.encode()),'ca':ca},

@@ -45,7 +45,7 @@ def funding_usage_delta(before,after):
 class NebiusCLIWorker:
     def __init__(self, *, remotes, private_root, binary, modules, key_path, pool,
                  max_calls=12, output_per_call=4096, activate=False, funding=None, authored=False,
-                 public_check_command="python -m unittest discover -s tests -p test_smoke.py", task_profile="legacy-task05"):
+                 public_check_command="python -m unittest discover -s tests -p test_smoke.py", task_profile="legacy-task05", staged_binding=None):
         if task_profile not in ("legacy-task05","stockroom-v1"):raise ValueError("frozen_task_profile_required")
         if task_profile=="stockroom-v1" and public_check_command!="python -m unittest discover -s tests -v":raise ValueError("stockroom_public_check_required")
         self.task_profile=task_profile
@@ -54,7 +54,13 @@ class NebiusCLIWorker:
         self.public_check_command = public_check_command
         if activate is not True: raise PermissionError('pilot_not_activated')
         if set(funding or {})!={'baseline','pex'}: raise PermissionError('worker_funding_required')
-        if authored:
+        self.staged_binding=staged_binding
+        if staged_binding is not None:
+            if authored or BASE!='https://api.tokenfactory.nebius.com/v1' or task_profile!='stockroom-v1':
+                raise PermissionError('closed_staged_worker_exact_route_required')
+            from staged_worker_admission import validate_worker
+            validate_worker(staged_binding,funding,private_root=private_root,binary=binary,modules=modules,key_path=key_path)
+        elif authored:
             if not BASE.startswith('http://127.0.0.1:'): raise PermissionError('authored_loopback_only')
         elif any(type(v) is not WorkerFunding for v in funding.values()):
             raise PermissionError('independently_admitted_worker_funding_required')

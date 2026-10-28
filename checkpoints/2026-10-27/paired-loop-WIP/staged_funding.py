@@ -12,8 +12,13 @@ from nebius_worker import funding_usage_delta
 
 class PhaseFunding:
     def __init__(self, ledger, *, mode='authored-only'):
-        if mode != 'authored-only':
+        if mode == 'closed-admitted':
+            from staged_accounting import WorkerPhaseLedger
+            if type(ledger) is not WorkerPhaseLedger:raise PermissionError('closed_staged_phase_ledger_required')
+            ledger.owner.before_reserve()
+        elif mode != 'authored-only':
             raise PermissionError('staged_funding_live_not_admitted')
+        self.mode=mode
         self.ledger=ledger
         self._lock=threading.RLock()
         self.index=-1
