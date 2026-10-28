@@ -151,6 +151,63 @@ class WorkspaceTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result["truncated"]["sessions"])
         self.assertLessEqual(len(json.dumps(result).encode()), 32768)
 
+    async def store_session(self, session_id, stamp):
+        await self.writer.upsert_session(
+            HarnessSession(
+                id=session_id,
+                harness_type=HarnessType.OPENCODE,
+                vendor_session_id="authored-" + session_id,
+                status=SessionStatus.WORKING if session_id == "newest" else SessionStatus.IDLE,
+                last_activity=datetime.fromisoformat(stamp) if stamp is not None else None,
+            )
+        )
+
+    async def test_newest_twenty_orders_utc_before_limit(self):
+        for number in range(20):
+            await self.store_session(f"older-{number:02}", "2026-10-27T01:00:00+14:00")
+        await self.store_session("newest", "2026-10-26T23:59:00+00:00")
+        result = await self.reader.read_workspace()
+        self.assertEqual(len(result["sessions"]), 20)
+        self.assertTrue(result["truncated"]["sessions"])
+        self.assertEqual(result["sessions"][0]["id"], "newest")
+        self.assertEqual(result["sessions"][0]["status"], "working")
+        self.assertEqual(
+            [session["id"] for session in result["sessions"][1:]],
+            [f"older-{number:02}" for number in range(19, 0, -1)],
+        )
+
+    async def test_session_order_preserves_microseconds_ties_nulls_and_offset_page(self):
+        for session_id, stamp in (
+            ("z-older", "2026-10-26T00:00:00.000001+00:00"),
+            ("a-newer", "2026-10-26T00:00:00.000002+00:00"),
+            ("tie-a", "2026-10-26T01:00:00.000002+01:00"),
+            ("tie-b", "2026-10-26T00:00:00.000002+00:00"),
+            ("zero", "2026-10-26T00:00:00+00:00"),
+            ("null-a", None),
+            ("null-z", None),
+        ):
+            await self.store_session(session_id, stamp)
+        result = await self.reader.read_workspace()
+        self.assertEqual(
+            [session["id"] for session in result["sessions"]],
+            ["tie-b", "tie-a", "a-newer", "z-older", "zero", "null-z", "null-a"],
+        )
+        page = await _ReadView(self.path).list_sessions(limit=2, offset=1)
+        self.assertEqual([session.id for session in page], ["tie-a", "a-newer"])
+
+    async def test_owner_session_query_bounds(self):
+        for kwargs in ({"limit": 0}, {"limit": 22}, {"limit": True}, {"offset": -1}):
+            with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                await _ReadView(self.path).list_sessions(**kwargs)
+
+    async def test_read_connection_still_bounds_sql_work(self):
+        async with _ReadView(self.path)._pooled_connection() as db:
+            with self.assertRaisesRegex(sqlite3.OperationalError, "interrupted"):
+                await db.execute(
+                    "WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL "
+                    "SELECT x+1 FROM n WHERE x < 1000000) SELECT sum(x) FROM n"
+                )
+
     async def test_relative_path_rejected(self):
         with self.assertRaises(ValueError):
             OwnerWorkspaceReader(Path("relative.sqlite"))
@@ -278,6 +335,33 @@ class WorkspaceHttpTests(unittest.IsolatedAsyncioTestCase):
             )
             self.http.response(await self.workspace_request(cookie, body=b"x"), 413)
             reader.assert_not_called()
+
+    async def test_malformed_session_order_timestamp_fails_closed_and_recovers(self):
+        await self.seed()
+        cookie, _ = await self.http.signed_in()
+        row = await (await self.writer.db.execute("SELECT json FROM sessions")).fetchone()
+        session = json.loads(row[0])
+        for stamp in (
+            "PRIVATE invalid timestamp",
+            "2026-10-26T00:00:00",
+            "X" * 41,
+            123,
+            True,
+            "0001-01-01T00:00:00+01:00",
+            "9999-12-31T23:59:59-01:00",
+        ):
+            with self.subTest(stamp=stamp):
+                await self.writer.db.execute(
+                    "UPDATE sessions SET json = ? WHERE id = 's1'",
+                    (json.dumps({**session, "last_activity": stamp}),),
+                )
+                await self.writer.db.commit()
+                _, payload = self.http.response(await self.workspace_request(cookie), 503)
+                self.assertEqual(payload, {"error": "owner_workspace_unavailable"})
+        await self.writer.db.execute("UPDATE sessions SET json = ? WHERE id = 's1'", (row[0],))
+        await self.writer.db.commit()
+        _, payload = self.http.response(await self.workspace_request(cookie), 200)
+        self.assertEqual(payload["sessions"][0]["id"], "s1")
 
 
 if __name__ == "__main__":

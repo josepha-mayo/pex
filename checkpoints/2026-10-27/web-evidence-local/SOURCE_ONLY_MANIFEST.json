@@ -1,6 +1,6 @@
 {
   "status": "WIP_not_deployed",
-  "test_result": "74 current local authored unit/ASGI tests passed; scoped lint/format passed. Timestamp overflow now returns unavailable evidence and recovers after valid file replacement. No new browser/TLS/provider/benchmark claim.",
+  "test_result": "79 current local authored unit/ASGI tests passed; scoped lint/format passed. Mirrored owner workspace uses UTC microseconds before SQL LIMIT; offset newest20 selection, microsecond/id ties, nulls, bounded reads and malformed timestamp fail-closed/recovery covered. The evidence-only composition still supplies empty workspace lists. No new browser/TLS/provider/benchmark claim.",
   "files": [
     {
       "path": "README.md",
@@ -40,5 +40,8 @@
     }
   ],
   "prior_test_result": "72 passed; scoped lint/format passed; verified TLS real JSONL pass; browser blocked before page load",
-  "upstream_evidence_reader_sha256": "1843a4307032f25c46497e3f0f9cd6dfa8e46f023eca67bd0ec84a15876079e0"
+  "upstream_evidence_reader_sha256": "1843a4307032f25c46497e3f0f9cd6dfa8e46f023eca67bd0ec84a15876079e0",
+  "source_checkpoint": "parent:ef62c8a495eace410b2b7af84610c9c9716a71ba; canonical owner-only UTC newest20 ordering fix",
+  "upstream_workspace_reader_sha256": "d356b69c15f3d775ade6f260b0efb28f3941f7ac4d34fda0da68df7200ffcab5",
+  "upstream_workspace_tests_sha256": "6bba88904fe245ec3b4d35097d2b74e5ea998aecd7f7609ab4aa0ac070806bb4"
 }

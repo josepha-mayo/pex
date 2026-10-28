@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import aiosqlite
+from pex_protocol.session import HarnessSession
 
 from pex_bridge.store import Store
 from pex_bridge.web_owner_evidence import read_evidence
@@ -40,7 +41,7 @@ def _identifier(value: object, *, optional: bool = False) -> str | None:
     return value
 
 
-def _timestamp(value: object) -> str:
+def _timestamp(value: object, *, timespec: str = "auto") -> str:
     if isinstance(value, datetime):
         stamp = value
     elif isinstance(value, str) and len(value) <= 40:
@@ -49,7 +50,13 @@ def _timestamp(value: object) -> str:
         raise ValueError("invalid workspace timestamp")
     if stamp.tzinfo is None:
         raise ValueError("workspace timestamp needs timezone")
-    return stamp.astimezone(UTC).isoformat()
+    return stamp.astimezone(UTC).isoformat(timespec=timespec)
+
+
+def _session_activity_key(value: object) -> str | None:
+    # Fixed-width UTC keys retain microseconds, unlike SQLite's date functions.
+    # The timestamp parser bounds each scalar call and rejects malformed rows.
+    return None if value is None else _timestamp(value, timespec="microseconds")
 
 
 class _ReadView(Store):
@@ -75,10 +82,30 @@ class _ReadView(Store):
                 return int(remaining <= 0)
 
             await db.set_progress_handler(budget, 1000)
+            await db.create_function(
+                "owner_session_activity_key", 1, _session_activity_key, deterministic=True
+            )
             try:
                 yield db
             finally:
                 await db.rollback()
+
+    async def list_sessions(
+        self, *, limit: int = ROW_LIMIT + 1, offset: int = 0
+    ) -> list[HarnessSession]:
+        # Owner-only ordering: shared Store consumers retain their own contract.
+        # Normalize before LIMIT; sorting a fetched page can omit the newest row.
+        if type(limit) is not int or not 1 <= limit <= ROW_LIMIT + 1:
+            raise ValueError("owner session limit is outside the supported bound")
+        if type(offset) is not int or offset < 0:
+            raise ValueError("owner session offset must be nonnegative")
+        rows = await self._committed_fetchall(
+            "SELECT json FROM sessions "
+            "ORDER BY owner_session_activity_key(json_extract(json, '$.last_activity')) DESC, "
+            "id DESC LIMIT ? OFFSET ?",
+            (limit, offset),
+        )
+        return [HarnessSession.model_validate_json(row["json"]) for row in rows]
 
 
 class OwnerWorkspaceReader:

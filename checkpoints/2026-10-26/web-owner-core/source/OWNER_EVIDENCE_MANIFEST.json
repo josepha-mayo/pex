@@ -1,9 +1,9 @@
 {
   "schema": "pex.owner-evidence.wip.v1",
-  "source_checkpoint": "parent:f14e35edcf8777a41b67829a208d4ae577230a0d; timestamp-overflow fix",
-  "qualification": "WIP: 70 current backend unittests; authored JSONL/SQLite/ASGI only. Frontend results below are historical, not rerun. No new live inference, browser, deployment or benchmark.",
+  "source_checkpoint": "parent:ef62c8a495eace410b2b7af84610c9c9716a71ba; owner-only UTC newest20 ordering fix",
+  "qualification": "WIP: 75 current backend unittests; authored JSONL/SQLite/ASGI only. Owner sessions are ordered by bounded fixed-width UTC microseconds before SQL LIMIT, retaining stable id ties and null-last behavior. Shared Store and goal ordering are unchanged. Frontend results below are historical, not rerun. No new live inference, browser, deployment or benchmark.",
   "results": {
-    "backend_unittest_pass": 70,
+    "backend_unittest_pass": 75,
     "changed_python_ruff_check": "passed",
     "changed_python_ruff_format": "passed"
   },
@@ -15,8 +15,8 @@
     },
     {
       "path": "services/bridge/src/pex_bridge/web_owner_workspace.py",
-      "sha256": "d5e5c4a3972355f0888f33ce646db2cc9029efbe920575279b293e291ec1f617",
-      "bytes": 6691
+      "sha256": "d356b69c15f3d775ade6f260b0efb28f3941f7ac4d34fda0da68df7200ffcab5",
+      "bytes": 8129
     },
     {
       "path": "tests/unit/test_web_owner_evidence.py",
@@ -25,8 +25,8 @@
     },
     {
       "path": "tests/unit/test_web_owner_workspace.py",
-      "sha256": "d6bf00ffcb4a8f51b0c6aba92b976c1a0214cb209b2313694acdf177f0392f65",
-      "bytes": 12232
+      "sha256": "6bba88904fe245ec3b4d35097d2b74e5ea998aecd7f7609ab4aa0ac070806bb4",
+      "bytes": 16351
     },
     {
       "path": "apps/desktop/src/owner/workspace.ts",
