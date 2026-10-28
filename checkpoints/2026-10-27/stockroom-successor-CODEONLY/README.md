@@ -1,4 +1,9 @@
-# Stockroom paired successor — approved one-run activation WIP
+# Stockroom paired successor — NOT RUN (preparation window closed)
+
+**Latest outcome:** Required independent root GO was not received before the
+fixed admission window closed. Zero new model requests or VMs. The frozen private
+config now refuses admission; it was not extended or dispatched. See
+`PREPARATION_OUTCOME_20261028_WIP.md`. Preparation details below are historical.
 
 The owner approved the previously reviewed **USD 2 total Nebius ceiling** on
 2026-10-28. This is one fresh paired benchmark, including all prior liabilities,

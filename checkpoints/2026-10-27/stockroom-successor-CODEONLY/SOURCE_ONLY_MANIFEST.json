@@ -3,7 +3,8 @@
     "APPROVED_PAIR_SCOPE_WIP.md": "efac6b659cefb576f56140f0007e8a647b4670ce1c250e00e1bb70eaa4b1b16f",
     "PAIR_APPROVAL_GATE_WIP.md": "90762a5f84bec8104768c1060d0fe8d0eca157bf1a26732299df4d3013ad9764",
     "PENDING_TWO_DOLLAR_PROFILE_WIP.md": "8489e8fa565471112672c3805a4f70929542d49d65a6e723c659e3eb864b950f",
-    "README.md": "1c8b79a6281162c4bbb859a4ed67dcd19ba8417de8eefef71975fabc384b06a4",
+    "PREPARATION_OUTCOME_20261028_WIP.md": "2017037a45618def04bbc518e27c9502c629dc373a49e8daad4510ebd55a4228",
+    "README.md": "bd2d2d078c3e0d86a3681d8cfd1494f00428de859e766db944ad4d014349a4fc",
     "run_authored_all.py": "70ce9bf095614b850e33ad37c71ca63e84f98ca816d912877e825ac3c08800ff",
     "run_authored_supervisor.py": "d92cda520fa38ae13966b230ba367836cb5c3c256a85157563b725f1f997883d",
     "successor_admission.py": "3f251aed5ec8de04f24468afda261aa8a5fbaab6f40ba2714d29bec4dfb9f662",
@@ -15,5 +16,5 @@
     "test_successor_supervisor.py": "dfc947a98ba1603a78390d9d7786d6be7e588a433881d835515e60dd93d6ebb7"
   },
   "schema": "pex.stockroom-successor-source-only.v3",
-  "status": "WIP_one_approved_pair_prepared_root_GO_pending_no_live_claim"
+  "status": "WIP_benchmark_not_run_fixed_preparation_window_closed_zero_new_dispatch"
 }
