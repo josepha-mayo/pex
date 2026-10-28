@@ -28,11 +28,12 @@ function renderWorkspace(view: WorkspaceView) {
   else if (evidence.state === "unavailable") add("p", "Run evidence is unavailable. No cached results are shown.");
   else if (evidence.state === "recorded") {
     add("p", `${evidence.paired_terminal ? "Both arms recorded terminal states" : "Paired run is not terminal"} · ${evidence.phase.replaceAll("_", " ")}`);
-    add("small", `Controller-recorded at ${evidence.observed_at}. Worker: ${evidence.worker_model}. Supervisor: ${evidence.supervisor_model}.`);
+    add("small", `Controller-recorded at ${evidence.observed_at}. Recorded worker model ID: ${evidence.worker_model}. Recorded supervisor model ID: ${evidence.supervisor_model}.`);
     for (const name of ["baseline", "pex"] as const) {
       const arm = evidence.arms[name];
-      add("p", `${name === "pex" ? "PEX supervised" : "Worker alone"}: ${arm.status.replaceAll("_", " ")} · Recorded worker calls: ${arm.worker_calls ?? "not reported"}`);
+      add("p", `${name === "pex" ? "PEX arm" : "Baseline arm"}: ${arm.status.replaceAll("_", " ")} · Recorded worker calls: ${arm.worker_calls ?? "not reported"}`);
     }
+    add("small", "Authored versus live provenance: not reported. Supervisor calls: not reported; this is not a measured zero. Model IDs and arm labels do not establish that inference or supervision ran.");
     add("small", "Metadata only, not a verified score or proof of successful inference. Supervisor overhead is not included in worker counts. Any same-VM grading is anti-tamper-limited; grades are not displayed here. No general superiority claim.");
   }
   add("h3", "Goals");

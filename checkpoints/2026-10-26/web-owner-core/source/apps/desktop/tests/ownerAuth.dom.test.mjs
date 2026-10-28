@@ -144,3 +144,16 @@ test('authored evidence clears on hide, expiry, logout and failed manual refresh
     assert.equal(f.el('workspace-records').textContent,'');
   }
 });
+
+test('synthetic budget terminal must not imply supervision or live provenance',async()=>{
+ const evidence=runMetadata(); evidence.paired_terminal=true; evidence.phase='paired_terminal';
+ evidence.arms.baseline={status:'worker_budget_terminal_inconclusive',worker_calls:0};
+ evidence.arms.pex={status:'worker_budget_terminal_inconclusive',worker_calls:null};
+ const f=setup([good(),await evidenceReply(evidence)]); await flush(); f.el('refresh-workspace').click(); await flush();
+ const text=f.el('workspace-records').textContent;
+ assert.doesNotMatch(text,/PEX supervised/);
+ assert.match(text,/Authored versus live provenance: not reported/);
+ assert.match(text,/Supervisor calls: not reported/);
+ assert.match(text,/Recorded worker calls: 0/); assert.match(text,/Recorded worker calls: not reported/);
+ assert.match(text,/worker budget terminal inconclusive/);
+ });
