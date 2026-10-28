@@ -1,4 +1,11 @@
-# Stockroom paired successor — NOT RUN (preparation window closed)
+# Stockroom paired successor — platform admission failure (WIP)
+
+**Latest outcome (preparation 02):** Conditional root GO and all narrow refresh
+checks passed. The once-only launch was refused before resource construction;
+a read-only reproduction identified a changed ordinary platform proxy identity.
+Zero new worker/supervisor requests or VMs; no retry. See
+`PREPARATION02_PLATFORM_ADMISSION_WIP.md`. Older preparation details follow.
+
 
 **Latest outcome:** Required independent root GO was not received before the
 fixed admission window closed. Zero new model requests or VMs. The frozen private

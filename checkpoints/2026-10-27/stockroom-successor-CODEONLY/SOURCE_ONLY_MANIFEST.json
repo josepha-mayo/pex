@@ -3,8 +3,9 @@
     "APPROVED_PAIR_SCOPE_WIP.md": "efac6b659cefb576f56140f0007e8a647b4670ce1c250e00e1bb70eaa4b1b16f",
     "PAIR_APPROVAL_GATE_WIP.md": "90762a5f84bec8104768c1060d0fe8d0eca157bf1a26732299df4d3013ad9764",
     "PENDING_TWO_DOLLAR_PROFILE_WIP.md": "8489e8fa565471112672c3805a4f70929542d49d65a6e723c659e3eb864b950f",
+    "PREPARATION02_PLATFORM_ADMISSION_WIP.md": "bf9926910053c04a171176691ed00bd4c83d169c86d108d2fb364ed0684dbd31",
     "PREPARATION_OUTCOME_20261028_WIP.md": "2017037a45618def04bbc518e27c9502c629dc373a49e8daad4510ebd55a4228",
-    "README.md": "bd2d2d078c3e0d86a3681d8cfd1494f00428de859e766db944ad4d014349a4fc",
+    "README.md": "a6a3b05b8b97a92a25de04203c16c439481fd9a0252d4330089aee9aa6e03625",
     "run_authored_all.py": "70ce9bf095614b850e33ad37c71ca63e84f98ca816d912877e825ac3c08800ff",
     "run_authored_supervisor.py": "d92cda520fa38ae13966b230ba367836cb5c3c256a85157563b725f1f997883d",
     "successor_admission.py": "4ef57697d3a863a3b18201445befd2ce9818dc33906ff2aabb302c6c17a774d8",
@@ -16,5 +17,5 @@
     "test_successor_supervisor.py": "dfc947a98ba1603a78390d9d7786d6be7e588a433881d835515e60dd93d6ebb7"
   },
   "schema": "pex.stockroom-successor-source-only.v3",
-  "status": "WIP_same_unused_approved_pair_mechanical_preparation02_refresh_root_conditional_GO"
+  "status": "WIP_preparation02_platform_admission_failure_zero_new_resources_no_retry"
 }
