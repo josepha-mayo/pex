@@ -1,4 +1,4 @@
-"""WIP staged admission: CLOSED after consumed recovery05 poisoned-command failure.
+"""WIP staged admission: one independently reviewed recorded recovery06 identity.
 
 A candidate inspection is not authority. The new source-reviewed identity below
 still requires an independently pinned root Grant and a fresh private claim. Historical
@@ -17,8 +17,8 @@ from urllib.parse import urlsplit
 from staged_envelope import PHASES, VM_SECONDS, WALL_PROFILE, reservation_envelope
 
 PROVIDER_CAP = 2_000_000_000
-COMPUTE_CAP = 120_000_000  # Current ceiling; code capability is NOT spend authority.
-SUPPORTED_COMPUTE_CAPS = (COMPUTE_CAP,140_000_000)  # Future140m remains inactive behind None gate.
+COMPUTE_CAP = 120_000_000  # Legacy default; an exact per-run Grant pins its ceiling.
+SUPPORTED_COMPUTE_CAPS = (COMPUTE_CAP,140_000_000)  # Capability alone is never spend authority.
 WORKER_MODEL = 'deepseek-ai/DeepSeek-V4.1-Flash-1017'
 SUPERVISOR_MODEL = 'nvidia/nemotron-3-super-120b-a12b'
 REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',
@@ -89,7 +89,11 @@ class Grant:
 # Pair05 consumed its claim: two verified VMs, completed setup, no model calls.
 # Its full330s compute charge remains; no retry/replacement or old-claim reopen.
 # Any later grant requires independently reviewed authority and cumulative bounds.
-APPROVED_STAGED_GRANT = None
+APPROVED_STAGED_GRANT = GrantGate(
+    approval_ref='Sentinel_1383f3c1009081918d063989baa821f5',
+    run_id='stockroom-staged-pair-20261029-06',
+    config_path='/workspace/scratch/c62c151ada7d/runtime-private/pex-pilot-20261027/stockroom-staged-pair-20261029-06/pair.json',
+    expires_at='2026-10-29T14:00:00+00:00')
 
 @dataclass(frozen=True, repr=False)
 class Admitted:
