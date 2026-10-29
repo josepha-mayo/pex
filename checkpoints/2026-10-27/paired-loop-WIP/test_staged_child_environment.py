@@ -44,3 +44,24 @@ def test_same_proxy_aliases_and_unrelated_port_do_not_change_routing(funded):
     env.update(https_proxy=env['HTTPS_PROXY'],ALL_PROXY=env['HTTPS_PROXY'],
                no_proxy='api.tokenfactory.nebius.com:8443,127.0.0.1')
     assert bind_child_environment(scope,env)['https_proxy']==env['HTTPS_PROXY']
+
+
+def test_real_child_projection_omits_unused_fallback_parent_and_explicit_guards_unchanged(funded,monkeypatch,tmp_path):
+    import os
+    from staged_worker_admission import prepare_child_environment,validate_child_environment,local_admission_reason
+    _,scope=funded
+    monkeypatch.setenv('ALL_PROXY','http://127.0.0.1:1');monkeypatch.setenv('all_proxy','http://127.0.0.1:2')
+    before=dict(os.environ);old=environment();old['ALL_PROXY']=os.environ['ALL_PROXY']
+    with pytest.raises(AdmissionRefused) as error:validate_child_environment(scope.cfg,old)
+    assert local_admission_reason(error.value)=='ambiguous_child_proxy_alias_refused'
+    child=prepare_child_environment(scope.cfg,tmp_path/'future-profile')
+    assert child['HTTPS_PROXY']==before['HTTPS_PROXY']
+    assert not any(n in child for n in ('ALL_PROXY','all_proxy')) and os.environ==before
+    child['ALL_PROXY']='http://127.0.0.1:1'
+    with pytest.raises(AdmissionRefused,match='ambiguous'):validate_child_environment(scope.cfg,child)
+
+
+def test_local_reason_is_allowlisted_not_raw_exception_message():
+    from staged_worker_admission import local_admission_reason
+    assert local_admission_reason(AdmissionRefused('ambiguous_child_proxy_alias_refused'))=='ambiguous_child_proxy_alias_refused'
+    assert local_admission_reason(AdmissionRefused('https://AUTHORED-secret.invalid/token'))=='unclassified_local_admission_refusal'

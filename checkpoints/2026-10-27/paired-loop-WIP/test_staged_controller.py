@@ -235,3 +235,12 @@ def test_measured_style_startup_latency_and_all_maxima_fit_frozen330s():
     assert all(x['status']=='staged_natural_stop' and x['worker_active_seconds']==180 for x in report['arms'].values())
     assert report['cleanup_confirmed'] and len(windows)==2 and all(25<=seconds<=45 for _,seconds in windows)
     assert windows[1][1]==pytest.approx(37.1)  # Unused setup12.1s, not borrowed worker allowance.
+
+
+def test_allowlisted_local_admission_reason_is_not_hidden_as_class_only():
+    from staged_admission import AdmissionRefused
+    class Refused(Worker):
+        async def phase(self,*a,**kw):raise AdmissionRefused('ambiguous_child_proxy_alias_refused')
+    _,report=run(Refused())
+    assert all(x['local_admission_reason_code']=='ambiguous_child_proxy_alias_refused' for x in report['arms'].values())
+    assert report['cleanup_confirmed']

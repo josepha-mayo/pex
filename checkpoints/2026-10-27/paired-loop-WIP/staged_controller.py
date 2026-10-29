@@ -185,6 +185,10 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
             except Exception as error:
                 state['status']='protocol_inconclusive' if isinstance(error,ProtocolInconclusive) else 'infrastructure_inconclusive'
                 state['error_type']=type(error).__name__
+                from staged_admission import AdmissionRefused
+                if isinstance(error,AdmissionRefused):
+                    from staged_worker_admission import local_admission_reason
+                    state['local_admission_reason_code']=local_admission_reason(error)
                 if pending_worker_phase:
                     state['worker_usage_exact']=False
                     state['worker_active_time_exact']=False

@@ -59,7 +59,10 @@ class NebiusCLIWorker:
             if authored or BASE!='https://api.tokenfactory.nebius.com/v1' or task_profile!='stockroom-v1':
                 raise PermissionError('closed_staged_worker_exact_route_required')
             from staged_worker_admission import validate_worker
-            validate_worker(staged_binding,funding,private_root=private_root,binary=binary,modules=modules,key_path=key_path)
+            cfg=validate_worker(staged_binding,funding,private_root=private_root,binary=binary,modules=modules,key_path=key_path)
+            from staged_worker_admission import prepare_child_environment
+            # Same production projection is checked locally BEFORE any VM.
+            for arm in ('baseline','pex'):prepare_child_environment(cfg,Path(private_root)/arm)
         elif authored:
             if not BASE.startswith('http://127.0.0.1:'): raise PermissionError('authored_loopback_only')
         elif any(type(v) is not WorkerFunding for v in funding.values()):
@@ -126,6 +129,8 @@ class NebiusCLIWorker:
         env['no_proxy']=env.get('no_proxy',env['NO_PROXY'])+',127.0.0.1,localhost'
         if self.staged_binding is not None:
             from staged_worker_admission import bind_child_environment
+            from staged_worker_admission import prepare_child_environment
+            env=prepare_child_environment(self.staged_binding.admitted.config(),profile)
             env=bind_child_environment(self.staged_binding,env)
         # run_turn exclusively creates its files; restrictive umask preserves that contract.
         os.umask(0o077)

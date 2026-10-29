@@ -56,3 +56,31 @@ capability, not spending authority**.37 focused authored tests passed, including
 closed-gate refusal and preservation of prior caps/reservations. A new exact
 approval, independent literal Grant, fresh config and recording handshake remain
 required. No actual inference success or supervisor benefit has been shown.
+
+## Recovery07 local child-admission correction
+
+Recovery07 completed both remote setups; the corrected command bridge remained
+clean. Both arms then raised local `AdmissionRefused` before any model request.
+Owned cleanup was confirmed and all costs were retained. The old run did not
+retain its exact reason string. A production-local reproduction with the actual
+CLI/configuration and current ordinary environment found the concrete defect:
+ambient ALL_PROXY/all_proxy fallback aliases differ from HTTPS_PROXY, were
+copied unnecessarily into the child, and the local guard correctly refused them.
+
+The narrow projection now omits only those unused fallback aliases from the
+child. Parent/global environment, pinned HTTPS_PROXY identity, approved CA path,
+verification, endpoint and all mismatch/bypass refusals remain unchanged. Real
+Bun1.4.4 TLS/CONNECT tests demonstrate HTTPS_PROXY precedence with distinct inert
+ALL_PROXY aliases; CA/hostname failures still fail closed. No alternate proxy,
+direct fallback, copied credentials/certificates or provider probe was introduced.
+
+The same pure child-preparation function is now callable before any SDK/client,
+claim or VM, and is rechecked in actual worker construction/execution. A local
+preflight validates pinned files and runs the actual `opencode --version` command
+(`opencode v2.1.4`) without inference. The trusted launcher must call it before
+its claim/compute/client path; candidate preparation can run it without opening
+credentials. Diagnostics retain allowlisted local reason codes, never raw errors.
+66 focused tests passed, including actual CLI/SDK mock composition and five real
+local Bun TLS/CONNECT cases. Actual-current-environment preflight also passed;
+its original inherited-fallback projection reproduced the guard refusal. These
+local results are not an inference success or supervisor benefit.

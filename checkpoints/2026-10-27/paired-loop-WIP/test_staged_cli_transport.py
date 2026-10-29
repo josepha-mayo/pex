@@ -68,7 +68,7 @@ def tls_fixture(tmp_path):
         key.unlink();cert.unlink()  # Owned ephemeral TLS fixture material only.
 
 
-def probe(tmp_path,tls_fixture,*,trust_var=None,hostname='pex-authored.invalid'):
+def probe(tmp_path,tls_fixture,*,trust_var=None,hostname='pex-authored.invalid',extra_env=None):
     assert hashlib.sha256(BINARY.read_bytes()).hexdigest()==PIN
     cert,port,connects,requests=tls_fixture
     case=tmp_path/'case';(case/'plugins/probe').mkdir(parents=True)
@@ -99,6 +99,7 @@ export default Plugin.define({id:'authored-tls-only',async setup(){
          'OPENCODE_DISABLE_MODELS_FETCH':'1','OPENCODE_DISABLE_AUTOUPDATE':'1','OPENCODE_DISABLE_FREE_MODELS':'1'}
     env.update({f'XDG_{key}_HOME':str(tmp_path/key.lower()) for key in ('CONFIG','DATA','CACHE','STATE')})
     if trust_var:env[trust_var]=str(cert)
+    env.update(extra_env or {})
     completed=subprocess.run([str(BINARY),'run','--standalone','--format','json','--model','authored/no-provider',
                              '--','Authored TLS probe only'],cwd=case,env=env,input='',text=True,
                              capture_output=True,timeout=10)
@@ -123,3 +124,11 @@ def test_pinned_CLI_actual_TLS_proxy_CA_and_hostname(tmp_path,tls_fixture,trust_
     assert connects==[hostname+':443']
     if accepted:assert result['body']=='AUTHORED-LOCAL-TLS-ONLY' and requests==[(hostname,'/authored-probe')]
     else:assert not requests
+
+
+def test_pinned_Bun_HTTPS_route_ignores_distinct_inert_ALL_PROXY_fallback(tmp_path,tls_fixture):
+    result,connects,requests=probe(tmp_path,tls_fixture,trust_var='SSL_CERT_FILE',
+        extra_env={'ALL_PROXY':'http://127.0.0.1:1','all_proxy':'http://127.0.0.1:2'})
+    assert result['bunVersion']=='1.4.4' and result['ok'] is True
+    assert connects==['pex-authored.invalid:443']
+    assert requests==[('pex-authored.invalid','/authored-probe')]
