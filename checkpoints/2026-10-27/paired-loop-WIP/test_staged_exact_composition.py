@@ -57,22 +57,29 @@ async def test_exact_builder_runner_CLI_SDK_public_and_protected_boundaries(fund
                 sdk_wire.append((req.method,req.url,req.content))
                 if path.endswith('/MakeDir'):return reply({})
                 if path=='/files':
-                    name=parse_qs(u.query)['path'][0]
-                    if req.method=='GET':return Response(status=200,content=files[(arm,name)])
+                    query=parse_qs(u.query)
+                    if req.method=='GET':return Response(status=200,content=files[(arm,query['path'][0])])
                     assert req.method=='POST'
                     raw=req.content
                     if not isinstance(raw,bytes):raw=b''.join([bytes(chunk) async for chunk in raw])
                     assert len(raw)<262144
                     message=BytesParser(policy=default).parsebytes(('Content-Type: '+req.headers['content-type']+'\r\n\r\n').encode()+raw)
-                    parts=list(message.iter_parts());assert len(parts)==1
-                    data=parts[0].get_payload(decode=True);files[(arm,name)]=data;uploaded.append((arm,name,data))
-                    if Path(name).name in protected:
-                        state=composition.worker.worker.states[arm]
-                        assert state['stopped'] and state['mcp_revoked']
-                        assert accounting.workers[arm].usage_snapshot()['calls']==12
-                        assert not name.startswith(ROOT+'/')
-                    else:assert Path(name).name not in protected
-                    return reply([{'name':Path(name).name,'path':name,'type':'file'}])
+                    parts=list(message.iter_parts());assert len(parts) in (1,10)
+                    results=[]
+                    for part in parts:
+                        name=part.get_filename();assert name
+                        if len(parts)==1:assert name==query['path'][0]
+                        data=part.get_payload(decode=True);files[(arm,name)]=data;uploaded.append((arm,name,data))
+                        if Path(name).name in protected:
+                            assert len(parts)==1
+                            state=composition.worker.worker.states[arm]
+                            assert state['stopped'] and state['mcp_revoked']
+                            assert accounting.workers[arm].usage_snapshot()['calls']==12
+                            assert not name.startswith(ROOT+'/')
+                        else:assert Path(name).name not in protected
+                        results.append({'name':Path(name).name,'path':name,'type':'file'})
+                    if len(parts)==10:assert {p.get_filename() for p in parts}=={ROOT+'/'+n for n in FILES}
+                    return reply(results)
                 if path.endswith('/Start'):
                     from protobuf import Oneof
                     from e2b.envd.process import process_pb as pb
@@ -82,7 +89,13 @@ async def test_exact_builder_runner_CLI_SDK_public_and_protected_boundaries(fund
                     body=json.loads(raw if raw.startswith(b'{') else raw[5:])
                     command=shlex.split(body['process']['args'][-1])[-1]
                     output='AUTHORED command receipt';code=0
-                    if 'pex.stockroom-export.v1' in command:
+                    if command.startswith('python3 -I -c ') and 'pex.public-setup.v1' in command:
+                        expected=json.loads(shlex.split(command)[-1])
+                        assert set(expected)==set(FILES)
+                        import hashlib
+                        assert expected=={n:hashlib.sha256(files[(arm,ROOT+'/'+n)]).hexdigest() for n in FILES}
+                        output=json.dumps({'schema':'pex.public-setup.v1','files':expected},sort_keys=True,separators=(',',':'))+'\n'
+                    elif 'pex.stockroom-export.v1' in command:
                         output=json.dumps({'schema':'pex.stockroom-export.v1','files':{
                             n:base64.b64encode(files[(arm,ROOT+'/'+n)]).decode() for n in FILES}})
                     elif command.endswith('python3 -I -B run_grade.py candidate'):

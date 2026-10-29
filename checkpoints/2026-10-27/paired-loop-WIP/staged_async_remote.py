@@ -160,6 +160,22 @@ class BoundedAsyncRemote:
         if user!='user': raise ValueError('unprivileged_user_required')
         return self._call(lambda:self._sdk.files.make_dir(name,user=user,request_timeout=min(15,self.remaining())))
 
+    def write_files(self, files):
+        # Actual SDK batch serializer, NOT repeated write() calls. Public staging
+        # supplies the exact allowlist; this bridge additionally bounds paths,
+        # entry types and the complete materialized multipart payload.
+        if type(files) is not dict or not 1<=len(files)<=10:
+            raise ValueError('bounded_batch_required')
+        entries=[];total=0
+        for relative,content in files.items():
+            name=path(relative)
+            if type(content) is not bytes or len(content)>MAX_BYTES:
+                raise ValueError('bounded_batch_bytes_required')
+            total+=len(content);entries.append({'path':name,'data':content})
+        if total>MAX_BYTES:raise ValueError('batch_size_bound')
+        return self._call(lambda:self._sdk.files.write_files(entries,user='user',
+            request_timeout=min(15,self.remaining())))
+
     def write(self, relative, content):
         self._write_absolute(path(relative),content)
         return {'written':relative,'bytes':len(content.encode())}

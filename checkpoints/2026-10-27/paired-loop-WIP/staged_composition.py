@@ -9,7 +9,6 @@ import asyncio
 from dataclasses import dataclass
 import importlib
 from pathlib import Path
-import shlex
 from types import SimpleNamespace
 from staged_admission import AdmissionRefused,read_pin,canonical,sha
 from staged_accounting import StagedAccounting
@@ -18,16 +17,16 @@ from staged_sdk_lifecycle import AdmittedSDKLifecycle
 from staged_supervisor import StagedSupervisor
 from staged_worker import StagedWorker,StagedGrade
 from staged_review import staged_request_builder
-from stockroom_task import stage,FILES,PUBLIC_CHECK_COMMAND
+from stockroom_task import stage,PUBLIC_CHECK_COMMAND
+from staged_public_setup import stage_public_files
 from stockroom_request import make_public_request
 from stockroom_grade import RemoteGrade
-from e2b_transport import ROOT
 from nebius_worker import NebiusCLIWorker,MODEL
 from review import OwnedReview
 from successor_runner import private_write
 
 SOURCE_MODULES=('staged_admission','staged_accounting','staged_sdk_binding','staged_sdk_lifecycle',
-    'staged_lifecycle','staged_async_remote','staged_composition','staged_envelope','staged_controller',
+    'staged_lifecycle','staged_async_remote','staged_public_setup','staged_composition','staged_envelope','staged_controller',
     'staged_funding','staged_worker_admission','staged_worker','staged_supervisor','staged_review',
     'nebius_worker','worker_funding','controller','review','stockroom_task','stockroom_request','stockroom_grade',
     'successor_supervisor','successor_runner','successor_admission','successor_budget',
@@ -89,18 +88,8 @@ def build_composition(accounting):
     async def stage_public(arm,remote):
         accounting.before_reserve()
         def upload():
-            remote._sandbox.files.make_dir(ROOT,user='user',request_timeout=15)
-            if remote.run('python -I -c "import unittest, sqlite3" && git --version')['exit_code']!=0:
-                raise RuntimeError('remote_runtime_preflight_inconclusive')
-            dirs=sorted({str(Path(n).parent) for n in FILES})
-            if remote.run('mkdir -p '+' '.join(shlex.quote(n) for n in dirs)+' && git init -q')['exit_code']!=0:
-                raise RuntimeError('remote_setup_inconclusive')
-            for name in FILES:
-                content=(output/'staged/workers'/arm['condition']/name).read_text()
-                remote.write(name,content)
-                if remote.read(name)!=content:raise RuntimeError('remote_public_bytes_differ')
-            if remote.run('git add . && git -c user.name=PEX -c user.email=pex@example.invalid commit -qm frozen-public-input')['exit_code']!=0:
-                raise RuntimeError('remote_snapshot_inconclusive')
+            stage_public_files(remote,output/'staged/workers'/arm['condition'],frozen['public_files'],
+                lambda evidence:private_write(output/('setup-timing-'+arm['condition']+'.json'),evidence))
         await asyncio.to_thread(upload)
     life=AdmittedSDKLifecycle(accounting.binding,stage_public)
     funding={c:PhaseFunding(ledger,mode='closed-admitted') for c,ledger in accounting.workers.items()}
