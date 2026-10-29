@@ -227,3 +227,35 @@ but produced no child start, heartbeat or exit evidence. Detached survival is
 therefore NOT qualified. The absence does not establish why the child was not
 observed or prove a platform kill. It is not used to authorize a paid detached
 launch, copy any proxy/CA settings or change the ordinary route.
+
+## Private supervisor request/response provenance (inactive)
+
+The separately admitted staged supervisor now optionally archives exact request
+bytes and complete bounded HTTP200 JSON response bytes before strict response
+identity/usage/tool parsing. The generic transport has a no-op protected hook;
+public invocation still denies. Body-only evidence excludes authorization and
+other raw headers. A conservative UTF-8/JSON-escape credential screen runs before
+publication, including nested escaped tool arguments; uncertainty refuses capture.
+No credential is passed to the archive sink. Non200, partial and oversized
+responses are not represented as complete captured responses.
+
+Exclusive atomic0600 artifacts use pex.staged.private-supervisor-wire.v1 under
+the fresh run's supervisor-wire directory. A FULL-synchronous auxiliary table
+binds invocation/kind/role/route/body hash/artifact path+hash to the actual pending
+supervisor reservation, with a prior request capture required for a response.
+Capture UTC is the owner's observation, not a provider receipt timestamp, and
+content type is normalized application/json rather than a raw header dump.
+An archive is not validated usage, settlement or permission to display prose.
+Only a succeeded, HTTP200, response-complete settled receipt can qualify a future
+independently reviewed excerpt. Write/screen/parse failure keeps the full charge;
+old runs/receipts and strict parsing/pricing are unchanged. This is prospective
+provenance support, not evidence that a monitor call or PEX benefit occurred.
+
+232 focused authored offline tests passed across staged accounting/supervisor,
+legacy successor, managed chat and tool transport. These include exact capture
+before parsing, both actual planner/verifier mock tool loops, full-charge retained
+for malformed/invalid usage, raw and nested-escaped credential rejection,
+pre-dispatch and response write failures, partial/oversized/non200 bodies,
+duplicate publication and cross-role/orphan refusal. Production changed modules
+pass Ruff F/E9, and the authored test file passes syntax E9 checks. No provider
+call or live recording was part of this qualification.

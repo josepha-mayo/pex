@@ -578,6 +578,30 @@ async def _bounded_response(response: httpx.Response, limit: int) -> bytes:
     return raw
 
 
+_JSON_ESCAPE = re.compile(r'\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})')
+
+
+def _screen_private_wire(raw: bytes, secret: str) -> None:
+    """Conservative credential exclusion BEFORE a private raw-body sink.
+
+    This is not response/usage parsing. Decode JSON escapes across the bounded
+    UTF-8 text (including nested tool-argument strings), checking every layer.
+    Excessively nested escaping refuses capture instead of guessing it is safe.
+    No credential, headers or arbitrary exception text reaches the sink.
+    """
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        raise Refusal("wire_archive_utf8_refused") from None
+    for _ in range(9):
+        if secret in text:
+            raise Refusal("credential_in_wire_archive_refused")
+        if not _JSON_ESCAPE.search(text):
+            return
+        text = _JSON_ESCAPE.sub(lambda match: json.loads('"' + match[0] + '"'), text)
+    raise Refusal("wire_archive_escape_depth_refused")
+
+
 class ManagedChatCandidate:
     """One-call transport candidate; no public live dispatch is authorized.
 
@@ -689,6 +713,11 @@ class ManagedChatCandidate:
     def _completion(self, receipt, content=None):
         return Completion(receipt, content)
 
+    def _capture_wire(self, kind, invocation, credential, body, status):
+        # No default persistence and no public authority. Only a separately
+        # admitted owner may override this protected, body-only evidence hook.
+        pass
+
     async def _execute_owned(
         self, invocation: Invocation, credential: _ScopedCredential
     ) -> Completion:
@@ -720,6 +749,7 @@ class ManagedChatCandidate:
                 raise Refusal("request_too_large")
             if self._request_contains_secret(invocation, payload, credential._value):
                 raise Refusal("credential_in_prompt_refused")
+            self._capture_wire("request", invocation, credential, body, None)
             timeout = httpx.Timeout(self.route.limits.timeout_seconds)
             async with asyncio.timeout(self.route.limits.timeout_seconds):
                 async with httpx.AsyncClient(
@@ -741,9 +771,9 @@ class ManagedChatCandidate:
                         )
                         if response.status_code != 200:
                             raise Refusal("provider_status_refused")
-                        raw = _strict_json(
-                            await _bounded_response(response, self.route.limits.max_response_bytes)
-                        )
+                        raw_body = await _bounded_response(response, self.route.limits.max_response_bytes)
+                        self._capture_wire("response", invocation, credential, raw_body, response.status_code)
+                        raw = _strict_json(raw_body)
                         if (
                             type(raw) is not dict
                             or raw.get("model") != self.route.model_id

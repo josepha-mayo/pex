@@ -154,6 +154,12 @@ class ManagedSuccessor:
             if supervisor_request_digest(request)!=request_digest:raise ValueError('successor_request_mutated')
             if proposal is not None and hashlib.sha256(proposal.model_dump_json().encode()).hexdigest()!=proposal_digest:raise ValueError('successor_proposal_mutated')
         class AccountedCandidate(ManagedToolChatCandidate):
+            def _capture_wire(self,kind,invocation,credential,body,status):
+                archive=getattr(runtime,'archive_wire',None)
+                if archive is not None:
+                    from managed_chat import _screen_private_wire
+                    _screen_private_wire(body,credential._value)
+                    archive(kind,invocation.invocation_id,self.route,body,status)
             async def _execute_owned(self,invocation,credential):
                 runtime.revalidate()
                 runtime.ledger.reserve(invocation.invocation_id,self.route)

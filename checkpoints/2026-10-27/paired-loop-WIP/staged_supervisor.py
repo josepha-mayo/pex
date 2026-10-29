@@ -5,7 +5,7 @@ session binding, NOT the legacy admission loader. No model or credential is
 constructed on import. Shared accounting belongs to StagedAccounting.
 """
 from pathlib import Path
-from staged_admission import AdmissionRefused,read_pin,sha,canonical
+from staged_admission import AdmissionRefused,read_pin
 from staged_accounting import StagedAccounting
 from successor_supervisor import ManagedSuccessor,_telemetry
 from stockroom_task import load_package,FILES,digest,encoded,MANIFEST_SHA256
@@ -61,6 +61,11 @@ class StagedSupervisor(ManagedSuccessor):
         return _ScopedCredential(raw.decode('ascii').strip(),route.fingerprint)
 
     def summary(self):return self.accounting.summary()
+
+    def archive_wire(self,kind,invocation_id,route,body,status):
+        # Body-only private evidence, not a transport or authority capability.
+        if self.closed:raise AdmissionRefused('staged_supervisor_closed')
+        return self.accounting.archive_supervisor_wire(kind,invocation_id,route,body,status)
 
     def close(self):
         if self.closed:return

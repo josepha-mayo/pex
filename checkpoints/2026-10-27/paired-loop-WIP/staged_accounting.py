@@ -10,6 +10,7 @@ from pathlib import Path
 import base64
 import json
 import os
+from datetime import datetime,timezone
 from staged_admission import AdmissionRefused,canonical,sha,read_pin
 from staged_sdk_binding import SDKTransportBinding
 from worker_funding import _WorkerLedger,ARM_BUDGET,PRICING_SHA
@@ -73,10 +74,48 @@ class StagedAccounting:
                 route=self.routes[0],currency='USD',pricing_provenance_sha256=profile['supervisor_pricing_sha256'],
                 input_token_bound=262144,output_token_bound=4096,approved_routes=self.routes,max_attempts=12,
                 prior_charged_nano_usd=SUPERVISOR_PRIOR,predecessor_sha256=self.cfg['predecessor']['sha256'])
+            (self.root/'supervisor-wire').mkdir(mode=0o700)
+            self.supervisor.db.execute('CREATE TABLE staged_supervisor_wire(invocation_id TEXT,kind TEXT,role TEXT,route TEXT,body_sha256 TEXT,artifact_path TEXT,artifact_sha256 TEXT,PRIMARY KEY(invocation_id,kind))')
             self.workers={arm:WorkerPhaseLedger(self,raw) for arm,raw in self.raw_workers.items()}
             self.supervisor_ledger=SupervisorPhaseLedger(self)
         except BaseException:
             self.close();raise
+
+    def archive_supervisor_wire(self,kind,invocation_id,route,body,status):
+        """Complete bounded bodies BEFORE strict parsing; never headers/keys.
+
+        Auxiliary immutable hashes bind the capture to an existing reservation.
+        A captured response is NOT a settled/validated response. Publication
+        failure leaves the original full uncertain reservation intact.
+        """
+        self.validate_identity()
+        if (kind not in ('request','response') or route not in self.routes or type(body)is not bytes
+                or len(body)>(route.limits.max_request_bytes if kind=='request' else route.limits.max_response_bytes)
+                or (kind=='request' and status is not None) or (kind=='response' and status!=200)):
+            raise AdmissionRefused('supervisor_wire_capture_shape_refused')
+        db=self.supervisor.db;db.execute('BEGIN IMMEDIATE')
+        try:
+            if db.execute('SELECT route,state FROM calls WHERE id=?',(invocation_id,)).fetchall()!=[(route.fingerprint,'reserved_uncertain')]:
+                raise AdmissionRefused('supervisor_wire_reserved_identity_required')
+            if kind=='response' and db.execute("SELECT role,route FROM staged_supervisor_wire WHERE invocation_id=? AND kind='request'",(invocation_id,)).fetchall()!=[(route.role,route.fingerprint)]:
+                raise AdmissionRefused('supervisor_wire_request_capture_required')
+            from staged_composition import private_atomic_json
+            pin=private_atomic_json(self.root/'supervisor-wire'/(sha(canonical([invocation_id,kind]))+'.json'),{
+                'schema':'pex.staged.private-supervisor-wire.v1','kind':kind,
+                'run_id':self.binding.admitted.grant.run_id,'config_sha256':self.binding.admitted.grant.config_sha256,
+                'role':route.role,'invocation_id':invocation_id,'route_fingerprint':route.fingerprint,
+                'model_id':route.model_id,'endpoint':route.endpoint,'body_sha256':sha(body),
+                'raw_body_base64':base64.b64encode(body).decode('ascii'),'HTTP_status':status,
+                'content_type':'application/json','captured_at_utc':datetime.now(timezone.utc).isoformat(),
+                'complete_bounded_body':True,'request_headers_captured':False,
+                'qualification':'Private complete bounded body captured before strict response parsing; not settlement or display approval. Content type is normalized, capture UTC is owner observation, not server time.'},
+                limit=2*max(len(body),4096)+4096)
+            db.execute('INSERT INTO staged_supervisor_wire VALUES (?,?,?,?,?,?,?)',
+                (invocation_id,kind,route.role,route.fingerprint,sha(body),pin['path'],pin['sha256']))
+            db.execute('COMMIT');return pin
+        except BaseException:
+            if db.in_transaction:db.execute('ROLLBACK')
+            raise
 
     def validate_identity(self):
         if self.closed or self.identity_path.read_bytes()!=self.identity:
