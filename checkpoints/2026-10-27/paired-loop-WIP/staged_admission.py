@@ -1,4 +1,4 @@
-"""WIP staged admission: one independently reviewed exploratory paired17 identity.
+"""WIP staged admission: one independently reviewed exploratory paired18 identity.
 
 A candidate inspection is not authority. The new source-reviewed identity below
 still requires an independently pinned root Grant and a fresh private claim. Historical
@@ -60,7 +60,13 @@ REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',
     'interrupted_staged14_config','interrupted_staged14_admission','interrupted_staged14_claim',
     'interrupted_staged14_executed_sources','interrupted_staged14_interruption','interrupted_staged14_summary',
     'interrupted_staged14_cleanup_scope','interrupted_staged14_cleanup_receipt','interrupted_staged14_cleanup_result',
-    'interrupted_staged14_local_cleanup','interrupted_staged14_recording_terminal'))
+    'interrupted_staged14_local_cleanup','interrupted_staged14_recording_terminal',
+    'interrupted_staged17_workers','interrupted_staged17_supervisor','interrupted_staged17_compute',
+    'interrupted_staged17_config','interrupted_staged17_admission','interrupted_staged17_claim',
+    'interrupted_staged17_executed_sources','interrupted_staged17_owned_vm','interrupted_staged17_interruption',
+    'interrupted_staged17_cleanup_scope','interrupted_staged17_cleanup_result','interrupted_staged17_cleanup_before',
+    'interrupted_staged17_cleanup_delete','interrupted_staged17_cleanup_after','interrupted_staged17_local_recovery',
+    'interrupted_staged17_recording_terminal'))
 _SEAL = object()
 
 class AdmissionRefused(PermissionError): pass
@@ -115,16 +121,18 @@ class Grant:
     task_sha256: str
     expires_at: str
 
-# Pair14 was interrupted before a response receipt; its full reservation remains.
+# Pair17 stopped after eight settled baseline calls; no paired result was produced.
+# Its exact VM cleanup is proven, but original launcher exit remains unproven.
+# Pair14 and all earlier uncertain reservations remain fully retained.
 # Fresh user approval explicitly covers authored task/code/public-test payload to Nebius.
 # All uncertain model/compute charges remain retained; no old claim can reopen.
 # Fresh user-approved cumulative $5 inference/$0.50 compute scope; not an unlimited grant.
 # Exact independently reviewed config/source pins and unused claim remain required.
 APPROVED_STAGED_GRANT = GrantGate(
     approval_ref='Sentinel_b0b9b8667a5481918578997cbe4ff5e3',
-    run_id='stockroom-staged-pair-20261029-17',
-    config_path='/tmp/pex-paired-live-20261029/stockroom-staged-pair-20261029-17/pair.json',
-    expires_at='2026-10-30T00:00:00+00:00')
+    run_id='stockroom-staged-pair-20261029-18',
+    config_path='/tmp/pex-paired-live-20261029/stockroom-staged-pair-20261029-18/pair.json',
+    expires_at='2026-10-30T01:00:00+00:00')
 
 @dataclass(frozen=True, repr=False)
 class Admitted:

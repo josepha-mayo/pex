@@ -225,3 +225,23 @@ def test_pair15_full_uncertain_prior_still_fits_equal_frozen_profile(candidate):
     v.update(provider_nano_usd=2650295400,compute_nano_usd=297495000);p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes())
     raw,grant=freeze();e=a.inspect_candidate(raw,grant)
     assert e['provider_reserved_ceiling']==4500295400 and e['compute_sequential_peak']==431182500 and e['compute_final_lifetime_bound']==342870000
+
+
+@pytest.mark.parametrize('suffix', ['workers','supervisor','compute','config','admission','claim',
+    'executed_sources','owned_vm','interruption','cleanup_scope','cleanup_result',
+    'cleanup_before','cleanup_delete','cleanup_after','local_recovery','recording_terminal'])
+def test_pair18_retains_interrupted_pair17_without_fabricated_terminal(candidate,suffix):
+    cfg,freeze=candidate;p=Path(cfg['predecessor']['path']);v=json.loads(p.read_bytes())
+    v['ledgers'].pop('interrupted_staged17_'+suffix)
+    p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes());raw,grant=freeze()
+    with pytest.raises(a.AdmissionRefused,match='complete_retained_predecessor_set_required'):
+        a.inspect_candidate(raw,grant)
+
+def test_pair18_retained_liabilities_fit_unchanged_equal_profile(candidate):
+    cfg,freeze=candidate;p=Path(cfg['predecessor']['path']);v=json.loads(p.read_bytes())
+    v.update(provider_nano_usd=2690466600,compute_nano_usd=320182500)
+    p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes());raw,grant=freeze()
+    envelope=a.inspect_candidate(raw,grant)
+    assert envelope['provider_reserved_ceiling']==4540466600
+    assert envelope['compute_sequential_peak']==453870000
+    assert envelope['compute_final_lifetime_bound']==365557500
