@@ -157,7 +157,8 @@ def build_composition(accounting):
     inner=NebiusCLIWorker(remotes={c:None for c in arms},private_root=output/'cli',
         binary=cfg['cli']['binary']['path'],modules=cfg['cli']['modules_path'],key_path=cfg['nebius_key']['path'],
         pool=SimpleNamespace(close=lambda:None),activate=True,funding=funding,task_profile='stockroom-v1',
-        public_check_command=PUBLIC_CHECK_COMMAND,staged_binding=accounting.binding)
+        public_check_command=PUBLIC_CHECK_COMMAND,staged_binding=accounting.binding,
+        capture_public_snapshot=cfg['profile']['public_snapshot_inspection'])
     worker=StagedWorker(inner,life,mode='closed-admitted')
     supervisor=StagedSupervisor(accounting)
     review=OwnedReview(staged_request_builder(make_public_request(package)),supervisor.model_factory,

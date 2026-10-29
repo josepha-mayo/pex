@@ -1,11 +1,13 @@
 """Real PEX protocol types with authored public receipts only; no models."""
+import base64
+import copy
 import hashlib
 import json
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
 from controller import PublicEvidenceInfrastructureError
-from stockroom_request import build_public_request,make_public_request,collect_public_observation
+from stockroom_request import build_public_request,make_public_request,collect_public_observation,validate_public_snapshot,snapshot_digest
 from stockroom_task import PUBLIC_CHECK_COMMAND
 PACKAGE=Path(__file__).resolve().parent.parent/'pex-hard-task-candidate-20261027-1421'
 class Remote:
@@ -54,4 +56,50 @@ class RequestTests(unittest.TestCase):
     def test_receipt_digest_covers_public_output(self):
         _,obs,_=self.inputs();check=dict(obs['public_check']);digest=check.pop('receipt_sha256')
         self.assertEqual(digest,hashlib.sha256(json.dumps(check,sort_keys=True).encode()).hexdigest())
+class SnapshotTests(unittest.TestCase):
+    def snapshot(self):
+        files={p:{'content':c,'sha256':hashlib.sha256(c.encode()).hexdigest()}for p,c in {'TASK.md':'Authored public contract','stockroom/service.py':'x = 1\n','tests/test_public.py':'# public\n'}.items()}
+        return {'schema':'pex.public-candidate-snapshot.v1','files':files,'snapshot_sha256':snapshot_digest(files)}
+    def test_valid_snapshot_is_copied_into_no_host_authority_request(self):
+        arm,obs,_=RequestTests().inputs();snap=self.snapshot();obs['public_candidate_snapshot']=snap
+        request=build_public_request(arm,obs,'authored-session')
+        self.assertIsNone(request.session.cwd);self.assertIsNone(request.session.repo)
+        self.assertEqual(request.scores.features['public_candidate_snapshot'],snap)
+        from pex_supervisor.evidence_tools import select_evidence_tool_names
+        self.assertIn('inspect_public_snapshot',select_evidence_tool_names(request))
+        snap['files']['TASK.md']['content']='changed'
+        self.assertNotEqual(request.scores.features['public_candidate_snapshot'],snap)
+    def test_snapshot_tampering_hidden_paths_bounds_and_schema_refused(self):
+        for change in ('hash','content','hidden','host','count','size','schema','control'):
+            with self.subTest(change=change):
+                x=self.snapshot()
+                if change=='hash':x['snapshot_sha256']='a'*64
+                elif change=='content':x['files']['TASK.md']['content']='changed'
+                elif change=='hidden':x['files']['protected/test_acceptance.py']=x['files']['TASK.md']
+                elif change=='host':x['files']['/etc/passwd']=x['files']['TASK.md']
+                elif change=='control':x['files']['stockroom/a\n.py']=x['files']['TASK.md']
+                elif change=='count':x['files'].update({f'tests/test_{n}.py':x['files']['TASK.md']for n in range(129)})
+                elif change=='size':x['files']['TASK.md']['content']='x'*131073
+                else:x['schema']='other'
+                with self.assertRaises(ValueError):validate_public_snapshot(x)
+    def test_capture_has_third_readonly_export_and_out_of_band_complete_checkpoint(self):
+        snap=self.snapshot();export={'schema':'pex.stockroom-export.v1','files':{p:base64.b64encode(x['content'].encode()).decode()for p,x in snap['files'].items()}}
+        export['files']['.gitignore']=base64.b64encode(b'authored').decode()
+        class R(Remote):
+            def run(self,command):
+                if 'pex.stockroom-export.v1' in command:
+                    self.commands.append(command);return {'exit_code':0,'stdout':json.dumps(export),'stderr':''}
+                return super().run(command)
+        r=R();saved=[];obs=collect_public_observation(r,SimpleNamespace(messages=['final'],stdout_sha256='a'*64),capture_public_snapshot=True,snapshot_sink=lambda *v:saved.append(v))
+        self.assertEqual(len(r.commands),3);self.assertEqual(obs['public_candidate_snapshot'],snap)
+        self.assertEqual(saved[0][0],export);self.assertNotIn('.gitignore',obs['public_candidate_snapshot']['files'])
+    def test_snapshot_is_opt_in_and_never_hidden_context(self):
+        _,obs,r=RequestTests().inputs();self.assertNotIn('public_candidate_snapshot',obs);self.assertEqual(len(r.commands),2)
+    def test_exact_export_failure_is_not_fabricated_snapshot(self):
+        class R(Remote):
+            def run(self,command):
+                if 'pex.stockroom-export.v1' in command:return {'exit_code':1,'stdout':'','stderr':'authored'}
+                return super().run(command)
+        with self.assertRaises(PublicEvidenceInfrastructureError):collect_public_observation(R(),SimpleNamespace(messages=[],stdout_sha256='a'*64),capture_public_snapshot=True)
+
 if __name__=='__main__':unittest.main()

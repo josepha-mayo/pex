@@ -16,7 +16,7 @@ def candidate(tmp_path,monkeypatch):
            'uncertain_reservations_retained':True,'ledgers':{n:pin(n) for n in a.REQUIRED_PREDECESSORS}}
     profile={'provider_cap':a.PROVIDER_CAP,'compute_cap':500_000_000,'worker_model':a.WORKER_MODEL,
         'supervisor_model':a.SUPERVISOR_MODEL,'phases':[vars(p) for p in a.PHASES],'vm_seconds':a.VM_SECONDS,
-        'wall_profile':dict(a.WALL_PROFILE),'supervisor_attempts':12,'forced_textual_finalization':True,'equal_worker_fresh':750000000,'worker_output_per_call':a.WORKER_OUTPUT_PER_CALL,'supervisor_fresh':350000000,'supervisor_pricing_sha256':'b'*64}
+        'wall_profile':dict(a.WALL_PROFILE),'public_snapshot_inspection':True,'supervisor_attempts':12,'forced_textual_finalization':True,'equal_worker_fresh':750000000,'worker_output_per_call':a.WORKER_OUTPUT_PER_CALL,'supervisor_fresh':350000000,'supervisor_pricing_sha256':'b'*64}
     ca=pin('synthetic-ca');proxy='http://authored.invalid:8888'
     # All transport aliases are synthetic. Do not accidentally inherit actual
     # host proxy credentials into the local CLI/mock SDK fixture environment.
@@ -180,4 +180,10 @@ def test_pair12_retains_full_actual_pair11_predecessors(candidate,name):
 @pytest.mark.parametrize('output',[4096,8192,16385,True,None])
 def test_pair12_requires_explicit_exact_equal_output_bound(candidate,output):
     cfg,freeze=candidate;cfg['profile']['worker_output_per_call']=output;raw,grant=freeze()
+    with pytest.raises(a.AdmissionRefused,match='equal_frozen_staged_protocol_required'):a.inspect_candidate(raw,grant)
+
+
+@pytest.mark.parametrize('enabled',[False,1,'true',None])
+def test_snapshot_inspection_is_exact_prospective_profile(candidate,enabled):
+    cfg,freeze=candidate;cfg['profile']['public_snapshot_inspection']=enabled;raw,grant=freeze()
     with pytest.raises(a.AdmissionRefused,match='equal_frozen_staged_protocol_required'):a.inspect_candidate(raw,grant)

@@ -45,9 +45,12 @@ def funding_usage_delta(before,after):
 class NebiusCLIWorker:
     def __init__(self, *, remotes, private_root, binary, modules, key_path, pool,
                  max_calls=12, output_per_call=None, activate=False, funding=None, authored=False,
-                 public_check_command="python -m unittest discover -s tests -p test_smoke.py", task_profile="legacy-task05", staged_binding=None):
+                 public_check_command="python -m unittest discover -s tests -p test_smoke.py", task_profile="legacy-task05", staged_binding=None, capture_public_snapshot=False):
         if task_profile not in ("legacy-task05","stockroom-v1"):raise ValueError("frozen_task_profile_required")
         if task_profile=="stockroom-v1" and public_check_command!="python -m unittest discover -s tests -v":raise ValueError("stockroom_public_check_required")
+        if type(capture_public_snapshot)is not bool or (capture_public_snapshot and task_profile!='stockroom-v1'):raise ValueError('explicit_public_snapshot_profile_required')
+        self.capture_public_snapshot=capture_public_snapshot
+        self.public_checkpoints={}
         self.task_profile=task_profile
         if public_check_command not in ("python -m unittest discover -s tests -p test_smoke.py", "python -m unittest discover -s tests -v"):
             raise ValueError("frozen_public_check_command_required")
@@ -60,6 +63,7 @@ class NebiusCLIWorker:
                 raise PermissionError('closed_staged_worker_exact_route_required')
             from staged_worker_admission import validate_worker
             cfg=validate_worker(staged_binding,funding,private_root=private_root,binary=binary,modules=modules,key_path=key_path)
+            if capture_public_snapshot is not cfg['profile'].get('public_snapshot_inspection',False):raise PermissionError('frozen_public_snapshot_profile_required')
             expected_output=cfg['profile']['worker_output_per_call']
             if output_per_call is None:output_per_call=expected_output
             if type(output_per_call)is not int or output_per_call!=expected_output:
@@ -178,7 +182,17 @@ class NebiusCLIWorker:
         remote=self.remotes[arm['condition']]
         if getattr(self,'task_profile','legacy-task05')=='stockroom-v1':
             from stockroom_request import collect_public_observation
-            observation=collect_public_observation(remote,receipt)
+            def capture(export,snapshot):
+                if arm['condition'] in self.public_checkpoints:raise ValueError('single_first_phase_public_checkpoint_required')
+                item={'schema':'pex.public-pre-intervention-checkpoint.v1','condition':arm['condition'],
+                      'capture_boundary':'after_phase0_before_monitor_before_any_protected_upload',
+                      'public_export':export,'snapshot_sha256':snapshot['snapshot_sha256']}
+                if self.staged_binding is not None:
+                    from staged_composition import private_atomic_json
+                    item['config_sha256']=self.staged_binding.admitted.grant.config_sha256
+                    item['durable_pin']=private_atomic_json(self.root.parent/'evidence'/(arm['condition']+'-public-checkpoint.json'),item,limit=512*1024)
+                self.public_checkpoints[arm['condition']]=item
+            observation=collect_public_observation(remote,receipt,capture_public_snapshot=getattr(self,'capture_public_snapshot',False),snapshot_sink=capture)
             return observation
         command=getattr(self,'public_check_command','python -m unittest discover -s tests -p test_smoke.py')
         check=remote.run(command)
