@@ -16,7 +16,7 @@ def candidate(tmp_path,monkeypatch):
            'uncertain_reservations_retained':True,'ledgers':{n:pin(n) for n in a.REQUIRED_PREDECESSORS}}
     profile={'provider_cap':a.PROVIDER_CAP,'compute_cap':a.COMPUTE_CAP,'worker_model':a.WORKER_MODEL,
         'supervisor_model':a.SUPERVISOR_MODEL,'phases':[vars(p) for p in a.PHASES],'vm_seconds':a.VM_SECONDS,
-        'supervisor_attempts':12,'forced_textual_finalization':True,'equal_worker_fresh':400000000,'supervisor_fresh':500000000,'supervisor_pricing_sha256':'b'*64}
+        'wall_profile':dict(a.WALL_PROFILE),'supervisor_attempts':12,'forced_textual_finalization':True,'equal_worker_fresh':400000000,'supervisor_fresh':500000000,'supervisor_pricing_sha256':'b'*64}
     ca=pin('synthetic-ca');proxy='http://authored.invalid:8888'
     # All transport aliases are synthetic. Do not accidentally inherit actual
     # host proxy credentials into the local CLI/mock SDK fixture environment.

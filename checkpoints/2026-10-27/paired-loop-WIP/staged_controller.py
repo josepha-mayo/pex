@@ -13,7 +13,8 @@ import math
 import time
 from controller import WorkerBudgetTerminal
 from staged_envelope import (PHASES, TOTAL, Lifetime, WallBudgetExhausted,
-    SETUP_SECONDS, OBSERVATION_SECONDS, REVIEW_SECONDS, GRADE_SECONDS, CLEANUP_SECONDS)
+    SETUP_SECONDS, OBSERVATION_SECONDS, REVIEW_SECONDS, GRADE_SECONDS, CLEANUP_SECONDS,
+    WALL_PROFILE,grade_allowance)
 
 BASELINE_RESUME = 'Continue the same task in this session using the remaining phase allowance.'
 
@@ -70,7 +71,7 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
     if arms['baseline']['workspace'] == arms['pex']['workspace']:
         raise ValueError('independent_pristine_workspaces_required')
     report = {'mode':mode,'protocol':'staged-8+4-WIP','worker_budget_each':asdict(TOTAL),
-              'phases_each':[asdict(p) for p in PHASES], 'arms':{},
+              'phases_each':[asdict(p) for p in PHASES], 'wall_profile':dict(WALL_PROFILE),'arms':{},
               'required_worker_adapter_policy':'symmetric_counted_final_request_tool_choice_none_not_spontaneous_task_completion',
               'real_inference_calls':0 if mode=='authored-only' else None,'pex_lift':None,'presentation_eligible':False}
     life = None
@@ -104,10 +105,11 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
 
             try:
                 await bounded(lambda:worker.prepare(arm, deadline=life.deadline), SETUP_SECONDS,
-                              retain=310, setup=True)
+                              retain=TOTAL.active_seconds+OBSERVATION_SECONDS+REVIEW_SECONDS+GRADE_SECONDS+CLEANUP_SECONDS, setup=True)
                 for index, limit in enumerate(PHASES):
                     current_limit = limit
-                    retain = 190 if index == 0 else GRADE_SECONDS + CLEANUP_SECONDS
+                    retain = (OBSERVATION_SECONDS+REVIEW_SECONDS+PHASES[1].active_seconds+GRADE_SECONDS+CLEANUP_SECONDS
+                              if index == 0 else GRADE_SECONDS+CLEANUP_SECONDS)
                     pending_worker_phase = True
                     turn = await bounded(lambda:worker.phase(arm, prompt=prompt, session_id=session,
                                         phase_index=index, limit=limit), limit.active_seconds, retain)
@@ -124,7 +126,7 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
                         state['status'] = 'staged_natural_stop'
                         break
                     observation = await bounded(lambda:worker.observe(arm, turn), OBSERVATION_SECONDS,
-                                                 retain=180)
+                                                 retain=REVIEW_SECONDS+PHASES[1].active_seconds+GRADE_SECONDS+CLEANUP_SECONDS)
                     observation_digest = digest(observation)
                     state['checkpoint_sha256'] = observation_digest
                     if condition == 'baseline':
@@ -133,7 +135,7 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
                         started = clock()
                         try:
                             decision = await bounded(lambda:review.review(arm, observation, session_id=session),
-                                                     REVIEW_SECONDS, retain=120)
+                                                     REVIEW_SECONDS, retain=PHASES[1].active_seconds+GRADE_SECONDS+CLEANUP_SECONDS)
                         finally:
                             # Includes failed/timeout review; never subtract from worker time.
                             state['supervisor_seconds'] += clock() - started
@@ -199,8 +201,13 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
                 cleanup_elapsed += max(0,clock()-started)
             if not cleanup_failed and state['status'] in {'staged_natural_stop','no_intervention','planner_rejected','verifier_rejected'}:
                 try:
-                    state['protected_grade'] = await bounded(lambda:grader.grade(arm), GRADE_SECONDS,
-                                              retain=max(0,CLEANUP_SECONDS-cleanup_elapsed))
+                    cleanup_remaining=max(0,CLEANUP_SECONDS-cleanup_elapsed)
+                    grade_seconds=grade_allowance(life,clock(),cleanup_remaining)
+                    state['grade_wall_allowance_seconds']=grade_seconds
+                    reserve_wall=getattr(grader,'reserve_wall',None)
+                    if callable(reserve_wall):reserve_wall(arm,deadline=clock()+grade_seconds)
+                    state['protected_grade'] = await bounded(lambda:grader.grade(arm), grade_seconds,
+                                              retain=cleanup_remaining)
                     state['grade_qualification']='authored_only_not_task_success' if mode=='authored-only' else 'same_VM_grade_with_explicit_anti_tamper_limits'
                 except Exception as error:
                     state['status']='grading_inconclusive'

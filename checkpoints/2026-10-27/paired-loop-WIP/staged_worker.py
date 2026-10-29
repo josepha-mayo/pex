@@ -8,7 +8,7 @@ import asyncio
 import json
 import time
 from pathlib import Path
-from staged_envelope import PHASES, SETUP_SECONDS, OBSERVATION_SECONDS, GRADE_SECONDS
+from staged_envelope import PHASES, SETUP_SECONDS, OBSERVATION_SECONDS, GRADE_MAX_SECONDS
 from staged_funding import PhaseFunding
 import nebius_worker
 from staged_controller import ProtocolInconclusive
@@ -134,9 +134,17 @@ class StagedWorker:
 
 class StagedGrade:
     """Same post-stop protected grader, with the remaining VM wall deadline."""
-    def __init__(self, grade, worker): self.grade_impl=grade;self.worker=worker
+    def __init__(self, grade, worker): self.grade_impl=grade;self.worker=worker;self.wall_deadlines={}
+    def reserve_wall(self,arm,*,deadline):
+        c=arm['condition'];now=self.worker.clock()
+        if (c in self.wall_deadlines or type(deadline) not in (int,float)
+                or not now<deadline<=min(self.worker.deadlines[c],now+GRADE_MAX_SECONDS)):
+            raise ProtocolInconclusive('single_absolute_grade_window_required')
+        self.wall_deadlines[c]=deadline
     async def grade(self, arm):
         c=arm['condition'];remote=self.worker.remotes[c]
-        remote.set_scope_deadline(min(self.worker.deadlines[c],self.worker.clock()+GRADE_SECONDS))
+        deadline=self.wall_deadlines.pop(c,None)
+        if deadline is None:raise ProtocolInconclusive('controller_grade_window_required')
+        remote.set_scope_deadline(min(self.worker.deadlines[c],deadline))
         try: return await self.grade_impl.grade(arm)
         finally: await remote.end_scope()

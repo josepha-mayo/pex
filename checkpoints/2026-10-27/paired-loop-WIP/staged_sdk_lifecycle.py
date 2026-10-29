@@ -8,6 +8,7 @@ import math
 from staged_admission import AdmissionRefused
 from staged_sdk_binding import SDKTransportBinding
 from staged_lifecycle import StagedLifecycle
+from staged_envelope import SETUP_SECONDS
 from staged_async_remote import BoundedRemoteError
 from e2b_transport import BASE_TEMPLATE
 
@@ -24,7 +25,7 @@ class SDKLifecycleAPI:
         if (set(kwargs)!=required or kwargs['template']!=BASE_TEMPLATE or kwargs['timeout']!=330
                 or kwargs['lifecycle']!={'on_timeout':'kill','auto_resume':False} or kwargs['retries']!=0
                 or type(kwargs['request_timeout']) not in (int,float) or not math.isfinite(kwargs['request_timeout'])
-                or not 0<kwargs['request_timeout']<=20):
+                or not 0<kwargs['request_timeout']<=SETUP_SECONDS):
             raise AdmissionRefused('frozen_lifecycle_create_contract_required')
         # The binding already consumed an exclusive claim. Only this current
         # process obtains the original private key route, after cumulative reserve.

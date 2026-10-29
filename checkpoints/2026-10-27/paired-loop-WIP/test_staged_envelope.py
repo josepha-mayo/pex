@@ -42,3 +42,14 @@ def test_full_lifetime_and_unknown_create_counted_sequentially():
     dict(uncertain_create_reserve=9),dict(equal_worker_fresh=0),dict(prior_provider=True)])
 def test_ceiling_fail_closed(change):
     with pytest.raises(ValueError): synthetic(**change)
+
+
+def test_frozen_partition_and_grade_only_borrows_actual_unused_wall():
+    assert SETUP_SECONDS==40 and GRADE_SECONDS==25 and GRADE_MAX_SECONDS==45
+    assert sum((SETUP_SECONDS,TOTAL.active_seconds,OBSERVATION_SECONDS,REVIEW_SECONDS,GRADE_SECONDS,CLEANUP_SECONDS))==330
+    life=Lifetime(0)
+    assert grade_allowance(life,290,15)==25
+    assert grade_allowance(life,270,15)==45
+    assert grade_allowance(life,200,15)==45
+    with pytest.raises(WallBudgetExhausted):grade_allowance(life,291,15)
+    assert grade_allowance(life,293,12)==25  # Stop already used3s of SAME cleanup15.

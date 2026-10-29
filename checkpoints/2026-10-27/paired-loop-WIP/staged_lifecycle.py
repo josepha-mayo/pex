@@ -8,7 +8,7 @@ import asyncio
 import inspect
 import re
 import time
-from e2b_transport import BASE_TEMPLATE, ROOT
+from e2b_transport import BASE_TEMPLATE
 from staged_envelope import VM_SECONDS, SETUP_SECONDS
 from staged_async_remote import BoundedAsyncRemote, BoundedRemoteError, validate_provider_lifetime
 
@@ -28,7 +28,7 @@ class StagedLifecycle:
             raise ValueError('bounded_async_public_stager_and_run_identity_required')
         self.api=sdk_api;self.compute=compute;self.stage_public=stage_public;self.run_id=run_id;self.clock=clock
         self.attempts=set();self.remotes={};self.pending=set();self.uncertain=False;self.deadlines={}
-        self.provider_evidence={};self.unknown_creates=set()
+        self.provider_evidence={};self.unknown_creates=set();self.setup_timing={}
         self.raw_owned={};self.raw_stopped=set();self.cleanup_evidence={}
 
     async def _bounded(self, awaitable, deadline):
@@ -54,6 +54,16 @@ class StagedLifecycle:
         if deadline-self.clock() <= 0:
             raise BoundedRemoteError('VM_deadline_already_exhausted')
         setup_deadline=min(deadline,self.clock()+SETUP_SECONDS)
+        started=self.clock()
+        timing={'schema':'pex.lifecycle-setup-timing.v1','setup_cap_seconds':SETUP_SECONDS,
+            'logical_operations':[],'setup_complete':False,'wire_request_count':None}
+        self.setup_timing[c]=timing
+        async def timed(name,awaitable):
+            before=self.clock();row={'operation':name,'started_after_seconds':before-started,'completed':False}
+            timing['logical_operations'].append(row)
+            try:
+                value=await self._bounded(awaitable,setup_deadline);row['completed']=True;return value
+            finally:row['elapsed_seconds']=self.clock()-before
         identity=self.run_id+'-'+c
         self.compute.reserve(identity)
         self.attempts.add(c);self.deadlines[c]=deadline
@@ -76,8 +86,8 @@ class StagedLifecycle:
             self.remotes[c]=remote
             return sdk,remote
         try:
-            sdk,remote=await self._bounded(create(),setup_deadline)
-            info=await self._bounded(sdk.get_info(request_timeout=max(.001,setup_deadline-self.clock())),setup_deadline)
+            sdk,remote=await timed('create_owned_VM',create())
+            info=await timed('verify_allocation_lifetime',sdk.get_info(request_timeout=max(.001,setup_deadline-self.clock())))
             evidence=validate_provider_lifetime(info)
             self.provider_evidence[c]=evidence
             # Only exact provider allocation/lifetime validation settles generic
@@ -85,9 +95,10 @@ class StagedLifecycle:
             self.compute.settle_verified_allocation(identity,cpu=info.cpu_count,memory_mb=info.memory_mb,max_seconds=VM_SECONDS)
             remote.set_scope_deadline(setup_deadline)
             try:
-                await self._bounded(self.stage_public(arm,remote),setup_deadline)
+                await timed('public_batch_setup',self.stage_public(arm,remote))
             finally:
                 await remote.end_scope()
+            timing['setup_complete']=True
             return remote
         except BaseException:
             self.uncertain=True
@@ -95,6 +106,9 @@ class StagedLifecycle:
             # The owner's finally path calls cleanup; don't make setup timeout
             # wait indefinitely for SDK cancellation/cleanup inside this handler.
             raise
+        finally:
+            timing['elapsed_seconds']=self.clock()-started
+            timing['setup_deadline_extended']=False
 
     async def _cleanup_raw(self, condition, cleanup_deadline):
         if condition in self.raw_stopped: return

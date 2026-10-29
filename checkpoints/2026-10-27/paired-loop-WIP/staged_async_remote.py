@@ -6,9 +6,7 @@ Cancellation ambiguity poisons the bridge; only owned-resource cleanup remains.
 Local fakes qualify the contract, not actual provider cancellation behavior.
 """
 import asyncio
-import concurrent.futures
 from datetime import datetime
-import inspect
 import math
 import re
 from pathlib import PurePosixPath

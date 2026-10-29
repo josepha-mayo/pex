@@ -209,3 +209,29 @@ def test_expired_worker_deadline_still_attempts_cleanup_only_callback():
     w,r=run(Expired(),clock=lambda:ticks[0])
     assert w.cleaned and r['cleanup_only_after_worker_deadline']
     assert r['cleanup_confirmed'] is False  # Release proof was not supplied.
+
+
+def test_measured_style_startup_latency_and_all_maxima_fit_frozen330s():
+    # Authored virtual-clock latency regression, NOT a real provider assertion.
+    #18.9s create/info +3x3s public setup fits40, not old20. Both arms still
+    # receive complete120+60 worker caps and the SAME minimum25s grade budget.
+    ticks=[0.0];windows=[]
+    class Latency(Worker):
+        async def prepare(self,arm,**kw):
+            await super().prepare(arm,**kw);ticks[0]+=18.9+3*3
+        async def phase(self,arm,**kw):
+            result=await super().phase(arm,**kw)
+            ticks[0]+=kw['limit'].active_seconds;result['worker_active_seconds']=kw['limit'].active_seconds
+            return result
+        async def observe(self,arm,turn):ticks[0]+=10;return await super().observe(arm,turn)
+        async def stop(self,arm):ticks[0]+=3;await super().stop(arm)
+        async def release(self,arm):ticks[0]+=12;await super().release(arm)
+    class FullReview(Review):
+        async def review(self,*a,**kw):ticks[0]+=60;return await super().review(*a,**kw)
+    class CaptureGrade:
+        def reserve_wall(self,arm,*,deadline):windows.append((arm['condition'],deadline-ticks[0]))
+        async def grade(self,arm):ticks[0]+=25;return {'authored_only':True}
+    worker=Latency();report=asyncio.run(run_staged_pair(arms(),worker,FullReview(worker),CaptureGrade(),clock=lambda:ticks[0]))
+    assert all(x['status']=='staged_natural_stop' and x['worker_active_seconds']==180 for x in report['arms'].values())
+    assert report['cleanup_confirmed'] and len(windows)==2 and all(25<=seconds<=45 for _,seconds in windows)
+    assert windows[1][1]==pytest.approx(37.1)  # Unused setup12.1s, not borrowed worker allowance.

@@ -14,7 +14,7 @@ from pathlib import Path
 import re
 import stat
 from urllib.parse import urlsplit
-from staged_envelope import PHASES, VM_SECONDS, reservation_envelope
+from staged_envelope import PHASES, VM_SECONDS, WALL_PROFILE, reservation_envelope
 
 PROVIDER_CAP = 2_000_000_000
 COMPUTE_CAP = 120_000_000
@@ -26,7 +26,9 @@ REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',
     'denied_pair02_workers', 'denied_pair02_supervisor', 'denied_pair02_compute',
     'denied_pair02_authoritative_reconciliation',
     'failed_staged03_workers','failed_staged03_supervisor','failed_staged03_compute',
-    'failed_staged03_terminal','failed_staged03_report'))
+    'failed_staged03_terminal','failed_staged03_report',
+    'failed_staged04_workers','failed_staged04_supervisor','failed_staged04_compute',
+    'failed_staged04_terminal','failed_staged04_report'))
 _SEAL = object()
 
 class AdmissionRefused(PermissionError): pass
@@ -141,7 +143,7 @@ def inspect_candidate(raw, grant, *, now=None):
     if sha(canonical(profile)) != grant.profile_sha256: raise AdmissionRefused('frozen_profile_changed')
     fixed = {'provider_cap':PROVIDER_CAP,'compute_cap':COMPUTE_CAP,'worker_model':WORKER_MODEL,
         'supervisor_model':SUPERVISOR_MODEL,'phases':[vars(p) for p in PHASES],
-        'vm_seconds':VM_SECONDS,'supervisor_attempts':12,'forced_textual_finalization':True}
+        'vm_seconds':VM_SECONDS,'wall_profile':dict(WALL_PROFILE),'supervisor_attempts':12,'forced_textual_finalization':True}
     if set(profile) != set(fixed)|{'equal_worker_fresh','supervisor_fresh','supervisor_pricing_sha256'} or any(profile[k] != v for k,v in fixed.items()):
         raise AdmissionRefused('equal_frozen_staged_protocol_required')
     if not digest(profile['supervisor_pricing_sha256']): raise AdmissionRefused('frozen_supervisor_pricing_identity_required')

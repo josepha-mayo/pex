@@ -17,11 +17,18 @@ class Phase:
 PHASES = (Phase(8, 32768, 120), Phase(4, 16384, 60))
 TOTAL = Phase(12, 49152, 180)
 VM_SECONDS = 330
-SETUP_SECONDS = 20
+SETUP_SECONDS = 40
 OBSERVATION_SECONDS = 10
 REVIEW_SECONDS = 60
-GRADE_SECONDS = 45
+GRADE_SECONDS = 25
+GRADE_MAX_SECONDS = 45
 CLEANUP_SECONDS = 15
+WALL_PROFILE = {'setup_seconds':SETUP_SECONDS,'worker_active_seconds':TOTAL.active_seconds,
+    'observation_seconds':OBSERVATION_SECONDS,'review_seconds':REVIEW_SECONDS,
+    'grade_guaranteed_seconds':GRADE_SECONDS,'grade_unused_slack_max_seconds':GRADE_MAX_SECONDS,
+    'cleanup_shared_seconds':CLEANUP_SECONDS,
+    'grade_borrow_rule':'actual_unused_prior_wall_only_absolute_VM_deadline_cleanup_retained'}
+
 assert tuple(sum(getattr(p, k) for p in PHASES) for k in ('calls', 'output_tokens', 'active_seconds')) == (12, 49152, 180)
 assert TOTAL.active_seconds + SETUP_SECONDS + OBSERVATION_SECONDS + REVIEW_SECONDS + GRADE_SECONDS + CLEANUP_SECONDS == VM_SECONDS
 
@@ -82,3 +89,12 @@ def reservation_envelope(*, prior_provider, equal_worker_fresh, supervisor_fresh
         raise ValueError('cumulative_ceiling_exceeded')
     return {'provider_reserved_ceiling': provider, 'compute_sequential_peak': peak,
             'compute_final_lifetime_bound': final, 'paused_VM_seconds_discounted': False}
+
+
+def grade_allowance(lifetime,now,cleanup_remaining):
+    """Prospectively frozen rule, never score/outcome-dependent wall tuning."""
+    now=_number(now);cleanup_remaining=_number(cleanup_remaining)
+    if cleanup_remaining>CLEANUP_SECONDS:raise ValueError('shared_cleanup_bound')
+    available=lifetime.deadline-now-cleanup_remaining
+    if available<GRADE_SECONDS:raise WallBudgetExhausted('guaranteed_grade_window_unavailable')
+    return min(GRADE_MAX_SECONDS,available)

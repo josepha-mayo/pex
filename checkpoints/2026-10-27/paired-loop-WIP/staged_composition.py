@@ -127,5 +127,6 @@ async def run_composition(composition):
         return report
     finally:
         composition.supervisor.close()
+        private_write(composition.accounting.root/'setup-lifecycle-timing.json',composition.worker.lifecycle.setup_timing)
         # Accounting/binding lifetimes belong to the explicit owning launcher;
         # no auto-retry, no pool replacement and no claim removal here.
