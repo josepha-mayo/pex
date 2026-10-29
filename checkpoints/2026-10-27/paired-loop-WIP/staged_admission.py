@@ -1,4 +1,4 @@
-"""WIP staged admission: CLOSED after consumed recorded retry04 setup timeout.
+"""WIP staged admission: one independently reviewed recorded recovery05 identity.
 
 A candidate inspection is not authority. The new source-reviewed identity below
 still requires an independently pinned root Grant and a fresh private claim. Historical
@@ -86,7 +86,11 @@ class Grant:
 # Pair04 consumed its claim: one verified VM, setup20s timeout, no model calls.
 # Its full330s compute charge remains; no retry/replacement or old-claim reopen.
 # Any later grant requires independently reviewed authority and cumulative bounds.
-APPROVED_STAGED_GRANT = None
+APPROVED_STAGED_GRANT = GrantGate(
+    approval_ref='Sentinel_9737fc8ece6c8191a0ebd78f72561ced',
+    run_id='stockroom-staged-pair-20261029-05',
+    config_path='/workspace/scratch/c62c151ada7d/runtime-private/pex-pilot-20261027/stockroom-staged-pair-20261029-05/pair.json',
+    expires_at='2026-10-29T12:00:00+00:00')
 
 @dataclass(frozen=True, repr=False)
 class Admitted:
