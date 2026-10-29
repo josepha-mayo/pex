@@ -157,3 +157,28 @@ records and a real exit marker, without network, keys or early PTY polling. That
 fixture does not establish the cause of09 termination, future network/SDK process
 stability, or any model/provider permission. No further paid run was started by
 this change; the source dispatch gate remains None.
+
+
+## Exploratory10 real terminal, unresolved HTTP200 usage
+
+10 completed its controller and confirmed both owned VM stops. Its durable arm
+checkpoints survived and were published before the second create. Baseline had2
+validated worker responses plus1 HTTP200 response whose usage was not settled;
+PEX had6 validated responses plus1 such uncertain response. Both arms stopped on
+cash reservation refusal before a supervisor checkpoint. Supervisor calls and
+final grades were not produced; this is budget/usage-inconclusive, not task
+failure or a PEX-benefit result. Independent actual screen recording ended with
+the real terminal status; no missing model or grade output was synthesized.
+
+All638,976,000 nanoUSD of the two unknown worker reservations remain charged.
+The cumulative provider bound is1,508,722,200 and compute bound209,467,500,
+including all09 unknown compute and the independently accepted padded06 compute
+reconciliation. These are conservative accounting bounds, not invoice amounts.
+The original raw ledgers and exact executed57-source snapshot remain private and
+unchanged. The consumed10 source gate is now closed.
+
+A concrete diagnostic limitation remains: failed worker wire validation retained
+only HTTP status, response hash and usage:null, not raw response bytes or a typed
+rejection reason. The pinned CLI retained derived token values, but those are not
+substituted for missing exact raw-wire proof. No retrospective cache-only refund,
+stream relaxation, new resource, provider switch or model fallback was made.
