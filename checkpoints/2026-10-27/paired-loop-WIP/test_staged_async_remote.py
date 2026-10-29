@@ -165,3 +165,48 @@ async def test_unacknowledged_command_is_killed_poisoned_and_owned_VM_cleanup_un
     diagnostic=json.dumps(remote.diagnostics)
     assert 'AUTHORED-RAW-ERROR' not in diagnostic and 'https://' not in diagnostic
     assert remote.diagnostics['exception_types'] and remote.diagnostics['scope_refusals']
+
+
+@pytest.mark.asyncio
+async def test_completed_read_ConnectTimeout_is_visible_then_same_VM_read_recovers():
+    import httpx
+    calls=[]
+    class Reader:
+        def __aiter__(self):return self
+        async def __anext__(self):
+            if getattr(self,'done',False):raise StopAsyncIteration
+            self.done=True;return b'AUTHORED-READ'
+        async def aclose(self):pass
+    async def read(*a,**kw):
+        calls.append('read')
+        if len(calls)==1:raise httpx.ConnectTimeout('AUTHORED-NOT-RETAINED')
+        return Reader()
+    remote=BoundedAsyncRemote(SimpleNamespace(files=SimpleNamespace(read=read)),vm_deadline=time.monotonic()+3)
+    remote.set_scope_deadline(time.monotonic()+2)
+    with pytest.raises(BoundedRemoteError,match='read_only_connection_timeout_no_state_change'):
+        await asyncio.to_thread(remote.read,'safe.txt')
+    assert not remote.poisoned and remote.diagnostics['completed_read_connect_timeouts']==1
+    assert await asyncio.to_thread(remote.read,'safe.txt')=='AUTHORED-READ'
+    assert calls==['read','read']  # No automatic retry; caller chose separate read.
+    await remote.end_scope();remote.set_scope_deadline(time.monotonic()+1);await remote.end_scope()
+
+
+@pytest.mark.asyncio
+async def test_identical_ConnectTimeout_on_write_still_poisons():
+    import httpx
+    async def write(*a,**kw):raise httpx.ConnectTimeout('AUTHORED')
+    remote=BoundedAsyncRemote(SimpleNamespace(files=SimpleNamespace(write=write)),vm_deadline=time.monotonic()+2)
+    remote.set_scope_deadline(time.monotonic()+1)
+    with pytest.raises(BoundedRemoteError):await asyncio.to_thread(remote.write,'safe.txt','data')
+    assert remote.poisoned and remote.diagnostics['completed_read_connect_timeouts']==0
+    await remote.end_scope()
+
+
+@pytest.mark.asyncio
+async def test_read_cancellation_deadline_is_not_completed_timeout_exemption():
+    async def read(*a,**kw):await asyncio.Event().wait()
+    remote=BoundedAsyncRemote(SimpleNamespace(files=SimpleNamespace(read=read)),vm_deadline=time.monotonic()+2)
+    remote.set_scope_deadline(time.monotonic()+.03)
+    with pytest.raises(BoundedRemoteError):await asyncio.to_thread(remote.read,'safe.txt')
+    await remote.end_scope()
+    assert remote.poisoned and remote.diagnostics['completed_read_connect_timeouts']==0

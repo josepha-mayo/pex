@@ -6,6 +6,7 @@ Cancellation ambiguity poisons the bridge; only owned-resource cleanup remains.
 Local fakes qualify the contract, not actual provider cancellation behavior.
 """
 import asyncio
+import httpx
 from datetime import datetime
 import math
 import re
@@ -45,7 +46,7 @@ class BoundedAsyncRemote:
         self.deadline=None;self.poisoned=False;self.closed=False;self.active=set()
         self.cancellation_unconfirmed=False;self.cleanup_evidence={}
         self.diagnostics={'exception_types':[],'scope_refusals':[],'acknowledged_terminal_commands':0,
-            'unacknowledged_process_kill_attempts':0,'diagnostic_overflow':False}
+            'unacknowledged_process_kill_attempts':0,'completed_read_connect_timeouts':0,'diagnostic_overflow':False}
         self._sandbox=SimpleNamespace(files=SimpleNamespace(make_dir=self._make_dir,write=self._write_absolute,write_files=self._write_absolute_files))
 
     def _exception(self,operation,error):
@@ -81,7 +82,7 @@ class BoundedAsyncRemote:
         task.add_done_callback(done)
         return task
 
-    async def _invoke(self, factory):
+    async def _invoke(self, factory, *, read_only=False):
         # wait_for waits for cancellation to finish and therefore is not a hard
         # return bound when an SDK suppresses cancellation. Track the underlying
         # task separately and retain ambiguity instead of awaiting it forever.
@@ -92,19 +93,25 @@ class BoundedAsyncRemote:
             if not done: raise TimeoutError('SDK_stage_deadline')
             return task.result()
         except BaseException as error:
-            self._exception('sdk_await',error)
-            task.cancel();self.poisoned=True
+            recoverable=(read_only and task.done() and not task.cancelled()
+                and isinstance(error,httpx.ConnectTimeout))
+            self._exception('completed_read_connect_timeout' if recoverable else 'sdk_await',error)
+            if recoverable:self.diagnostics['completed_read_connect_timeouts']+=1
+            else:task.cancel();self.poisoned=True
             raise
 
-    def _call(self, factory):
+    def _call(self, factory, *, read_only=False):
         if threading.get_ident()==self.owner_thread:
             raise BoundedRemoteError('blocking_SDK_bridge_on_owner_loop_forbidden')
         timeout=self.remaining()
-        future=asyncio.run_coroutine_threadsafe(self._invoke(factory),self.loop)
+        future=asyncio.run_coroutine_threadsafe(self._invoke(factory,read_only=read_only),self.loop)
         try:
             return future.result(timeout=timeout)
         except BaseException as error:
-            self._exception('bridge_wait',error)
+            recoverable=(read_only and future.done() and not future.cancelled()
+                and isinstance(error,httpx.ConnectTimeout) and not self.poisoned)
+            self._exception('completed_read_connect_timeout_bridge' if recoverable else 'bridge_wait',error)
+            if recoverable:raise BoundedRemoteError('read_only_connection_timeout_no_state_change') from None
             future.cancel();self.poisoned=True
             raise BoundedRemoteError('remote_operation_inconclusive') from None
 
@@ -171,7 +178,7 @@ class BoundedAsyncRemote:
                 return b''.join(chunks).decode()
             finally:
                 await reader.aclose()
-        return self._call(read_all)
+        return self._call(read_all,read_only=True)
 
     def _write_absolute(self, name, content, *, user='user', request_timeout=15):
         if user!='user' or not isinstance(content,(str,bytes)) or len(content.encode() if isinstance(content,str) else content)>MAX_BYTES:
@@ -213,7 +220,7 @@ class BoundedAsyncRemote:
         return {'written':relative,'bytes':len(content.encode())}
 
     def list(self, relative='.'):
-        rows=self._call(lambda:self._sdk.files.list(path(relative),depth=1,user='user',request_timeout=min(15,self.remaining())))
+        rows=self._call(lambda:self._sdk.files.list(path(relative),depth=1,user='user',request_timeout=min(15,self.remaining())),read_only=True)
         if len(rows)>1024: raise BoundedRemoteError('directory_bound')
         return [{'name':r.name,'type':str(r.type)} for r in rows]
 

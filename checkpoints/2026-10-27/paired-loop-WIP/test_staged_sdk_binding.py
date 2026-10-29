@@ -76,6 +76,10 @@ def bound(candidate,monkeypatch,tmp_path,request):
                 return Response(status=200,headers=Headers({'content-type':'application/json'}),content=b'{}')
             if p.endswith('/List'):return Response(status=200,headers=Headers({'content-type':'application/json'}),content=b'{"processes":[]}')
             if request.method=='DELETE':return Response(status=204)
+            if p=='/files' and request.method=='GET' and behavior.get('file_connect_timeout_once') and not behavior.get('file_timeout_injected'):
+                import httpx
+                behavior['file_timeout_injected']=True
+                raise httpx.ConnectTimeout('AUTHORED')
             if p=='/health':return Response(status=502,content=b'{"message":"sandbox not found"}')
             if p.startswith('/sandboxes/'):
                 if mode=='ambiguous_info':return Response(status=502,content=b'{"message":"unreachable"}')
@@ -353,3 +357,20 @@ async def test_actual_SDK_terminal_event_avoids_redundant_slow_signal_request(bo
         assert not any('/SendSignal' in url for _,url,_ in wire)
         remote.set_scope_deadline(time.monotonic()+1);await remote.end_scope()
         await remote.close();assert remote.closed
+
+
+@pytest.mark.asyncio
+async def test_actual_SDK_completed_file_connect_timeout_does_not_block_next_read(bound):
+    import time
+    from staged_async_remote import BoundedAsyncRemote,BoundedRemoteError
+    scope,compute,wire,pools,behavior=bound
+    with scope:
+        sdk=await create(scope,compute);behavior['file_connect_timeout_once']=True
+        remote=BoundedAsyncRemote(sdk,vm_deadline=time.monotonic()+4)
+        remote.set_scope_deadline(time.monotonic()+2)
+        with pytest.raises(BoundedRemoteError,match='read_only_connection_timeout_no_state_change'):
+            await asyncio.to_thread(remote.read,'safe.txt')
+        assert not remote.poisoned
+        assert await asyncio.to_thread(remote.read,'safe.txt')=='authored file'
+        assert len(scope.creates)==1
+        await remote.end_scope();await remote.close();assert remote.closed
