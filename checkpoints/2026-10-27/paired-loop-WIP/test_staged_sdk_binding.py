@@ -67,11 +67,13 @@ def bound(candidate,monkeypatch,tmp_path,request):
                 from e2b.envd.process import process_pb as pb
                 values=[pb.StartResponse(event=pb.ProcessEvent(event=Oneof('start',pb.ProcessEvent.StartEvent(pid=123)))),
                     pb.StartResponse(event=pb.ProcessEvent(event=Oneof('data',pb.ProcessEvent.DataEvent(output=Oneof('stdout',b'authored stream'))))),
-                    pb.StartResponse(event=pb.ProcessEvent(event=Oneof('end',pb.ProcessEvent.EndEvent(exit_code=0,exited=True))))]
+                    pb.StartResponse(event=pb.ProcessEvent(event=Oneof('end',pb.ProcessEvent.EndEvent(exit_code=behavior.get('command_exit_code',0),exited=True))))]
                 def frame(raw,flag=0):return bytes([flag])+len(raw).to_bytes(4,'big')+raw
                 body=b''.join(frame(v.to_json().encode()) for v in values)+frame(b'{}',2)
                 return Response(status=200,headers=Headers({'content-type':'application/connect+json'}),content=body)
-            if p.endswith('/SendSignal'):return Response(status=200,headers=Headers({'content-type':'application/json'}),content=b'{}')
+            if p.endswith('/SendSignal'):
+                if behavior.get('slow_dead_kill'):await asyncio.sleep(1.1)
+                return Response(status=200,headers=Headers({'content-type':'application/json'}),content=b'{}')
             if p.endswith('/List'):return Response(status=200,headers=Headers({'content-type':'application/json'}),content=b'{"processes":[]}')
             if request.method=='DELETE':return Response(status=204)
             if p=='/health':return Response(status=502,content=b'{"message":"sandbox not found"}')
@@ -328,7 +330,26 @@ async def test_actual_SDK_streamed_command_callbacks_and_file_reader(bound):
         assert result=={'stdout':'authored stream','stderr':'','exit_code':0}
         assert await asyncio.to_thread(remote.read,'public.txt')=='authored file'
         assert any(urlsplit(x[1]).path.endswith('/Start') for x in wire)
-        assert any(urlsplit(x[1]).path.endswith('/SendSignal') for x in wire)
+        assert not any(urlsplit(x[1]).path.endswith('/SendSignal') for x in wire)
         assert any(urlsplit(x[1]).path=='/files' for x in wire)
         await remote.end_scope();await remote.close()
         assert remote.closed and remote.cleanup_evidence['stopped_confirmed']
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('exit_code',[0,7])
+async def test_actual_SDK_terminal_event_avoids_redundant_slow_signal_request(bound,exit_code):
+    import time
+    from staged_async_remote import BoundedAsyncRemote
+    scope,compute,wire,pools,behavior=bound
+    with scope:
+        sdk=await create(scope,compute);behavior.update(slow_dead_kill=True,command_exit_code=exit_code)
+        remote=BoundedAsyncRemote(sdk,vm_deadline=time.monotonic()+5)
+        remote.set_scope_deadline(time.monotonic()+3)
+        result=await asyncio.to_thread(remote.run,'printf AUTHORED',2)
+        assert result['exit_code']==exit_code and result['stdout']=='authored stream'
+        await remote.end_scope()
+        assert not remote.poisoned
+        assert not any('/SendSignal' in url for _,url,_ in wire)
+        remote.set_scope_deadline(time.monotonic()+1);await remote.end_scope()
+        await remote.close();assert remote.closed

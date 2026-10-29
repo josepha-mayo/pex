@@ -44,10 +44,23 @@ class BoundedAsyncRemote:
         self.loop=asyncio.get_running_loop();self.owner_thread=threading.get_ident()
         self.deadline=None;self.poisoned=False;self.closed=False;self.active=set()
         self.cancellation_unconfirmed=False;self.cleanup_evidence={}
+        self.diagnostics={'exception_types':[],'scope_refusals':[],'acknowledged_terminal_commands':0,
+            'unacknowledged_process_kill_attempts':0,'diagnostic_overflow':False}
         self._sandbox=SimpleNamespace(files=SimpleNamespace(make_dir=self._make_dir,write=self._write_absolute,write_files=self._write_absolute_files))
+
+    def _exception(self,operation,error):
+        # Types only: never str(error), transport URLs, headers, output or IDs.
+        name=type(error).__name__
+        if not re.fullmatch('[A-Za-z_][A-Za-z_0-9]{0,95}',name):name='unclassified_exception'
+        rows=self.diagnostics['exception_types']
+        if len(rows)<256:rows.append({'operation':operation,'exception_type':name})
+        else:self.diagnostics['diagnostic_overflow']=True
 
     def set_scope_deadline(self, deadline):
         if self.closed or self.poisoned or self.active or self.deadline is not None:
+            if len(self.diagnostics['scope_refusals'])<16:
+                self.diagnostics['scope_refusals'].append({'closed':self.closed,'poisoned':self.poisoned,
+                    'active_operations':len(self.active),'prior_deadline_present':self.deadline is not None})
             raise BoundedRemoteError('scope_not_clean')
         if type(deadline) not in (int,float) or not math.isfinite(deadline) or not self.clock() < deadline <= self.vm_deadline:
             raise BoundedRemoteError('stage_outside_VM_lifetime')
@@ -78,7 +91,8 @@ class BoundedAsyncRemote:
             done,_=await asyncio.wait([task],timeout=timeout)
             if not done: raise TimeoutError('SDK_stage_deadline')
             return task.result()
-        except BaseException:
+        except BaseException as error:
+            self._exception('sdk_await',error)
             task.cancel();self.poisoned=True
             raise
 
@@ -89,7 +103,8 @@ class BoundedAsyncRemote:
         future=asyncio.run_coroutine_threadsafe(self._invoke(factory),self.loop)
         try:
             return future.result(timeout=timeout)
-        except BaseException:
+        except BaseException as error:
+            self._exception('bridge_wait',error)
             future.cancel();self.poisoned=True
             raise BoundedRemoteError('remote_operation_inconclusive') from None
 
@@ -118,7 +133,7 @@ class BoundedAsyncRemote:
                     output[stream].append(chunk)
                 return take
             command_line=f'timeout --signal=TERM --kill-after=1s {limit}s bash -lc {shlex.quote(command)}'
-            handle=None
+            handle=None;terminal_observed=False
             try:
                 handle=await self._sdk.commands.run(command_line,cwd=ROOT,user='user',background=True,
                     on_stdout=capture('stdout'),on_stderr=capture('stderr'),timeout=limit,
@@ -126,15 +141,22 @@ class BoundedAsyncRemote:
                 try: result=await handle.wait()
                 except Exception as error:
                     from e2b import CommandExitException
-                    if not isinstance(error,CommandExitException): raise
+                    if not isinstance(error,CommandExitException):
+                        self._exception('command_wait',error);raise
                     result=error
+                # SDK wait() accepts only a real end event; a nonzero exit is
+                # equally terminal. Do NOT signal a finished/reusable PID.
+                terminal_observed=True
+                self.diagnostics['acknowledged_terminal_commands']+=1
                 return dict(stdout=''.join(output['stdout']),stderr=''.join(output['stderr']),exit_code=result.exit_code)
             finally:
-                if handle is not None:
+                if handle is not None and not terminal_observed:
                     left=min(self.vm_deadline,self.deadline or self.vm_deadline)-self.clock()
                     if left>0:
+                        self.diagnostics['unacknowledged_process_kill_attempts']+=1
                         try: await asyncio.wait_for(handle.kill(),timeout=min(1,left))
-                        except BaseException: self.poisoned=True
+                        except BaseException as error:
+                            self._exception('unacknowledged_process_cleanup',error);self.poisoned=True
         return self._call(execute)
 
     def read(self, relative):
@@ -220,7 +242,8 @@ class BoundedAsyncRemote:
             done,_=await asyncio.wait([task],timeout=left)
             if not done: raise BoundedRemoteError('cleanup_return_deadline_exhausted')
             task.result()
-        except BaseException:
+        except BaseException as error:
+            self._exception('owned_VM_cleanup',error)
             task.cancel();self.poisoned=True
             raise
         self.closed=True  # Independent stop confirmation, not cancellation success.

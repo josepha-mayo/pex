@@ -128,5 +128,10 @@ async def run_composition(composition):
     finally:
         composition.supervisor.close()
         private_write(composition.accounting.root/'setup-lifecycle-timing.json',composition.worker.lifecycle.setup_timing)
+        private_write(composition.accounting.root/'remote-diagnostics.json',
+            {'schema':'pex.remote-typed-diagnostics.v1','raw_error_strings_retained':False,
+             'arms':{c:{'poisoned':r.poisoned,'closed':r.closed,
+                        'cancellation_unconfirmed':r.cancellation_unconfirmed,'typed_evidence':r.diagnostics}
+                     for c,r in composition.worker.lifecycle.remotes.items()}})
         # Accounting/binding lifetimes belong to the explicit owning launcher;
         # no auto-retry, no pool replacement and no claim removal here.

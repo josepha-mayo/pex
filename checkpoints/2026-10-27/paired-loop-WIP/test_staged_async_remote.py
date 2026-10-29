@@ -3,7 +3,8 @@ import asyncio
 from datetime import datetime,timedelta,timezone
 from types import SimpleNamespace
 import pytest
-from staged_async_remote import *
+import time
+from staged_async_remote import (BoundedAsyncRemote,BoundedRemoteError,validate_provider_lifetime,BASE_TEMPLATE,MAX_BYTES)
 
 
 def info(**changes):
@@ -109,3 +110,58 @@ async def test_cancellation_ambiguity_cannot_skip_cleanup_attempt():
     r.end_scope=broken
     await r.close()
     assert events==['kill'] and r.closed and r.cleanup_evidence['cancellation_unconfirmed']
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('exit_code',[0,7])
+async def test_natural_terminal_must_not_kill_finished_process_or_poison_next_scope(exit_code):
+    events=[]
+    async def wait():
+        if exit_code:
+            from e2b import CommandExitException
+            raise CommandExitException(stdout='',stderr='',exit_code=exit_code,error='AUTHORED')
+        return SimpleNamespace(exit_code=0)
+    async def process_kill():events.append('unnecessary_kill');await asyncio.sleep(1.1);return False
+    async def run(*args,**kwargs):return SimpleNamespace(wait=wait,kill=process_kill)
+    remote=BoundedAsyncRemote(SimpleNamespace(commands=SimpleNamespace(run=run)),vm_deadline=time.monotonic()+5)
+    remote.set_scope_deadline(time.monotonic()+3)
+    result=await asyncio.to_thread(remote.run,'printf AUTHORED')
+    assert result['exit_code']==exit_code
+    await remote.end_scope()
+    assert not remote.poisoned and events==[]
+    remote.set_scope_deadline(time.monotonic()+1)
+    await remote.end_scope()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('failure',['wait_error','output_bound','cancel','cleanup_error'])
+async def test_unacknowledged_command_is_killed_poisoned_and_owned_VM_cleanup_unchanged(failure):
+    events=[];options={};waiting=asyncio.Event()
+    async def wait():
+        waiting.set()
+        if failure=='cancel':await asyncio.Event().wait()
+        if failure=='output_bound':options['on_stdout']('x'*(MAX_BYTES+1))
+        raise TimeoutError('AUTHORED-RAW-ERROR-MUST-NOT-BE-RETAINED')
+    async def process_kill():
+        events.append('process_kill')
+        if failure=='cleanup_error':raise RuntimeError('https://secret.invalid/AUTHORED-RAW-ERROR-MUST-NOT-BE-RETAINED')
+        return False  # Not found is not an acknowledged end receipt.
+    async def run(*args,**kwargs):options.update(kwargs);return SimpleNamespace(wait=wait,kill=process_kill)
+    async def vm_kill(**kw):events.append('vm_kill')
+    async def running(**kw):events.append('running');return False
+    remote=BoundedAsyncRemote(SimpleNamespace(commands=SimpleNamespace(run=run),kill=vm_kill,is_running=running),vm_deadline=time.monotonic()+3)
+    remote.set_scope_deadline(time.monotonic()+1)
+    task=asyncio.create_task(asyncio.to_thread(remote.run,'AUTHORED'))
+    if failure=='cancel':
+        await waiting.wait();await remote.end_scope()
+    with pytest.raises(BoundedRemoteError):await task
+    await remote.end_scope()
+    assert remote.poisoned and remote.diagnostics['acknowledged_terminal_commands']==0
+    assert 'process_kill' in events
+    with pytest.raises(BoundedRemoteError):remote.set_scope_deadline(time.monotonic()+1)
+    await remote.close()
+    assert remote.closed and events[-2:]==['vm_kill','running']
+    import json
+    diagnostic=json.dumps(remote.diagnostics)
+    assert 'AUTHORED-RAW-ERROR' not in diagnostic and 'https://' not in diagnostic
+    assert remote.diagnostics['exception_types'] and remote.diagnostics['scope_refusals']
