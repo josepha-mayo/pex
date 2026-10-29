@@ -127,3 +127,15 @@ def test_future250_candidate_cannot_open_closed_gate_or_change_current_authority
     raw,grant=freeze();monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',None)
     assert a.COMPUTE_CAP==120_000_000 and a.inspect_candidate(raw,grant)['compute_sequential_peak']<=250_000_000
     with pytest.raises(a.AdmissionRefused,match='approval_pending'):a.load(grant)
+
+
+@pytest.mark.parametrize('name',[
+    'interrupted_staged09_workers','interrupted_staged09_supervisor','interrupted_staged09_compute',
+    'interrupted_staged09_model_revocation','interrupted_staged09_cleanup',
+    'root_accepted_staged06_compute_reconciliation'])
+def test_recovery10_requires_exact09_liabilities_revocation_and_accepted06_proof(candidate,name):
+    cfg,freeze=candidate;p=Path(cfg['predecessor']['path']);v=json.loads(p.read_bytes())
+    v['ledgers'].pop(name);p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes())
+    raw,grant=freeze()
+    with pytest.raises(a.AdmissionRefused,match='complete_retained_predecessor_set_required'):
+        a.inspect_candidate(raw,grant)

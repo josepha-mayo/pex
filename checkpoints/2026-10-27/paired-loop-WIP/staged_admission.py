@@ -1,4 +1,4 @@
-"""WIP staged admission: one independently reviewed exploratory recovery09 identity.
+"""WIP staged admission: one independently reviewed exploratory recovery10 identity.
 
 A candidate inspection is not authority. The new source-reviewed identity below
 still requires an independently pinned root Grant and a fresh private claim. Historical
@@ -37,7 +37,12 @@ REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',
     'failed_staged07_workers','failed_staged07_supervisor','failed_staged07_compute',
     'failed_staged07_terminal','failed_staged07_report','failed_staged07_diagnostics',
     'failed_staged08_workers','failed_staged08_supervisor','failed_staged08_compute',
-    'failed_staged08_terminal','failed_staged08_report','failed_staged08_diagnostics','failed_staged08_validated_summary'))
+    'failed_staged08_terminal','failed_staged08_report','failed_staged08_diagnostics','failed_staged08_validated_summary',
+    'interrupted_staged09_workers','interrupted_staged09_supervisor','interrupted_staged09_compute',
+    'interrupted_staged09_admission','interrupted_staged09_poll_denial','interrupted_staged09_manager_status',
+    'interrupted_staged09_observation_correction','interrupted_staged09_model_revocation',
+    'interrupted_staged09_post_revocation','interrupted_staged09_validated_partial','interrupted_staged09_cleanup',
+    'prospective_staged06_compute_reconciliation','root_accepted_staged06_compute_reconciliation'))
 _SEAL = object()
 
 class AdmissionRefused(PermissionError): pass
@@ -96,7 +101,11 @@ class Grant:
 # Its manager session disappeared without a controller terminal report; cause unknown.
 # Raw uncertain compute reservation remains charged pending independent reconciliation.
 # No old claim reopen; any later grant needs fresh reviewed authority and bounds.
-APPROVED_STAGED_GRANT = None
+APPROVED_STAGED_GRANT = GrantGate(
+    approval_ref='Sentinel_3dd0c75c32048191a3b47145b5d3f267',
+    run_id='stockroom-staged-pair-20261029-10',
+    config_path='/workspace/scratch/c62c151ada7d/runtime-private/pex-pilot-20261027/stockroom-staged-pair-20261029-10/pair.json',
+    expires_at='2026-10-29T18:00:00+00:00')
 
 @dataclass(frozen=True, repr=False)
 class Admitted:
