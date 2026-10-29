@@ -1,7 +1,7 @@
-"""WIP staged admission: CLOSED, no launch entry and no credential access.
+"""WIP exact one-run staged admission; no automatic launch or credential access.
 
-A candidate inspection is not authority. A future grant must be independently
-reviewed, source-pinned here, and name one new private config/run. Historical
+A candidate inspection is not authority. The exact independently reviewed grant
+is source-pinned below and names one new private config/run. Historical
 liabilities (including unknown requests) are supplied by a pinned predecessor;
 this module never refunds them or reuses the consumed legacy approval.
 """
@@ -20,7 +20,6 @@ PROVIDER_CAP = 2_000_000_000
 COMPUTE_CAP = 100_000_000
 WORKER_MODEL = 'deepseek-ai/DeepSeek-V4.1-Flash-1017'
 SUPERVISOR_MODEL = 'nvidia/nemotron-3-super-120b-a12b'
-APPROVED_STAGED_GRANT = None  # Fresh specific user grant still pending.
 REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',
     'diagnostic1423', 'retry01', 'shape02', 'cache03', 'nested04', 'nullable05',
     'null_function06', 'pair03_workers', 'pair03_supervisor', 'pair03_compute'))
@@ -77,6 +76,17 @@ class Grant:
     sources_sha256: str
     task_sha256: str
     expires_at: str
+
+# Oct29 continuation of the previously scoped cumulative USD2/USD0.10 pilot.
+# Root reviewed candidate02, all source/predecessor pins and equal phase caps.
+# Independent immutable Grant hashes remain explicit trusted-launcher constants;
+# this identity cannot authorize another path/run or be supplied by config/env.
+APPROVED_STAGED_GRANT = GrantGate(
+    'Sentinel_9015d97f19ac8191a4738179b7387795',
+    'stockroom-staged-pair-20261029-02',
+    '/workspace/scratch/c62c151ada7d/runtime-private/pex-pilot-20261027/stockroom-staged-pair-20261029-02/pair.json',
+    '2026-10-29T02:00:00+00:00',
+)
 
 @dataclass(frozen=True, repr=False)
 class Admitted:
