@@ -1,4 +1,4 @@
-"""WIP staged admission: one independently reviewed exploratory paired13 identity.
+"""WIP staged admission: one independently reviewed exploratory paired14 identity.
 
 A candidate inspection is not authority. The new source-reviewed identity below
 still requires an independently pinned root Grant and a fresh private claim. Historical
@@ -53,7 +53,9 @@ REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',
     'completed_staged11_executed_sources',
     'completed_staged12_workers','completed_staged12_supervisor','completed_staged12_compute',
     'completed_staged12_terminal','completed_staged12_report','completed_staged12_baseline','completed_staged12_pex',
-    'completed_staged12_executed_sources','completed_staged12_actual_outcome','completed_staged12_recording_terminal'))
+    'completed_staged12_executed_sources','completed_staged12_actual_outcome','completed_staged12_recording_terminal',
+    'failed_staged13_workers','failed_staged13_supervisor','failed_staged13_compute','failed_staged13_terminal',
+    'failed_staged13_config','failed_staged13_admission','failed_staged13_claim','failed_staged13_executed_sources'))
 _SEAL = object()
 
 class AdmissionRefused(PermissionError): pass
@@ -115,8 +117,8 @@ class Grant:
 # Exact independently reviewed config/source pins and unused claim remain required.
 APPROVED_STAGED_GRANT = GrantGate(
     approval_ref='Sentinel_37e3d98dd0dc8191a10c2bbf46a8275a',
-    run_id='stockroom-staged-pair-20261029-13',
-    config_path='/workspace/scratch/c62c151ada7d/runtime-private/pex-pilot-20261027/stockroom-staged-pair-20261029-13/pair.json',
+    run_id='stockroom-staged-pair-20261029-14',
+    config_path='/workspace/scratch/c62c151ada7d/runtime-private/pex-pilot-20261027/stockroom-staged-pair-20261029-14/pair.json',
     expires_at='2026-10-29T23:00:00+00:00')
 
 @dataclass(frozen=True, repr=False)

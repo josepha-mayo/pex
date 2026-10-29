@@ -8,7 +8,7 @@ from pathlib import Path
 from staged_admission import AdmissionRefused,read_pin
 from staged_accounting import StagedAccounting
 from successor_supervisor import ManagedSuccessor,_telemetry
-from stockroom_task import load_package,FILES,digest,encoded,MANIFEST_SHA256
+from stockroom_task import load_package,FILES,digest,encoded,package_contract
 
 
 class StagedSupervisor(ManagedSuccessor):
@@ -34,9 +34,11 @@ class StagedSupervisor(ManagedSuccessor):
 
     def _frozen_inputs(self):
         cfg=self.accounting.cfg
-        if cfg['task']['sha256']!=MANIFEST_SHA256:raise AdmissionRefused('original_frozen_stockroom_task_required')
         read_pin(cfg['task'])
-        task=load_package(Path(cfg['task']['path']).parent)
+        package=Path(cfg['task']['path']).parent
+        contract=package_contract(package)
+        if cfg['task']['sha256']!=contract['manifest_sha256']:raise AdmissionRefused('source_pinned_stockroom_task_required')
+        task=load_package(package)
         public=digest(encoded({n:digest(task['public/'+n]) for n in FILES}))
         net=cfg['network']
         narrow={'public_sha256':public,'key':dict(cfg['nebius_key']),

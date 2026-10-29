@@ -205,3 +205,10 @@ def test_pair13_full_prior_and_equal_profile_fit_without_refund(candidate):
 def test_exact_prospective_runtime_cannot_change(candidate,field):
     cfg,freeze=candidate;cfg['profile']['runtime_contract'][field]='changed';raw,grant=freeze()
     with pytest.raises(a.AdmissionRefused,match='equal_frozen'):a.inspect_candidate(raw,grant)
+
+
+@pytest.mark.parametrize('name',['failed_staged13_workers','failed_staged13_supervisor','failed_staged13_compute','failed_staged13_terminal','failed_staged13_config','failed_staged13_admission','failed_staged13_claim','failed_staged13_executed_sources'])
+def test_pair14_preserves_zero_dispatch_failed13_identity(candidate,name):
+    cfg,freeze=candidate;p=Path(cfg['predecessor']['path']);v=json.loads(p.read_bytes());v['ledgers'].pop(name)
+    p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes());raw,grant=freeze()
+    with pytest.raises(a.AdmissionRefused,match='complete_retained'):a.inspect_candidate(raw,grant)

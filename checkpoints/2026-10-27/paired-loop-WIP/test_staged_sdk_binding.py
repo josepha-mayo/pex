@@ -22,11 +22,12 @@ def bound(candidate,monkeypatch,tmp_path,request):
     cfg['sdk_sources']=b.installed_source_pins()
     key=tmp_path/'SYNTHETIC-KEY';key.write_bytes(b'AUTHORED-NOT-A-CREDENTIAL');key.chmod(0o600)
     cfg['e2b_key']={'path':str(key),'sha256':a.sha(key.read_bytes())}
-    if getattr(request,'param',None) in ('stockroom','composition'):
-        task=Path(__file__).resolve().parents[1]/'pex-hard-task-candidate-20261027-1421/MANIFEST.json'
+    if getattr(request,'param',None) in ('stockroom','composition','composition-v3'):
+        task=(Path(__file__).resolve().parents[1]/('runtime-private/pex-pilot-20261027/stockroom-v3-candidate-20261029/MANIFEST.json' if getattr(request,'param',None)=='composition-v3' else 'pex-hard-task-candidate-20261027-1421/MANIFEST.json'))
+        if not task.is_file():pytest.skip('private frozen v3 fixture not distributed with source')
         cfg['task']={'path':str(task),'sha256':a.sha(task.read_bytes())}
         cfg['nebius_key']=dict(cfg['e2b_key'])  # Synthetic authored key, not a real provider key.
-    if getattr(request,'param',None)=='composition':
+    if getattr(request,'param',None) in ('composition','composition-v3'):
         from staged_composition import source_pins
         root=Path(__file__).resolve().parents[1]
         binary=root/'opencode-qualification-20261027/install/node_modules/@opencode/cli-linux-x64/bin/opencode'

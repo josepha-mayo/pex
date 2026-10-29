@@ -77,3 +77,19 @@ def test_mutated_arms_refused_before_setup(funded,bound):
         with pytest.raises(AdmissionRefused):composition.verify(composition.arms,composition.worker,composition.review,composition.grader)
         assert not bound[2]
     finally:composition.supervisor.close()
+
+
+@pytest.mark.parametrize('bound',['composition-v3'],indirect=True)
+def test_actual_frozen_v3_closed_composition_uses_matching_supervisor_contract(funded):
+    accounting,scope=funded;composition=build_composition(accounting)
+    try:
+        composition.verify(composition.arms,composition.worker,composition.review,composition.grader)
+        assert scope.cfg['task']['sha256']=='90b1d9042ba5b223c75820dd70989c0d227216b884503d76926af21b1cbc5d60'
+        assert composition.grader.grade_impl.task=='stockroom_v3_atomic_reservations'
+        assert composition.grader.grade_impl.check_count==40
+        assert 'reservations and atomic transfers' in composition.supervisor.objective
+        assert composition.worker.worker.capture_public_snapshot is True
+        assert composition.grader.grade_phase0_after_final is True
+        assert not scope.creates and accounting.summary()['supervisor_wire_attempts']==0
+        assert accounting.summary()['worker_fresh_nano_usd']=={'baseline':0,'pex':0}
+    finally:composition.supervisor.close()
