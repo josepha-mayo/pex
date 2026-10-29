@@ -151,8 +151,70 @@ async def test_late_mock_response_retained_before_SDK_constructor_failure(bound)
     with scope:
         with pytest.raises(Exception):await create(scope,compute)
         assert scope.owned=={'authored-baseline'} and compute.total()==100+RESERVATION
+        receipt=json.loads((Path(scope.admitted.grant.config_path).parent/'owned-vm-baseline.json').read_text())
+        assert receipt['sandbox_id']=='authored-baseline'
         # Caller must still clean the retained ID when no SDK handle was returned.
         scope.begin_cleanup();behavior['mode']='normal'
+        await AsyncSandbox.kill('authored-baseline',api_key='AUTHORED-NOT-A-CREDENTIAL',
+            proxy='http://authored.invalid:8888',retries=0,http_version='1.1',request_timeout=1)
+        assert wire[-1][0]=='DELETE'
+
+@pytest.mark.asyncio
+async def test_owned_identity_is_private_fsynced_and_secret_free_before_handle(bound,monkeypatch):
+    from datetime import datetime
+    import os,stat
+    scope,compute,wire,pools,behavior=bound
+    synced=[];original=os.fsync
+    def sync(fd):
+        synced.append(stat.S_ISDIR(os.fstat(fd).st_mode));original(fd)
+    monkeypatch.setattr(os,'fsync',sync)
+    with scope:
+        synced.clear();sdk=await create(scope,compute)
+        path=Path(scope.admitted.grant.config_path).parent/'owned-vm-baseline.json'
+        raw=path.read_bytes();receipt=json.loads(raw)
+        assert synced==[False,True]
+        assert path.stat().st_mode&0o777==0o600
+        assert receipt['schema']=='pex.owned-sandbox-identity.v1'
+        assert receipt['sandbox_id']==sdk.sandbox_id=='authored-baseline'
+        assert receipt['config_sha256']==scope.admitted.grant.config_sha256
+        assert receipt['run_id']==scope.admitted.grant.run_id and receipt['arm']=='baseline'
+        assert receipt['metadata']=={'pex_pilot':scope.admitted.grant.run_id,'pex_arm':'baseline'}
+        assert receipt['template_id']==b.BASE_TEMPLATE and receipt['timeout_seconds']==VM_SECONDS
+        assert receipt['create_idempotency_key']==scope.admitted.grant.run_id+'-baseline'
+        assert datetime.fromisoformat(receipt['create_started_at_utc'])<=datetime.fromisoformat(receipt['response_received_at_utc'])
+        assert len(receipt['create_response_sha256'])==64
+        assert receipt['ownership_only_not_cleanup_or_allocation_proof'] is True
+        assert b'SYNTHETIC-ENVD' not in raw and b'AUTHORED-NOT-A-CREDENTIAL' not in raw
+        assert b'api_key' not in raw and b'envdAccessToken' not in raw
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('existing_kind',['file','symlink'])
+async def test_owned_identity_never_overwrites_existing_private_evidence(bound,tmp_path,existing_kind):
+    scope,compute,wire,pools,behavior=bound
+    receipt=Path(scope.admitted.grant.config_path).parent/'owned-vm-baseline.json'
+    target=tmp_path/'untouched';target.write_bytes(b'existing-evidence')
+    if existing_kind=='symlink':receipt.symlink_to(target)
+    else:receipt.write_bytes(b'existing-evidence')
+    with scope:
+        with pytest.raises(FileExistsError):await create(scope,compute)
+        assert scope.owned=={'authored-baseline'} and scope.uncertain
+        assert target.read_bytes()==receipt.read_bytes()==b'existing-evidence'
+        assert len(wire)==1 and compute.total()==100+RESERVATION
+        with pytest.raises(a.AdmissionRefused):await create(scope,compute,'pex')
+        assert len(wire)==1
+
+@pytest.mark.asyncio
+async def test_owned_receipt_fsync_failure_retains_in_memory_cleanup_identity(bound,monkeypatch):
+    import os
+    scope,compute,wire,pools,behavior=bound
+    with scope:
+        original=os.fsync
+        def fail(fd):raise OSError('authored durability failure')
+        monkeypatch.setattr(os,'fsync',fail)
+        with pytest.raises(OSError,match='authored durability'):await create(scope,compute)
+        monkeypatch.setattr(os,'fsync',original)
+        assert scope.owned=={'authored-baseline'} and scope.uncertain
+        scope.begin_cleanup()
         await AsyncSandbox.kill('authored-baseline',api_key='AUTHORED-NOT-A-CREDENTIAL',
             proxy='http://authored.invalid:8888',retries=0,http_version='1.1',request_timeout=1)
         assert wire[-1][0]=='DELETE'

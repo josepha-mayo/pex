@@ -11,6 +11,7 @@ reviewed launcher must reserve ComputeBudget before create, retain owned handles
 perform bounded cleanup, and compose worker/supervisor admission separately.
 """
 import asyncio
+from datetime import datetime, timezone
 import importlib
 import importlib.metadata
 import json
@@ -62,6 +63,32 @@ class SDKTransportBinding:
         self.original=None
 
     def __repr__(self): return '<private staged SDK ordinary transport binding>'
+
+    def _persist_owned_identity(self, arm, sandbox_id, response, started_at):
+        """Crash-recoverable cleanup identity, never an SDK token or client config.
+
+        In-memory ownership is established first so a failed durable write still
+        permits the current owner to clean up. No usable handle is returned until
+        both the private receipt and its directory entry have been fsynced.
+        """
+        parent=Path(self.admitted.grant.config_path).parent
+        value={'schema':'pex.owned-sandbox-identity.v1',
+               'run_id':self.admitted.grant.run_id,'arm':arm,
+               'config_sha256':self.admitted.grant.config_sha256,
+               'sandbox_id':sandbox_id,'template_id':BASE_TEMPLATE,
+               'create_idempotency_key':self.admitted.grant.run_id+'-'+arm,
+               'metadata':{'pex_pilot':self.admitted.grant.run_id,'pex_arm':arm},
+               'timeout_seconds':self.cfg['profile']['vm_seconds'],
+               'create_started_at_utc':started_at,
+               'response_received_at_utc':datetime.now(timezone.utc).isoformat(),
+               'create_response_sha256':sha(response),
+               'ownership_only_not_cleanup_or_allocation_proof':True}
+        fd=os.open(parent/('owned-vm-'+arm+'.json'),os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+        with os.fdopen(fd,'wb') as handle:
+            handle.write(canonical(value));handle.flush();os.fsync(handle.fileno())
+        directory=os.open(parent,os.O_RDONLY|os.O_DIRECTORY)
+        try:os.fsync(directory)
+        finally:os.close(directory)
 
     def _check(self):
         if not self.active: raise AdmissionRefused('SDK_binding_closed')
@@ -198,6 +225,7 @@ class SDKTransportBinding:
                 if self.compute.db.execute('SELECT charged,state FROM calls WHERE id=?',(identity,)).fetchall()!=[(self.compute.reservation,'uncertain')]:
                     raise AdmissionRefused('durable_full_create_reservation_required')
                 self.creates.add(arm);self.uncertain=True;creating=True
+                create_started_at=datetime.now(timezone.utc).isoformat()
             elif method in ('GET','DELETE') and not u.query and u.path.startswith('/sandboxes/') and u.path.count('/')==2:
                 if u.path.split('/')[-1] not in self.owned: raise AdmissionRefused('only_owned_control_plane_cleanup_or_info')
                 if method=='DELETE':self.kill_attempted.add(u.path.split('/')[-1])
@@ -236,6 +264,7 @@ class SDKTransportBinding:
                 if not isinstance(sid,str) or not re.fullmatch('[a-z0-9-]{1,128}',sid):
                     raise AdmissionRefused('owned_response_identity_unproven')
                 self.owned.add(sid);self.owned_by_arm[arm]=sid
+                self._persist_owned_identity(arm,sid,data,create_started_at)
                 if value.get('domain') not in (None,'e2b.app'): raise AdmissionRefused('owned_response_domain_changed')
                 # A late response establishes ownership, not successful cancellation
                 # or permission for another create. Preserve its full reservation.
