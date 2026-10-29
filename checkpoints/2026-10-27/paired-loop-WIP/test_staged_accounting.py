@@ -12,7 +12,7 @@ from worker_funding import RESERVATION,WorkerBudgetExhausted,MODEL as WORKER_MOD
 def funded(bound,monkeypatch):
     scope,compute,wire,pools,behavior=bound
     # Build a fresh synthetic immutable grant before entering its atomic scope.
-    cfg=scope.cfg;cfg['profile']['equal_worker_fresh']=360000000
+    cfg=scope.cfg;cfg['profile']['equal_worker_fresh']=375000000
     cfg['profile']['supervisor_fresh']=SUPERVISOR_FRESH
     p=Path(cfg['predecessor']['path']);prior=json.loads(p.read_bytes());prior['provider_nano_usd']=SUPERVISOR_PRIOR+100
     p.write_bytes(canonical(prior));cfg['predecessor']['sha256']=sha(p.read_bytes())
@@ -79,3 +79,29 @@ async def test_worker_RPC_thread_never_reads_owner_thread_supervisor_DB(funded):
     digest,raw=request()
     await asyncio.to_thread(bundle.workers['baseline'].reserve,'thread-authored',digest,raw)
     assert bundle.summary()['worker_fresh_nano_usd']['baseline']==RESERVATION
+
+
+def test_new_prospective_allocation_preserves_reservations_and_fresh_caps(funded):
+    bundle,scope=funded
+    assert bundle.fresh==375000000 and SUPERVISOR_FRESH==350000000
+    assert all(raw.phase_limit==375000000 for raw in bundle.raw_workers.values())
+    assert bundle.supervisor.budget==SUPERVISOR_PRIOR+350000000
+    assert RESERVATION==319488000 and bundle.supervisor.reservation==82329600
+    assert 806031900+2*375000000+350000000==1906031900<2000000000
+    assert not scope.creates
+
+
+def test_new_supervisor_outer_cannot_reopen_or_change_old_ledger(funded):
+    bundle,_=funded;path=bundle.root/'old-supervisor-ledger.sqlite'
+    args=dict(input_rate=300,output_rate=900,route=bundle.routes[0],currency='USD',
+        pricing_provenance_sha256=bundle.cfg['profile']['supervisor_pricing_sha256'],
+        input_token_bound=262144,output_token_bound=4096,approved_routes=bundle.routes,max_attempts=12,
+        prior_charged_nano_usd=SUPERVISOR_PRIOR,predecessor_sha256=bundle.cfg['predecessor']['sha256'])
+    old=Ledger(path,budget=1180535400,**args);old.reserve('uncertain-old',bundle.routes[0]);old.close()
+    with pytest.raises(ValueError,match='budget identity changed'):
+        Ledger(path,budget=SUPERVISOR_OUTER,**args)
+    import sqlite3
+    db=sqlite3.connect('file:'+str(path)+'?mode=ro',uri=True)
+    assert db.execute('SELECT budget FROM config').fetchall()==[(1180535400,)]
+    assert db.execute('SELECT charged,state FROM calls').fetchall()==[(82329600,'reserved_uncertain')]
+    db.close()

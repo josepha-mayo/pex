@@ -2,8 +2,8 @@
 
 Every historical liability is retained by the immutable predecessor total.
 Fresh worker ledgers are phase-only (zero internal historical seed), so history
-is neither dropped nor counted twice. Supervisor history uses the unchanged
-reviewed original supervisor pool; new supervisor receipts are separate overhead.
+is neither dropped nor counted twice. Supervisor history remains fully retained; a new reviewed fresh supervisor
+envelope is separate overhead and never reopens the original pool.
 No old WorkerFunding/supervisor approval is reopened by this module.
 """
 from pathlib import Path
@@ -15,10 +15,10 @@ from worker_funding import _WorkerLedger,ARM_BUDGET,PRICING_SHA
 from accounting import Ledger
 from managed_chat import Limits,Route
 
-# Unchanged reviewed supervisor pool and historical seed, NOT new spending.
-SUPERVISOR_OUTER=1_180_535_400
+# Prospective NEW-run allocation only; all old ledger budgets stay immutable.
 SUPERVISOR_PRIOR=659_514_900
-SUPERVISOR_FRESH=SUPERVISOR_OUTER-SUPERVISOR_PRIOR
+SUPERVISOR_FRESH=350_000_000
+SUPERVISOR_OUTER=SUPERVISOR_PRIOR+SUPERVISOR_FRESH
 ENDPOINT='https://api.tokenfactory.us-central1.nebius.com/v1/chat/completions'
 MODEL='nvidia/nemotron-3-super-120b-a12b'
 

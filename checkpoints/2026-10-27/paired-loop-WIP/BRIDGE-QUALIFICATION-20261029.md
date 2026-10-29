@@ -84,3 +84,29 @@ credentials. Diagnostics retain allowlisted local reason codes, never raw errors
 local Bun TLS/CONNECT cases. Actual-current-environment preflight also passed;
 its original inherited-fallback projection reproduced the guard refusal. These
 local results are not an inference success or supervisor benefit.
+
+## Exploratory08 measured result and prospective correction
+
+08 produced18 validated real worker responses (baseline10, PEX8), recorded in
+current-run typed evidence. Supervisor calls were0; neither arm received a final
+protected grade. Baseline exhausted its conservative cash reservation envelope,
+not task acceptance:41,701,500 nanoUSD charged left less than319,488,000 required
+for its next request. The PEX arm suffered a completed read-only SDK ConnectTimeout
+while reading a public source file; the generic bridge then poisoned subsequent
+tools and the public observation, preventing monitor review. Both owned VMs were
+stopped. No benefit/task-success claim is supported by this incomplete comparison.
+
+The narrow fix exempts ONLY a completed, non-cancelled read/list task with actual
+httpx.ConnectTimeout. It returns a visible read error and does NOT auto-retry,
+reset another poison flag, change route, or permit pending/mutating uncertainty.
+Commands, writes, create and unfinished/cancelled tasks remain fail-closed.
+45 focused tests, including actual SDK serialization plus subsequent successful
+read and mutation/cancellation poison, passed.
+
+The next independently frozen allocation is375m nanoUSD per worker and separate
+350m supervisor overhead. Legacy worker ceiling and per-call reserves remain
+unchanged; only the NEW supervisor ledger supports its exact historical659,514,900
+seed plus350m fresh allowance. Old ledgers cannot reopen under changed limits.
+With all806,031,900 prior provider liabilities retained, its prospective ceiling
+is1,906,031,900 (under$2). Nine focused accounting/composition tests passed. This
+is not new spend authority or a guarantee of all12requests under any token usage.
