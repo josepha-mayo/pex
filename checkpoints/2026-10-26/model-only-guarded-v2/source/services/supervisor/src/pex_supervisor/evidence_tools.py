@@ -7,8 +7,8 @@ or access hidden benchmark material.
 
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 import math
 import re
 from collections.abc import Callable, Collection, Iterator, MutableSequence
@@ -141,12 +141,24 @@ def _validated_public_snapshot(request: SupervisorRequest) -> dict | None:
     for path, entry in files.items():
         if type(path) is not str or len(path) > 240 or "\\" in path:
             return None
+        try:
+            path.encode("utf-8")
+        except UnicodeError:
+            return None
+        # Listed paths are tool lookup keys. If output redaction changes a key,
+        # a model cannot request the listed file; reject rather than advertise
+        # an unaddressable snapshot or expose a credential-like filename.
+        if redact_text(path)[0] != path:
+            return None
         parts = path.split("/")
-        if any(not part or part.startswith(".") or ":" in part or
-               any(ord(c) < 32 for c in part) for part in parts):
+        if any(
+            not part or part.startswith(".") or ":" in part or any(ord(c) < 32 for c in part)
+            for part in parts
+        ):
             return None
         if path not in {"TASK.md", "README.md"} and not (
-                len(parts) > 1 and parts[0] in {"stockroom", "tests"}):
+            len(parts) > 1 and parts[0] in {"stockroom", "tests"}
+        ):
             return None
         if type(entry) is not dict or set(entry) != {"content", "sha256"}:
             return None
@@ -161,8 +173,9 @@ def _validated_public_snapshot(request: SupervisorRequest) -> dict | None:
         if total > 131072 or hashlib.sha256(raw).hexdigest() != entry["sha256"]:
             return None
         copied[path] = {"content": content, "sha256": entry["sha256"]}
-    digest = hashlib.sha256(json.dumps(copied, sort_keys=True,
-        separators=(",", ":"), ensure_ascii=True).encode()).hexdigest()
+    digest = hashlib.sha256(
+        json.dumps(copied, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
+    ).hexdigest()
     if digest != value["snapshot_sha256"]:
         return None
     return {"files": copied, "snapshot_sha256": digest}
@@ -530,10 +543,12 @@ def build_evidence_tools(
 
     @tool(
         name="inspect_public_snapshot",
-        description=("Inspect the immutable public candidate export, never hidden checks or host files. "
-                     "Empty path lists up to 16 file names from offset; a listed path reads up to "
-                     "4000 characters from offset. Follow next_offset until null. This is code "
-                     "evidence, not proof that unrun tests pass."),
+        description=(
+            "Inspect the immutable public candidate export, never hidden checks or host files. "
+            "Empty path lists up to 16 file names from offset; a listed path reads up to "
+            "4000 characters from offset. Follow next_offset until null. This is code "
+            "evidence, not proof that unrun tests pass."
+        ),
     )
     def inspect_public_snapshot(path: str = "", offset: int = 0) -> str:
         args = {"path": path, "offset": offset}
@@ -542,21 +557,30 @@ def build_evidence_tools(
         if type(path) is not str or type(offset) is not int or offset < 0:
             return record("inspect_public_snapshot", {"error": "invalid_page"}, args)
         files = public_snapshot["files"]
-        payload = {"snapshot_sha256": public_snapshot["snapshot_sha256"],
-                   "qualification": "immutable_public_export_not_execution", "offset": offset}
+        payload = {
+            "snapshot_sha256": public_snapshot["snapshot_sha256"],
+            "qualification": "immutable_public_export_not_execution",
+            "offset": offset,
+        }
         if path == "":
             names = sorted(files)
             if offset > len(names):
                 return record("inspect_public_snapshot", {"error": "invalid_page"}, args)
-            page = names[offset:offset + 16]
-            while len(json.dumps(redact_mapping({"paths": page})[0], ensure_ascii=True).encode()) > 5000:
+            page = names[offset : offset + 16]
+            while (
+                len(json.dumps(redact_mapping({"paths": page})[0], ensure_ascii=True).encode())
+                > 5000
+            ):
                 page.pop()
             end = offset + len(page)
-            payload.update(paths=page, total_files=len(names),
-                           next_offset=end if end < len(names) else None)
+            payload.update(
+                paths=page, total_files=len(names), next_offset=end if end < len(names) else None
+            )
         else:
             if path not in files:
-                return record("inspect_public_snapshot", {"error": "path_not_in_public_snapshot"}, args)
+                return record(
+                    "inspect_public_snapshot", {"error": "path_not_in_public_snapshot"}, args
+                )
             item = files[path]
             # Sanitize the whole string BEFORE slicing: secrets must never be split
             # across pages, and redaction expansion must not erase page metadata.
@@ -565,13 +589,17 @@ def build_evidence_tools(
             payload["offset_basis"] = "sanitized_text_characters"
             if offset > len(content):
                 return record("inspect_public_snapshot", {"error": "invalid_page"}, args)
-            page = content[offset:offset + 4000]
+            page = content[offset : offset + 4000]
             while len(json.dumps(page, ensure_ascii=True).encode()) > 5000:
-                page = page[:len(page) // 2]
+                page = page[: len(page) // 2]
             end = offset + len(page)
-            payload.update(path=path, content=page,
-                           file_sha256=item["sha256"], total_characters=len(content),
-                           next_offset=end if end < len(content) else None)
+            payload.update(
+                path=path,
+                content=page,
+                file_sha256=item["sha256"],
+                total_characters=len(content),
+                next_offset=end if end < len(content) else None,
+            )
         return record("inspect_public_snapshot", payload, args, string_limit=4000)
 
     @tool(
@@ -1285,7 +1313,11 @@ def build_evidence_tools(
         scrape_url,
     ]
     if tool_names is None:
-        return [item for item in tools if item.tool_name != "inspect_public_snapshot" or public_snapshot is not None]
+        return [
+            item
+            for item in tools
+            if item.tool_name != "inspect_public_snapshot" or public_snapshot is not None
+        ]
     if isinstance(tool_names, (str, bytes)):
         raise TypeError("tool_names must be a collection of exact tool names")
     selected = frozenset(tool_names)
