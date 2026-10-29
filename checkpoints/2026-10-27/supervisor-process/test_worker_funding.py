@@ -278,3 +278,90 @@ def test_successor_350m_pool_has_equal_fresh_phase_allowance(tmp_path):
         ledger(tmp_path/'bad-split.sqlite',prior_charged_nano_usd=prior,predecessor_sha256='b'*64,arm_budget_nano_usd=250000000)
     with pytest.raises(ValueError):
         ledger(tmp_path/'bad-phase.sqlite',prior_charged_nano_usd=prior,predecessor_sha256='b'*64,arm_budget_nano_usd=350000000,phase_limit_nano_usd=340000000)
+
+
+def cumulative_chunks():
+    """Authored structural fixture, not copied provider output or inference proof."""
+    base = {"id": "authored-cumulative-stream", "model": wf.MODEL}
+    chunks = []
+    for n in (0, 2, 2, 7):
+        used = {"prompt_tokens": 37, "completion_tokens": n, "total_tokens": 37+n,
+                "completion_tokens_details": {"reasoning_tokens": n}}
+        chunks.append(dict(base, choices=[{"index": 0, "delta": {"reasoning": "authored"},
+            "finish_reason": "length" if n == 7 else None}], usage=used))
+    final = dict(chunks[-1]["usage"], prompt_tokens_details={"cached_tokens": 0, "created_cache_tokens": 32})
+    chunks.append(dict(base, choices=[], usage=final))
+    return chunks
+
+
+def cumulative_wire(chunks, done=True):
+    return ("".join("data: "+json.dumps(c)+"\n\n" for c in chunks)
+            + ("data: [DONE]\n\n" if done else "")).encode()
+
+
+def test_authored_cumulative_stream_requires_distinct_terminal_receipt(tmp_path):
+    body = cumulative_wire(cumulative_chunks())
+    assert wf._wire_usage(200, "text/event-stream", body) == {
+        "input_tokens": 37, "output_tokens": 7, "total_tokens": 44}
+    db=ledger(tmp_path/'worker.sqlite'); raw,sha=request(); db.reserve('call',sha,raw)
+    result=db.settle_raw('call',sha,200,'text/event-stream',body)
+    assert result['state']=='settled_raw_wire' and result['charged_nano_usd']==19500
+    db.close()
+
+
+@pytest.mark.parametrize("mutation", [
+    'regress', 'prompt-change', 'sum', 'boolean', 'float', 'negative', 'input-bound',
+    'output-bound', 'details-bound', 'details-regress', 'details-missing', 'details-conflict',
+    'terminal-decrease', 'terminal-increase', 'terminal-details-increase',
+    'no-finish', 'no-terminal', 'no-done', 'double-terminal', 'post-finish-choice',
+    'post-terminal-empty', 'post-done', 'mixed-id', 'wrong-model', 'duplicate-key',
+    'truncated', 'terminal-before-finish', 'empty-without-usage',
+])
+def test_cumulative_invalid_stream_never_refunds(tmp_path, mutation):
+    chunks=cumulative_chunks(); done=True; suffix=b''
+    if mutation=='regress': chunks[2]['usage'].update(completion_tokens=1,total_tokens=38,
+        completion_tokens_details={'reasoning_tokens':1})
+    elif mutation=='prompt-change': chunks[1]['usage'].update(prompt_tokens=38,total_tokens=40)
+    elif mutation=='sum': chunks[1]['usage']['total_tokens']=999
+    elif mutation=='boolean': chunks[1]['usage']['completion_tokens']=True
+    elif mutation=='float': chunks[1]['usage']['completion_tokens']=2.0
+    elif mutation=='negative': chunks[1]['usage']['completion_tokens']=-1
+    elif mutation=='input-bound': chunks[0]['usage'].update(prompt_tokens=wf.INPUT_BOUND+1,total_tokens=wf.INPUT_BOUND+1)
+    elif mutation=='output-bound': chunks[1]['usage'].update(completion_tokens=wf.OUTPUT_BOUND+1,total_tokens=37+wf.OUTPUT_BOUND+1)
+    elif mutation=='details-bound': chunks[1]['usage']['completion_tokens_details']['reasoning_tokens']=3
+    elif mutation=='details-regress': chunks[2]['usage']['completion_tokens_details']['reasoning_tokens']=1
+    elif mutation=='details-missing': del chunks[2]['usage']['completion_tokens_details']
+    elif mutation=='details-conflict':
+        chunks[0]['usage']['prompt_tokens_details']={'cached_tokens':1}
+        chunks[1]['usage']['prompt_tokens_details']={'cached_tokens':2}
+    elif mutation in ('terminal-decrease','terminal-increase'):
+        n=6 if mutation=='terminal-decrease' else 8
+        chunks[-1]['usage'].update(completion_tokens=n,total_tokens=37+n,
+            completion_tokens_details={'reasoning_tokens':n})
+    elif mutation=='terminal-details-increase':
+        chunks[-2]['usage']['completion_tokens_details']={'reasoning_tokens':6}
+    elif mutation=='no-finish': chunks[-2]['choices'][0]['finish_reason']=None
+    elif mutation=='no-terminal': chunks.pop()
+    elif mutation=='no-done': done=False
+    elif mutation=='double-terminal': chunks.append(chunks[-1])
+    elif mutation=='post-finish-choice': chunks.insert(-1,chunks[0])
+    elif mutation=='post-terminal-empty': chunks.append(dict(chunks[-1],usage=None))
+    elif mutation=='post-done': suffix=b'data: {}\n\n'
+    elif mutation=='mixed-id': chunks[1]['id']='other-stream'
+    elif mutation=='wrong-model': chunks[1]['model']='other-model'
+    elif mutation=='terminal-before-finish': chunks.insert(0,chunks[-1])
+    elif mutation=='empty-without-usage': chunks.insert(-1,dict(chunks[-1],usage=None))
+    body=cumulative_wire(chunks,done=done)+suffix
+    if mutation=='duplicate-key': body=body.replace(b'"completion_tokens": 2',b'"completion_tokens": 2, "completion_tokens": 2',1)
+    elif mutation=='truncated': body=body[:-1]
+    db=ledger(tmp_path/'worker.sqlite'); raw,sha=request(); db.reserve('call',sha,raw)
+    result=db.settle_raw('call',sha,200,'text/event-stream',body)
+    assert result['state']=='uncertain' and result['charged_nano_usd']==wf.RESERVATION
+    db.close()
+
+
+def test_sparse_legacy_cumulative_and_final_only_usage_still_validate():
+    chunks=cumulative_chunks()
+    del chunks[-2]['usage']  # No frozen count: the final receipt may advance.
+    assert wf._wire_usage(200,'text/event-stream',cumulative_wire(chunks))['output_tokens']==7
+    assert wf._wire_usage(200,'text/event-stream',stream())['output_tokens']==100

@@ -35,6 +35,7 @@ WIRE_USAGE_REASONS = frozenset((
     'truncated SSE framing','unsupported SSE field','SSE data after completion',
     'SSE model/identity mismatch','mixed SSE responses','SSE choices invalid',
     'SSE choice index invalid','SSE finish invalid','SSE output after finish',
+    'inconsistent cumulative SSE usage','SSE data after terminal usage',
     'ambiguous/nonterminal SSE usage','missing terminal SSE usage'))
 
 
@@ -138,6 +139,8 @@ def _wire_usage(status, content_type, raw):
     if not text.endswith("\n\n"): raise ValueError("truncated SSE framing")
     done = False
     usage = None
+    previous_usage = None
+    finish_usage = False
     finished = False
     stream_id = None
     for frame in text.split("\n\n"):
@@ -151,6 +154,7 @@ def _wire_usage(status, content_type, raw):
         payload = "\n".join(data)
         if done: raise ValueError("SSE data after completion")
         if payload == "[DONE]": done = True; continue
+        if usage is not None: raise ValueError("SSE data after terminal usage")
         value = _json(payload)
         if (type(value) is not dict or value.get("model") != MODEL
                 or value.get("error") is not None or type(value.get("id")) is not str
@@ -160,6 +164,7 @@ def _wire_usage(status, content_type, raw):
         choices = value.get("choices")
         if type(choices) is not list or len(choices) > 1: raise ValueError("SSE choices invalid")
         if choices:
+            if finished: raise ValueError("SSE output after finish")
             choice = choices[0]
             if type(choice) is not dict or type(choice.get("index")) is not int or choice["index"] != 0:
                 raise ValueError("SSE choice index invalid")
@@ -168,14 +173,42 @@ def _wire_usage(status, content_type, raw):
                 if finished or finish not in ("stop", "length", "tool_calls"):
                     raise ValueError("SSE finish invalid")
                 finished = True
-            elif finished: raise ValueError("SSE output after finish")
-        if value.get("usage") is not None:
-            if usage is not None or not finished or choices:
+            if value.get("usage") is not None:
+                _cumulative_sse_usage(previous_usage, value["usage"])
+                previous_usage = value["usage"]
+                finish_usage = finished
+        else:
+            # Interim cumulative counters are evidence, never settlement authority.
+            # Only a distinct empty-choices frame after finish can settle a stream.
+            if not finished or value.get("usage") is None:
                 raise ValueError("ambiguous/nonterminal SSE usage")
-            usage = _usage(value["usage"])
+            usage = _cumulative_sse_usage(previous_usage, value["usage"], frozen=finish_usage)
     if not done or not finished or usage is None:
         raise ValueError("missing terminal SSE usage")
     return usage
+
+
+def _cumulative_sse_usage(previous, value, *, frozen=False):
+    """Validate all counters; no refund until the separate terminal receipt + DONE.
+
+    Prompt counts cannot change within one response. Output/detail counters may
+    increase before finish, but a finish-frame count must agree with the receipt.
+    New detail keys may appear in the receipt (e.g. final cache breakdown); known
+    keys cannot disappear, regress, or contradict already-finished counters.
+    """
+    current = _usage(value)
+    if previous is not None:
+        if (value["prompt_tokens"] != previous["prompt_tokens"]
+                or value["completion_tokens"] < previous["completion_tokens"]
+                or frozen and value["completion_tokens"] != previous["completion_tokens"]):
+            raise ValueError("inconsistent cumulative SSE usage")
+        for field in ("prompt_tokens_details", "completion_tokens_details"):
+            for key, old in (previous.get(field) or {}).items():
+                new = (value.get(field) or {}).get(key)
+                if (new is None or new < old
+                        or (frozen or field == "prompt_tokens_details") and new != old):
+                    raise ValueError("inconsistent cumulative SSE usage")
+    return current
 
 
 def _locked(method):
