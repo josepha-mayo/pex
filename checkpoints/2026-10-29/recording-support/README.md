@@ -118,3 +118,36 @@ until root reserves a window and explicitly launches it.
 The sanitized append-only trace is text evidence, not screen video. If root later
 renders a trace visualization, label it **later-rendered visualization**, never
 live recording. `screen-window.mkv` is the separate actual live pixel artifact.
+
+## Minimal native launch and read-only ledger sidecar
+
+When the ordinary executor lacks DISPLAY, do not copy/inject display or browser
+authentication environment. Root may run `native_session.py --run-prefix NEW_PREFIX
+--run-id NEW_ID --window-id VERIFIED_ID` in the reserved native terminal. It
+creates fresh `NEW_PREFIX/recording-live`, starts the sanitized follower there,
+and waits for root's `recording-live/START_CAPTURE` marker after header review.
+Capture runs with the native environment inherited, with private logs and no
+second visible/private terminal. Root's `recording-live/STOP_CAPTURE` marker stops
+only owned subprocess handles; no guessed cross-namespace PID is used. Marker
+waiting is bounded to 300 seconds and capture to 1800 seconds. Native capture
+must still pass its own exact-title/nonroot guards and firstframe review.
+
+The separate ordinary executor can run `ledger_sidecar.py --run-prefix NEW_PREFIX
+--run-id NEW_ID --config-sha256 ROOT_APPROVED_CONFIG_SHA --follower-start
+NEW_PREFIX/recording-live/display/follower-start.json --max-seconds 1800` after
+the follower starts. This creates the safe feed but emits no invented startup or
+phase event. It waits for an exact bound launcher admission and accounting
+identity, uses SQLite mode=ro + query_only + bounded explicit transactions to
+validate current receipt metadata, and writes private per-measurement provenance.
+No model prompts, raw requests, CLI content, hidden grades or model excerpts are
+displayed. Unknown/uncertain or absent aggregate usage stays absent, not zero.
+The source hash binds the saved measurement, including exact transaction-row
+digests; a separately labeled after-transaction database-file hash is not falsely
+called a transaction snapshot. There is no phase inference from file existence.
+
+Only the actual bound launcher-terminal artifact (including its exact report
+hash when present) permits a terminal feed record. Observer failures/timeouts
+never manufacture a benchmark terminal. Failure classes map to fixed generic
+categories, not arbitrary exception prose. These utilities grant no benchmark
+authority: root independently reviews the actual firstframes, recording-ready
+handshake and original resource admission before dispatch.

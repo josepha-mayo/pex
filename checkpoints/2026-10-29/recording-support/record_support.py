@@ -35,7 +35,7 @@ HASHES = {'source_sha256', 'task_public_manifest_sha256', 'model_excerpt_sha256'
 ENUMS = {
     'event': {'setup', 'waiting', 'admitted', 'arm_started', 'phase_started',
               'worker_response', 'supervisor_response', 'arm_terminal',
-              'run_terminal', 'resource_failure', 'cleanup'},
+              'run_terminal', 'resource_failure', 'cleanup', 'measurement'},
     'phase': {'waiting_for_admission', 'setup', 'baseline_phase1', 'baseline_phase2',
               'pex_phase1', 'review', 'pex_phase2', 'cleanup', 'terminal'},
     'arm': {'baseline', 'pex'},
@@ -43,7 +43,7 @@ ENUMS = {
                  'planner_rejected', 'verifier_rejected', 'protocol_inconclusive',
                  'infrastructure_inconclusive', 'grading_inconclusive',
                  'worker_budget_terminal_inconclusive', 'wall_budget_terminal_inconclusive',
-                 'cleanup_unconfirmed', 'platform_denied', 'admission_refused', 'cancelled'},
+                 'cleanup_unconfirmed', 'platform_denied', 'admission_refused', 'cancelled', 'outcome_inconclusive'},
     'failure_category': {'none', 'platform_denied', 'quota', 'resource', 'transport',
                          'admission', 'budget', 'timeout', 'protocol', 'cleanup', 'unknown'},
     'qualification': {'setup_only_no_inference', 'live_current_run_status',
@@ -230,11 +230,11 @@ def capture_command(window_id, display, output, seconds, width, height):
     return ['/usr/bin/ffmpeg', '-hide_banner', '-loglevel', 'error', '-nostdin',
             '-f', 'x11grab', '-window_id', str(window_id), '-framerate', '3',
             '-video_size', f'{width}x{height}', '-draw_mouse', '0', '-i', display,
-            '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '28',
+            '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency', '-crf', '28',
             '-maxrate', '192k', '-bufsize', '384k', '-pix_fmt', 'yuv420p',
             '-vf', 'pad=ceil(iw/2)*2:ceil(ih/2)*2', '-t', str(seconds),
             '-fs', str(MAX_VIDEO), '-progress', str(output.parent / 'capture-progress.txt'),
-            '-nostats', '-n', str(output)]
+            '-cluster_time_limit', '1000', '-flush_packets', '1', '-nostats', '-n', str(output)]
 
 
 def capture(args):
