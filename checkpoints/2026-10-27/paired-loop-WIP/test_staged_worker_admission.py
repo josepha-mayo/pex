@@ -35,3 +35,43 @@ def test_closed_worker_refuses_authored_route_override_before_key(funded,monkeyp
             pool=SimpleNamespace(close=lambda:None),activate=True,
             funding={c:PhaseFunding(l,mode='closed-admitted') for c,l in accounting.workers.items()},
             task_profile='stockroom-v1',public_check_command='python -m unittest discover -s tests -v',staged_binding=scope)
+
+
+@pytest.mark.parametrize('free_mib,memory_mib,allowed',[(1536,1024,True),(1535,2048,False),(2048,1023,False)])
+def test_local_storage_preflight_before_resources(tmp_path,monkeypatch,free_mib,memory_mib,allowed):
+    import shutil,staged_worker_admission as s
+    tmp_path.chmod(0o700)
+    monkeypatch.setattr(shutil,'disk_usage',lambda _:SimpleNamespace(free=free_mib*1024*1024))
+    monkeypatch.setattr(s,'_available_memory_bytes',lambda:memory_mib*1024*1024)
+    if allowed:assert s.storage_readiness(tmp_path)['qualification']=='sampled_soft_guard_not_hard_quota_or_exact_aggregate_bound'
+    else:
+        with pytest.raises(s.StorageInfrastructureLimit):s.storage_readiness(tmp_path)
+
+def test_storage_preflight_refuses_symlink_prefix(tmp_path):
+    tmp_path.chmod(0o700);target=tmp_path/'real';target.mkdir(mode=0o700);link=tmp_path/'link';link.symlink_to(target,target_is_directory=True)
+    with pytest.raises(StorageInfrastructureLimit,match='unlinked'):storage_readiness(link)
+
+def test_storage_monitor_counts_owned_files_not_external_symlink(tmp_path,monkeypatch):
+    import shutil,staged_worker_admission as s
+    tmp_path.chmod(0o700);(tmp_path/'owned').write_bytes(b'abc');(tmp_path/'not-owned').symlink_to('/usr')
+    monkeypatch.setattr(shutil,'disk_usage',lambda _:SimpleNamespace(free=2048*1024*1024))
+    monkeypatch.setattr(s,'_available_memory_bytes',lambda:2048*1024*1024)
+    assert s.storage_readiness(tmp_path,running=True)['owned_regular_file_bytes']==3
+
+@pytest.mark.asyncio
+async def test_storage_monitor_cancels_only_owned_run_and_preserves_typed_failure(tmp_path,monkeypatch):
+    import asyncio,staged_worker_admission as s
+    closed=[]
+    async def owned():
+        try:await asyncio.Event().wait()
+        finally:closed.append(True)
+    def exhausted(*args,**kwargs):raise s.StorageInfrastructureLimit('authored exhausted')
+    monkeypatch.setattr(s,'storage_readiness',exhausted)
+    with pytest.raises(s.StorageInfrastructureLimit,match='authored exhausted'):
+        await s.run_with_storage_monitor(owned(),tmp_path,interval=.001)
+    assert closed==[True]
+
+@pytest.mark.asyncio
+async def test_storage_monitor_returns_real_run_result(tmp_path):
+    async def owned():return {'actual':'authored result'}
+    assert await run_with_storage_monitor(owned(),tmp_path)=={'actual':'authored result'}

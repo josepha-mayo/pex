@@ -4,6 +4,71 @@ from staged_admission import AdmissionRefused,read_pin
 from staged_sdk_binding import SDKTransportBinding
 
 
+class StorageInfrastructureLimit(RuntimeError):
+    """Local capacity failure, never a worker/task failure or benchmark grade."""
+
+
+def storage_readiness(directory, *, running=False):
+    """Private local capacity check; no quota or exact aggregate-size claim.
+
+    Known capped artifacts require at least 1216 MiB including the reserve.
+    CLI database growth is not hard-bounded. A live soft monitor is therefore
+    required as well; its sampling interval permits overshoot and is not a quota.
+    """
+    import os,shutil,stat
+    root=Path(directory)
+    if (not root.is_absolute() or root.resolve()!=root or not root.is_dir()
+            or root.stat().st_uid!=os.geteuid() or root.stat().st_mode&0o077):
+        raise StorageInfrastructureLimit('private_unlinked_storage_required')
+    free=shutil.disk_usage(root).free
+    available=_available_memory_bytes()
+    owned=0
+    if running:
+        for parent,dirs,files in os.walk(root,followlinks=False):
+            dirs[:]=[d for d in dirs if not (Path(parent)/d).is_symlink()]
+            for name in files:
+                try:info=(Path(parent)/name).lstat()
+                except FileNotFoundError:continue
+                if stat.S_ISREG(info.st_mode):owned+=info.st_size
+    MiB=1024*1024
+    required_free=(512 if running else 1536)*MiB
+    required_memory=(512 if running else 1024)*MiB
+    if free<required_free or available<required_memory or owned>=1024*MiB:
+        raise StorageInfrastructureLimit('local_storage_or_memory_capacity_insufficient')
+    return {'free_bytes':free,'available_memory_bytes':available,'owned_regular_file_bytes':owned,
+            'minimum_free_bytes':required_free,'minimum_available_memory_bytes':required_memory,
+            'owned_output_soft_stop_bytes':1024*MiB,'reserve_bytes':384*MiB,
+            'qualification':'sampled_soft_guard_not_hard_quota_or_exact_aggregate_bound'}
+
+
+def _available_memory_bytes():
+    for line in Path('/proc/meminfo').read_text().splitlines():
+        if line.startswith('MemAvailable:'):return int(line.split()[1])*1024
+    raise StorageInfrastructureLimit('available_memory_unproven')
+
+
+async def run_with_storage_monitor(awaitable,directory,*,interval=1.0):
+    """Cancel only the owned run on a local soft-cap failure; caller cleans up."""
+    import asyncio
+    if not isinstance(interval,(int,float)) or not 0<interval<=1:
+        raise ValueError('bounded_storage_monitor_interval_required')
+    async def watch():
+        while True:
+            await asyncio.sleep(interval)
+            storage_readiness(directory,running=True)
+    run=asyncio.create_task(awaitable);monitor=asyncio.create_task(watch())
+    try:
+        done,_=await asyncio.wait((run,monitor),return_when=asyncio.FIRST_COMPLETED)
+        if monitor in done:
+            await monitor
+            raise StorageInfrastructureLimit('unexpected_storage_monitor_stop')
+        return await run
+    finally:
+        for task in (run,monitor):
+            if not task.done():task.cancel()
+        await asyncio.gather(run,monitor,return_exceptions=True)
+
+
 def validate_worker(binding,funding,*,private_root,binary,modules,key_path):
     if type(binding) is not SDKTransportBinding:raise AdmissionRefused('closed_staged_worker_binding_required')
     binding._check();cfg=binding.admitted.config()
