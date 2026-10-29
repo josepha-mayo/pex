@@ -1,7 +1,7 @@
-"""WIP exact one-run staged admission; no automatic launch or credential access.
+"""WIP staged admission CLOSED after a consumed, denied/uncertain create attempt.
 
-A candidate inspection is not authority. The exact independently reviewed grant
-is source-pinned below and names one new private config/run. Historical
+A candidate inspection is not authority. Any later grant requires independently
+reviewed authority and a new private config/run; the prior claim is consumed. Historical
 liabilities (including unknown requests) are supplied by a pinned predecessor;
 this module never refunds them or reuses the consumed legacy approval.
 """
@@ -77,16 +77,9 @@ class Grant:
     task_sha256: str
     expires_at: str
 
-# Oct29 continuation of the previously scoped cumulative USD2/USD0.10 pilot.
-# Root reviewed candidate02, all source/predecessor pins and equal phase caps.
-# Independent immutable Grant hashes remain explicit trusted-launcher constants;
-# this identity cannot authorize another path/run or be supplied by config/env.
-APPROVED_STAGED_GRANT = GrantGate(
-    'Sentinel_9015d97f19ac8191a4738179b7387795',
-    'stockroom-staged-pair-20261029-02',
-    '/workspace/scratch/c62c151ada7d/runtime-private/pex-pilot-20261027/stockroom-staged-pair-20261029-02/pair.json',
-    '2026-10-29T02:00:00+00:00',
-)
+# Oct29 pair02 claimed once. A platform denial interrupted its first create;
+# the full uncertain compute reservation remains retained. No retry/replacement.
+APPROVED_STAGED_GRANT = None
 
 @dataclass(frozen=True, repr=False)
 class Admitted:
