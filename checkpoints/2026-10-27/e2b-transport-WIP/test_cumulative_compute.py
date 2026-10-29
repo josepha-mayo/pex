@@ -85,3 +85,16 @@ def test_future140_capability_cannot_widen_existing120_ledger(tmp_path):
         ComputeBudget(tmp_path/'unchanged120.sqlite',**dict(kwargs,cap_nano_usd=140_000_000))
     b=ComputeBudget(tmp_path/'unchanged120.sqlite',**kwargs)
     assert b.cap==120_000_000 and b.total()==98_752_500;b.close()
+
+
+def test_future250_capability_keeps_original06_generic_charge_and_existing_caps(tmp_path):
+    tmp_path.chmod(0o700)
+    kwargs=dict(prior_upper_bound_nano_usd=128_700_000,evidence_sha256='e'*64,cap_nano_usd=250_000_000)
+    b=ComputeBudget(tmp_path/'future250.sqlite',**kwargs)
+    b.reserve('next-baseline');assert b.total()==177_540_000
+    b.settle_verified_allocation('next-baseline',cpu=2,memory_mb=512,max_seconds=330)
+    b.reserve('next-pex');assert b.total()==187_522_500
+    b.settle_verified_allocation('next-pex',cpu=2,memory_mb=512,max_seconds=330)
+    assert b.total()==148_665_000;b.close()
+    with pytest.raises(ValueError,match='ceiling identity'):
+        ComputeBudget(tmp_path/'future250.sqlite',**dict(kwargs,cap_nano_usd=140_000_000))

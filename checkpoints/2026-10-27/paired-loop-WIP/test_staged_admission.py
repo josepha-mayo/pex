@@ -120,3 +120,10 @@ def test_future140_candidate_capability_is_not_dispatch_authority(candidate,monk
     raw,grant=freeze();monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',None)
     assert a.COMPUTE_CAP==120_000_000 and a.inspect_candidate(raw,grant)['compute_sequential_peak']<=140_000_000
     with pytest.raises(a.AdmissionRefused,match='approval_pending'):a.load(grant)
+
+
+def test_future250_candidate_cannot_open_closed_gate_or_change_current_authority(candidate,monkeypatch):
+    cfg,freeze=candidate;cfg['profile']['compute_cap']=250_000_000
+    raw,grant=freeze();monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',None)
+    assert a.COMPUTE_CAP==120_000_000 and a.inspect_candidate(raw,grant)['compute_sequential_peak']<=250_000_000
+    with pytest.raises(a.AdmissionRefused,match='approval_pending'):a.load(grant)

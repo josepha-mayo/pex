@@ -18,7 +18,7 @@ from staged_envelope import PHASES, VM_SECONDS, WALL_PROFILE, reservation_envelo
 
 PROVIDER_CAP = 2_000_000_000
 COMPUTE_CAP = 120_000_000  # Legacy default; an exact per-run Grant pins its ceiling.
-SUPPORTED_COMPUTE_CAPS = (COMPUTE_CAP,140_000_000)  # Capability alone is never spend authority.
+SUPPORTED_COMPUTE_CAPS = (COMPUTE_CAP,140_000_000,250_000_000)  # Capability alone is never spend authority.
 WORKER_MODEL = 'deepseek-ai/DeepSeek-V4.1-Flash-1017'
 SUPERVISOR_MODEL = 'nvidia/nemotron-3-super-120b-a12b'
 REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',
@@ -31,7 +31,9 @@ REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',
     'failed_staged04_workers','failed_staged04_supervisor','failed_staged04_compute',
     'failed_staged04_terminal','failed_staged04_report',
     'failed_staged05_workers','failed_staged05_supervisor','failed_staged05_compute',
-    'failed_staged05_terminal','failed_staged05_report'))
+    'failed_staged05_terminal','failed_staged05_report',
+    'interrupted_staged06_workers','interrupted_staged06_supervisor','interrupted_staged06_compute',
+    'interrupted_staged06_admission','interrupted_staged06_poll_denial','interrupted_staged06_cleanup'))
 _SEAL = object()
 
 class AdmissionRefused(PermissionError): pass
