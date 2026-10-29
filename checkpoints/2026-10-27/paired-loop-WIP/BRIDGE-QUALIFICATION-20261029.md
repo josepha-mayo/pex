@@ -37,7 +37,8 @@ Recovery06 received one execution control. A later **empty read-only output
 poll** was rejected as if it were duplicate paid execution. The single permitted
 read-only reconsideration returned unknown process ID. No second execution
 control/create was sent. The host session disappeared without a terminal report;
-this was not a proven provider denial. Its model ledgers remained empty.
+this was not a proven provider denial. No causal link between the poll rejection
+and host termination has been established. Its model ledgers remained empty.
 
 Canonical management history later proved one exact-run baseline VM was created
 and killed by the provider timeout; the genuine filtered active inventory was
