@@ -51,7 +51,8 @@ class StagedWorker:
         value['agents']['paired']['steps']=limit.calls
         config.write_text(json.dumps(value))
         cfg={'baseURL':nebius_worker.BASE,'endpoint':nebius_worker.BASE+'/chat/completions','model':nebius_worker.MODEL,
-             'funding':state['funding_channel'],'maxCalls':12,'outputPerCall':4096,
+             'funding':state['funding_channel'],'maxCalls':12,'outputPerCall':getattr(self.worker,'output_per_call',4096),
+             'maxResponseBytes':self.worker.funding[condition].max_response_bytes,
              'keyPath':self.worker.key_path,'phaseCalls':limit.calls}
         source=Path(__file__).with_name('staged_nebius_guard.ts').read_text()
         (state['case']/'plugins/guard/index.ts').write_text(source.replace('CONFIGURATION',json.dumps(cfg)))

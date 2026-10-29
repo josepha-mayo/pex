@@ -13,6 +13,8 @@ def validate_worker(binding,funding,*,private_root,binary,modules,key_path):
             or type(v.ledger) is not WorkerPhaseLedger or v.ledger.owner.binding is not binding
             or v.ledger.arm!=arm for arm,v in funding.items())):
         raise AdmissionRefused('exact_equal_staged_worker_funding_required')
+    if any(value.output_token_bound!=cfg['profile']['worker_output_per_call'] for value in funding.values()):
+        raise AdmissionRefused('frozen_staged_worker_output_required')
     for value in funding.values():value.ledger.owner.before_reserve()
     cli=cfg['cli']
     if (Path(private_root)!=Path(cfg['output_dir'])/'cli' or str(Path(binary))!=cli['binary']['path']

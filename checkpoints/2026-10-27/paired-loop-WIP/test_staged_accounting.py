@@ -7,20 +7,21 @@ from test_staged_sdk_binding import bound
 from test_staged_admission import candidate
 import staged_admission as a
 from staged_accounting import *
-from worker_funding import RESERVATION,WorkerBudgetExhausted,MODEL as WORKER_MODEL
+from worker_funding import STAGED_RESERVATION as RESERVATION,WorkerBudgetExhausted,MODEL as WORKER_MODEL
 
 @pytest.fixture
 def funded(bound,monkeypatch):
     scope,compute,wire,pools,behavior=bound
     # Build a fresh synthetic immutable grant before entering its atomic scope.
-    cfg=scope.cfg;cfg['profile']['equal_worker_fresh']=375000000
+    cfg=scope.cfg;cfg['profile']['equal_worker_fresh']=750000000
+    cfg['profile']['worker_output_per_call']=16384
     cfg['profile']['supervisor_fresh']=SUPERVISOR_FRESH
     p=Path(cfg['predecessor']['path']);prior=json.loads(p.read_bytes());prior['provider_nano_usd']=SUPERVISOR_PRIOR+100
     p.write_bytes(canonical(prior));cfg['predecessor']['sha256']=sha(p.read_bytes())
     # New compute object must carry the exact new synthetic predecessor pin.
     from cumulative_compute import ComputeBudget
     compute.close();Path(p.parent/'compute.sqlite').unlink()
-    compute=ComputeBudget(p.parent/'compute.sqlite',prior_upper_bound_nano_usd=100,evidence_sha256=cfg['predecessor']['sha256'],cap_nano_usd=cfg['profile']['compute_cap'])
+    compute=ComputeBudget(p.parent/'compute.sqlite',prior_upper_bound_nano_usd=100,evidence_sha256=cfg['predecessor']['sha256'],cap_nano_usd=cfg['profile']['compute_cap'],vm_seconds=cfg['profile']['vm_seconds'])
     raw=canonical(cfg);Path(scope.admitted.grant.config_path).write_bytes(raw)
     from dataclasses import replace
     grant=replace(scope.admitted.grant,config_sha256=sha(raw),profile_sha256=sha(canonical(cfg['profile'])),predecessor_sha256=cfg['predecessor']['sha256'])
@@ -33,7 +34,7 @@ def funded(bound,monkeypatch):
 
 def request():
     raw=canonical({'model':WORKER_MODEL,'messages':[{'role':'user','content':'AUTHORED'}],
-        'max_completion_tokens':4096,'tools':[{'type':'function','function':{'name':'pex_remote_run'}}]})
+        'max_completion_tokens':16384,'tools':[{'type':'function','function':{'name':'pex_remote_run'}}]})
     return sha(raw),raw
 
 def test_closed_before_accounting_files():
@@ -45,9 +46,10 @@ def test_equal_fresh_and_unknown_liabilities_count_once(funded):
     summary=bundle.summary()
     assert summary['worker_fresh_nano_usd']=={'baseline':RESERVATION,'pex':0}
     assert summary['provider_cumulative_nano_usd']==SUPERVISOR_PRIOR+100+RESERVATION
-    with pytest.raises(WorkerBudgetExhausted):bundle.workers['baseline'].reserve('authored-two',digest,raw)
+    bundle.workers['baseline'].reserve('authored-two',digest,raw)
+    with pytest.raises(WorkerBudgetExhausted):bundle.workers['baseline'].reserve('authored-three',digest,raw)
     bundle.workers['pex'].reserve('authored-pex-one',digest,raw)
-    assert bundle.summary()['provider_cumulative_nano_usd']==SUPERVISOR_PRIOR+100+2*RESERVATION
+    assert bundle.summary()['provider_cumulative_nano_usd']==SUPERVISOR_PRIOR+100+3*RESERVATION
     assert not scope.creates
 
 def test_supervisor_shared_attempts_separate_fresh_overhead(funded):
@@ -84,11 +86,11 @@ async def test_worker_RPC_thread_never_reads_owner_thread_supervisor_DB(funded):
 
 def test_new_prospective_allocation_preserves_reservations_and_fresh_caps(funded):
     bundle,scope=funded
-    assert bundle.fresh==375000000 and SUPERVISOR_FRESH==350000000
-    assert all(raw.phase_limit==375000000 for raw in bundle.raw_workers.values())
+    assert bundle.fresh==750000000 and SUPERVISOR_FRESH==350000000
+    assert all(raw.phase_limit==750000000 and raw.output_token_bound==16384 for raw in bundle.raw_workers.values())
     assert bundle.supervisor.budget==SUPERVISOR_PRIOR+350000000
-    assert RESERVATION==319488000 and bundle.supervisor.reservation==82329600
-    assert 806031900+2*375000000+350000000==1906031900<2000000000
+    assert RESERVATION==334233600 and bundle.supervisor.reservation==82329600
+    assert 2212403400+2*750000000+350000000==4062403400<5000000000
 
 
 @pytest.mark.parametrize('bad_details',[False,True])
@@ -128,3 +130,22 @@ def test_new_supervisor_outer_cannot_reopen_or_change_old_ledger(funded):
     assert db.execute('SELECT budget FROM config').fetchall()==[(1180535400,)]
     assert db.execute('SELECT charged,state FROM calls').fetchall()==[(82329600,'reserved_uncertain')]
     db.close()
+
+
+def test_new_16k_large_wire_archive_is_bounded_and_profile_matched(funded):
+    bundle,_=funded;digest,raw=request();db=bundle.raw_workers['baseline']
+    assert db.output_token_bound==16384 and db.max_response_bytes==8*1024*1024
+    bundle.workers['baseline'].reserve('large-authored',digest,raw)
+    value={'model':WORKER_MODEL,'choices':[{'index':0,'finish_reason':'stop'}],
+        'usage':{'prompt_tokens':37,'completion_tokens':16384,'total_tokens':16421},
+        'authored_padding':'x'*(3*1024*1024)}
+    body=canonical(value);assert 2*1024*1024<len(body)<8*1024*1024
+    result=bundle.workers['baseline'].settle_raw('large-authored',digest,200,'application/json',body)
+    assert result['state']=='settled_raw_wire' and result['charged_nano_usd']==19671900
+    row=json.loads(db.db.execute('SELECT receipt FROM calls').fetchone()[0])
+    p=Path(row['wire_evidence']['path']);assert p.stat().st_size<12*1024*1024
+    capture=json.loads(p.read_bytes());assert base64.b64decode(capture['raw_response_base64'])==body
+    old=canonical({'model':WORKER_MODEL,'messages':[{'role':'user','content':'AUTHORED'}],
+        'max_completion_tokens':4096,'tools':[{'type':'function','function':{'name':'pex_remote_run'}}]})
+    with pytest.raises(ValueError):bundle.workers['baseline'].reserve('old-bound',sha(old),old)
+    assert db.usage_snapshot()['calls']==1

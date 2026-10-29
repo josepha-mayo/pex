@@ -365,3 +365,118 @@ def test_sparse_legacy_cumulative_and_final_only_usage_still_validate():
     del chunks[-2]['usage']  # No frozen count: the final receipt may advance.
     assert wf._wire_usage(200,'text/event-stream',cumulative_wire(chunks))['output_tokens']==7
     assert wf._wire_usage(200,'text/event-stream',stream())['output_tokens']==100
+
+
+def staged_ledger(path, **changes):
+    return ledger(path,output_token_bound=wf.STAGED_OUTPUT_BOUND,
+                  arm_budget_nano_usd=wf.STAGED_ARM_BUDGET,**changes)
+
+
+def test_explicit_16k_profile_exact_request_reservation_and_usage(tmp_path):
+    db=staged_ledger(tmp_path/'staged.sqlite');raw,sha=request(max_completion_tokens=16384)
+    assert db.reservation==wf.STAGED_RESERVATION==334233600
+    assert db.output_token_bound==16384 and db.max_response_bytes==8*1024*1024
+    assert db.reserve('new',sha,raw)['reserved_nano_usd']==334233600
+    result=db.settle_raw('new',sha,200,'text/event-stream',stream(used=usage(37,16384)))
+    assert result['state']=='settled_raw_wire' and result['charged_nano_usd']==19671900
+    assert db.usage_snapshot()==dict(calls=1,input_tokens=37,output_tokens=16384,uncertain_calls=0)
+    assert db.db.execute('SELECT output_bound,budget FROM config').fetchall()==[(16384,750000000)]
+    db.close()
+
+
+@pytest.mark.parametrize('old_first',[False,True])
+def test_16k_profile_cannot_relabel_or_reopen_4k_ledger(tmp_path,old_first):
+    path=tmp_path/'bound.sqlite';first=ledger if old_first else staged_ledger
+    second=staged_ledger if old_first else ledger
+    db=first(path);db.close();before=hashlib.sha256(path.read_bytes()).hexdigest()
+    with pytest.raises(ValueError):second(path)
+    assert hashlib.sha256(path.read_bytes()).hexdigest()==before
+
+
+@pytest.mark.parametrize('changes',[
+    {'output_token_bound':16384},{'arm_budget_nano_usd':750000000},
+    {'output_token_bound':8192,'arm_budget_nano_usd':750000000},
+    {'output_token_bound':32768,'arm_budget_nano_usd':750000000},
+    {'output_token_bound':True,'arm_budget_nano_usd':750000000},
+])
+def test_only_exact_new_output_budget_pair_is_supported(tmp_path,changes):
+    with pytest.raises(ValueError):ledger(tmp_path/'refused.sqlite',**changes)
+    assert not (tmp_path/'refused.sqlite').exists()
+
+
+def test_new_output_bound_does_not_reopen_legacy_public_approval(tmp_path):
+    with pytest.raises(PermissionError):wf.WorkerFunding(tmp_path/'refused.sqlite',arm='baseline',
+        approved_config_digest='a'*64,approval_ref=wf.APPROVED_WORKER_REF,
+        pricing_provenance_sha256=wf.PRICING_SHA,output_token_bound=16384,arm_budget_nano_usd=750000000)
+    assert not (tmp_path/'refused.sqlite').exists()
+
+
+@pytest.mark.parametrize('maximum',[4096,16384])
+def test_request_must_match_its_immutable_output_profile(tmp_path,maximum):
+    db=ledger(tmp_path/'bound.sqlite') if maximum==4096 else staged_ledger(tmp_path/'bound.sqlite')
+    for wrong in (4096 if maximum==16384 else 16384,maximum+1,True):
+        raw,sha=request(max_completion_tokens=wrong)
+        with pytest.raises(ValueError):db.reserve('wrong',sha,raw)
+    assert db.usage_snapshot()['calls']==0
+    db.close()
+
+
+def test_16k_unknown_reservations_never_exceed_fresh_750m(tmp_path):
+    db=staged_ledger(tmp_path/'bound.sqlite');raw,sha=request(max_completion_tokens=16384)
+    for n in range(2):db.reserve(str(n),sha,raw)
+    with pytest.raises(wf.WorkerBudgetExhausted):db.reserve('third',sha,raw)
+    assert db.summary()['charged_nano_usd']['baseline']==2*334233600
+    db.close()
+
+
+@pytest.mark.parametrize('bad_output',[16385,True,16384.0,-1])
+def test_16k_malformed_or_overflow_usage_stays_full(tmp_path,bad_output):
+    db=staged_ledger(tmp_path/'bound.sqlite');raw,sha=request(max_completion_tokens=16384);db.reserve('one',sha,raw)
+    u=usage(37,16384);u['completion_tokens']=bad_output
+    result=db.settle_raw('one',sha,200,'text/event-stream',stream(used=u))
+    assert result['state']=='uncertain' and result['charged_nano_usd']==334233600
+    db.close()
+
+
+def test_16k_cumulative_counters_still_require_consistent_terminal():
+    chunks=cumulative_chunks()
+    for index,n in enumerate((0,4097,8192,16384,16384)):
+        chunks[index]['usage']['completion_tokens']=n
+        chunks[index]['usage']['total_tokens']=37+n
+        chunks[index]['usage']['completion_tokens_details']={'reasoning_tokens':n}
+    body=cumulative_wire(chunks)
+    assert wf._wire_usage(200,'text/event-stream',body,output_token_bound=16384)['output_tokens']==16384
+    with pytest.raises(ValueError):wf._wire_usage(200,'text/event-stream',body)
+    chunks[-1]['usage']['completion_tokens_details']['reasoning_tokens']=16383
+    with pytest.raises(ValueError):wf._wire_usage(200,'text/event-stream',cumulative_wire(chunks),output_token_bound=16384)
+
+
+def test_large_frame_limit_is_new_profile_only_and_remains_strict(tmp_path):
+    base=stream(used=usage(37,16384))
+    body=b':'+b'x'*(wf.STAGED_RESPONSE_BYTES-len(base)-3)+b'\n\n'+base
+    assert len(body)==wf.STAGED_RESPONSE_BYTES
+    assert wf._wire_usage(200,'text/event-stream',body,output_token_bound=16384)['output_tokens']==16384
+    for invalid in (body+b'\n',body[:-1],body.replace(b'data: [DONE]\n\n',b''),body+base):
+        with pytest.raises(ValueError):wf._wire_usage(200,'text/event-stream',invalid,output_token_bound=16384)
+    with pytest.raises(ValueError):wf._wire_usage(200,'text/event-stream',body)
+    observed=[];db=staged_ledger(tmp_path/'bound.sqlite',wire_evidence_sink=lambda *a:(observed.append(len(a[5])) or {'path':'AUTHORED','sha256':'b'*64}))
+    raw,sha=request(max_completion_tokens=16384);db.reserve('one',sha,raw)
+    assert db.settle_raw('one',sha,200,'text/event-stream',body)['state']=='settled_raw_wire'
+    assert observed==[wf.STAGED_RESPONSE_BYTES]
+    db.reserve('two',sha,raw)
+    with pytest.raises(ValueError):db.settle_raw('two',sha,200,'text/event-stream',body+b'\n')
+    assert observed==[wf.STAGED_RESPONSE_BYTES]
+    assert db.db.execute("SELECT state,charged FROM calls WHERE id='two'").fetchone()==('reserved_uncertain',334233600)
+    # Larger response allowance never enlarges the admitted request envelope.
+    oversized=b'x'*(wf.MAX_BYTES+1)
+    with pytest.raises(ValueError):db.reserve('request-too-large',hashlib.sha256(oversized).hexdigest(),oversized)
+    db.close()
+
+
+@pytest.mark.parametrize('field,value',[('output_token_bound',32768),('reservation',1),('max_response_bytes',16*1024*1024),('arm_budget',10**12)])
+def test_new_profile_runtime_attribute_mutation_cannot_expand_authority(tmp_path,field,value):
+    db=staged_ledger(tmp_path/'bound.sqlite');setattr(db,field,value)
+    raw,sha=request(max_completion_tokens=16384)
+    with pytest.raises(ValueError):db.reserve('changed',sha,raw)
+    assert db.db.execute('SELECT COUNT(*) FROM calls').fetchone()==(0,)
+    db.close()

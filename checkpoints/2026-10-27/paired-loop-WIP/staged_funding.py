@@ -27,6 +27,12 @@ class PhaseFunding:
         self.failed=False
         self.before=None
 
+    @property
+    def output_token_bound(self):return getattr(self.ledger,'output_token_bound',4096)
+
+    @property
+    def max_response_bytes(self):return getattr(self.ledger,'max_response_bytes',2*1024*1024)
+
     def begin(self, index):
         with self._lock:
             if (type(index) is not int or index not in (0,1) or index != self.index+1
@@ -51,7 +57,7 @@ class PhaseFunding:
                 self.failed=True
                 raise WorkerBudgetExhausted('worker_attempt_cap_refused')
             # The independently admitted underlying ledger still enforces money,
-            # endpoint/model, full4096 output reservation and the total12 attempts.
+            # endpoint/model, exact profile-bound output reservation and the total12 attempts.
             try:
                 return self.ledger.reserve(*args)
             except BaseException:

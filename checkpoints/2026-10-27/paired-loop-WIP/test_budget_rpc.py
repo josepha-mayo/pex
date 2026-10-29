@@ -40,3 +40,26 @@ def test_non_guard_or_invalid_operation_never_reaches_ledger(payload,token):
         status,reply=post(cfg,payload,token)
         assert status==403 and reply['ok'] is False and set(reply)=={'ok','category'}
     assert not ledger.calls
+
+
+def test_new_profile_IPC_accepts_bounded_8MiB_not_oversized_or_large_request():
+    class StagedLedger(Ledger):
+        output_token_bound=16384
+        max_response_bytes=8*1024*1024
+        def settle_raw(self,*args):self.calls.append(('settle_bytes',len(args[-1])));return {'settled':4500}
+    ledger=StagedLedger()
+    with serve_budget(ledger) as cfg:
+        common={'operation':'settle','call_id':'one','request_sha256':'a'*64,'status':200,'content_type':'text/event-stream'}
+        for size,expected in ((ledger.max_response_bytes,200),(ledger.max_response_bytes+1,403)):
+            status,reply=post(cfg,{**common,'raw_base64':base64.b64encode(b'x'*size).decode()})
+            assert status==expected and reply['ok']==(expected==200)
+        status,reply=post(cfg,{'operation':'reserve','call_id':'two','request_sha256':'b'*64,
+            'request_base64':base64.b64encode(b'x'*(2*1024*1024+1)).decode()})
+        assert status==403 and not reply['ok']
+    assert ledger.calls==[('settle_bytes',8*1024*1024)]
+
+
+def test_large_IPC_profile_requires_matching_output_bound():
+    ledger=Ledger();ledger.max_response_bytes=8*1024*1024
+    with pytest.raises(ValueError):
+        with serve_budget(ledger):pytest.fail('must refuse before IPC server')

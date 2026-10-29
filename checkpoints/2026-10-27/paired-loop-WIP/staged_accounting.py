@@ -13,7 +13,7 @@ import os
 from datetime import datetime,timezone
 from staged_admission import AdmissionRefused,canonical,sha,read_pin
 from staged_sdk_binding import SDKTransportBinding
-from worker_funding import _WorkerLedger,ARM_BUDGET,PRICING_SHA
+from worker_funding import _WorkerLedger,STAGED_ARM_BUDGET,STAGED_OUTPUT_BOUND,PRICING_SHA
 from accounting import Ledger
 from managed_chat import Limits,Route
 
@@ -32,7 +32,7 @@ class StagedAccounting:
         self.binding=binding;self.closed=False;self.cfg=binding.admitted.config()
         prior=json.loads(read_pin(self.cfg['predecessor'],private=True))
         profile=self.cfg['profile'];fresh=profile['equal_worker_fresh']
-        if (type(fresh) is not int or not 0<fresh<=ARM_BUDGET or profile['supervisor_fresh']!=SUPERVISOR_FRESH
+        if (type(fresh) is not int or fresh!=STAGED_ARM_BUDGET or profile.get('worker_output_per_call')!=STAGED_OUTPUT_BOUND or profile['supervisor_fresh']!=SUPERVISOR_FRESH
                 or prior['provider_nano_usd']<SUPERVISOR_PRIOR):
             raise AdmissionRefused('staged_fresh_pool_or_prior_incompatible')
         self.prior=prior['provider_nano_usd'];self.fresh=fresh
@@ -60,14 +60,15 @@ class StagedAccounting:
                 'response_sha256':sha(rawbytes),'usage_validation_code':validation_code,
                 'request_body_or_headers_captured':False,
                 'qualification':'Private bounded response evidence, not a settlement or permission to display model content.'},
-                limit=3*1024*1024)
+                limit=12*1024*1024)
         try:
             for arm in ('baseline','pex'):
                 self.raw_workers[arm]=_WorkerLedger(self.root/'workers.sqlite',arm=arm,
                     approved_config_digest=binding.admitted.grant.config_sha256,
                     approval_ref=binding.admitted.grant.approval_ref,pricing_provenance_sha256=PRICING_SHA,
                     predecessor_sha256=self.cfg['predecessor']['sha256'],phase_limit_nano_usd=fresh,
-                    wire_evidence_sink=wire_evidence)
+                    wire_evidence_sink=wire_evidence,arm_budget_nano_usd=fresh,
+                    output_token_bound=profile['worker_output_per_call'])
             self.routes=tuple(Route(ENDPOINT,MODEL,role,Limits(max_output_tokens=cap,max_usage_tokens=266240,timeout_seconds=60))
                               for role,cap in (('planner',1200),('verifier',900)))
             self.supervisor=Ledger(self.root/'supervisor.sqlite',budget=SUPERVISOR_OUTER,input_rate=300,output_rate=900,
@@ -158,6 +159,10 @@ class StagedAccounting:
 class WorkerPhaseLedger:
     """Exact fresh-phase accounting capability. Settlement never opens a call."""
     def __init__(self,owner,raw):self.owner=owner;self.raw=raw;self.arm=raw.arm
+    @property
+    def output_token_bound(self):return self.raw.output_token_bound
+    @property
+    def max_response_bytes(self):return self.raw.max_response_bytes
     def reserve(self,*args):self.owner.before_reserve();return self.raw.reserve(*args)
     def settle_raw(self,*args):self.owner.validate_identity();return self.raw.settle_raw(*args)
     def usage_snapshot(self):self.owner.validate_identity();return self.raw.usage_snapshot()

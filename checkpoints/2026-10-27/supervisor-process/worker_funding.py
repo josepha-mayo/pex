@@ -26,6 +26,9 @@ ARM_BUDGET, MAX_ATTEMPTS = 375000000, 12
 PRICING_SHA = "50e7bb6a6548514fbfe49c25148234644b39a29a2f3caf5cd6b85cd6fc8f20a4"
 ARMS = ("baseline", "pex")
 MAX_BYTES = 2 * 1024 * 1024
+STAGED_OUTPUT_BOUND, STAGED_ARM_BUDGET = 16384, 750000000
+STAGED_RESPONSE_BYTES = 8 * 1024 * 1024
+STAGED_RESERVATION = INPUT_BOUND * INPUT_RATE + STAGED_OUTPUT_BOUND * OUTPUT_RATE
 ALLOWED_TOOLS = {"pex_remote_run", "pex_remote_read", "pex_remote_write", "pex_remote_list"}
 WIRE_USAGE_REASONS = frozenset((
     'invalid worker accounting integer','duplicate wire field','nonfinite wire value',
@@ -78,14 +81,14 @@ def _json(raw):
     return json.loads(raw, object_pairs_hook=pairs, parse_constant=bad_constant)
 
 
-def _request(raw, digest):
+def _request(raw, digest, *, output_token_bound=OUTPUT_BOUND):
     if type(raw) is not bytes or not 1 <= len(raw) <= MAX_BYTES:
         raise ValueError("bounded exact request bytes required")
     if hashlib.sha256(raw).hexdigest() != digest:
         raise ValueError("worker request digest mismatch")
     body = _json(raw)
     if (type(body) is not dict or body.get("model") != MODEL
-            or type(body.get("max_completion_tokens")) is not int or body["max_completion_tokens"] != OUTPUT_BOUND
+            or type(body.get("max_completion_tokens")) is not int or body["max_completion_tokens"] != output_token_bound
             or type(body.get("n", 1)) is not int or body.get("n", 1) != 1
             or "max_tokens" in body or "extra_body" in body or "best_of" in body
             or body.get("service_tier", "default") != "default"
@@ -101,11 +104,11 @@ def _request(raw, digest):
         raise ValueError("worker tool admission refused")
 
 
-def _usage(value):
+def _usage(value, *, output_token_bound=OUTPUT_BOUND):
     if type(value) is not dict:
         raise ValueError("missing complete usage")
     i, o, t = (_integer(value.get(k)) for k in ("prompt_tokens", "completion_tokens", "total_tokens"))
-    if i + o != t or i > INPUT_BOUND or o > OUTPUT_BOUND:
+    if i + o != t or i > INPUT_BOUND or o > output_token_bound:
         raise ValueError("wire usage outside envelope")
     for field, count in (("prompt_tokens_details", i), ("completion_tokens_details", o)):
         details = value.get(field)
@@ -117,10 +120,13 @@ def _usage(value):
     return {"input_tokens": i, "output_tokens": o, "total_tokens": t}
 
 
-def _wire_usage(status, content_type, raw):
+def _wire_usage(status, content_type, raw, *, output_token_bound=OUTPUT_BOUND):
+    if type(output_token_bound) is not int or output_token_bound not in (OUTPUT_BOUND, STAGED_OUTPUT_BOUND):
+        raise ValueError("wire usage outside envelope")
+    response_bound = STAGED_RESPONSE_BYTES if output_token_bound == STAGED_OUTPUT_BOUND else MAX_BYTES
     if type(status) is not int or status != 200:
         raise ValueError("response status uncertain")
-    if type(raw) is not bytes or not 1 <= len(raw) <= MAX_BYTES:
+    if type(raw) is not bytes or not 1 <= len(raw) <= response_bound:
         raise ValueError("response size uncertain")
     if type(content_type) is not str: raise ValueError("response type uncertain")
     kind = content_type.split(";", 1)[0].strip().lower()
@@ -133,7 +139,7 @@ def _wire_usage(status, content_type, raw):
                 or value["choices"][0].get("index") != 0
                 or value["choices"][0].get("finish_reason") not in ("stop", "length", "tool_calls")):
             raise ValueError("incomplete worker response")
-        return _usage(value.get("usage"))
+        return _usage(value.get("usage"), output_token_bound=output_token_bound)
     if kind != "text/event-stream": raise ValueError("unsupported worker response type")
     text = raw.decode("utf-8").replace("\r\n", "\n")
     if not text.endswith("\n\n"): raise ValueError("truncated SSE framing")
@@ -174,7 +180,7 @@ def _wire_usage(status, content_type, raw):
                     raise ValueError("SSE finish invalid")
                 finished = True
             if value.get("usage") is not None:
-                _cumulative_sse_usage(previous_usage, value["usage"])
+                _cumulative_sse_usage(previous_usage, value["usage"], output_token_bound=output_token_bound)
                 previous_usage = value["usage"]
                 finish_usage = finished
         else:
@@ -182,13 +188,13 @@ def _wire_usage(status, content_type, raw):
             # Only a distinct empty-choices frame after finish can settle a stream.
             if not finished or value.get("usage") is None:
                 raise ValueError("ambiguous/nonterminal SSE usage")
-            usage = _cumulative_sse_usage(previous_usage, value["usage"], frozen=finish_usage)
+            usage = _cumulative_sse_usage(previous_usage, value["usage"], frozen=finish_usage, output_token_bound=output_token_bound)
     if not done or not finished or usage is None:
         raise ValueError("missing terminal SSE usage")
     return usage
 
 
-def _cumulative_sse_usage(previous, value, *, frozen=False):
+def _cumulative_sse_usage(previous, value, *, frozen=False, output_token_bound=OUTPUT_BOUND):
     """Validate all counters; no refund until the separate terminal receipt + DONE.
 
     Prompt counts cannot change within one response. Output/detail counters may
@@ -196,7 +202,7 @@ def _cumulative_sse_usage(previous, value, *, frozen=False):
     New detail keys may appear in the receipt (e.g. final cache breakdown); known
     keys cannot disappear, regress, or contradict already-finished counters.
     """
-    current = _usage(value)
+    current = _usage(value, output_token_bound=output_token_bound)
     if previous is not None:
         if (value["prompt_tokens"] != previous["prompt_tokens"]
                 or value["completion_tokens"] < previous["completion_tokens"]
@@ -223,9 +229,16 @@ class _WorkerLedger:
     """Private pure-accounting implementation; never grants provider authority."""
     def __init__(self, path, *, arm, approved_config_digest, approval_ref, pricing_provenance_sha256,
                  prior_charged_nano_usd=None, predecessor_sha256=None,
-                 arm_budget_nano_usd=ARM_BUDGET, phase_limit_nano_usd=None,wire_evidence_sink=None):
+                 arm_budget_nano_usd=ARM_BUDGET, phase_limit_nano_usd=None,wire_evidence_sink=None,
+                 output_token_bound=OUTPUT_BOUND):
         if wire_evidence_sink is not None and not callable(wire_evidence_sink):raise ValueError('trusted wire evidence sink required')
         self.wire_evidence_sink=wire_evidence_sink
+        if (type(output_token_bound) is not int or output_token_bound not in (OUTPUT_BOUND, STAGED_OUTPUT_BOUND)
+                or (output_token_bound == STAGED_OUTPUT_BOUND) != (arm_budget_nano_usd == STAGED_ARM_BUDGET)):
+            raise ValueError("exact output and worker budget profile required")
+        self.output_token_bound = output_token_bound
+        self.max_response_bytes = STAGED_RESPONSE_BYTES if output_token_bound == STAGED_OUTPUT_BOUND else MAX_BYTES
+        self.reservation = INPUT_BOUND * INPUT_RATE + output_token_bound * OUTPUT_RATE
         if arm not in ARMS or pricing_provenance_sha256 != PRICING_SHA:
             raise ValueError("worker arm/pricing identity refused")
         _digest(approved_config_digest)
@@ -244,7 +257,7 @@ class _WorkerLedger:
         info = path.stat()
         if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_uid != os.geteuid()
                 or stat.S_IMODE(info.st_mode) & 0o077): raise ValueError("worker ledger private file required")
-        if type(arm_budget_nano_usd) is not int or arm_budget_nano_usd not in (375000000,350000000,410081800):
+        if type(arm_budget_nano_usd) is not int or arm_budget_nano_usd not in (375000000,350000000,410081800,STAGED_ARM_BUDGET):
             raise ValueError("exact legacy or successor worker split required")
         self.arm_budget = arm_budget_nano_usd
         prior = {a: 0 for a in ARMS} if prior_charged_nano_usd is None else prior_charged_nano_usd
@@ -262,11 +275,13 @@ class _WorkerLedger:
             phase != 400000000 or prior != {"baseline":10081800,"pex":9382800}
         ):
             raise ValueError("exact pending USD2 predecessor and equal fresh phase required")
+        if self.arm_budget == STAGED_ARM_BUDGET and (phase != STAGED_ARM_BUDGET or any(prior.values())):
+            raise ValueError("exact fresh staged output profile required")
         self.phase_limit = phase
         self.predecessor_identity = (json.dumps(self.prior,sort_keys=True),predecessor_sha256,phase)
         self.arm = arm
         self.identity = (approved_config_digest, approval_ref, PRICING_SHA, ENDPOINT, MODEL,
-                         INPUT_BOUND, OUTPUT_BOUND, INPUT_RATE, OUTPUT_RATE, self.arm_budget, MAX_ATTEMPTS)
+                         INPUT_BOUND, self.output_token_bound, INPUT_RATE, OUTPUT_RATE, self.arm_budget, MAX_ATTEMPTS)
         self._lock = threading.RLock()
         self.db = sqlite3.connect(path, timeout=2, isolation_level=None, check_same_thread=False)
         self.db.execute("PRAGMA synchronous=FULL")
@@ -291,6 +306,10 @@ class _WorkerLedger:
             raise
 
     def _validate(self):
+        if (self.output_token_bound != self.identity[6] or self.arm_budget != self.identity[9]
+                or self.reservation != INPUT_BOUND*INPUT_RATE+self.output_token_bound*OUTPUT_RATE
+                or self.max_response_bytes != (STAGED_RESPONSE_BYTES if self.output_token_bound==STAGED_OUTPUT_BOUND else MAX_BYTES)):
+            raise ValueError("worker pricing/approval identity changed")
         if self.db.execute("SELECT * FROM config").fetchall() != [self.identity]:
             raise ValueError("stored worker config corrupt")
         if self.db.execute("SELECT * FROM predecessor").fetchall() != [self.predecessor_identity]:
@@ -299,7 +318,7 @@ class _WorkerLedger:
         for call, arm, request, reserve, charge, state, receipt in self.db.execute("SELECT * FROM calls"):
             if (type(call) is not str or not re.fullmatch(r"[A-Za-z0-9._:-]{1,128}", call)
                     or arm not in ARMS or _digest(request) != request
-                    or type(reserve) is not int or reserve != RESERVATION
+                    or type(reserve) is not int or reserve != self.reservation
                     or _integer(charge) > reserve
                     or state not in ("reserved_uncertain", "uncertain", "settled_raw_wire")):
                 raise ValueError("stored worker accounting corrupt")
@@ -318,7 +337,7 @@ class _WorkerLedger:
                     if type(u) is not dict or value.get("status") != 200:
                         raise ValueError("stored worker usage corrupt")
                     i,o,t=(_integer(u.get(k)) for k in ("input_tokens","output_tokens","total_tokens"))
-                    if i+o!=t or i>INPUT_BOUND or o>OUTPUT_BOUND or charge!=i*INPUT_RATE+o*OUTPUT_RATE:
+                    if i+o!=t or i>INPUT_BOUND or o>self.output_token_bound or charge!=i*INPUT_RATE+o*OUTPUT_RATE:
                         raise ValueError("stored worker usage charge corrupt")
             totals[arm] += charge; counts[arm] += 1
         if any(totals[a] > self.arm_budget or totals[a]-self.prior[a] > self.phase_limit or counts[a] > MAX_ATTEMPTS for a in ARMS):
@@ -329,22 +348,22 @@ class _WorkerLedger:
     def reserve(self, call_id, request_sha256, request_body):
         if type(call_id) is not str or not re.fullmatch(r"[A-Za-z0-9._:-]{1,128}", call_id):
             raise ValueError("worker invocation id invalid")
-        _digest(request_sha256); _request(request_body, request_sha256)
+        _digest(request_sha256); _request(request_body, request_sha256, output_token_bound=self.output_token_bound)
         self.db.execute("BEGIN IMMEDIATE")
         try:
             totals, counts = self._validate()
             if counts[self.arm] >= MAX_ATTEMPTS: raise WorkerBudgetExhausted("worker_attempt_cap_refused")
-            if totals[self.arm] + RESERVATION > self.arm_budget or totals[self.arm]-self.prior[self.arm]+RESERVATION > self.phase_limit: raise WorkerBudgetExhausted("worker_budget_reservation_refused")
-            self.db.execute("INSERT INTO calls VALUES (?,?,?,?,?,?,?)", (call_id,self.arm,request_sha256,RESERVATION,RESERVATION,"reserved_uncertain",None))
+            if totals[self.arm] + self.reservation > self.arm_budget or totals[self.arm]-self.prior[self.arm]+self.reservation > self.phase_limit: raise WorkerBudgetExhausted("worker_budget_reservation_refused")
+            self.db.execute("INSERT INTO calls VALUES (?,?,?,?,?,?,?)", (call_id,self.arm,request_sha256,self.reservation,self.reservation,"reserved_uncertain",None))
             self.db.execute("COMMIT")
         except BaseException:
             self.db.execute("ROLLBACK"); raise
-        return {"reserved_nano_usd": RESERVATION, "arm": self.arm, "call_id": call_id}
+        return {"reserved_nano_usd": self.reservation, "arm": self.arm, "call_id": call_id}
 
     @_locked
     def settle_raw(self, call_id, request_sha256, status, content_type, rawbytes):
         _digest(request_sha256)
-        if type(rawbytes) is not bytes or len(rawbytes)>MAX_BYTES:
+        if type(rawbytes) is not bytes or len(rawbytes)>self.max_response_bytes:
             # Oversized/unavailable response never refunds pending reservation.
             raise ValueError("bounded raw wire bytes required")
         self.db.execute("BEGIN IMMEDIATE")
@@ -353,10 +372,10 @@ class _WorkerLedger:
             row=self.db.execute("SELECT arm,request_sha,state FROM calls WHERE id=?",(call_id,)).fetchone()
             if row!=(self.arm,request_sha256,"reserved_uncertain"):
                 raise ValueError("worker reservation missing/settled/identity mismatch")
-            state,charge,usage="uncertain",RESERVATION,None
+            state,charge,usage="uncertain",self.reservation,None
             validation_code='validated_complete_wire'
             try:
-                usage=_wire_usage(status,content_type,rawbytes)
+                usage=_wire_usage(status,content_type,rawbytes,output_token_bound=self.output_token_bound)
             except (ValueError,TypeError,KeyError,UnicodeError) as error:
                 validation_code=wire_usage_reason(error)
             else:
@@ -415,6 +434,8 @@ class WorkerFunding(_WorkerLedger):
         expected = (APPROVED_SUCCESSOR_WORKER_REF
                     if kwargs.get("arm_budget_nano_usd") == 410081800
                     else APPROVED_WORKER_REF)
-        if expected is None or approval_ref != expected:
+        if (expected is None or approval_ref != expected
+                or kwargs.get("output_token_bound", OUTPUT_BOUND) != OUTPUT_BOUND
+                or kwargs.get("arm_budget_nano_usd") == STAGED_ARM_BUDGET):
             raise PermissionError("optional_paid_worker_not_authorized")
         super().__init__(*args, approval_ref=approval_ref, **kwargs)

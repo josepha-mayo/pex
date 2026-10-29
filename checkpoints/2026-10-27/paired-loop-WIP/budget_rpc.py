@@ -20,6 +20,11 @@ class FundingChannel(dict):
 
 @contextlib.contextmanager
 def serve_budget(ledger):
+    raw_bound=getattr(ledger,'max_response_bytes',MAX_RAW)
+    if (type(raw_bound)is not int or raw_bound not in (MAX_RAW,8*1024*1024)
+            or (raw_bound==8*1024*1024) != (getattr(ledger,'output_token_bound',4096)==16384)):
+        raise ValueError('fixed_funding_response_bound_required')
+    request_bound=MAX_REQUEST if raw_bound==MAX_RAW else 12*1024*1024
     channel=FundingChannel()
     token=secrets.token_hex(32)
     lock=threading.Lock()
@@ -32,7 +37,7 @@ def serve_budget(ledger):
                 if self.path!='/funding' or not hmac.compare_digest(self.headers.get('Authorization',''),'Bearer '+token):
                     raise PermissionError('private_guard_only')
                 length=int(self.headers.get('Content-Length','0'))
-                if not 0<length<=MAX_REQUEST: raise ValueError('request_bound')
+                if not 0<length<=request_bound: raise ValueError('request_bound')
                 obj=json.loads(self.rfile.read(length))
                 if type(obj) is not dict: raise ValueError('request_shape')
                 with lock:
@@ -46,7 +51,7 @@ def serve_budget(ledger):
                     elif obj.get('operation')=='settle' and set(obj)==common|{'status','content_type','raw_base64'}:
                         if type(obj['raw_base64']) is not str: raise ValueError('raw_shape')
                         raw=base64.b64decode(obj['raw_base64'],validate=True)
-                        if len(raw)>MAX_RAW: raise ValueError('raw_bound')
+                        if len(raw)>raw_bound: raise ValueError('raw_bound')
                         result=ledger.settle_raw(obj['call_id'],obj['request_sha256'],obj['status'],obj['content_type'],raw)
                     else: raise ValueError('operation_denied')
                 reply={'ok':True,'result':result}

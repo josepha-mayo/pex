@@ -4,6 +4,8 @@ import { Plugin } from '@opencode/plugin';
 import { readFileSync } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
 const cfg = CONFIGURATION;
+const maxResponseBytes=cfg.outputPerCall===16384?8388608:2097152;
+if (![4096,16384].includes(cfg.outputPerCall) || cfg.maxResponseBytes!==undefined && cfg.maxResponseBytes!==maxResponseBytes) throw new Error('FIXED_OUTPUT_PROFILE_REQUIRED');
 let pending=null;
 async function funding(payload){
  const r=await fetch(cfg.funding.url,{method:'POST',headers:{'Authorization':'Bearer '+cfg.funding.token,'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -58,7 +60,7 @@ export default Plugin.define({id:'pex-remote-only-pilot',async setup(ctx) {
     const reader=e.response.clone().body?.getReader();if(!reader)return;
     const chunks=[];let size=0;
     try{
-      for(;;){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>2097152){await reader.cancel();return;}chunks.push(Buffer.from(value));}
+      for(;;){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>maxResponseBytes){await reader.cancel();return;}chunks.push(Buffer.from(value));}
       await funding({operation:'settle',...receipt,status:e.response.status,content_type:e.response.headers.get('content-type')||'',raw_base64:Buffer.concat(chunks).toString('base64')});
     }catch{throw new Error('WORKER_USAGE_UNCERTAIN');}
   });

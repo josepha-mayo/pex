@@ -44,7 +44,7 @@ def funding_usage_delta(before,after):
 
 class NebiusCLIWorker:
     def __init__(self, *, remotes, private_root, binary, modules, key_path, pool,
-                 max_calls=12, output_per_call=4096, activate=False, funding=None, authored=False,
+                 max_calls=12, output_per_call=None, activate=False, funding=None, authored=False,
                  public_check_command="python -m unittest discover -s tests -p test_smoke.py", task_profile="legacy-task05", staged_binding=None):
         if task_profile not in ("legacy-task05","stockroom-v1"):raise ValueError("frozen_task_profile_required")
         if task_profile=="stockroom-v1" and public_check_command!="python -m unittest discover -s tests -v":raise ValueError("stockroom_public_check_required")
@@ -60,6 +60,10 @@ class NebiusCLIWorker:
                 raise PermissionError('closed_staged_worker_exact_route_required')
             from staged_worker_admission import validate_worker
             cfg=validate_worker(staged_binding,funding,private_root=private_root,binary=binary,modules=modules,key_path=key_path)
+            expected_output=cfg['profile']['worker_output_per_call']
+            if output_per_call is None:output_per_call=expected_output
+            if type(output_per_call)is not int or output_per_call!=expected_output:
+                raise PermissionError('frozen_staged_worker_output_required')
             from staged_worker_admission import prepare_child_environment
             # Same production projection is checked locally BEFORE any VM.
             for arm in ('baseline','pex'):prepare_child_environment(cfg,Path(private_root)/arm)
@@ -67,6 +71,12 @@ class NebiusCLIWorker:
             if not BASE.startswith('http://127.0.0.1:'): raise PermissionError('authored_loopback_only')
         elif any(type(v) is not WorkerFunding for v in funding.values()):
             raise PermissionError('independently_admitted_worker_funding_required')
+        if output_per_call is None:output_per_call=4096
+        if (type(output_per_call)is not int or output_per_call not in (4096,16384)
+                or any(getattr(v,'output_token_bound',4096)!=output_per_call for v in funding.values())):
+            raise ValueError('worker_output_funding_profile_mismatch')
+        if output_per_call==16384 and staged_binding is None and not authored:
+            raise PermissionError('new_output_profile_requires_closed_staged_binding')
         self.funding=funding
         self.binary=Path(binary).resolve();self.modules=Path(modules).resolve()
         if hashlib.sha256(self.binary.read_bytes()).hexdigest()!=PIN: raise ValueError('CLI_identity_changed')
@@ -75,7 +85,7 @@ class NebiusCLIWorker:
         if key_path.is_symlink() or key_path.stat().st_mode&0o077: raise ValueError('private_key_permissions')
         key=key_path.read_text().strip()
         if not key: raise ValueError('empty_key')
-        if set(remotes)!={'baseline','pex'} or max_calls!=12 or output_per_call!=4096: raise ValueError('fixed_pilot_envelope')
+        if set(remotes)!={'baseline','pex'} or max_calls!=12: raise ValueError('fixed_pilot_envelope')
         self.pool=pool;self.remotes=remotes;self.states={}
         self.root=Path(private_root);self.root.mkdir(mode=0o700,parents=False,exist_ok=False)
         self.max_calls=max_calls;self.output_per_call=output_per_call
@@ -92,7 +102,8 @@ class NebiusCLIWorker:
         cm=serve_remote(remote,profile/'rpc');sock=cm.__enter__()
         budget_cm=serve_budget(self.funding[condition]);funding_rpc=budget_cm.__enter__()
         cfg={'baseURL':BASE,'endpoint':BASE+'/chat/completions','model':MODEL,'funding':funding_rpc,
-             'maxCalls':self.max_calls,'outputPerCall':self.output_per_call,'keyPath':self.key_path}
+             'maxCalls':self.max_calls,'outputPerCall':self.output_per_call,
+             'maxResponseBytes':getattr(self.funding[condition],'max_response_bytes',2*1024*1024),'keyPath':self.key_path}
         guard=Path(__file__).with_name('nebius_guard.ts').read_text().replace('CONFIGURATION',json.dumps(cfg))
         (case/'plugins/guard/index.ts').write_text(guard)
         conf={'update':'disable','warming':False,'share':'disabled','model':'nebius/'+MODEL,'default_agent':'paired','plugins':['./plugins/guard'],
