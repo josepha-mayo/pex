@@ -19,6 +19,7 @@ class FakeFiles:
     def __init__(self):self.writes={};self.dirs=[]
     def make_dir(self,path,**kwargs):self.dirs.append(path)
     def write(self,path,data,**kwargs):self.writes[path]=data
+    def write_files(self,files,**kwargs):self.writes.update(files)
 class FakeRemote:
     def __init__(self,files=None):
         self.data=files or {n:(PACKAGE/'public'/n).read_bytes() for n in FILES}
@@ -27,6 +28,14 @@ class FakeRemote:
         self.grade_exit=0;self.public_exit=0;self.export_exit=0
     def run(self,command,timeout=None):
         self.calls.append(command)
+        if 'pex.stockroom-upload-verified.v1' in command:
+            import shlex
+            spec=json.loads(shlex.split(command)[-1])
+            assert all(hashlib.sha256(self._sandbox.files.writes[spec['root']+'/'+n]).hexdigest()==h for n,h in spec['files'].items())
+            receipt='PEX_SNAPSHOT_VERIFIED:'+hashlib.sha256((json.dumps(spec['files'],sort_keys=True,separators=(',',':'))+'\n').encode()).hexdigest()+'\n'
+            if spec['mode']=='protected':return dict(exit_code=self.grade_exit,stdout=receipt+json.dumps(self.grade),stderr='Authored hidden result')
+            assert all(n.startswith('candidate/') for n in spec['files'])
+            return dict(exit_code=self.public_exit,stdout=receipt,stderr='Authored public result')
         if command.startswith('python3 -I -B -c '):
             return dict(exit_code=self.export_exit,stderr='',stdout=json.dumps({'schema':'pex.stockroom-export.v1','files':{n:base64.b64encode(b).decode() for n,b in self.data.items()}}))
         if 'run_grade.py' in command:return dict(exit_code=self.grade_exit,stdout=json.dumps(self.grade),stderr='Authored hidden result')
@@ -109,7 +118,7 @@ class GradeTests(unittest.TestCase):
         self.assertTrue(any(n.endswith('/candidate/tests/extra.py') for n in uploaded))
         self.assertTrue(any(n.endswith('/test_acceptance.py') for n in uploaded))
         self.assertFalse(any('/reference/' in n for n in uploaded))
-        self.assertLess(next(i for i,c in enumerate(r.calls) if 'discover' in c),next(i for i,c in enumerate(r.calls) if 'run_grade.py' in c))
+        self.assertLess(next(i for i,c in enumerate(r.calls) if 'discover' in c),next(i for i,c in enumerate(r.calls) if '\"mode\":\"protected\"' in c))
         with self.assertRaises(ValueError):self.grade(g)
     def test_protected_contract_change_prevents_hidden_upload(self):
         for name in ('TASK.md','tests/test_legacy.py','tests/test_v2_examples.py'):

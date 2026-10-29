@@ -36,6 +36,7 @@ SOURCE_MODULES=('staged_admission','staged_accounting','staged_sdk_binding','sta
     'pex_supervisor.evidence_tools','pex_supervisor.evidence_observations')
 ADJACENT={'nebius_guard':('nebius_worker','nebius_guard.ts'),
     'staged_nebius_guard':('nebius_worker','staged_nebius_guard.ts'),
+    'grade_upload_verify':('stockroom_grade','grade_upload_verify.py'),
     'export_candidate':('stockroom_grade','export_candidate.py'),'public_diff':('stockroom_request','public_diff.py')}
 _SEAL=object()
 

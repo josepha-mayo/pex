@@ -17,6 +17,7 @@ class RemoteGrade:
         self.public={n:data['public/'+n] for n in FILES}
         self.protected={Path(n).name:data[n] for n in PROTECTED}
         self.exporter=(Path(__file__).parent/'export_candidate.py').read_text()
+        self.verifier=(Path(__file__).parent/'grade_upload_verify.py').read_text()
         self.used=set()
     async def grade(self,arm):
         c=arm['condition']
@@ -53,16 +54,24 @@ class RemoteGrade:
                 return report
             base='/tmp/pex-stockroom-evaluation-'+uuid.uuid4().hex
             uploads={'candidate/'+n:b for n,b in actual.items()}
-            # Create an independent snapshot tree; no source imports on controller.
-            for directory in sorted({str(PurePosixPath(n).parent) for n in uploads}):
-                remote._sandbox.files.make_dir(base+'/'+directory,user='user',request_timeout=15)
-            for name,b in uploads.items():remote._sandbox.files.write(base+'/'+name,b,user='user',request_timeout=15)
-            public=remote.run('cd '+shlex.quote(base+'/candidate')+' && python3 -B -m unittest discover -s tests -v',timeout=15)
+            # Capture bytes once; the SDK serializes each bounded batch in one
+            # request. One remote stdlib verifier precedes each unchanged test
+            # command. No candidate code/import executes on this controller.
+            def verify_command(mode,values):
+                spec={'root':base,'mode':mode,'files':{n:digest(b) for n,b in values.items()}}
+                return 'python3 -I -B -c '+shlex.quote(self.verifier)+' '+shlex.quote(json.dumps(spec,sort_keys=True,separators=(',',':')))
+            def verified_result(result,values):
+                prefix='PEX_SNAPSHOT_VERIFIED:'+digest(encoded({n:digest(b) for n,b in values.items()}))+'\n'
+                if not result['stdout'].startswith(prefix):raise ValueError('snapshot_readback_unproven')
+                return {**result,'stdout':result['stdout'][len(prefix):]}
+            if self.stopped(condition) is not True or self.revoked(condition) is not True:raise ValueError('revocation_required_before_snapshot_upload')
+            remote._sandbox.files.write_files({base+'/'+n:b for n,b in uploads.items()},user='user',request_timeout=15)
+            public=verified_result(remote.run(verify_command('public',uploads),timeout=15),uploads)
             report['public_tests']={'stdout':public['stdout'],'stderr':public['stderr'],'exit_code':public['exit_code']}
             if public['exit_code'] not in (0,1):raise ValueError('public_test_infrastructure_terminal')
             if self.stopped(condition) is not True or self.revoked(condition) is not True:raise ValueError('revocation_required_before_hidden_upload')
-            for name,b in self.protected.items():remote._sandbox.files.write(base+'/'+name,b,user='user',request_timeout=15)
-            result=remote.run('cd '+shlex.quote(base)+' && python3 -I -B run_grade.py candidate',timeout=30)
+            remote._sandbox.files.write_files({base+'/'+n:b for n,b in self.protected.items()},user='user',request_timeout=15)
+            result=verified_result(remote.run(verify_command('protected',{**uploads,**self.protected}),timeout=30),{**uploads,**self.protected})
             report.update(stdout=result['stdout'],stderr=result['stderr'],returncode=result['exit_code'],uploaded_sha256={**{n:digest(b) for n,b in uploads.items()},**{n:digest(b) for n,b in self.protected.items()}})
             tests=json.loads(result['stdout'])
             required={'schema','checks','passed','failed','failure_instances','complete','all_pass'}

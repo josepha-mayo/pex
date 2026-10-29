@@ -64,21 +64,21 @@ async def test_exact_builder_runner_CLI_SDK_public_and_protected_boundaries(fund
                     if not isinstance(raw,bytes):raw=b''.join([bytes(chunk) async for chunk in raw])
                     assert len(raw)<262144
                     message=BytesParser(policy=default).parsebytes(('Content-Type: '+req.headers['content-type']+'\r\n\r\n').encode()+raw)
-                    parts=list(message.iter_parts());assert len(parts) in (1,10)
+                    parts=list(message.iter_parts());assert 1<=len(parts)<=128
                     results=[]
                     for part in parts:
                         name=part.get_filename();assert name
                         if len(parts)==1:assert name==query['path'][0]
                         data=part.get_payload(decode=True);files[(arm,name)]=data;uploaded.append((arm,name,data))
                         if Path(name).name in protected:
-                            assert len(parts)==1
+                            assert len(parts)==2
                             state=composition.worker.worker.states[arm]
                             assert state['stopped'] and state['mcp_revoked']
                             assert accounting.workers[arm].usage_snapshot()['calls']==12
                             assert not name.startswith(ROOT+'/')
                         else:assert Path(name).name not in protected
                         results.append({'name':Path(name).name,'path':name,'type':'file'})
-                    if len(parts)==10:assert {p.get_filename() for p in parts}=={ROOT+'/'+n for n in FILES}
+                    if any(p.get_filename().startswith(ROOT+'/') for p in parts):assert {p.get_filename() for p in parts}=={ROOT+'/'+n for n in FILES}
                     return reply(results)
                 if path.endswith('/Start'):
                     from protobuf import Oneof
@@ -98,11 +98,22 @@ async def test_exact_builder_runner_CLI_SDK_public_and_protected_boundaries(fund
                     elif 'pex.stockroom-export.v1' in command:
                         output=json.dumps({'schema':'pex.stockroom-export.v1','files':{
                             n:base64.b64encode(files[(arm,ROOT+'/'+n)]).decode() for n in FILES}})
-                    elif command.endswith('python3 -I -B run_grade.py candidate'):
+                    elif 'pex.stockroom-upload-verified.v1' in command and json.loads(shlex.split(command)[-1])['mode']=='protected':
                         state=composition.worker.worker.states[arm]
                         assert state['stopped'] and state['mcp_revoked']
+                        spec=json.loads(shlex.split(command)[-1])
+                        import hashlib
+                        assert all(hashlib.sha256(files[(arm,spec['root']+'/'+n)]).hexdigest()==h for n,h in spec['files'].items())
                         output=json.dumps({'schema':'stockroom.grade.v1','checks':17,'passed':0,'failed':17,
                                            'failure_instances':17,'complete':True,'all_pass':False});code=1
+                    if 'pex.stockroom-upload-verified.v1' in command:
+                        import hashlib
+                        spec=json.loads(shlex.split(command)[-1])
+                        assert all(hashlib.sha256(files[(arm,spec['root']+'/'+n)]).hexdigest()==h for n,h in spec['files'].items())
+                        if spec['mode']=='public':
+                            assert not any(n in spec['files'] for n in ('run_grade.py','test_acceptance.py'))
+                        receipt='PEX_SNAPSHOT_VERIFIED:'+hashlib.sha256((json.dumps(spec['files'],sort_keys=True,separators=(',',':'))+'\n').encode()).hexdigest()+'\n'
+                        output=receipt+output
                     values=[pb.StartResponse(event=pb.ProcessEvent(event=Oneof('start',pb.ProcessEvent.StartEvent(pid=123)))),
                         pb.StartResponse(event=pb.ProcessEvent(event=Oneof('data',pb.ProcessEvent.DataEvent(output=Oneof('stdout',output.encode()))))),
                         pb.StartResponse(event=pb.ProcessEvent(event=Oneof('end',pb.ProcessEvent.EndEvent(exit_code=code,exited=True))))]

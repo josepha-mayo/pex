@@ -10,6 +10,8 @@ import concurrent.futures
 from datetime import datetime
 import inspect
 import math
+import re
+from pathlib import PurePosixPath
 import shlex
 import threading
 import time
@@ -44,7 +46,7 @@ class BoundedAsyncRemote:
         self.loop=asyncio.get_running_loop();self.owner_thread=threading.get_ident()
         self.deadline=None;self.poisoned=False;self.closed=False;self.active=set()
         self.cancellation_unconfirmed=False;self.cleanup_evidence={}
-        self._sandbox=SimpleNamespace(files=SimpleNamespace(make_dir=self._make_dir,write=self._write_absolute))
+        self._sandbox=SimpleNamespace(files=SimpleNamespace(make_dir=self._make_dir,write=self._write_absolute,write_files=self._write_absolute_files))
 
     def set_scope_deadline(self, deadline):
         if self.closed or self.poisoned or self.active or self.deadline is not None:
@@ -160,21 +162,31 @@ class BoundedAsyncRemote:
         if user!='user': raise ValueError('unprivileged_user_required')
         return self._call(lambda:self._sdk.files.make_dir(name,user=user,request_timeout=min(15,self.remaining())))
 
-    def write_files(self, files):
-        # Actual SDK batch serializer, NOT repeated write() calls. Public staging
-        # supplies the exact allowlist; this bridge additionally bounds paths,
-        # entry types and the complete materialized multipart payload.
-        if type(files) is not dict or not 1<=len(files)<=10:
-            raise ValueError('bounded_batch_required')
-        entries=[];total=0
-        for relative,content in files.items():
-            name=path(relative)
-            if type(content) is not bytes or len(content)>MAX_BYTES:
-                raise ValueError('bounded_batch_bytes_required')
-            total+=len(content);entries.append({'path':name,'data':content})
-        if total>MAX_BYTES:raise ValueError('batch_size_bound')
+    def _batch(self,entries):
+        if any(type(e['data']) is not bytes or len(e['data'])>MAX_BYTES for e in entries):
+            raise ValueError('bounded_batch_bytes_required')
+        if sum(len(e['data']) for e in entries)>MAX_BYTES:raise ValueError('batch_size_bound')
         return self._call(lambda:self._sdk.files.write_files(entries,user='user',
             request_timeout=min(15,self.remaining())))
+
+    def _write_absolute_files(self,files,*,user='user',request_timeout=15):
+        # Private post-stop grader seam, never exposed by worker MCP tools.
+        if user!='user' or type(files)is not dict or not 1<=len(files)<=130:
+            raise ValueError('bounded_evaluation_batch_required')
+        entries=[];roots=set()
+        for name,content in files.items():
+            if (type(name)is not str or '\0' in name or str(PurePosixPath(name))!=name or '..' in PurePosixPath(name).parts
+                    or not re.fullmatch(r'/tmp/pex-stockroom-evaluation-[0-9a-f]{32}/(?:candidate/.+|run_grade\.py|test_acceptance\.py)',name)):
+                raise ValueError('private_evaluation_snapshot_path_required')
+            roots.add(name.split('/')[2]);entries.append({'path':name,'data':content})
+        if len(roots)!=1:raise ValueError('one_evaluation_snapshot_required')
+        return self._batch(entries)
+
+    def write_files(self, files):
+        # Actual SDK batch serializer, NOT repeated write() calls.
+        if type(files) is not dict or not 1<=len(files)<=10:
+            raise ValueError('bounded_batch_required')
+        return self._batch([{'path':path(relative),'data':content} for relative,content in files.items()])
 
     def write(self, relative, content):
         self._write_absolute(path(relative),content)
