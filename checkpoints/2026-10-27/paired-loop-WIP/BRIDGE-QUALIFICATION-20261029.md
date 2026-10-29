@@ -200,3 +200,30 @@ call, pricing change, parser relaxation, old-row reconciliation or model fallbac
 was performed by this diagnostic change. In particular, old10 HTTP200 response
 hashes cannot reconstruct their missing raw bodies; client-derived token values
 remain insufficient for exact retrospective settlement.
+
+## Inactive failure-safe receipt owner v2
+
+The separate stdlib-only receipt_diagnostic_owner module has no transport, key
+read, environment switch or live entry point. A separately admitted caller must
+supply all operations. It publishes exact request bytes and fsynced allowlisted
+phases before ledger construction/reservation, key metadata/read/format, signal
+setup, client construction, wire entry and settlement. A bounded complete or
+partial response body is published before strict parsing. Pre-cleanup and final
+terminal records preserve actual exceptions, ledger state and cleanup failures;
+no arbitrary exception string or credential is serialized. Original diagnostic01
+pinned source and ledgers were not modified or replayed.
+
+19 focused authored zero-network regressions passed, including all pre-wire
+exception sites, reserve/settle/response/cleanup failures, KeyboardInterrupt,
+phase-publication failure, exact capture-before-parse and refusal under the current
+remaining cumulative ceiling. No new spending authority, cap increase, automatic
+refund, parser relaxation or inference efficacy is supplied by this module.
+Storage failure or OS termination can still prevent final persistence; constructor
+side effects without a returned handle remain unknown. Missing records are not
+proof of global process termination or of an unexecuted provider request.
+
+A separate120-second zero-network detached-child fixture returned its parent,
+but produced no child start, heartbeat or exit evidence. Detached survival is
+therefore NOT qualified. The absence does not establish why the child was not
+observed or prove a platform kill. It is not used to authorize a paid detached
+launch, copy any proxy/CA settings or change the ordinary route.
