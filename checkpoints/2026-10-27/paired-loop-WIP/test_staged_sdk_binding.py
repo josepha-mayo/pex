@@ -37,7 +37,7 @@ def bound(candidate,monkeypatch,tmp_path,request):
     admitted=a.load(grant)
     import e2b.api.client_async as c
     for n in ('_transports','_pools','_httpx_transports'):monkeypatch.setattr(c,n,{})
-    compute=ComputeBudget(tmp_path/'compute.sqlite',prior_upper_bound_nano_usd=100,evidence_sha256=cfg['predecessor']['sha256'])
+    compute=ComputeBudget(tmp_path/'compute.sqlite',prior_upper_bound_nano_usd=100,evidence_sha256=cfg['predecessor']['sha256'],cap_nano_usd=cfg['profile']['compute_cap'])
     wire=[];pools=[];behavior={'mode':'normal'}
     class MockPool:
         def __init__(self,**opts):

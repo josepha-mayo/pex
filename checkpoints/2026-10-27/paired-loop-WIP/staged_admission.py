@@ -17,14 +17,16 @@ from urllib.parse import urlsplit
 from staged_envelope import PHASES, VM_SECONDS, reservation_envelope
 
 PROVIDER_CAP = 2_000_000_000
-COMPUTE_CAP = 100_000_000
+COMPUTE_CAP = 120_000_000
 WORKER_MODEL = 'deepseek-ai/DeepSeek-V4.1-Flash-1017'
 SUPERVISOR_MODEL = 'nvidia/nemotron-3-super-120b-a12b'
 REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',
     'diagnostic1423', 'retry01', 'shape02', 'cache03', 'nested04', 'nullable05',
     'null_function06', 'pair03_workers', 'pair03_supervisor', 'pair03_compute',
     'denied_pair02_workers', 'denied_pair02_supervisor', 'denied_pair02_compute',
-    'denied_pair02_authoritative_reconciliation'))
+    'denied_pair02_authoritative_reconciliation',
+    'failed_staged03_workers','failed_staged03_supervisor','failed_staged03_compute',
+    'failed_staged03_terminal','failed_staged03_report'))
 _SEAL = object()
 
 class AdmissionRefused(PermissionError): pass

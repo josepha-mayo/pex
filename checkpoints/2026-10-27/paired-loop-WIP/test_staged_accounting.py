@@ -19,7 +19,7 @@ def funded(bound,monkeypatch):
     # New compute object must carry the exact new synthetic predecessor pin.
     from cumulative_compute import ComputeBudget
     compute.close();Path(p.parent/'compute.sqlite').unlink()
-    compute=ComputeBudget(p.parent/'compute.sqlite',prior_upper_bound_nano_usd=100,evidence_sha256=cfg['predecessor']['sha256'])
+    compute=ComputeBudget(p.parent/'compute.sqlite',prior_upper_bound_nano_usd=100,evidence_sha256=cfg['predecessor']['sha256'],cap_nano_usd=cfg['profile']['compute_cap'])
     raw=canonical(cfg);Path(scope.admitted.grant.config_path).write_bytes(raw)
     from dataclasses import replace
     grant=replace(scope.admitted.grant,config_sha256=sha(raw),profile_sha256=sha(canonical(cfg['profile'])),predecessor_sha256=cfg['predecessor']['sha256'])

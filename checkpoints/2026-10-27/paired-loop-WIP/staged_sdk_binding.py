@@ -51,7 +51,8 @@ class SDKTransportBinding:
         if self.cfg['sdk_sources'] != installed_source_pins():
             raise AdmissionRefused('installed_SDK_source_identity_changed')
         prior=json.loads(read_pin(self.cfg['predecessor'],private=True))
-        if type(compute) is not ComputeBudget or compute.expected != (prior['compute_nano_usd'],self.cfg['predecessor']['sha256']):
+        if (type(compute) is not ComputeBudget or compute.expected != (prior['compute_nano_usd'],self.cfg['predecessor']['sha256'])
+                or compute.cap != self.cfg['profile']['compute_cap']):
             raise AdmissionRefused('pinned_cumulative_compute_ledger_required')
         self.compute=compute;self.active=False;self.cleanup_deadline=None
         self.creates=set();self.owned=set();self.owned_by_arm={};self.stopped=set();self.kill_attempted=set();self.uncertain=False;self.pools={}
