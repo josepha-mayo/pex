@@ -72,3 +72,35 @@ async def test_changed_deadline_fails_after_retaining_owned_remote_for_cleanup(t
     with pytest.raises(ProtocolInconclusive):await w.prepare(a,deadline=time.monotonic()+330)
     # Even a prepare failure leaves the owned object available for release.
     await w.release(a);assert w.remotes['pex'].closed
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('enabled,remaining,status,expected',[(False,50,'graded_with_limits',False),(True,50,'graded_with_limits',True),(True,20,'graded_with_limits',False),(True,50,'inconclusive',False)])
+async def test_optional_phase0_uses_only_original_grade_window(enabled,remaining,status,expected):
+    remote=Remote(200);clock=[100]
+    worker=SimpleNamespace(clock=lambda:clock[0],deadlines={'pex':200},remotes={'pex':remote})
+    class Grade:
+        def __init__(self):self.calls=[]
+        async def grade(self,arm):
+            self.calls.append('final');clock[0]=160-remaining
+            return {'status':status,'summary':{'passed':40}}
+        async def grade_phase0(self,arm):
+            self.calls.append('phase0');assert remote.scope==160
+            return {'status':'graded_with_limits','summary':{'passed':30}}
+    impl=Grade();g=StagedGrade(impl,worker,grade_phase0_after_final=enabled)
+    g.reserve_wall({'condition':'pex'},deadline=160)
+    result=await g.grade({'condition':'pex'})
+    assert impl.calls==(['final','phase0'] if expected else ['final'])
+    assert result['summary']=={'passed':40};assert remote.scope is None
+    if expected:assert result['pre_intervention_grade']['summary']['passed']==30
+    elif enabled:assert result['pre_intervention_grade']['status']=='not_run'
+
+@pytest.mark.asyncio
+async def test_phase0_error_does_not_replace_final_grade():
+    remote=Remote(200);worker=SimpleNamespace(clock=lambda:100,deadlines={'pex':200},remotes={'pex':remote})
+    class Grade:
+        async def grade(self,a):return {'status':'graded_with_limits','summary':{'passed':40}}
+        async def grade_phase0(self,a):raise ValueError('authored invalid archive')
+    g=StagedGrade(Grade(),worker,grade_phase0_after_final=True);g.reserve_wall({'condition':'pex'},deadline=160)
+    result=await g.grade({'condition':'pex'})
+    assert result['summary']=={'passed':40};assert result['pre_intervention_grade']['status']=='inconclusive'
+    assert remote.scope is None

@@ -135,7 +135,10 @@ class StagedWorker:
 
 class StagedGrade:
     """Same post-stop protected grader, with the remaining VM wall deadline."""
-    def __init__(self, grade, worker): self.grade_impl=grade;self.worker=worker;self.wall_deadlines={}
+    def __init__(self, grade, worker, *, grade_phase0_after_final=False):
+        if type(grade_phase0_after_final) is not bool:raise ValueError('boolean_phase0_profile_required')
+        self.grade_impl=grade;self.worker=worker;self.wall_deadlines={}
+        self.grade_phase0_after_final=grade_phase0_after_final
     def reserve_wall(self,arm,*,deadline):
         c=arm['condition'];now=self.worker.clock()
         if (c in self.wall_deadlines or type(deadline) not in (int,float)
@@ -147,5 +150,17 @@ class StagedGrade:
         deadline=self.wall_deadlines.pop(c,None)
         if deadline is None:raise ProtocolInconclusive('controller_grade_window_required')
         remote.set_scope_deadline(min(self.worker.deadlines[c],deadline))
-        try: return await self.grade_impl.grade(arm)
+        try:
+            final=await self.grade_impl.grade(arm)
+            if self.grade_phase0_after_final and c=='pex':
+                if final.get('status')!='graded_with_limits':
+                    final['pre_intervention_grade']={'status':'not_run','reason':'final_grade_inconclusive'}
+                elif min(self.worker.deadlines[c],deadline)-self.worker.clock()<30:
+                    final['pre_intervention_grade']={'status':'not_run','reason':'original_grade_wall_insufficient'}
+                else:
+                    try:
+                        final['pre_intervention_grade']=await self.grade_impl.grade_phase0(arm)
+                    except Exception as error:
+                        final['pre_intervention_grade']={'status':'inconclusive','error_type':type(error).__name__}
+            return final
         finally: await remote.end_scope()

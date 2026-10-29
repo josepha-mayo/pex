@@ -214,3 +214,33 @@ class FrozenTaskRegistryTests(unittest.TestCase):
         self.assertEqual(contract['task'],'stockroom_v2_replay_revision')
 
 if __name__=='__main__':unittest.main()
+
+class Phase0GradeTests(unittest.TestCase):
+    def make(self):
+        remote=FakeRemote();export={'schema':'pex.stockroom-export.v1','files':{n:base64.b64encode(b).decode() for n,b in remote.data.items()}}
+        export['files']['stockroom/service.py']=base64.b64encode(b'Authored earlier implementation').decode()
+        writes=[]
+        def sink(c,label,value):writes.append((c,label,value));return {'path':c+'-'+label,'sha256':'a'*64}
+        g=RemoteGrade({'pex':remote},PACKAGE,lambda c:True,revoked=lambda c:True,evidence_sink=sink,saved_phase0=lambda c:export)
+        return remote,g,export,writes
+    def test_phase0_requires_final_and_all_workers_revoked(self):
+        r,g,e,w=self.make()
+        with self.assertRaises(ValueError):asyncio.run(g.grade_phase0({'condition':'pex'}))
+        self.assertEqual(r.calls,[])
+        asyncio.run(g.grade({'condition':'pex'}));g.revoked=lambda c:c=='pex'
+        before=len(r.calls)
+        with self.assertRaises(ValueError):asyncio.run(g.grade_phase0({'condition':'pex'}))
+        self.assertEqual(len(r.calls),before)
+    def test_saved_bytes_graded_separately_without_new_export(self):
+        r,g,e,w=self.make();final=asyncio.run(g.grade({'condition':'pex'}));n=len(r.calls)
+        result=asyncio.run(g.grade_phase0({'condition':'pex'}))
+        self.assertEqual(result['snapshot_kind'],'pre_intervention_phase0');self.assertEqual(final['snapshot_kind'],'final')
+        self.assertNotEqual(result['candidate_sha256'],final['candidate_sha256'])
+        self.assertEqual(len(r.calls)-n,2) # public + protected only, no current export
+        self.assertEqual([x[:2] for x in w],[('pex','candidate-export'),('pex','grade-report'),('pex-phase0','candidate-export'),('pex-phase0','grade-report')])
+        with self.assertRaises(ValueError):asyncio.run(g.grade_phase0({'condition':'pex'}))
+    def test_invalid_saved_export_never_uploads(self):
+        r,g,e,w=self.make();asyncio.run(g.grade({'condition':'pex'}));n=len(r.calls);count=len(r._sandbox.files.writes)
+        e['files']['../protected.py']='eA=='
+        with self.assertRaises(ValueError):asyncio.run(g.grade_phase0({'condition':'pex'}))
+        self.assertEqual(len(r.calls),n);self.assertEqual(len(r._sandbox.files.writes),count)
