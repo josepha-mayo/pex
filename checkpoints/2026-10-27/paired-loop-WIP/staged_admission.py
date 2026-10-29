@@ -23,7 +23,7 @@ SUPERVISOR_MODEL = 'nvidia/nemotron-3-super-120b-a12b'
 APPROVED_STAGED_GRANT = None  # Fresh specific user grant still pending.
 REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',
     'diagnostic1423', 'retry01', 'shape02', 'cache03', 'nested04', 'nullable05',
-    'null_function06', 'pair03_workers', 'pair03_compute'))
+    'null_function06', 'pair03_workers', 'pair03_supervisor', 'pair03_compute'))
 _SEAL = object()
 
 class AdmissionRefused(PermissionError): pass
