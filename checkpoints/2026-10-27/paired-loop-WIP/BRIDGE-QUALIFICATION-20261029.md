@@ -134,3 +134,26 @@ The consumed09 gate is closed. No replacement, old-claim replay, alternate route
 or new resource was started. A stable native-terminal design must first qualify
 its own ordinary environment without importing another runtime's proxy values;
 that design is not yet an admitted run or an inference result.
+
+## Prospective private per-arm recovery evidence
+
+The closed composition now publishes exact validated candidate-export bytes and
+actual grade reports privately, including inconclusive reports without invented
+scores. Each arm's status, phase receipts, immutable selected wire-receipt rows
+and owned cleanup result are fsynced and atomically published before another
+sandbox prepare/create. These are explicitly partial-pair artifacts, never a
+standalone complete comparison or PEX-benefit assertion. They do not enter model
+context, change task/grade inputs, extend budgets, replay an arm, or alter routes.
+A publication failure prevents starting the next arm; owned cleanup still runs.
+
+62 focused authored tests plus10 subtests passed. The actual CLI/SDK-serializer
+mock-wire regression raises a simulated controller interruption at second create
+and proves the completed baseline's exact captured bytes, scripted grade,12 wire
+receipts and confirmed release were already persisted, despite no global report
+or PEX-arm artifact. Scripted scores are not live results. Separate atomic-write
+tests cover privacy, complete publication, nonreplacement and fsync failure.
+The one720-second stdlib continuity fixture also completed with72 durable progress
+records and a real exit marker, without network, keys or early PTY polling. That
+fixture does not establish the cause of09 termination, future network/SDK process
+stability, or any model/provider permission. No further paid run was started by
+this change; the source dispatch gate remains None.

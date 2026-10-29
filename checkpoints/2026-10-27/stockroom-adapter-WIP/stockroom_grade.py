@@ -11,7 +11,9 @@ from stockroom_task import TASK,FILES,PROTECTED,load_package,digest,encoded
 LIMITS=('same_vm_not_adversarially_hardened','candidate_can_inspect_grading_process','escaped_background_processes_not_proven_absent','default_user_sudo_not_removed','not_original_bwrap_grader','no_candidate_execution_on_controller_or_as_root')
 
 class RemoteGrade:
-    def __init__(self,remotes,package,stopped,*,revoked):
+    def __init__(self,remotes,package,stopped,*,revoked,evidence_sink=None):
+        if evidence_sink is not None and not callable(evidence_sink):raise ValueError('trusted_evidence_sink_required')
+        self.evidence_sink=evidence_sink
         self.remotes,self.stopped,self.revoked=remotes,stopped,revoked
         data=load_package(package)
         self.public={n:data['public/'+n] for n in FILES}
@@ -48,6 +50,13 @@ class RemoteGrade:
             remote=self.remotes[condition];actual=self._export(remote)
             hashes={n:digest(b) for n,b in actual.items()}
             report['candidate_file_sha256']=hashes;report['candidate_sha256']=digest(encoded(hashes))
+            if self.evidence_sink is not None:
+                report['durable_candidate_export']=self.evidence_sink(condition,'candidate-export',{
+                    'schema':'pex.stockroom-captured-export.v1','candidate_file_sha256':hashes,
+                    'candidate_sha256':report['candidate_sha256'],
+                    'files_base64':{n:base64.b64encode(b).decode('ascii') for n,b in actual.items()},
+                    'capture_boundary':'post_stop_post_MCP_revocation_before_protected_upload',
+                    'candidate_code_executed_on_controller':False})
             changed=[n for n in FILES if (n=='TASK.md' or n.startswith('tests/')) and actual[n]!=self.public[n]]
             if changed:
                 report.update(status='public_contract_changed',changed_public_files=changed)
@@ -82,4 +91,7 @@ class RemoteGrade:
             if result['exit_code'] not in (0,1) or (result['exit_code']==0)!=tests['all_pass']:raise ValueError('inconsistent_grade_exit')
             report.update(status='graded_with_limits',task_tests_measured=True,tests=tests,summary={'passed':tests['passed'],'total':17,'all_pass':tests['all_pass'],'public_tests_pass':public['exit_code']==0},task_success=tests['all_pass'] and public['exit_code']==0)
         except Exception as error:report.update(status='inconclusive',error_type=type(error).__name__)
+        finally:
+            if self.evidence_sink is not None:
+                report['durable_grade_report']=self.evidence_sink(condition,'grade-report',dict(report))
         return report

@@ -8,7 +8,10 @@ qualification is not a live benchmark or proof of provider termination.
 import asyncio
 from dataclasses import dataclass
 import importlib
+import json
+import os
 from pathlib import Path
+import secrets
 from types import SimpleNamespace
 from staged_admission import AdmissionRefused,read_pin,canonical,sha
 from staged_accounting import StagedAccounting
@@ -23,7 +26,7 @@ from stockroom_request import make_public_request
 from stockroom_grade import RemoteGrade
 from nebius_worker import NebiusCLIWorker,MODEL
 from review import OwnedReview
-from successor_runner import private_write
+from successor_runner import private_write,json_default
 
 SOURCE_MODULES=('staged_admission','staged_accounting','staged_sdk_binding','staged_sdk_lifecycle',
     'staged_lifecycle','staged_async_remote','staged_public_setup','staged_composition','staged_envelope','staged_controller',
@@ -39,6 +42,32 @@ ADJACENT={'nebius_guard':('nebius_worker','nebius_guard.ts'),
     'grade_upload_verify':('stockroom_grade','grade_upload_verify.py'),
     'export_candidate':('stockroom_grade','export_candidate.py'),'public_diff':('stockroom_request','public_diff.py')}
 _SEAL=object()
+
+
+def private_atomic_json(path,value,*,limit=2*1024*1024):
+    """Fsync complete private bytes, then publish without replacing old evidence."""
+    path=Path(path)
+    if (not path.is_absolute() or path.resolve()!=path or not path.parent.is_dir()
+            or path.parent.stat().st_mode&0o077):raise ValueError('private_evidence_directory_required')
+    raw=json.dumps(value,sort_keys=True,separators=(',',':'),default=json_default,allow_nan=False).encode()
+    if len(raw)>limit:raise ValueError('private_evidence_byte_bound')
+    temporary=path.with_name('.'+path.name+'.pending-'+secrets.token_hex(8))
+    fd=os.open(temporary,os.O_CREAT|os.O_EXCL|os.O_WRONLY|os.O_NOFOLLOW,0o600)
+    try:
+        with os.fdopen(fd,'wb') as handle:handle.write(raw);handle.flush();os.fsync(handle.fileno())
+        os.link(temporary,path,follow_symlinks=False)  # Atomic, exclusive publication.
+    finally:
+        temporary.unlink(missing_ok=True)
+    directory=os.open(path.parent,os.O_RDONLY|os.O_DIRECTORY)
+    try:os.fsync(directory)
+    finally:os.close(directory)
+    return {'path':str(path),'sha256':sha(raw)}
+
+
+def _rows(db,query,parameters=()):
+    cursor=db.execute(query,parameters)
+    names=[item[0] for item in cursor.description]
+    return [dict(zip(names,row)) for row in cursor.fetchall()]
 
 
 def source_pins():
@@ -74,11 +103,42 @@ class Composition:
         if getattr(review.model_factory,'__self__',None) is not self.supervisor:
             raise AdmissionRefused('owned_supervisor_factory_changed')
 
+    def checkpoint_arm(self,condition,state):
+        """Actual partial evidence only; must finish BEFORE another VM prepare."""
+        if condition not in ('baseline','pex'):raise AdmissionRefused('exact_arm_checkpoint_required')
+        self.accounting.validate_identity();_sources(self.accounting.cfg)
+        binding=self.accounting.binding;sid=binding.owned_by_arm.get(condition)
+        payload={'schema':'pex.staged.arm-checkpoint.v1','run_id':binding.admitted.grant.run_id,
+            'config_sha256':binding.admitted.grant.config_sha256,
+            'sources_sha256':binding.admitted.grant.sources_sha256,
+            'task_sha256':binding.admitted.grant.task_sha256,'condition':condition,
+            'arm_state':state,'grade_was_produced':'protected_grade' in state,
+            'worker_receipt_rows':_rows(self.accounting.raw_workers[condition].db,
+                'SELECT * FROM calls WHERE arm=? ORDER BY rowid',(condition,)),
+            'supervisor_receipt_rows':_rows(self.accounting.supervisor.db,'SELECT * FROM calls ORDER BY rowid') if condition=='pex' else [],
+            'owned_cleanup':{'owned_id_known':sid is not None,'control_plane_stop_confirmed':None if sid is None else sid in binding.stopped,
+                'create_outcome_unknown':condition in self.worker.lifecycle.unknown_creates},
+            'partial_pair_evidence_only':True,'comparison_complete':False,'pex_lift':None,
+            'qualification':'Actual observed arm status/receipts only. Missing grade stays missing; this artifact cannot by itself establish a complete paired comparison.'}
+        return private_atomic_json(self.accounting.root/'evidence'/('arm-'+condition+'.json'),payload,
+                                   limit=80*1024*1024)  # <=12 worker +12 bounded supervisor receipt rows.
+
 
 def build_composition(accounting):
     if type(accounting) is not StagedAccounting:raise AdmissionRefused('closed_staged_accounting_required')
     accounting.before_reserve();cfg=accounting.cfg;_sources(cfg)
     output=accounting.root;package=Path(cfg['task']['path']).parent
+    evidence_root=output/'evidence';evidence_root.mkdir(mode=0o700)
+    def grade_evidence(condition,kind,payload):
+        if condition not in ('baseline','pex') or kind not in ('candidate-export','grade-report'):
+            raise AdmissionRefused('exact_private_grade_artifact_required')
+        accounting.validate_identity()
+        return private_atomic_json(evidence_root/(condition+'-'+kind+'.json'),{
+            'schema':'pex.staged.grade-artifact.v1','run_id':accounting.binding.admitted.grant.run_id,
+            'config_sha256':accounting.binding.admitted.grant.config_sha256,
+            'sources_sha256':accounting.binding.admitted.grant.sources_sha256,
+            'task_sha256':accounting.binding.admitted.grant.task_sha256,
+            'condition':condition,'kind':kind,'payload':payload,'partial_pair_evidence_only':True})
     frozen,prompt=stage(package,output/'staged')
     arms={c:{'condition':c,'workspace':str(output/'staged/workers'/c),'prompt':prompt,
              'public_sha256':frozen['public_sha256'],'worker_identity':'nebius/'+MODEL} for c in ('baseline','pex')}
@@ -105,7 +165,7 @@ def build_composition(accounting):
         request_recorder=lambda digest,raw:private_write(output/('public-observation-'+digest+'.json'),raw))
     grade=RemoteGrade(remotes=worker.remotes,package=package,
         stopped=lambda c:inner.states.get(c,{}).get('stopped') is True,
-        revoked=lambda c:inner.states.get(c,{}).get('mcp_revoked') is True)
+        revoked=lambda c:inner.states.get(c,{}).get('mcp_revoked') is True,evidence_sink=grade_evidence)
     return Composition(accounting,arms,worker,review,StagedGrade(grade,worker),supervisor,sha(canonical(arms)),_SEAL)
 
 

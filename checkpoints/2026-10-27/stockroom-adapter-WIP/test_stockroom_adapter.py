@@ -138,6 +138,25 @@ class GradeTests(unittest.TestCase):
     def test_export_failure_inconclusive(self):
         r=FakeRemote();r.export_exit=1
         report=self.grade(self.grader(r));self.assertEqual(report['status'],'inconclusive');self.assertFalse(report['task_tests_measured'])
+    def test_evidence_sink_captures_exact_bytes_before_protected_and_actual_report(self):
+        r=FakeRemote();events=[]
+        def sink(c,kind,payload):
+            if kind=='candidate-export':
+                self.assertEqual(r._sandbox.files.writes,{})
+                self.assertEqual({n:base64.b64decode(b) for n,b in payload['files_base64'].items()},r.data)
+                self.assertEqual(payload['candidate_sha256'],hashlib.sha256((json.dumps(payload['candidate_file_sha256'],sort_keys=True,separators=(',',':'))+'\n').encode()).hexdigest())
+            events.append((c,kind,payload));return {'path':'AUTHORED-private-'+kind,'sha256':'a'*64}
+        report=self.grade(RemoteGrade({'baseline':r},PACKAGE,lambda c:True,revoked=lambda c:True,evidence_sink=sink))
+        self.assertEqual([x[1] for x in events],['candidate-export','grade-report'])
+        self.assertEqual(events[1][2]['tests'],report['tests'])
+        self.assertEqual(report['status'],'graded_with_limits')
+    def test_failed_export_never_fabricates_export_or_grade(self):
+        r=FakeRemote();r.export_exit=1;events=[]
+        def sink(c,kind,payload):events.append((kind,payload));return {'path':'AUTHORED','sha256':'a'*64}
+        report=self.grade(RemoteGrade({'baseline':r},PACKAGE,lambda c:True,revoked=lambda c:True,evidence_sink=sink))
+        self.assertEqual([x[0] for x in events],['grade-report'])
+        self.assertEqual(report['status'],'inconclusive');self.assertNotIn('tests',events[0][1])
+        self.assertNotIn('candidate_sha256',events[0][1])
     def test_invalid_summaries_inconclusive(self):
         patches=[{'checks':16},{'failed':-1},{'passed':18},{'complete':False},{'all_pass':False},{'failure_instances':True},{'schema':'other'}]
         for patch in patches:

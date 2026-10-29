@@ -200,7 +200,9 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
                     await asyncio.wait_for(worker.stop(arm), timeout=stop_window)
                     if clock()-started > stop_window:
                         raise TimeoutError('stop_exceeded_absolute_deadline')
-                except Exception:
+                    state['stop_revocation_result']={'status':'completed'}
+                except Exception as error:
+                    state['stop_revocation_result']={'status':'unconfirmed','error_type':type(error).__name__}
                     cleanup_failed = True
                 cleanup_elapsed += max(0,clock()-started)
             if not cleanup_failed and state['status'] in {'staged_natural_stop','no_intervention','planner_rejected','verifier_rejected'}:
@@ -224,10 +226,17 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
                 await asyncio.wait_for(worker.release(arm), timeout=remaining)
                 if clock()-started > remaining:
                     raise TimeoutError('release_exceeded_absolute_deadline')
-            except Exception:
+                state['VM_release_result']={'status':'confirmed'}
+            except Exception as error:
+                state['VM_release_result']={'status':'unconfirmed','error_type':type(error).__name__}
                 cleanup_failed = True
             if cleanup_failed:
                 state['status']='cleanup_unconfirmed'
+            if _composition is not None:
+                # A publication error escapes before any next-arm prepare.
+                # Final owned cleanup still runs; a missing grade is not invented.
+                _composition.checkpoint_arm(condition,state)
+            if cleanup_failed:
                 break  # Never create the next VM on ambiguous cleanup.
         return report
     finally:

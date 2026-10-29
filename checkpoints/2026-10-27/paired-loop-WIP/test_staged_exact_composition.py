@@ -33,12 +33,14 @@ import nebius_worker as cw
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('bound',['composition'],indirect=True)
-async def test_exact_builder_runner_CLI_SDK_public_and_protected_boundaries(funded,bound,monkeypatch,rig):
+@pytest.mark.parametrize('interrupt_second_create',[False,True])
+async def test_exact_builder_runner_CLI_SDK_public_and_protected_boundaries(funded,bound,monkeypatch,rig,interrupt_second_create):
     accounting,scope=funded;_,_,sdk_wire,pools,behavior=bound
     workers=[];models=[];reviews=[];uploaded=[];files={};composition=None
     task=load_package(Path(accounting.cfg['task']['path']).parent)
     protected={Path(n).name for n in PROTECTED}
     original=scope._execute
+    class AuthoredSecondCreateInterruption(BaseException):pass
     def reply(value,status=200):
         return Response(status=status,headers=Headers({'content-type':'application/json'}),content=json.dumps(value).encode())
     async def execute(inner,request):
@@ -46,6 +48,15 @@ async def test_exact_builder_runner_CLI_SDK_public_and_protected_boundaries(fund
             async def execute(self,req):
                 u=urlsplit(req.url);path=u.path
                 if u.hostname=='api.e2b.app':
+                    if req.method=='POST' and path=='/v2/sandboxes' and json.loads(req.content)['metadata']['pex_arm']=='pex':
+                        checkpoint=json.loads((accounting.root/'evidence/arm-baseline.json').read_bytes())
+                        assert checkpoint['condition']=='baseline' and checkpoint['partial_pair_evidence_only']
+                        assert checkpoint['owned_cleanup']['control_plane_stop_confirmed'] is True
+                        assert checkpoint['arm_state']['VM_release_result']['status']=='confirmed'
+                        assert len(checkpoint['worker_receipt_rows'])==12
+                        assert (accounting.root/'evidence/baseline-candidate-export.json').is_file()
+                        assert (accounting.root/'evidence/baseline-grade-report.json').is_file()
+                        if interrupt_second_create:raise AuthoredSecondCreateInterruption()
                     sid=path.split('/')[-1]
                     if req.method=='GET' and sid in scope.owned and sid not in scope.kill_attempted:
                         sdk_wire.append((req.method,req.url,req.content));now=datetime.now(timezone.utc)
@@ -203,12 +214,29 @@ globalThis.fetch=async(input,init)=>{
         assert composition.review.model_factory.__self__ is composition.supervisor
         assert admissions==[scope.admitted]
         assert not sdk_wire and not rig.calls and not workers
+        if interrupt_second_create:
+            with pytest.raises(AuthoredSecondCreateInterruption):await run_composition(composition)
+            checkpoint=json.loads((accounting.root/'evidence/arm-baseline.json').read_bytes())
+            assert checkpoint['grade_was_produced'] is True
+            assert checkpoint['arm_state']['protected_grade']['summary']['passed']==0  # Scripted, not task evidence.
+            assert not checkpoint['comparison_complete'] and checkpoint['pex_lift'] is None
+            assert all(row['state']=='settled_raw_wire' for row in checkpoint['worker_receipt_rows'])
+            exported=json.loads((accounting.root/'evidence/baseline-candidate-export.json').read_bytes())['payload']
+            assert {n:base64.b64decode(b) for n,b in exported['files_base64'].items()}=={n:task['public/'+n] for n in FILES}
+            assert not (accounting.root/'report.json').exists()
+            assert not (accounting.root/'evidence/arm-pex.json').exists()
+            assert len(workers)==12 and not rig.calls
+            return
         report=await run_composition(composition)
         assert all(s['status']=='staged_natural_stop' and s['calls']==12 for s in report['arms'].values()),report
         assert reviews==[('planner',20),('verifier',20)] and len(workers)==24 and len(rig.calls)==4
         assert report['comparison_complete'] and report['cleanup_confirmed'] and report['pex_lift'] is None
         assert report['real_inference_calls'] is None  # closed mode never fabricates actual call count
         for c in ('baseline','pex'):
+            checkpoint=json.loads((accounting.root/'evidence'/('arm-'+c+'.json')).read_bytes())
+            assert checkpoint['condition']==c and checkpoint['config_sha256']==scope.admitted.grant.config_sha256
+            assert checkpoint['grade_was_produced'] and not checkpoint['comparison_complete']
+            assert checkpoint['owned_cleanup']['control_plane_stop_confirmed'] is True
             assert all(files[(c,ROOT+'/'+n)]==task['public/'+n] for n in FILES)
             grade=report['arms'][c]['protected_grade']
             assert grade['status']=='graded_with_limits' and grade['summary']['passed']==0 and not grade['task_success']
@@ -221,5 +249,8 @@ globalThis.fetch=async(input,init)=>{
         assert len(list(accounting.root.glob('public-observation-*.json')))==1
     finally:
         if composition is not None:
-            await composition.worker.cleanup();composition.supervisor.close()
+            try:await composition.worker.cleanup()
+            except Exception:
+                if not interrupt_second_create:raise
+            composition.supervisor.close()
         server.shutdown();server.server_close()
