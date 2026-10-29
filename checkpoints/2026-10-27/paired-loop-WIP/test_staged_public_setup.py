@@ -79,3 +79,19 @@ async def test_batch_is_one_sdk_call_and_cancellation_poison_is_preserved():
     remote._sdk.files.write_files=wait;remote.set_scope_deadline(time.monotonic()+.03)
     with pytest.raises(BoundedRemoteError):await asyncio.to_thread(remote.write_files,{'safe':b'bytes'})
     await remote.end_scope();assert remote.poisoned
+
+
+def local_runtime(dest):
+    import json
+    return json.loads(subprocess.check_output(['python3','-I','-c',"import json,platform,sqlite3,os;print(json.dumps({'python_implementation':platform.python_implementation(),'python_version':platform.python_version(),'sqlite_version':sqlite3.sqlite_version,'workspace':os.getcwd()}))"],cwd=dest,text=True))
+
+def test_runtime_probe_records_actual_matching_contract_before_worker(setup):
+    source,dest,hashes,remote,events,records=setup;contract=local_runtime(dest)
+    stage_public_files(remote,source,hashes,records.append,runtime_contract=contract)
+    assert records[0]['setup_complete'] and records[0]['runtime_contract_verified']==contract
+
+@pytest.mark.parametrize('field',['python_implementation','python_version','sqlite_version','workspace'])
+def test_runtime_mismatch_fails_before_git_snapshot_or_worker(setup,field):
+    source,dest,hashes,remote,events,records=setup;contract=local_runtime(dest);contract[field]='WRONG'
+    with pytest.raises(RuntimeError,match='unproven'):stage_public_files(remote,source,hashes,records.append,runtime_contract=contract)
+    assert not records[0]['setup_complete'] and records[0]['runtime_contract_verified'] is None and not (dest/'.git').exists()

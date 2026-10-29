@@ -16,7 +16,7 @@ def candidate(tmp_path,monkeypatch):
            'uncertain_reservations_retained':True,'ledgers':{n:pin(n) for n in a.REQUIRED_PREDECESSORS}}
     profile={'provider_cap':a.PROVIDER_CAP,'compute_cap':500_000_000,'worker_model':a.WORKER_MODEL,
         'supervisor_model':a.SUPERVISOR_MODEL,'phases':[vars(p) for p in a.PHASES],'vm_seconds':a.VM_SECONDS,
-        'wall_profile':dict(a.WALL_PROFILE),'public_snapshot_inspection':True,'supervisor_attempts':12,'forced_textual_finalization':True,'equal_worker_fresh':750000000,'worker_output_per_call':a.WORKER_OUTPUT_PER_CALL,'supervisor_fresh':350000000,'supervisor_pricing_sha256':'b'*64}
+        'wall_profile':dict(a.WALL_PROFILE),'public_snapshot_inspection':True,'grade_phase0_after_final':True,'runtime_contract':{'python_implementation':'CPython','python_version':'3.11.6','sqlite_version':'3.40.1','workspace':'/home/user/pex-task'},'supervisor_attempts':12,'forced_textual_finalization':True,'equal_worker_fresh':750000000,'worker_output_per_call':a.WORKER_OUTPUT_PER_CALL,'supervisor_fresh':350000000,'supervisor_pricing_sha256':'b'*64}
     ca=pin('synthetic-ca');proxy='http://authored.invalid:8888'
     # All transport aliases are synthetic. Do not accidentally inherit actual
     # host proxy credentials into the local CLI/mock SDK fixture environment.
@@ -187,3 +187,21 @@ def test_pair12_requires_explicit_exact_equal_output_bound(candidate,output):
 def test_snapshot_inspection_is_exact_prospective_profile(candidate,enabled):
     cfg,freeze=candidate;cfg['profile']['public_snapshot_inspection']=enabled;raw,grant=freeze()
     with pytest.raises(a.AdmissionRefused,match='equal_frozen_staged_protocol_required'):a.inspect_candidate(raw,grant)
+
+
+@pytest.mark.parametrize('name',['completed_staged12_workers','completed_staged12_supervisor','completed_staged12_compute','completed_staged12_terminal','completed_staged12_report','completed_staged12_baseline','completed_staged12_pex','completed_staged12_executed_sources','completed_staged12_actual_outcome','completed_staged12_recording_terminal'])
+def test_pair13_requires_retained_pair12_evidence(candidate,name):
+    cfg,freeze=candidate;p=Path(cfg['predecessor']['path']);v=json.loads(p.read_bytes());v['ledgers'].pop(name)
+    p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes());raw,grant=freeze()
+    with pytest.raises(a.AdmissionRefused,match='complete_retained'):a.inspect_candidate(raw,grant)
+
+def test_pair13_full_prior_and_equal_profile_fit_without_refund(candidate):
+    cfg,freeze=candidate;p=Path(cfg['predecessor']['path']);v=json.loads(p.read_bytes())
+    v.update(provider_nano_usd=2316061800,compute_nano_usd=274807500);p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes())
+    raw,grant=freeze();e=a.inspect_candidate(raw,grant)
+    assert e['provider_reserved_ceiling']==4166061800 and e['compute_sequential_peak']==408495000 and e['compute_final_lifetime_bound']==320182500
+
+@pytest.mark.parametrize('field',['python_implementation','python_version','sqlite_version','workspace'])
+def test_exact_prospective_runtime_cannot_change(candidate,field):
+    cfg,freeze=candidate;cfg['profile']['runtime_contract'][field]='changed';raw,grant=freeze()
+    with pytest.raises(a.AdmissionRefused,match='equal_frozen'):a.inspect_candidate(raw,grant)

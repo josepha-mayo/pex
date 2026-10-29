@@ -1,4 +1,4 @@
-"""WIP staged admission: one independently reviewed exploratory paired12 identity.
+"""WIP staged admission: one independently reviewed exploratory paired13 identity.
 
 A candidate inspection is not authority. The new source-reviewed identity below
 still requires an independently pinned root Grant and a fresh private claim. Historical
@@ -50,7 +50,10 @@ REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',
     'captured_receipt_diagnostic02_ledger','captured_receipt_diagnostic02_terminal','captured_receipt_diagnostic02_raw_response',
     'completed_staged11_workers','completed_staged11_supervisor','completed_staged11_compute',
     'completed_staged11_terminal','completed_staged11_report','completed_staged11_baseline','completed_staged11_pex',
-    'completed_staged11_executed_sources'))
+    'completed_staged11_executed_sources',
+    'completed_staged12_workers','completed_staged12_supervisor','completed_staged12_compute',
+    'completed_staged12_terminal','completed_staged12_report','completed_staged12_baseline','completed_staged12_pex',
+    'completed_staged12_executed_sources','completed_staged12_actual_outcome','completed_staged12_recording_terminal'))
 _SEAL = object()
 
 class AdmissionRefused(PermissionError): pass
@@ -112,9 +115,9 @@ class Grant:
 # Exact independently reviewed config/source pins and unused claim remain required.
 APPROVED_STAGED_GRANT = GrantGate(
     approval_ref='Sentinel_37e3d98dd0dc8191a10c2bbf46a8275a',
-    run_id='stockroom-staged-pair-20261029-12',
-    config_path='/workspace/scratch/c62c151ada7d/runtime-private/pex-pilot-20261027/stockroom-staged-pair-20261029-12/pair.json',
-    expires_at='2026-10-29T22:00:00+00:00')
+    run_id='stockroom-staged-pair-20261029-13',
+    config_path='/workspace/scratch/c62c151ada7d/runtime-private/pex-pilot-20261027/stockroom-staged-pair-20261029-13/pair.json',
+    expires_at='2026-10-29T23:00:00+00:00')
 
 @dataclass(frozen=True, repr=False)
 class Admitted:
@@ -174,9 +177,10 @@ def inspect_candidate(raw, grant, *, now=None):
     fixed = {'provider_cap':PROVIDER_CAP,'compute_cap':profile['compute_cap'],'worker_model':WORKER_MODEL,
         'supervisor_model':SUPERVISOR_MODEL,'phases':[vars(p) for p in PHASES],
         'vm_seconds':VM_SECONDS,'wall_profile':dict(WALL_PROFILE),'equal_worker_fresh':750000000,'worker_output_per_call':WORKER_OUTPUT_PER_CALL,
-        'supervisor_fresh':350000000,'supervisor_attempts':12,'forced_textual_finalization':True,'public_snapshot_inspection':True}
+        'supervisor_fresh':350000000,'supervisor_attempts':12,'forced_textual_finalization':True,'public_snapshot_inspection':True,'grade_phase0_after_final':True,
+        'runtime_contract':{'python_implementation':'CPython','python_version':'3.11.6','sqlite_version':'3.40.1','workspace':'/home/user/pex-task'}}
     if (set(profile) != set(fixed)|{'equal_worker_fresh','supervisor_fresh','supervisor_pricing_sha256'}
-            or profile.get('public_snapshot_inspection') is not True
+            or profile.get('public_snapshot_inspection') is not True or profile.get('grade_phase0_after_final') is not True
             or any(profile[k] != v for k,v in fixed.items())):
         raise AdmissionRefused('equal_frozen_staged_protocol_required')
     if not digest(profile['supervisor_pricing_sha256']): raise AdmissionRefused('frozen_supervisor_pricing_identity_required')

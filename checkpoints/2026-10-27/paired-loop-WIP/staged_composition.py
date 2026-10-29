@@ -130,7 +130,7 @@ def build_composition(accounting):
     output=accounting.root;package=Path(cfg['task']['path']).parent
     evidence_root=output/'evidence';evidence_root.mkdir(mode=0o700)
     def grade_evidence(condition,kind,payload):
-        if condition not in ('baseline','pex') or kind not in ('candidate-export','grade-report'):
+        if condition not in ('baseline','pex','pex-phase0') or kind not in ('candidate-export','grade-report'):
             raise AdmissionRefused('exact_private_grade_artifact_required')
         accounting.validate_identity()
         return private_atomic_json(evidence_root/(condition+'-'+kind+'.json'),{
@@ -150,7 +150,8 @@ def build_composition(accounting):
         accounting.before_reserve()
         def upload():
             stage_public_files(remote,output/'staged/workers'/arm['condition'],frozen['public_files'],
-                lambda evidence:private_write(output/('setup-timing-'+arm['condition']+'.json'),evidence))
+                lambda evidence:private_write(output/('setup-timing-'+arm['condition']+'.json'),evidence),
+                runtime_contract=cfg['profile']['runtime_contract'])
         await asyncio.to_thread(upload)
     life=AdmittedSDKLifecycle(accounting.binding,stage_public)
     funding={c:PhaseFunding(ledger,mode='closed-admitted') for c,ledger in accounting.workers.items()}
@@ -164,10 +165,25 @@ def build_composition(accounting):
     review=OwnedReview(staged_request_builder(make_public_request(package)),supervisor.model_factory,
         mode='live-pilot',admission=accounting.binding.admitted,
         request_recorder=lambda digest,raw:private_write(output/('public-observation-'+digest+'.json'),raw))
+    def saved_phase0(condition):
+        accounting.validate_identity()
+        if condition!='pex':raise AdmissionRefused('only_pex_pre_intervention_checkpoint')
+        capture=inner.public_checkpoints.get(condition)
+        if type(capture)is not dict or 'durable_pin' not in capture:raise AdmissionRefused('durable_public_checkpoint_required')
+        pin=capture['durable_pin']
+        if pin.get('path')!=str(evidence_root/(condition+'-public-checkpoint.json')):raise AdmissionRefused('exact_public_checkpoint_path_required')
+        value=json.loads(read_pin(pin,private=True,limit=512*1024))
+        if (set(value)!={'schema','condition','capture_boundary','public_export','snapshot_sha256','config_sha256'}
+                or value['schema']!='pex.public-pre-intervention-checkpoint.v1' or value['condition']!=condition
+                or value['capture_boundary']!='after_phase0_before_monitor_before_any_protected_upload'
+                or value['config_sha256']!=accounting.binding.admitted.grant.config_sha256
+                or value['snapshot_sha256']!=capture['snapshot_sha256']):raise AdmissionRefused('public_checkpoint_identity_changed')
+        return value['public_export']
     grade=RemoteGrade(remotes=worker.remotes,package=package,
         stopped=lambda c:inner.states.get(c,{}).get('stopped') is True,
-        revoked=lambda c:inner.states.get(c,{}).get('mcp_revoked') is True,evidence_sink=grade_evidence)
-    return Composition(accounting,arms,worker,review,StagedGrade(grade,worker),supervisor,sha(canonical(arms)),_SEAL)
+        revoked=lambda c:inner.states.get(c,{}).get('mcp_revoked') is True,evidence_sink=grade_evidence,
+        saved_phase0=saved_phase0 if cfg['profile']['grade_phase0_after_final'] else None)
+    return Composition(accounting,arms,worker,review,StagedGrade(grade,worker,grade_phase0_after_final=cfg['profile']['grade_phase0_after_final']),supervisor,sha(canonical(arms)),_SEAL)
 
 
 async def run_composition(composition):

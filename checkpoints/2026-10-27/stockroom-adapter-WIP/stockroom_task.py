@@ -8,7 +8,9 @@ import stat
 TASK='stockroom_v2_replay_revision'
 MANIFEST_SHA256='c242f9128edd87b34c678e5e0db36527b556f0b2163533577e5c96320c3b5f19'
 # Every supported contract is source-pinned; caller metadata cannot add a task.
-FROZEN_TASKS={MANIFEST_SHA256:{'task':TASK,'protected_check_count':17}}
+FROZEN_TASKS={MANIFEST_SHA256:{'task':TASK,'protected_check_count':17},
+    '90b1d9042ba5b223c75820dd70989c0d227216b884503d76926af21b1cbc5d60':
+        {'task':'stockroom_v3_atomic_reservations','protected_check_count':40}}
 PUBLIC_CHECK_COMMAND='python -m unittest discover -s tests -v'
 FILES=('.gitignore','README.md','TASK.md','stockroom/__init__.py','stockroom/__main__.py','stockroom/db.py','stockroom/records.py','stockroom/service.py','tests/test_legacy.py','tests/test_v2_examples.py')
 PROTECTED=('protected/run_grade.py','protected/test_acceptance.py')

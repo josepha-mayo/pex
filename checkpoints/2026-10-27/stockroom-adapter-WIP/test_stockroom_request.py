@@ -70,7 +70,7 @@ class SnapshotTests(unittest.TestCase):
         snap['files']['TASK.md']['content']='changed'
         self.assertNotEqual(request.scores.features['public_candidate_snapshot'],snap)
     def test_snapshot_tampering_hidden_paths_bounds_and_schema_refused(self):
-        for change in ('hash','content','hidden','host','count','size','schema','control'):
+        for change in ('hash','content','hidden','host','count','size','schema','control','surrogate','redacted_path'):
             with self.subTest(change=change):
                 x=self.snapshot()
                 if change=='hash':x['snapshot_sha256']='a'*64
@@ -78,6 +78,8 @@ class SnapshotTests(unittest.TestCase):
                 elif change=='hidden':x['files']['protected/test_acceptance.py']=x['files']['TASK.md']
                 elif change=='host':x['files']['/etc/passwd']=x['files']['TASK.md']
                 elif change=='control':x['files']['stockroom/a\n.py']=x['files']['TASK.md']
+                elif change=='surrogate':x['files']['stockroom/\ud800.py']=x['files']['TASK.md']
+                elif change=='redacted_path':x['files']['stockroom/Bearer SYNTHETIC_NOT_A_CREDENTIAL.py']=x['files']['TASK.md']
                 elif change=='count':x['files'].update({f'tests/test_{n}.py':x['files']['TASK.md']for n in range(129)})
                 elif change=='size':x['files']['TASK.md']['content']='x'*131073
                 else:x['schema']='other'

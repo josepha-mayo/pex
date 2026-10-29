@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from controller import PublicEvidenceInfrastructureError
 from stockroom_task import PUBLIC_CHECK_COMMAND, load_package
 from pex_protocol.enums import EventType, HarnessType
+from pex_protocol.redaction import redact_text
 from pex_protocol.goal import Goal
 from pex_protocol.session import HarnessEvent, HarnessSession
 from pex_protocol.supervisor import SupervisorRequest
@@ -132,6 +133,9 @@ def snapshot_digest(files):
 
 def snapshot_path_allowed(path):
     if type(path)is not str or not path or len(path)>240 or '\x00' in path or '\\' in path or ':' in path or any(ord(c)<32 for c in path):return False
+    try:path.encode('utf8')
+    except UnicodeError:return False
+    if redact_text(path)[0]!=path:return False
     p=PurePosixPath(path)
     if p.is_absolute() or str(p)!=path or any(x in ('.','..') or x.startswith('.') for x in p.parts):return False
     return path in ('TASK.md','README.md') or (len(p.parts)>=2 and p.parts[0] in ('stockroom','tests') and p.suffix=='.py')
