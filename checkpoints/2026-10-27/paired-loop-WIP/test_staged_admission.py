@@ -139,3 +139,30 @@ def test_recovery10_requires_exact09_liabilities_revocation_and_accepted06_proof
     raw,grant=freeze()
     with pytest.raises(a.AdmissionRefused,match='complete_retained_predecessor_set_required'):
         a.inspect_candidate(raw,grant)
+
+
+@pytest.mark.parametrize('name',[
+    'completed_staged10_workers','completed_staged10_supervisor','completed_staged10_compute',
+    'completed_staged10_terminal','completed_staged10_report','completed_staged10_evidence',
+    'unknown_receipt_diagnostic01_ledger','unknown_receipt_diagnostic01_config','unknown_receipt_diagnostic01_claim',
+    'captured_receipt_diagnostic02_ledger','captured_receipt_diagnostic02_terminal','captured_receipt_diagnostic02_raw_response'])
+def test_pair11_requires_all_completed_and_unknown_predecessors(candidate,name):
+    cfg,freeze=candidate;p=Path(cfg['predecessor']['path']);v=json.loads(p.read_bytes())
+    v['ledgers'].pop(name);p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes())
+    raw,grant=freeze()
+    with pytest.raises(a.AdmissionRefused,match='complete_retained_predecessor_set_required'):
+        a.inspect_candidate(raw,grant)
+
+
+def test_approved500_cumulative_profile_keeps_unknowns_and_requires_exact_grant(candidate,monkeypatch):
+    cfg,freeze=candidate;cfg['profile']['compute_cap']=500_000_000
+    p=Path(cfg['predecessor']['path']);v=json.loads(p.read_bytes())
+    v.update(provider_nano_usd=2_147_698_200,compute_nano_usd=209_467_500)
+    p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes())
+    raw,grant=freeze();envelope=a.inspect_candidate(raw,grant)
+    assert cfg['profile']['provider_cap']==5_000_000_000
+    assert envelope['provider_reserved_ceiling']==3_247_698_200
+    assert envelope['compute_sequential_peak']==268_290_000
+    assert envelope['compute_final_lifetime_bound']==229_432_500
+    monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',None)
+    with pytest.raises(a.AdmissionRefused,match='approval_pending'):a.load(grant)

@@ -1,4 +1,4 @@
-"""WIP staged admission: one independently reviewed exploratory recovery10 identity.
+"""WIP staged admission: one independently reviewed exploratory paired11 identity.
 
 A candidate inspection is not authority. The new source-reviewed identity below
 still requires an independently pinned root Grant and a fresh private claim. Historical
@@ -16,9 +16,9 @@ import stat
 from urllib.parse import urlsplit
 from staged_envelope import PHASES, VM_SECONDS, WALL_PROFILE, reservation_envelope
 
-PROVIDER_CAP = 2_000_000_000
+PROVIDER_CAP = 5_000_000_000  # Fresh contextualized user approval; cumulative, never reset.
 COMPUTE_CAP = 120_000_000  # Legacy default; an exact per-run Grant pins its ceiling.
-SUPPORTED_COMPUTE_CAPS = (COMPUTE_CAP,140_000_000,250_000_000)  # Capability alone is never spend authority.
+SUPPORTED_COMPUTE_CAPS = (COMPUTE_CAP,140_000_000,250_000_000,500_000_000)  # Capability alone is never spend authority.
 WORKER_MODEL = 'deepseek-ai/DeepSeek-V4.1-Flash-1017'
 SUPERVISOR_MODEL = 'nvidia/nemotron-3-super-120b-a12b'
 REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',
@@ -42,7 +42,11 @@ REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',
     'interrupted_staged09_admission','interrupted_staged09_poll_denial','interrupted_staged09_manager_status',
     'interrupted_staged09_observation_correction','interrupted_staged09_model_revocation',
     'interrupted_staged09_post_revocation','interrupted_staged09_validated_partial','interrupted_staged09_cleanup',
-    'prospective_staged06_compute_reconciliation','root_accepted_staged06_compute_reconciliation'))
+    'prospective_staged06_compute_reconciliation','root_accepted_staged06_compute_reconciliation',
+    'completed_staged10_workers','completed_staged10_supervisor','completed_staged10_compute',
+    'completed_staged10_terminal','completed_staged10_report','completed_staged10_evidence',
+    'unknown_receipt_diagnostic01_ledger','unknown_receipt_diagnostic01_config','unknown_receipt_diagnostic01_claim',
+    'captured_receipt_diagnostic02_ledger','captured_receipt_diagnostic02_terminal','captured_receipt_diagnostic02_raw_response'))
 _SEAL = object()
 
 class AdmissionRefused(PermissionError): pass
@@ -100,7 +104,13 @@ class Grant:
 # Pair10 consumed its claim:8 validated worker responses,2 unsettled HTTP200 usages.
 # Both owned VMs stopped; no supervisor/grade or completed comparison was produced.
 # All uncertain model/compute charges remain retained; no old claim can reopen.
-APPROVED_STAGED_GRANT = None
+# Fresh user-approved cumulative $5 inference/$0.50 compute scope; not an unlimited grant.
+# Exact independently reviewed config/source pins and unused claim remain required.
+APPROVED_STAGED_GRANT = GrantGate(
+    approval_ref='Sentinel_37e3d98dd0dc8191a10c2bbf46a8275a',
+    run_id='stockroom-staged-pair-20261029-11',
+    config_path='/workspace/scratch/c62c151ada7d/runtime-private/pex-pilot-20261027/stockroom-staged-pair-20261029-11/pair.json',
+    expires_at='2026-10-29T21:30:00+00:00')
 
 @dataclass(frozen=True, repr=False)
 class Admitted:

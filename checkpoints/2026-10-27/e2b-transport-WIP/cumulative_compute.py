@@ -14,7 +14,7 @@ VERIFIED_FULL_LIFETIME=9_982_500
 class ComputeBudget:
     def __init__(self,path,*,prior_upper_bound_nano_usd,evidence_sha256,cap_nano_usd=CAP):
         path=Path(path)
-        if type(cap_nano_usd)is not int or cap_nano_usd not in (CAP,120_000_000,140_000_000,250_000_000):
+        if type(cap_nano_usd)is not int or cap_nano_usd not in (CAP,120_000_000,140_000_000,250_000_000,500_000_000):
             raise ValueError('explicit supported compute ceiling required')
         self.cap=cap_nano_usd
         if type(prior_upper_bound_nano_usd)is not int or not 0<=prior_upper_bound_nano_usd<=self.cap:

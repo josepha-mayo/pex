@@ -98,3 +98,21 @@ def test_future250_capability_keeps_original06_generic_charge_and_existing_caps(
     assert b.total()==148_665_000;b.close()
     with pytest.raises(ValueError,match='ceiling identity'):
         ComputeBudget(tmp_path/'future250.sqlite',**dict(kwargs,cap_nano_usd=140_000_000))
+
+
+
+def test_fresh500_profile_retains_prior_unknown_compute_and_cannot_reset_old250(tmp_path):
+    tmp_path.chmod(0o700)
+    kwargs=dict(prior_upper_bound_nano_usd=209_467_500,evidence_sha256='f'*64,cap_nano_usd=500_000_000)
+    b=ComputeBudget(tmp_path/'fresh500.sqlite',**kwargs)
+    b.reserve('new-baseline');assert b.total()==258_307_500
+    b.settle_verified_allocation('new-baseline',cpu=2,memory_mb=512,max_seconds=330)
+    b.reserve('new-pex');assert b.total()==268_290_000
+    b.settle_verified_allocation('new-pex',cpu=2,memory_mb=512,max_seconds=330)
+    assert b.total()==229_432_500;b.close()
+    with pytest.raises(ValueError,match='predecessor compute identity'):
+        ComputeBudget(tmp_path/'fresh500.sqlite',**dict(kwargs,prior_upper_bound_nano_usd=0))
+    old=dict(kwargs,cap_nano_usd=250_000_000)
+    b=ComputeBudget(tmp_path/'old250.sqlite',**old);b.close()
+    with pytest.raises(ValueError,match='ceiling identity'):
+        ComputeBudget(tmp_path/'old250.sqlite',**kwargs)
