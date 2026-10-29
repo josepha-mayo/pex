@@ -8,6 +8,7 @@ or access hidden benchmark material.
 from __future__ import annotations
 
 import json
+import hashlib
 import math
 import re
 from collections.abc import Callable, Collection, Iterator, MutableSequence
@@ -58,6 +59,7 @@ _EVIDENCE_TOOL_ORDER = (
     "get_recent_events",
     "get_scores",
     "inspect_acceptance",
+    "inspect_public_snapshot",
     "get_context",
     "get_context_items",
     "get_decisions",
@@ -124,6 +126,48 @@ def _goal_boundary_chunks(request: SupervisorRequest) -> Iterator[dict[str, obje
             }
 
 
+def _validated_public_snapshot(request: SupervisorRequest) -> dict | None:
+    """Copy only a bounded, hash-bound public export; never read a host path."""
+    value = (request.scores.features or {}).get("public_candidate_snapshot")
+    if type(value) is not dict or set(value) != {"schema", "files", "snapshot_sha256"}:
+        return None
+    if value["schema"] != "pex.public-candidate-snapshot.v1":
+        return None
+    files = value["files"]
+    if type(files) is not dict or not 1 <= len(files) <= 128:
+        return None
+    copied = {}
+    total = 0
+    for path, entry in files.items():
+        if type(path) is not str or len(path) > 240 or "\\" in path:
+            return None
+        parts = path.split("/")
+        if any(not part or part.startswith(".") or ":" in part or
+               any(ord(c) < 32 for c in part) for part in parts):
+            return None
+        if path not in {"TASK.md", "README.md"} and not (
+                len(parts) > 1 and parts[0] in {"stockroom", "tests"}):
+            return None
+        if type(entry) is not dict or set(entry) != {"content", "sha256"}:
+            return None
+        content = entry["content"]
+        if type(content) is not str:
+            return None
+        try:
+            raw = content.encode("utf-8")
+        except UnicodeError:
+            return None
+        total += len(raw)
+        if total > 131072 or hashlib.sha256(raw).hexdigest() != entry["sha256"]:
+            return None
+        copied[path] = {"content": content, "sha256": entry["sha256"]}
+    digest = hashlib.sha256(json.dumps(copied, sort_keys=True,
+        separators=(",", ":"), ensure_ascii=True).encode()).hexdigest()
+    if digest != value["snapshot_sha256"]:
+        return None
+    return {"files": copied, "snapshot_sha256": digest}
+
+
 def select_evidence_tool_names(request: SupervisorRequest) -> tuple[str, ...]:
     """Offer only evidence surfaces that can matter to this exact review.
 
@@ -159,6 +203,8 @@ def select_evidence_tool_names(request: SupervisorRequest) -> tuple[str, ...]:
             "inspect_artifact",
             "run_verification",
         }
+    if _validated_public_snapshot(request) is not None:
+        selected.add("inspect_public_snapshot")
     if goal_boundaries_truncated(request):
         selected.add("get_goal")
     context = request.supervisor_context
@@ -424,6 +470,8 @@ def build_evidence_tools(
             invocation_id="pextool_compatibility",
         )
 
+    public_snapshot = _validated_public_snapshot(request)
+
     local_values = tuple(
         value
         for value in (
@@ -479,6 +527,48 @@ def build_evidence_tools(
         if not _workspace_read_allowed(request.session):
             value = unavailable
         return record(name, value, arguments)
+
+    @tool(
+        name="inspect_public_snapshot",
+        description=("Inspect the immutable public candidate export, never hidden checks or host files. "
+                     "Empty path lists up to 16 file names from offset; a listed path reads up to "
+                     "4000 characters from offset. Follow next_offset until null. This is code "
+                     "evidence, not proof that unrun tests pass."),
+    )
+    def inspect_public_snapshot(path: str = "", offset: int = 0) -> str:
+        args = {"path": path, "offset": offset}
+        if public_snapshot is None:
+            return record("inspect_public_snapshot", {"error": "snapshot_unavailable"}, args)
+        if type(path) is not str or type(offset) is not int or offset < 0:
+            return record("inspect_public_snapshot", {"error": "invalid_page"}, args)
+        files = public_snapshot["files"]
+        payload = {"snapshot_sha256": public_snapshot["snapshot_sha256"],
+                   "qualification": "immutable_public_export_not_execution", "offset": offset}
+        if path == "":
+            names = sorted(files)
+            if offset > len(names):
+                return record("inspect_public_snapshot", {"error": "invalid_page"}, args)
+            page = names[offset:offset + 16]
+            while len(json.dumps(page, ensure_ascii=True).encode()) > 5000:
+                page.pop()
+            end = offset + len(page)
+            payload.update(paths=page, total_files=len(names),
+                           next_offset=end if end < len(names) else None)
+        else:
+            if path not in files:
+                return record("inspect_public_snapshot", {"error": "path_not_in_public_snapshot"}, args)
+            item = files[path]
+            content = item["content"]
+            if offset > len(content):
+                return record("inspect_public_snapshot", {"error": "invalid_page"}, args)
+            page = content[offset:offset + 4000]
+            while len(json.dumps(page, ensure_ascii=True).encode()) > 5000:
+                page = page[:len(page) // 2]
+            end = offset + len(page)
+            payload.update(path=path, content=page,
+                           file_sha256=item["sha256"], total_characters=len(content),
+                           next_offset=end if end < len(content) else None)
+        return record("inspect_public_snapshot", payload, args, string_limit=4000)
 
     @tool(
         name="get_goal",
@@ -1177,6 +1267,7 @@ def build_evidence_tools(
         get_recent_events,
         get_scores,
         inspect_acceptance,
+        inspect_public_snapshot,
         get_context,
         get_context_items,
         get_decisions,
@@ -1190,7 +1281,7 @@ def build_evidence_tools(
         scrape_url,
     ]
     if tool_names is None:
-        return tools
+        return [item for item in tools if item.tool_name != "inspect_public_snapshot" or public_snapshot is not None]
     if isinstance(tool_names, (str, bytes)):
         raise TypeError("tool_names must be a collection of exact tool names")
     selected = frozenset(tool_names)
