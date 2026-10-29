@@ -9,7 +9,9 @@ from test_staged_sdk_binding import bound
 from test_staged_admission import candidate
 from staged_sdk_lifecycle import *
 from staged_async_remote import BoundedRemoteError
-from cumulative_compute import RESERVATION,VERIFIED_FULL_LIFETIME
+from cumulative_compute import allocation_bounds
+from staged_envelope import VM_SECONDS
+RESERVATION,VERIFIED_FULL_LIFETIME=allocation_bounds(VM_SECONDS)
 from pyqwest import Response,Headers
 
 @pytest.fixture
@@ -27,7 +29,7 @@ def lifecycle(bound,monkeypatch):
                     wire.append((req.method,req.url,req.content))
                     now=datetime.now(timezone.utc)
                     value={'templateID':BASE_TEMPLATE,'sandboxID':sid,'clientID':'authored',
-                        'startedAt':now.isoformat(),'endAt':(now+timedelta(seconds=330)).isoformat(),
+                        'startedAt':now.isoformat(),'endAt':(now+timedelta(seconds=VM_SECONDS)).isoformat(),
                         'envdVersion':'0.5.7','cpuCount':2,'memoryMB':512,'diskSizeMB':1024,'state':'running'}
                     return Response(status=200,headers=Headers({'content-type':'application/json'}),content=json.dumps(value).encode())
                 return await original_execute(req)
@@ -45,8 +47,8 @@ def lifecycle(bound,monkeypatch):
 async def test_actual_SDK_cumulative_reserve_lifetime_stage_stop_then_next(lifecycle):
     life,(scope,compute,wire,pools,behavior),events=lifecycle
     for arm in ('baseline','pex'):
-        remote=await life.prepare({'condition':arm},deadline=time.monotonic()+330)
-        assert life.provider_evidence[arm]['provider_lifetime_seconds']==330
+        remote=await life.prepare({'condition':arm},deadline=time.monotonic()+VM_SECONDS)
+        assert life.provider_evidence[arm]['provider_lifetime_seconds']==VM_SECONDS
         await remote.close()
     await life.cleanup()
     assert events==[('stage','baseline'),('stage','pex')]
@@ -58,7 +60,7 @@ async def test_actual_SDK_cumulative_reserve_lifetime_stage_stop_then_next(lifec
 async def test_SDK_constructor_failure_retains_generic_and_adapter_cleans_raw_ID(lifecycle):
     life,(scope,compute,wire,pools,behavior),events=lifecycle
     behavior['mode']='constructor_failure'
-    with pytest.raises(Exception):await life.prepare({'condition':'baseline'},deadline=time.monotonic()+330)
+    with pytest.raises(Exception):await life.prepare({'condition':'baseline'},deadline=time.monotonic()+VM_SECONDS)
     assert life.unknown_creates=={'baseline'} and scope.owned and compute.total()==100+RESERVATION
     behavior['mode']='normal'
     # Cancellation/error classification remains inconclusive even after exact
@@ -71,8 +73,8 @@ async def test_SDK_constructor_failure_retains_generic_and_adapter_cleans_raw_ID
 async def test_unknown_create_cannot_refund_retry_or_claim_cleanup(lifecycle):
     life,(scope,compute,wire,pools,behavior),events=lifecycle
     behavior['mode']='connect_failure'
-    with pytest.raises(Exception):await life.prepare({'condition':'baseline'},deadline=time.monotonic()+330)
-    with pytest.raises(BoundedRemoteError):await life.prepare({'condition':'pex'},deadline=time.monotonic()+330)
+    with pytest.raises(Exception):await life.prepare({'condition':'baseline'},deadline=time.monotonic()+VM_SECONDS)
+    with pytest.raises(BoundedRemoteError):await life.prepare({'condition':'pex'},deadline=time.monotonic()+VM_SECONDS)
     with pytest.raises(BoundedRemoteError):await life.cleanup()
     assert compute.total()==100+RESERVATION and len(wire)==1 and not scope.owned
 

@@ -9,7 +9,7 @@ import inspect
 import re
 import time
 from e2b_transport import BASE_TEMPLATE
-from staged_envelope import VM_SECONDS, SETUP_SECONDS
+from staged_envelope import VM_SECONDS, SETUP_SECONDS, CLEANUP_SECONDS
 from staged_async_remote import BoundedAsyncRemote, BoundedRemoteError, validate_provider_lifetime
 
 
@@ -79,7 +79,7 @@ class StagedLifecycle:
             self.raw_owned[c]=sdk;self.unknown_creates.discard(c)
             if self.uncertain or deadline<=self.clock():
                 self.uncertain=True
-                try: await self._cleanup_raw(c,self.clock()+15)
+                try: await self._cleanup_raw(c,self.clock()+CLEANUP_SECONDS)
                 except Exception: pass
                 raise BoundedRemoteError('late_create_after_deadline_or_uncertainty_no_resume')
             remote=BoundedAsyncRemote(sdk,vm_deadline=deadline,clock=self.clock)
@@ -134,7 +134,7 @@ class StagedLifecycle:
         # Explicit cleanup-only window: closed arms' old worker deadlines do not
         # prevent killing another owned VM. No create/worker/review/resume/extend
         # is permitted here, including after a worker deadline has expired.
-        cleanup_deadline=min(self.clock()+15,deadline) if deadline is not None else self.clock()+15
+        cleanup_deadline=min(self.clock()+CLEANUP_SECONDS,deadline) if deadline is not None else self.clock()+CLEANUP_SECONDS
         for task in list(self.pending): task.cancel()
         if self.pending:
             _,still=await asyncio.wait(list(self.pending),timeout=max(0,min(1,cleanup_deadline-self.clock())))

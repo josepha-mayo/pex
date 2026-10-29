@@ -21,7 +21,8 @@ import re
 import time
 from urllib.parse import urlsplit
 from staged_admission import AdmissionRefused, check_authority, validate_transport, read_pin, sha, canonical
-from cumulative_compute import ComputeBudget, RESERVATION
+from cumulative_compute import ComputeBudget
+from staged_envelope import CLEANUP_SECONDS
 from e2b_transport import BASE_TEMPLATE
 
 SDK_MODULES = ('e2b.api.client_async','e2b.envd.client_async','e2b.connection_config',
@@ -52,7 +53,7 @@ class SDKTransportBinding:
             raise AdmissionRefused('installed_SDK_source_identity_changed')
         prior=json.loads(read_pin(self.cfg['predecessor'],private=True))
         if (type(compute) is not ComputeBudget or compute.expected != (prior['compute_nano_usd'],self.cfg['predecessor']['sha256'])
-                or compute.cap != self.cfg['profile']['compute_cap']):
+                or compute.cap != self.cfg['profile']['compute_cap'] or compute.vm_seconds != self.cfg['profile']['vm_seconds']):
             raise AdmissionRefused('pinned_cumulative_compute_ledger_required')
         self.compute=compute;self.active=False;self.cleanup_deadline=None
         self.creates=set();self.owned=set();self.owned_by_arm={};self.stopped=set();self.kill_attempted=set();self.uncertain=False;self.pools={}
@@ -106,7 +107,7 @@ class SDKTransportBinding:
 
     def begin_cleanup(self):
         if not self.active: raise AdmissionRefused('SDK_binding_closed')
-        if self.cleanup_deadline is None: self.cleanup_deadline=self.clock()+15
+        if self.cleanup_deadline is None: self.cleanup_deadline=self.clock()+CLEANUP_SECONDS
         # One cleanup-only window, not extra admitted VM or worker lifetime.
 
     def options(self):
@@ -186,7 +187,7 @@ class SDKTransportBinding:
                 if type(raw) is not bytes or len(raw)>8192: raise AdmissionRefused('bounded_create_body_required')
                 body=json.loads(raw);meta=body.get('metadata',{});arm=meta.get('pex_arm')
                 identity=self.admitted.grant.run_id+'-'+str(arm)
-                expected={'templateID':BASE_TEMPLATE,'timeout':330,'autoPause':False,'autoResume':{'enabled':False},
+                expected={'templateID':BASE_TEMPLATE,'timeout':self.cfg['profile']['vm_seconds'],'autoPause':False,'autoResume':{'enabled':False},
                           'metadata':{'pex_pilot':self.admitted.grant.run_id,'pex_arm':arm},'envVars':{}}
                 if (body!=expected or arm not in ('baseline','pex') or arm in self.creates or len(self.creates)>=2
                         or (not self.creates and arm!='baseline')
@@ -194,7 +195,7 @@ class SDKTransportBinding:
                     raise AdmissionRefused('frozen_single_create_body_required')
                 # Existing durable reservation is required BEFORE wire dispatch.
                 self.compute.total()
-                if self.compute.db.execute('SELECT charged,state FROM calls WHERE id=?',(identity,)).fetchall()!=[(RESERVATION,'uncertain')]:
+                if self.compute.db.execute('SELECT charged,state FROM calls WHERE id=?',(identity,)).fetchall()!=[(self.compute.reservation,'uncertain')]:
                     raise AdmissionRefused('durable_full_create_reservation_required')
                 self.creates.add(arm);self.uncertain=True;creating=True
             elif method in ('GET','DELETE') and not u.query and u.path.startswith('/sandboxes/') and u.path.count('/')==2:

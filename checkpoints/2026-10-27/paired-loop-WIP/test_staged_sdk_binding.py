@@ -10,7 +10,9 @@ import pytest
 from test_staged_admission import candidate
 import staged_admission as a
 import staged_sdk_binding as b
-from cumulative_compute import ComputeBudget,RESERVATION
+from cumulative_compute import ComputeBudget,allocation_bounds
+from staged_envelope import VM_SECONDS
+RESERVATION=allocation_bounds(VM_SECONDS)[0]
 from e2b import AsyncSandbox
 from pyqwest import Response,Headers,Request
 
@@ -37,7 +39,7 @@ def bound(candidate,monkeypatch,tmp_path,request):
     admitted=a.load(grant)
     import e2b.api.client_async as c
     for n in ('_transports','_pools','_httpx_transports'):monkeypatch.setattr(c,n,{})
-    compute=ComputeBudget(tmp_path/'compute.sqlite',prior_upper_bound_nano_usd=100,evidence_sha256=cfg['predecessor']['sha256'],cap_nano_usd=cfg['profile']['compute_cap'])
+    compute=ComputeBudget(tmp_path/'compute.sqlite',prior_upper_bound_nano_usd=100,evidence_sha256=cfg['predecessor']['sha256'],cap_nano_usd=cfg['profile']['compute_cap'],vm_seconds=VM_SECONDS)
     wire=[];pools=[];behavior={'mode':'normal'}
     class MockPool:
         def __init__(self,**opts):
@@ -97,7 +99,7 @@ def bound(candidate,monkeypatch,tmp_path,request):
 async def create(scope,compute,arm='baseline'):
     identity=scope.admitted.grant.run_id+'-'+arm
     compute.reserve(identity)
-    sdk=await AsyncSandbox.create(template=b.BASE_TEMPLATE,timeout=330,
+    sdk=await AsyncSandbox.create(template=b.BASE_TEMPLATE,timeout=VM_SECONDS,
         lifecycle={'on_timeout':'kill','auto_resume':False},metadata={'pex_pilot':scope.admitted.grant.run_id,'pex_arm':arm},
         idempotency_key=identity,request_timeout=1,**scope.options())
     return scope.bind_owned(sdk)
@@ -179,7 +181,7 @@ async def test_unfunded_create_and_unowned_route_never_reach_mock_wire(bound):
     scope,compute,wire,pools,behavior=bound
     with scope:
         with pytest.raises(a.AdmissionRefused):
-            await AsyncSandbox.create(template=b.BASE_TEMPLATE,timeout=330,lifecycle={'on_timeout':'kill','auto_resume':False},
+            await AsyncSandbox.create(template=b.BASE_TEMPLATE,timeout=VM_SECONDS,lifecycle={'on_timeout':'kill','auto_resume':False},
                 metadata={'pex_pilot':scope.admitted.grant.run_id,'pex_arm':'baseline'},idempotency_key='authored-new-baseline',**scope.options())
         with pytest.raises(a.AdmissionRefused):
             await AsyncSandbox.kill('unowned',request_timeout=1,**scope.options())
@@ -281,7 +283,7 @@ async def test_raw_SDK_generic_502_cannot_mark_bounded_remote_closed(bound):
     scope,compute,wire,pools,behavior=bound
     with scope:
         identity=scope.admitted.grant.run_id+'-baseline';compute.reserve(identity)
-        raw=await AsyncSandbox.create(template=b.BASE_TEMPLATE,timeout=330,lifecycle={'on_timeout':'kill','auto_resume':False},
+        raw=await AsyncSandbox.create(template=b.BASE_TEMPLATE,timeout=VM_SECONDS,lifecycle={'on_timeout':'kill','auto_resume':False},
             metadata={'pex_pilot':scope.admitted.grant.run_id,'pex_arm':'baseline'},idempotency_key=identity,**scope.options())
         remote=BoundedAsyncRemote(raw,vm_deadline=time.monotonic()+2)
         with pytest.raises(a.AdmissionRefused,match='502'):await remote.close()
@@ -313,7 +315,7 @@ async def test_second_arm_requires_first_owned_control_plane_stop(bound):
     with scope:
         sdk=await create(scope,compute)
         identity=scope.admitted.grant.run_id+'-pex';compute.reserve(identity)
-        kwargs=dict(template=b.BASE_TEMPLATE,timeout=330,lifecycle={'on_timeout':'kill','auto_resume':False},
+        kwargs=dict(template=b.BASE_TEMPLATE,timeout=VM_SECONDS,lifecycle={'on_timeout':'kill','auto_resume':False},
             metadata={'pex_pilot':scope.admitted.grant.run_id,'pex_arm':'pex'},idempotency_key=identity,**scope.options())
         with pytest.raises(a.AdmissionRefused,match='stop_unproven'):await AsyncSandbox.create(**kwargs)
         await sdk.kill(request_timeout=1);assert await sdk.is_running(request_timeout=1) is False

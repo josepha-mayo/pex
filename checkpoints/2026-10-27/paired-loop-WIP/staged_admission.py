@@ -1,4 +1,4 @@
-"""WIP staged admission: one independently reviewed exploratory paired11 identity.
+"""WIP staged admission: one independently reviewed exploratory paired12 identity.
 
 A candidate inspection is not authority. The new source-reviewed identity below
 still requires an independently pinned root Grant and a fresh private claim. Historical
@@ -14,7 +14,8 @@ from pathlib import Path
 import re
 import stat
 from urllib.parse import urlsplit
-from staged_envelope import PHASES, VM_SECONDS, WALL_PROFILE, reservation_envelope
+from staged_envelope import PHASES, VM_SECONDS, WALL_PROFILE, WORKER_OUTPUT_PER_CALL, reservation_envelope
+from cumulative_compute import allocation_bounds
 
 PROVIDER_CAP = 5_000_000_000  # Fresh contextualized user approval; cumulative, never reset.
 COMPUTE_CAP = 120_000_000  # Legacy default; an exact per-run Grant pins its ceiling.
@@ -46,7 +47,10 @@ REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',
     'completed_staged10_workers','completed_staged10_supervisor','completed_staged10_compute',
     'completed_staged10_terminal','completed_staged10_report','completed_staged10_evidence',
     'unknown_receipt_diagnostic01_ledger','unknown_receipt_diagnostic01_config','unknown_receipt_diagnostic01_claim',
-    'captured_receipt_diagnostic02_ledger','captured_receipt_diagnostic02_terminal','captured_receipt_diagnostic02_raw_response'))
+    'captured_receipt_diagnostic02_ledger','captured_receipt_diagnostic02_terminal','captured_receipt_diagnostic02_raw_response',
+    'completed_staged11_workers','completed_staged11_supervisor','completed_staged11_compute',
+    'completed_staged11_terminal','completed_staged11_report','completed_staged11_baseline','completed_staged11_pex',
+    'completed_staged11_executed_sources'))
 _SEAL = object()
 
 class AdmissionRefused(PermissionError): pass
@@ -101,16 +105,16 @@ class Grant:
     task_sha256: str
     expires_at: str
 
-# Pair10 consumed its claim:8 validated worker responses,2 unsettled HTTP200 usages.
-# Both owned VMs stopped; no supervisor/grade or completed comparison was produced.
+# Pair11 consumed its claim; both VMs stopped and all accepted calls settled.
+# Its baseline phase-cap finalization was inconclusive; no completed comparison.
 # All uncertain model/compute charges remain retained; no old claim can reopen.
 # Fresh user-approved cumulative $5 inference/$0.50 compute scope; not an unlimited grant.
 # Exact independently reviewed config/source pins and unused claim remain required.
 APPROVED_STAGED_GRANT = GrantGate(
     approval_ref='Sentinel_37e3d98dd0dc8191a10c2bbf46a8275a',
-    run_id='stockroom-staged-pair-20261029-11',
-    config_path='/workspace/scratch/c62c151ada7d/runtime-private/pex-pilot-20261027/stockroom-staged-pair-20261029-11/pair.json',
-    expires_at='2026-10-29T21:30:00+00:00')
+    run_id='stockroom-staged-pair-20261029-12',
+    config_path='/workspace/scratch/c62c151ada7d/runtime-private/pex-pilot-20261027/stockroom-staged-pair-20261029-12/pair.json',
+    expires_at='2026-10-29T22:00:00+00:00')
 
 @dataclass(frozen=True, repr=False)
 class Admitted:
@@ -169,7 +173,7 @@ def inspect_candidate(raw, grant, *, now=None):
         raise AdmissionRefused('supported_pinned_compute_profile_required')
     fixed = {'provider_cap':PROVIDER_CAP,'compute_cap':profile['compute_cap'],'worker_model':WORKER_MODEL,
         'supervisor_model':SUPERVISOR_MODEL,'phases':[vars(p) for p in PHASES],
-        'vm_seconds':VM_SECONDS,'wall_profile':dict(WALL_PROFILE),'equal_worker_fresh':375000000,
+        'vm_seconds':VM_SECONDS,'wall_profile':dict(WALL_PROFILE),'equal_worker_fresh':750000000,'worker_output_per_call':WORKER_OUTPUT_PER_CALL,
         'supervisor_fresh':350000000,'supervisor_attempts':12,'forced_textual_finalization':True}
     if set(profile) != set(fixed)|{'equal_worker_fresh','supervisor_fresh','supervisor_pricing_sha256'} or any(profile[k] != v for k,v in fixed.items()):
         raise AdmissionRefused('equal_frozen_staged_protocol_required')
@@ -211,7 +215,7 @@ def inspect_candidate(raw, grant, *, now=None):
             raise AdmissionRefused('existing_private_key_pin_required')
     return reservation_envelope(prior_provider=prior['provider_nano_usd'],equal_worker_fresh=profile['equal_worker_fresh'],
         supervisor_fresh=profile['supervisor_fresh'],provider_ceiling=PROVIDER_CAP,prior_compute=prior['compute_nano_usd'],
-        verified_vm_bound=9_982_500,uncertain_create_reserve=48_840_000,compute_ceiling=profile['compute_cap'])
+        verified_vm_bound=allocation_bounds(VM_SECONDS)[1],uncertain_create_reserve=allocation_bounds(VM_SECONDS)[0],compute_ceiling=profile['compute_cap'])
 
 def load(grant=None):
     # CLOSED source gate precedes reads and caller input. A future trusted root

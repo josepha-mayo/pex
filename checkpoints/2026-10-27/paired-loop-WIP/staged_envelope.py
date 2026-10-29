@@ -14,22 +14,23 @@ class Phase:
     active_seconds: int
 
 
-PHASES = (Phase(8, 32768, 120), Phase(4, 16384, 60))
-TOTAL = Phase(12, 49152, 180)
-VM_SECONDS = 330
-SETUP_SECONDS = 40
+WORKER_OUTPUT_PER_CALL = 16384
+PHASES = (Phase(8, 131072, 360), Phase(4, 65536, 180))
+TOTAL = Phase(12, 196608, 540)
+VM_SECONDS = 750
+SETUP_SECONDS = 60
 OBSERVATION_SECONDS = 10
-REVIEW_SECONDS = 60
-GRADE_SECONDS = 25
-GRADE_MAX_SECONDS = 45
-CLEANUP_SECONDS = 15
+REVIEW_SECONDS = 90
+GRADE_SECONDS = 30
+GRADE_MAX_SECONDS = 60
+CLEANUP_SECONDS = 20
 WALL_PROFILE = {'setup_seconds':SETUP_SECONDS,'worker_active_seconds':TOTAL.active_seconds,
     'observation_seconds':OBSERVATION_SECONDS,'review_seconds':REVIEW_SECONDS,
     'grade_guaranteed_seconds':GRADE_SECONDS,'grade_unused_slack_max_seconds':GRADE_MAX_SECONDS,
     'cleanup_shared_seconds':CLEANUP_SECONDS,
     'grade_borrow_rule':'actual_unused_prior_wall_only_absolute_VM_deadline_cleanup_retained'}
 
-assert tuple(sum(getattr(p, k) for p in PHASES) for k in ('calls', 'output_tokens', 'active_seconds')) == (12, 49152, 180)
+assert tuple(sum(getattr(p, k) for p in PHASES) for k in ('calls', 'output_tokens', 'active_seconds')) == (12, 196608, 540)
 assert TOTAL.active_seconds + SETUP_SECONDS + OBSERVATION_SECONDS + REVIEW_SECONDS + GRADE_SECONDS + CLEANUP_SECONDS == VM_SECONDS
 
 

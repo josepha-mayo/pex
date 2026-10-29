@@ -14,9 +14,9 @@ def candidate(tmp_path,monkeypatch):
         return {'path':str(p),'sha256':a.sha(raw)}
     prior={'schema':'pex.staged.predecessors.v1','provider_nano_usd':100,'compute_nano_usd':100,
            'uncertain_reservations_retained':True,'ledgers':{n:pin(n) for n in a.REQUIRED_PREDECESSORS}}
-    profile={'provider_cap':a.PROVIDER_CAP,'compute_cap':a.COMPUTE_CAP,'worker_model':a.WORKER_MODEL,
+    profile={'provider_cap':a.PROVIDER_CAP,'compute_cap':500_000_000,'worker_model':a.WORKER_MODEL,
         'supervisor_model':a.SUPERVISOR_MODEL,'phases':[vars(p) for p in a.PHASES],'vm_seconds':a.VM_SECONDS,
-        'wall_profile':dict(a.WALL_PROFILE),'supervisor_attempts':12,'forced_textual_finalization':True,'equal_worker_fresh':375000000,'supervisor_fresh':350000000,'supervisor_pricing_sha256':'b'*64}
+        'wall_profile':dict(a.WALL_PROFILE),'supervisor_attempts':12,'forced_textual_finalization':True,'equal_worker_fresh':750000000,'worker_output_per_call':a.WORKER_OUTPUT_PER_CALL,'supervisor_fresh':350000000,'supervisor_pricing_sha256':'b'*64}
     ca=pin('synthetic-ca');proxy='http://authored.invalid:8888'
     # All transport aliases are synthetic. Do not accidentally inherit actual
     # host proxy credentials into the local CLI/mock SDK fixture environment.
@@ -47,7 +47,7 @@ def test_default_gate_before_any_read(monkeypatch):
 
 def test_inspection_is_not_authority_or_key_read(candidate):
     cfg,freeze=candidate;raw,grant=freeze()
-    assert a.inspect_candidate(raw,grant)['provider_reserved_ceiling']==1100000100
+    assert a.inspect_candidate(raw,grant)['provider_reserved_ceiling']==1850000100
     with pytest.raises(a.AdmissionRefused):a.check_authority(a.Admitted(grant,raw,object()))
     assert not Path(cfg['e2b_key']['path']).exists()
 
@@ -157,12 +157,27 @@ def test_pair11_requires_all_completed_and_unknown_predecessors(candidate,name):
 def test_approved500_cumulative_profile_keeps_unknowns_and_requires_exact_grant(candidate,monkeypatch):
     cfg,freeze=candidate;cfg['profile']['compute_cap']=500_000_000
     p=Path(cfg['predecessor']['path']);v=json.loads(p.read_bytes())
-    v.update(provider_nano_usd=2_147_698_200,compute_nano_usd=209_467_500)
+    v.update(provider_nano_usd=2_212_403_400,compute_nano_usd=229_432_500)
     p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes())
     raw,grant=freeze();envelope=a.inspect_candidate(raw,grant)
     assert cfg['profile']['provider_cap']==5_000_000_000
-    assert envelope['provider_reserved_ceiling']==3_247_698_200
-    assert envelope['compute_sequential_peak']==268_290_000
-    assert envelope['compute_final_lifetime_bound']==229_432_500
+    assert envelope['provider_reserved_ceiling']==4_062_403_400
+    assert envelope['compute_sequential_peak']==363_120_000
+    assert envelope['compute_final_lifetime_bound']==274_807_500
     monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',None)
     with pytest.raises(a.AdmissionRefused,match='approval_pending'):a.load(grant)
+
+
+@pytest.mark.parametrize('name',['completed_staged11_workers','completed_staged11_supervisor','completed_staged11_compute',
+    'completed_staged11_terminal','completed_staged11_report','completed_staged11_baseline','completed_staged11_pex',
+    'completed_staged11_executed_sources'])
+def test_pair12_retains_full_actual_pair11_predecessors(candidate,name):
+    cfg,freeze=candidate;p=Path(cfg['predecessor']['path']);v=json.loads(p.read_bytes())
+    v['ledgers'].pop(name);p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes())
+    raw,grant=freeze()
+    with pytest.raises(a.AdmissionRefused,match='complete_retained_predecessor_set_required'):a.inspect_candidate(raw,grant)
+
+@pytest.mark.parametrize('output',[4096,8192,16385,True,None])
+def test_pair12_requires_explicit_exact_equal_output_bound(candidate,output):
+    cfg,freeze=candidate;cfg['profile']['worker_output_per_call']=output;raw,grant=freeze()
+    with pytest.raises(a.AdmissionRefused,match='equal_frozen_staged_protocol_required'):a.inspect_candidate(raw,grant)

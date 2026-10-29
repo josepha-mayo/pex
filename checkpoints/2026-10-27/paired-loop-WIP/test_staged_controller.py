@@ -158,7 +158,7 @@ def test_release_and_global_cleanup_share_absolute_VM_deadline():
     class Slow(Worker):
         async def release(self,arm):
             await super().release(arm)
-            ticks[0]=331
+            ticks[0]=751
     w,r=run(Slow(),clock=lambda:ticks[0])
     assert list(r['arms'])==['baseline']
     assert r['arms']['baseline']['status']=='cleanup_unconfirmed'
@@ -168,13 +168,13 @@ def test_release_and_global_cleanup_share_absolute_VM_deadline():
 def test_final_cleanup_is_bounded_and_failure_retained():
     ticks=[0.0]
     class Slow(Worker):
-        async def cleanup(self): ticks[0]+=16
+        async def cleanup(self): ticks[0]+=21
     _,r=run(Slow(),clock=lambda:ticks[0])
     assert r['cleanup_confirmed'] is False and r['cleanup_error']=='TimeoutError'
 
 
 @pytest.mark.parametrize('phase,calls,output,seconds',[(0,9,1,1),(1,5,1,1),
-    (0,8,32769,1),(1,4,16385,1),(0,8,1,121),(1,4,1,61)])
+    (0,8,131073,1),(1,4,65537,1),(0,8,1,361),(1,4,1,181)])
 def test_partial_overrun_is_retained_but_not_ordinary_budget_exhaustion(phase,calls,output,seconds):
     class Overrun(Worker):
         async def phase(self,*a,**kw):
@@ -205,16 +205,16 @@ def test_partial_second_phase_does_not_duplicate_first_phase_usage():
 def test_expired_worker_deadline_still_attempts_cleanup_only_callback():
     ticks=[0.0]
     class Expired(Worker):
-        async def release(self,arm): ticks[0]=331
+        async def release(self,arm): ticks[0]=751
     w,r=run(Expired(),clock=lambda:ticks[0])
     assert w.cleaned and r['cleanup_only_after_worker_deadline']
     assert r['cleanup_confirmed'] is False  # Release proof was not supplied.
 
 
-def test_measured_style_startup_latency_and_all_maxima_fit_frozen330s():
+def test_measured_style_startup_latency_and_all_maxima_fit_frozen750s():
     # Authored virtual-clock latency regression, NOT a real provider assertion.
-    #18.9s create/info +3x3s public setup fits40, not old20. Both arms still
-    # receive complete120+60 worker caps and the SAME minimum25s grade budget.
+    #18.9s create/info +3x3s public setup fits60. Both arms still
+    # receive complete360+180 worker caps and the SAME minimum30s grade budget.
     ticks=[0.0];windows=[]
     class Latency(Worker):
         async def prepare(self,arm,**kw):
@@ -227,14 +227,14 @@ def test_measured_style_startup_latency_and_all_maxima_fit_frozen330s():
         async def stop(self,arm):ticks[0]+=3;await super().stop(arm)
         async def release(self,arm):ticks[0]+=12;await super().release(arm)
     class FullReview(Review):
-        async def review(self,*a,**kw):ticks[0]+=60;return await super().review(*a,**kw)
+        async def review(self,*a,**kw):ticks[0]+=90;return await super().review(*a,**kw)
     class CaptureGrade:
         def reserve_wall(self,arm,*,deadline):windows.append((arm['condition'],deadline-ticks[0]))
-        async def grade(self,arm):ticks[0]+=25;return {'authored_only':True}
+        async def grade(self,arm):ticks[0]+=30;return {'authored_only':True}
     worker=Latency();report=asyncio.run(run_staged_pair(arms(),worker,FullReview(worker),CaptureGrade(),clock=lambda:ticks[0]))
-    assert all(x['status']=='staged_natural_stop' and x['worker_active_seconds']==180 for x in report['arms'].values())
-    assert report['cleanup_confirmed'] and len(windows)==2 and all(25<=seconds<=45 for _,seconds in windows)
-    assert windows[1][1]==pytest.approx(37.1)  # Unused setup12.1s, not borrowed worker allowance.
+    assert all(x['status']=='staged_natural_stop' and x['worker_active_seconds']==540 for x in report['arms'].values())
+    assert report['cleanup_confirmed'] and len(windows)==2 and all(30<=seconds<=60 for _,seconds in windows)
+    assert windows[1][1]==pytest.approx(60)  # Unused setup32.1s, capped at60, not borrowed worker allowance.
 
 
 def test_allowlisted_local_admission_reason_is_not_hidden_as_class_only():

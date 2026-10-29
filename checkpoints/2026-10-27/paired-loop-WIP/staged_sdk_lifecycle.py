@@ -8,7 +8,7 @@ import math
 from staged_admission import AdmissionRefused
 from staged_sdk_binding import SDKTransportBinding
 from staged_lifecycle import StagedLifecycle
-from staged_envelope import SETUP_SECONDS
+from staged_envelope import SETUP_SECONDS, VM_SECONDS
 from staged_async_remote import BoundedRemoteError
 from e2b_transport import BASE_TEMPLATE
 
@@ -22,7 +22,7 @@ class SDKLifecycleAPI:
     async def create(self,**kwargs):
         self.binding._check()
         required={'template','timeout','lifecycle','metadata','idempotency_key','retries','request_timeout'}
-        if (set(kwargs)!=required or kwargs['template']!=BASE_TEMPLATE or kwargs['timeout']!=330
+        if (set(kwargs)!=required or kwargs['template']!=BASE_TEMPLATE or kwargs['timeout']!=VM_SECONDS
                 or kwargs['lifecycle']!={'on_timeout':'kill','auto_resume':False} or kwargs['retries']!=0
                 or type(kwargs['request_timeout']) not in (int,float) or not math.isfinite(kwargs['request_timeout'])
                 or not 0<kwargs['request_timeout']<=SETUP_SECONDS):
@@ -74,7 +74,7 @@ class AdmittedSDKLifecycle(StagedLifecycle):
                          mode='closed-admitted-sdk',clock=binding.clock)
 
     async def cleanup(self):
-        # Parent and adapter share ONE cleanup-only window, never separate15s
+        # Parent and adapter share ONE cleanup-only window, never separate cleanup
         # extensions and never extra admitted worker/VM time.
         self.api.binding.begin_cleanup()
         error=None

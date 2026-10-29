@@ -5,19 +5,19 @@ from staged_envelope import *
 
 
 def test_equal_fixed_phases_cannot_mutate_or_roll_over():
-    assert PHASES == (Phase(8,32768,120), Phase(4,16384,60))
-    assert TOTAL == Phase(12,49152,180)
+    assert PHASES == (Phase(8,131072,360), Phase(4,65536,180))
+    assert TOTAL == Phase(12,196608,540)
     with pytest.raises(FrozenInstanceError): PHASES[0].calls=9
 
 
 def test_lifetime_counts_setup_and_review_pause():
     life=Lifetime(100)
-    assert life.deadline==430
-    assert life.allowance(120,120,retain=190)==120
-    assert life.allowance(310,60,retain=60)==60
-    # Even if active worker time is only120, a long review cannot reset330.
-    with pytest.raises(WallBudgetExhausted): life.allowance(311,60,retain=60)
-    assert life.deadline==430
+    assert life.deadline==850
+    assert life.allowance(160,360,retain=330)==360
+    assert life.allowance(610,180,retain=60)==180
+    # Even if active worker time is only360, a long review cannot reset750.
+    with pytest.raises(WallBudgetExhausted): life.allowance(611,180,retain=60)
+    assert life.deadline==850
 
 
 @pytest.mark.parametrize('value',[float('nan'),float('inf'),-1,True,'1'])
@@ -45,11 +45,11 @@ def test_ceiling_fail_closed(change):
 
 
 def test_frozen_partition_and_grade_only_borrows_actual_unused_wall():
-    assert SETUP_SECONDS==40 and GRADE_SECONDS==25 and GRADE_MAX_SECONDS==45
-    assert sum((SETUP_SECONDS,TOTAL.active_seconds,OBSERVATION_SECONDS,REVIEW_SECONDS,GRADE_SECONDS,CLEANUP_SECONDS))==330
+    assert SETUP_SECONDS==60 and GRADE_SECONDS==30 and GRADE_MAX_SECONDS==60
+    assert sum((SETUP_SECONDS,TOTAL.active_seconds,OBSERVATION_SECONDS,REVIEW_SECONDS,GRADE_SECONDS,CLEANUP_SECONDS))==750
     life=Lifetime(0)
-    assert grade_allowance(life,290,15)==25
-    assert grade_allowance(life,270,15)==45
-    assert grade_allowance(life,200,15)==45
-    with pytest.raises(WallBudgetExhausted):grade_allowance(life,291,15)
-    assert grade_allowance(life,293,12)==25  # Stop already used3s of SAME cleanup15.
+    assert grade_allowance(life,700,20)==30
+    assert grade_allowance(life,670,20)==60
+    assert grade_allowance(life,600,20)==60
+    with pytest.raises(WallBudgetExhausted):grade_allowance(life,701,20)
+    assert grade_allowance(life,703,17)==30  # Stop already used3s of SAME cleanup20.

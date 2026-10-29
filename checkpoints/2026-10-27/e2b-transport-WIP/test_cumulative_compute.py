@@ -116,3 +116,34 @@ def test_fresh500_profile_retains_prior_unknown_compute_and_cannot_reset_old250(
     b=ComputeBudget(tmp_path/'old250.sqlite',**old);b.close()
     with pytest.raises(ValueError,match='ceiling identity'):
         ComputeBudget(tmp_path/'old250.sqlite',**kwargs)
+
+
+def test_fresh750_profile_exact_sequential_peak_and_immutable_old330(tmp_path):
+    tmp_path.chmod(0o700)
+    kwargs=dict(prior_upper_bound_nano_usd=229_432_500,evidence_sha256='a'*64,cap_nano_usd=500_000_000,vm_seconds=750)
+    b=ComputeBudget(tmp_path/'new750.sqlite',**kwargs)
+    assert (b.reservation,b.verified_full_lifetime)==(111_000_000,22_687_500)
+    b.reserve('baseline');assert b.total()==340_432_500
+    with pytest.raises(ValueError):b.settle_verified_allocation('baseline',cpu=2,memory_mb=512,max_seconds=330)
+    b.settle_verified_allocation('baseline',cpu=2,memory_mb=512,max_seconds=750)
+    b.reserve('pex');assert b.total()==363_120_000
+    b.settle_verified_allocation('pex',cpu=2,memory_mb=512,max_seconds=750)
+    assert b.total()==274_807_500;b.close()
+    with pytest.raises(ValueError,match='allocation identity'):ComputeBudget(tmp_path/'new750.sqlite',**dict(kwargs,vm_seconds=330))
+    b=ComputeBudget(tmp_path/'old330.sqlite',**dict(kwargs,vm_seconds=330));b.reserve('unknown');b.close()
+    with pytest.raises(ValueError,match='allocation identity'):ComputeBudget(tmp_path/'old330.sqlite',**kwargs)
+    b=ComputeBudget(tmp_path/'old330.sqlite',**dict(kwargs,vm_seconds=330));assert b.total()==229_432_500+RESERVATION;b.close()
+
+def test_750_profile_unknown_is_not_discounted_and_allocation_tamper_fails(tmp_path):
+    tmp_path.chmod(0o700)
+    kwargs=dict(prior_upper_bound_nano_usd=229_432_500,evidence_sha256='b'*64,cap_nano_usd=500_000_000,vm_seconds=750)
+    b=ComputeBudget(tmp_path/'unknown750.sqlite',**kwargs);b.reserve('unknown');b.close()
+    b=ComputeBudget(tmp_path/'unknown750.sqlite',**kwargs);assert b.total()==340_432_500
+    b.db.execute('UPDATE allocation SET seconds=330')
+    with pytest.raises(ValueError,match='allocation changed'):b.total()
+    b.close()
+
+@pytest.mark.parametrize('seconds',[True,0,331,749,751,750.0])
+def test_only_exact_reviewed_allocation_profiles(tmp_path,seconds):
+    tmp_path.chmod(0o700)
+    with pytest.raises(ValueError,match='exact supported'):ComputeBudget(tmp_path/'bad.sqlite',prior_upper_bound_nano_usd=0,evidence_sha256='b'*64,vm_seconds=seconds)
