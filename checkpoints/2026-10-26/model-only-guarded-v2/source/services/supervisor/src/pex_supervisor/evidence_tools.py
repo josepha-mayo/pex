@@ -549,7 +549,7 @@ def build_evidence_tools(
             if offset > len(names):
                 return record("inspect_public_snapshot", {"error": "invalid_page"}, args)
             page = names[offset:offset + 16]
-            while len(json.dumps(page, ensure_ascii=True).encode()) > 5000:
+            while len(json.dumps(redact_mapping({"paths": page})[0], ensure_ascii=True).encode()) > 5000:
                 page.pop()
             end = offset + len(page)
             payload.update(paths=page, total_files=len(names),
@@ -558,7 +558,11 @@ def build_evidence_tools(
             if path not in files:
                 return record("inspect_public_snapshot", {"error": "path_not_in_public_snapshot"}, args)
             item = files[path]
-            content = item["content"]
+            # Sanitize the whole string BEFORE slicing: secrets must never be split
+            # across pages, and redaction expansion must not erase page metadata.
+            content, _ = redact_text(str(_mask_local_strings(item["content"], local_values)))
+            content = content or ""
+            payload["offset_basis"] = "sanitized_text_characters"
             if offset > len(content):
                 return record("inspect_public_snapshot", {"error": "invalid_page"}, args)
             page = content[offset:offset + 4000]

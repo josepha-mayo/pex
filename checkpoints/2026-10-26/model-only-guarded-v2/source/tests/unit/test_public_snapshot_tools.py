@@ -71,3 +71,18 @@ def test_multibyte_and_escaped_content_stays_receipted_and_complete():
         assert data['next_offset']>offset
         offset=data['next_offset']
     assert ''.join(parts)==text
+
+
+def test_redaction_expansion_keeps_paging_metadata_and_never_splits_secret():
+    r,t,_=setup({'TASK.md':('Bearer SECRET_TOKEN ' * 500)})
+    offset=0;parts=[]
+    while True:
+        raw=t(path='TASK.md',offset=offset);data=json.loads(raw)
+        assert len(raw.encode())<=8000 and 'content' in data
+        assert data['offset_basis']=='sanitized_text_characters'
+        parts.append(data['content'])
+        if data['next_offset'] is None:break
+        assert data['next_offset']>offset
+        offset=data['next_offset']
+    assert 'SECRET_TOKEN' not in ''.join(parts)
+    assert ''.join(parts).count('[REDACTED:bearer]')==500
