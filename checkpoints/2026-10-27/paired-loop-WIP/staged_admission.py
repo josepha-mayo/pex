@@ -1,4 +1,4 @@
-"""WIP staged admission: one independently reviewed exploratory recovery08 identity.
+"""WIP staged admission: CLOSED after exploratory08 worker inference and inconclusive comparison.
 
 A candidate inspection is not authority. The new source-reviewed identity below
 still requires an independently pinned root Grant and a fresh private claim. Historical
@@ -90,14 +90,10 @@ class Grant:
     task_sha256: str
     expires_at: str
 
-# Pair07 consumed its claim: two verified VMs, local worker admission failure, no model calls.
+# Pair08 consumed its claim:18 real worker calls, no supervisor, comparison inconclusive.
 # Its full330s compute charge remains; no retry/replacement or old-claim reopen.
 # Any later grant requires independently reviewed authority and cumulative bounds.
-APPROVED_STAGED_GRANT = GrantGate(
-    approval_ref='Sentinel_3dd0c75c32048191a3b47145b5d3f267',
-    run_id='stockroom-staged-pair-20261029-08',
-    config_path='/workspace/scratch/c62c151ada7d/runtime-private/pex-pilot-20261027/stockroom-staged-pair-20261029-08/pair.json',
-    expires_at='2026-10-29T15:30:00+00:00')
+APPROVED_STAGED_GRANT = None
 
 @dataclass(frozen=True, repr=False)
 class Admitted:
