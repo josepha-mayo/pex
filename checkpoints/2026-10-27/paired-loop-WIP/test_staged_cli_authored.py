@@ -16,14 +16,15 @@ from worker_funding import _WorkerLedger, PRICING_SHA
 from staged_funding import PhaseFunding
 from staged_worker import StagedWorker
 from staged_envelope import PHASES
+from controller import WorkerBudgetTerminal
 import nebius_worker as cw
 
 ROOT=Path(__file__).resolve().parents[1]
 
 
 @pytest.mark.parametrize('condition',['baseline','pex'])
-@pytest.mark.parametrize('violates_finalization',[False,True])
-def test_actual_cli_natural_checkpoint_finalization_and_same_session(monkeypatch,tmp_path,violates_finalization,condition):
+@pytest.mark.parametrize('finalization',['stop','tool_calls','length'])
+def test_actual_cli_natural_checkpoint_finalization_and_same_session(monkeypatch,tmp_path,finalization,condition):
     accepted=[]; remote_calls=[]; stage=[0]; per_stage=[0,0]
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_POST(self):
@@ -34,10 +35,13 @@ def test_actual_cli_natural_checkpoint_finalization_and_same_session(monkeypatch
             assert body['max_completion_tokens']==4096
             assert count<=PHASES[index].calls
             assert (body.get('tool_choice')=='none') == (count==PHASES[index].calls)
-            if count<PHASES[index].calls or violates_finalization:
+            if count<PHASES[index].calls or finalization=='tool_calls':
                 delta={'role':'assistant','tool_calls':[{'index':0,'id':f'authored-{index}-{count}',
                     'type':'function','function':{'name':'pex_remote_run','arguments':'{"command":"AUTHORED-ONLY"}'}}]}
                 finish='tool_calls'
+            elif finalization=='length':
+                # Authored exhausted reasoning-only finalization, not task success.
+                delta={'role':'assistant','reasoning':'Authored private reasoning'};finish='length'
             else:
                 delta={'role':'assistant','content':'Authored phase finished'};finish='stop'
             common={'id':f'authored-{index}-{count}','model':cw.MODEL}
@@ -98,7 +102,17 @@ def test_actual_cli_natural_checkpoint_finalization_and_same_session(monkeypatch
         finally:
             await adapter.cleanup()
     try:
-        if violates_finalization:
+        if finalization=='length':
+            with pytest.raises(WorkerBudgetTerminal) as caught: asyncio.run(exercise())
+            assert caught.value.code=='worker_attempt_cap_refused'
+            assert caught.value.usage==dict(calls=8,input_tokens=88,output_tokens=8,uncertain_calls=0)
+            assert caught.value.worker_active_seconds>0
+            assert per_stage==[8,0]  # Attempt nine never reaches provider/ledger.
+            assert ledgers[condition].usage_snapshot()==caught.value.usage
+            assert not funding[condition].finished
+            assert remote_calls.count('AUTHORED-ONLY')==7
+            return
+        if finalization=='tool_calls':
             with pytest.raises(ValueError): asyncio.run(exercise())
             assert per_stage==[8,0]
             assert not funding[condition].finished

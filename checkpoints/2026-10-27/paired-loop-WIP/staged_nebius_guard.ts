@@ -46,7 +46,7 @@ export default Plugin.define({id:'pex-remote-only-pilot',async setup(ctx) {
        e.request.method!=='POST'||b.model!==cfg.model||b.max_completion_tokens!==cfg.outputPerCall||
        b.n!==undefined&&b.n!==1||!Array.isArray(b.tools)||!b.tools.length||
        b.tools.some(t=>t.type!=='function'||!allowed.has(t.function?.name)))return deny();
-    if(pending!==null || acceptedPhaseRequests>=cfg.phaseCalls)return deny();
+    if(pending!==null)return deny();
     if(acceptedPhaseRequests===cfg.phaseCalls-1){
       // Keep allowed tool schemas, but forbid a tool call during finalization.
       // Exact rewritten bytes are reserved and hashed below before dispatch.
@@ -54,7 +54,12 @@ export default Plugin.define({id:'pex-remote-only-pilot',async setup(ctx) {
       e.request=new Request(e.request,{body});
     }
     const call_id=randomUUID(),request_sha256=createHash('sha256').update(body).digest('hex');
+    // Let the trusted phase ledger record cap refusal so the controller retains
+    // accepted-call usage/time instead of misclassifying a generic CLI error.
+    // PhaseFunding refuses before its underlying ledger or any provider dispatch.
     await funding({operation:'reserve',call_id,request_sha256,request_base64:Buffer.from(body).toString('base64')});
+    // Independent fail-closed defense if an incorrectly composed ledger admits it.
+    if(acceptedPhaseRequests>=cfg.phaseCalls)return deny();
     acceptedPhaseRequests+=1;
     pending={call_id,request_sha256}; // unknown responses retain full reservation
     const key=readFileSync(cfg.keyPath,'utf8').trim();
