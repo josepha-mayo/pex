@@ -59,7 +59,7 @@ def test_changed_bytes_refused(candidate,field):
     else:Path(cfg[field]['path']).write_bytes(b'changed')
     with pytest.raises((a.AdmissionRefused,ValueError)):a.inspect_candidate(a.canonical(cfg),grant)
 
-@pytest.mark.parametrize('change',['proxy','ca','override','claim','output','expiry','budget','missing_prior','missing_pair03_supervisor','unequal'])
+@pytest.mark.parametrize('change',['proxy','ca','override','claim','output','expiry','budget','missing_prior','missing_pair03_supervisor','missing_pair02_reconciliation','unequal'])
 def test_semantic_admission_refusals(candidate,monkeypatch,change):
     cfg,freeze=candidate
     if change=='proxy':monkeypatch.setenv('HTTPS_PROXY','http://changed.invalid:9')
@@ -72,7 +72,9 @@ def test_semantic_admission_refusals(candidate,monkeypatch,change):
     elif change=='unequal':cfg['profile']['pex_worker_fresh']=1
     else:
         p=Path(cfg['predecessor']['path']);v=json.loads(p.read_bytes())
-        v['ledgers'].pop('pair03_supervisor' if change=='missing_pair03_supervisor' else 'null_function06')
+        missing = ('denied_pair02_authoritative_reconciliation' if change=='missing_pair02_reconciliation'
+                   else 'pair03_supervisor' if change=='missing_pair03_supervisor' else 'null_function06')
+        v['ledgers'].pop(missing)
         p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes())
     raw,grant=freeze()
     with pytest.raises((a.AdmissionRefused,ValueError)):a.inspect_candidate(raw,grant)

@@ -1,7 +1,7 @@
-"""WIP staged admission CLOSED after a consumed, denied/uncertain create attempt.
+"""WIP exact fresh pair03 admission; no automatic launch or old-claim reopening.
 
-A candidate inspection is not authority. Any later grant requires independently
-reviewed authority and a new private config/run; the prior claim is consumed. Historical
+A candidate inspection is not authority. The new source-reviewed identity below
+still requires an independently pinned root Grant and a fresh private claim. Historical
 liabilities (including unknown requests) are supplied by a pinned predecessor;
 this module never refunds them or reuses the consumed legacy approval.
 """
@@ -22,7 +22,9 @@ WORKER_MODEL = 'deepseek-ai/DeepSeek-V4.1-Flash-1017'
 SUPERVISOR_MODEL = 'nvidia/nemotron-3-super-120b-a12b'
 REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',
     'diagnostic1423', 'retry01', 'shape02', 'cache03', 'nested04', 'nullable05',
-    'null_function06', 'pair03_workers', 'pair03_supervisor', 'pair03_compute'))
+    'null_function06', 'pair03_workers', 'pair03_supervisor', 'pair03_compute',
+    'denied_pair02_workers', 'denied_pair02_supervisor', 'denied_pair02_compute',
+    'denied_pair02_authoritative_reconciliation'))
 _SEAL = object()
 
 class AdmissionRefused(PermissionError): pass
@@ -77,9 +79,15 @@ class Grant:
     task_sha256: str
     expires_at: str
 
-# Oct29 pair02 claimed once. A platform denial interrupted its first create;
-# the full uncertain compute reservation remains retained. No retry/replacement.
-APPROVED_STAGED_GRANT = None
+# Fresh explicit Oct29 approval, not a retry/reopening of consumed pair02.
+# Raw pair02 ledgers stay pinned unchanged. A separately root-reviewed provider
+# history reconciliation establishes non-creation prospectively; no ledger refund.
+APPROVED_STAGED_GRANT = GrantGate(
+    'Sentinel_1787ce8a2b34819185c85ca37a847f46',
+    'stockroom-staged-pair-20261029-03',
+    '/workspace/scratch/c62c151ada7d/runtime-private/pex-pilot-20261027/stockroom-staged-pair-20261029-03/pair.json',
+    '2026-10-29T11:00:00+00:00',
+)
 
 @dataclass(frozen=True, repr=False)
 class Admitted:
