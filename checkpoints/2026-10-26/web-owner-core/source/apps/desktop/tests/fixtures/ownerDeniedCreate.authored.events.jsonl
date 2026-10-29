@@ -1,0 +1,3 @@
+{"event": "platform_denied", "supervisor_model": "nvidia/nemotron-3-super-120b-a12b", "ts": "2026-01-01T00:00:00Z", "worker_model": "nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017"}
+{"event": "create_outcome_uncertain", "supervisor_model": "nvidia/nemotron-3-super-120b-a12b", "ts": "2026-01-01T00:00:01Z", "worker_model": "nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017"}
+{"event": "cleanup_unconfirmed", "supervisor_model": "nvidia/nemotron-3-super-120b-a12b", "ts": "2026-01-01T00:00:02Z", "worker_model": "nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017"}

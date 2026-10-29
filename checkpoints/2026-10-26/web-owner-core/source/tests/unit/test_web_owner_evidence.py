@@ -123,3 +123,59 @@ class EvidenceTests(unittest.TestCase):
                     self.write([{"event": "arm_started", "arm": "baseline", "ts": stamp}]),
                     {"state": "unavailable"},
                 )
+
+    def test_denied_execution_and_unknown_create_remain_independent_metadata(self):
+        value = self.write(
+            [
+                {"event": "platform_denied", "arm": "baseline", "error": "PRIVATE"},
+                {"event": "create_outcome_uncertain", "sandbox_id": "PRIVATE"},
+                {"event": "cleanup_unconfirmed", "receipt": "PRIVATE"},
+            ]
+        )
+        self.assertEqual(value["state"], "recorded")
+        self.assertEqual(
+            value["lifecycle"],
+            {"execution": "platform_denied", "allocation": "uncertain", "cleanup": "unconfirmed"},
+        )
+        self.assertFalse(value["paired_terminal"])
+        for arm in value["arms"].values():
+            self.assertEqual(arm, {"status": "not_started", "worker_calls": None})
+        self.assertNotIn("PRIVATE", json.dumps(value))
+
+    def test_lifecycle_does_not_invent_a_denial_or_allocation_from_cleanup(self):
+        value = self.write([{"event": "create_outcome_uncertain"}])
+        self.assertEqual(
+            value["lifecycle"],
+            {"execution": "not_reported", "allocation": "uncertain", "cleanup": "not_reported"},
+        )
+        value = self.write([{"event": "platform_denied"}])
+        self.assertEqual(
+            value["lifecycle"],
+            {
+                "execution": "platform_denied",
+                "allocation": "not_reported",
+                "cleanup": "not_reported",
+            },
+        )
+        self.assertNotIn("lifecycle", self.write([{"event": "cleanup_unconfirmed"}]))
+
+    def test_denial_cannot_be_followed_by_resumed_work_or_success(self):
+        for before in ("platform_denied", "create_outcome_uncertain"):
+            for after in (
+                {"event": "arm_started", "arm": "baseline"},
+                {"event": "worker_natural_stop", "arm": "baseline"},
+                {"event": "arm_terminal", "arm": "baseline", "terminal": "natural_stop"},
+                {"event": "paired_terminal"},
+            ):
+                with self.subTest(before=before, after=after):
+                    self.assertEqual(
+                        self.write([{"event": before}, after]), {"state": "unavailable"}
+                    )
+
+    def test_authored_browser_fixture_matches_the_real_projection_contract(self):
+        fixtures = Path(__file__).resolve().parents[2] / "apps/desktop/tests/fixtures"
+        expected = json.loads((fixtures / "ownerDeniedCreate.authored.json").read_text())
+        self.assertEqual(
+            read_evidence(fixtures / "ownerDeniedCreate.authored.events.jsonl"),
+            expected["run_evidence"],
+        )

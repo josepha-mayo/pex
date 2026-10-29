@@ -62,3 +62,19 @@ test("authored run metadata validates and private extra fields fail closed", () 
   assert.throws(() => parseWorkspace({ ...base, run_evidence: { ...recorded, grade: "private" } }));
   assert.throws(() => parseWorkspace({ ...base, run_evidence: { ...recorded, worker_model: "private" } }));
 });
+
+test("typed platform denial preserves independent allocation and cleanup uncertainty", () => {
+  const recorded = { state: "recorded", phase: "create_outcome_uncertain", observed_at: "2026-10-29T00:00:00Z", worker_model: "nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017", supervisor_model: "nvidia/nemotron-3-super-120b-a12b", paired_terminal: false, arms: { baseline: { status: "not_started", worker_calls: null }, pex: { status: "not_started", worker_calls: null } }, lifecycle: { execution: "platform_denied", allocation: "uncertain", cleanup: "not_reported" } };
+  const parse = (run_evidence: unknown) => parseWorkspace({ ...snapshot(), run_evidence });
+  assert.equal(parse(recorded).run_evidence?.state, "recorded");
+  for (const lifecycle of [
+    { ...recorded.lifecycle, allocation: "refunded" },
+    { ...recorded.lifecycle, private_error: "PRIVATE" },
+    { ...recorded.lifecycle, cleanup: true },
+    { execution: "not_reported", allocation: "not_reported", cleanup: "not_reported" },
+  ]) assert.throws(() => parse({ ...recorded, lifecycle }));
+  const { lifecycle: _lifecycle, ...without } = recorded;
+  assert.throws(() => parse(without));
+  assert.throws(() => parse({ ...recorded, paired_terminal: true }));
+  assert.throws(() => parse({ ...recorded, phase: "paired_terminal" }));
+});

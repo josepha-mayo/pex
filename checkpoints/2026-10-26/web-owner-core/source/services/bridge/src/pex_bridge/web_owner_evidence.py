@@ -23,6 +23,8 @@ PHASES = {
     "paired_terminal",
     "paired_results_available",
     "cleanup_unconfirmed",
+    "platform_denied",
+    "create_outcome_uncertain",
 }
 TERMINALS = {
     "natural_stop",
@@ -65,6 +67,7 @@ def read_evidence(path: Path | None) -> dict:
         paired = False
         worker = supervisor = None
         phase = observed = None
+        lifecycle = None
         for line in lines:
             if len(line) > 8192:
                 raise ValueError("record limit")
@@ -95,6 +98,39 @@ def read_evidence(path: Path | None) -> dict:
             arm = event.get("arm")
             if arm is not None and arm not in arms:
                 raise ValueError("unknown arm")
+            if lifecycle is not None and (
+                lifecycle["execution"] == "platform_denied"
+                or lifecycle["allocation"] == "uncertain"
+            ):
+                if phase in {
+                    "arm_started",
+                    "isolated_workspace_created",
+                    "worker_natural_stop",
+                    "review_started",
+                    "review_finished",
+                    "paired_terminal",
+                    "paired_results_available",
+                } or (
+                    phase == "arm_terminal"
+                    and event.get("terminal")
+                    in {"natural_stop", "no_intervention", "verifier_rejected"}
+                ):
+                    raise ValueError("work or success after unresolved execution or allocation")
+            if phase in {"platform_denied", "create_outcome_uncertain"}:
+                if paired:
+                    raise ValueError("lifecycle failure after paired terminal")
+                if lifecycle is None:
+                    lifecycle = {
+                        "execution": "not_reported",
+                        "allocation": "not_reported",
+                        "cleanup": "not_reported",
+                    }
+                if phase == "platform_denied":
+                    lifecycle["execution"] = "platform_denied"
+                else:
+                    lifecycle["allocation"] = "uncertain"
+            elif phase == "cleanup_unconfirmed" and lifecycle is not None:
+                lifecycle["cleanup"] = "unconfirmed"
             if phase in {
                 "arm_started",
                 "isolated_workspace_created",
@@ -120,10 +156,12 @@ def read_evidence(path: Path | None) -> dict:
                         raise ValueError("unknown terminal")
                     arms[arm]["status"] = event["terminal"]
             if phase in {"paired_terminal", "paired_results_available"}:
+                if lifecycle is not None:
+                    raise ValueError("unresolved execution or allocation outcome")
                 if not all(a["status"] in TERMINALS for a in arms.values()):
                     raise ValueError("premature paired terminal")
                 paired = True
-        return {
+        result = {
             "state": "recorded",
             "phase": phase,
             "observed_at": observed,
@@ -132,6 +170,9 @@ def read_evidence(path: Path | None) -> dict:
             "paired_terminal": paired,
             "arms": arms,
         }
+        if lifecycle is not None:
+            result["lifecycle"] = lifecycle
+        return result
     except (OSError, ValueError, TypeError, OverflowError, RecursionError):
         # Do not leak paths, provider error strings or stale metadata.
         return {"state": "unavailable"}

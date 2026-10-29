@@ -1,0 +1,44 @@
+{
+  "schema": "pex.owner-workspace.v1",
+  "observed_at": "2026-01-01T00:00:03Z",
+  "sessions": [],
+  "goals": [
+    {
+      "id": "authored-denial-goal",
+      "title": "Authored denied-create fixture — no provider or VM",
+      "paused": false,
+      "completion": {
+        "status": "uncertain",
+        "reason": "no_current_supported_completion_evidence",
+        "as_of": "2026-01-01T00:00:03Z"
+      }
+    }
+  ],
+  "truncated": {
+    "sessions": false,
+    "goals": false
+  },
+  "run_evidence": {
+    "state": "recorded",
+    "phase": "cleanup_unconfirmed",
+    "observed_at": "2026-01-01T00:00:02+00:00",
+    "worker_model": "nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017",
+    "supervisor_model": "nvidia/nemotron-3-super-120b-a12b",
+    "paired_terminal": false,
+    "arms": {
+      "baseline": {
+        "status": "not_started",
+        "worker_calls": null
+      },
+      "pex": {
+        "status": "not_started",
+        "worker_calls": null
+      }
+    },
+    "lifecycle": {
+      "execution": "platform_denied",
+      "allocation": "uncertain",
+      "cleanup": "unconfirmed"
+    }
+  }
+}

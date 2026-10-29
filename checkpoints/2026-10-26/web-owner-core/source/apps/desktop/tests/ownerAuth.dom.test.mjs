@@ -173,3 +173,22 @@ test('recorded terminal summary distinguishes infrastructure, cleanup and unprov
    assert.match(f.el('workspace-records').textContent,expected);
  }
 });
+
+test('typed denied lifecycle does not hide allocation uncertainty or imply a task failure',async()=>{
+ const payload=JSON.parse(fs.readFileSync(new URL('./fixtures/ownerDeniedCreate.authored.json',import.meta.url),'utf8'));
+ const f=setup([good(),new Response(JSON.stringify(payload)),new Response('',{status:503})]); await flush();
+ f.el('refresh-workspace').click(); await flush();
+ const text=f.el('workspace-records').textContent;
+ assert.match(text,/Execution was denied by the platform/);
+ assert.match(text,/not a task failure/);
+ assert.match(text,/allocation may exist/);
+ assert.match(text,/Cleanup is unconfirmed/);
+ assert.match(text,/not automatically refunded/);
+ assert.match(text,/Recorded worker calls: not reported/);
+ assert.doesNotMatch(text,/Recorded worker calls: 0|Task success|Both arms recorded terminal/);
+ assert.match(text,/Goals/); assert.match(text,/Sessions/);
+ assert.equal(f.el('workspace-records').querySelector('button'),null);
+ assert.deepEqual(f.calls.map(x=>new URL(x.url).pathname),['/owner/auth/session','/owner/workspace']);
+ f.el('refresh-workspace').click(); await flush();
+ assert.equal(f.el('workspace-records').textContent,'');
+});

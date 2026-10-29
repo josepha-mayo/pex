@@ -2,6 +2,7 @@
 export type RunEvidence = { state: "not_configured" | "empty" | "unavailable" } | {
   state: "recorded"; phase: string; observed_at: string; worker_model: string; supervisor_model: string; paired_terminal: boolean;
   arms: Record<"baseline" | "pex", { status: string; worker_calls: number | null }>;
+  lifecycle?: { execution: "not_reported" | "platform_denied"; allocation: "not_reported" | "uncertain"; cleanup: "not_reported" | "unconfirmed" };
 };
 export type Workspace = {
   run_evidence?: RunEvidence;
@@ -67,10 +68,23 @@ export function createWorkspaceClient({ origin, authorized, changed, denied, sen
 const terminalStates = new Set(["natural_stop", "no_intervention", "verifier_rejected", "budget_terminal_inconclusive", "supervisor_budget_terminal_inconclusive", "worker_budget_terminal_inconclusive", "infrastructure_error", "infrastructure_inconclusive", "grading_inconclusive"]);
 export function parseRunEvidence(v: unknown): RunEvidence {
   if (keys(v, ["state"]) && ["not_configured", "empty", "unavailable"].includes(v.state)) return v as RunEvidence;
-  if (!keys(v, ["state", "phase", "observed_at", "worker_model", "supervisor_model", "paired_terminal", "arms"]) || v.state !== "recorded" || !stamp(v.observed_at) ||
-      !["arm_started", "isolated_workspace_created", "worker_natural_stop", "review_started", "review_finished", "arm_terminal", "paired_terminal", "paired_results_available", "cleanup_unconfirmed"].includes(v.phase) ||
+  const fields = ["state", "phase", "observed_at", "worker_model", "supervisor_model", "paired_terminal", "arms"];
+  if (!(keys(v, fields) || keys(v, [...fields, "lifecycle"])) || v.state !== "recorded" || !stamp(v.observed_at) ||
+      !["arm_started", "isolated_workspace_created", "worker_natural_stop", "review_started", "review_finished", "arm_terminal", "paired_terminal", "paired_results_available", "cleanup_unconfirmed", "platform_denied", "create_outcome_uncertain"].includes(v.phase) ||
       !["opencode/deepseek-v4.1-flash-free", "nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017"].includes(v.worker_model) || v.supervisor_model !== "nvidia/nemotron-3-super-120b-a12b" ||
       typeof v.paired_terminal !== "boolean" || !keys(v.arms, ["baseline", "pex"])) throw new Error("invalid");
+  if ("lifecycle" in v) {
+    const life = v.lifecycle;
+    if (!keys(life, ["execution", "allocation", "cleanup"]) || !["not_reported", "platform_denied"].includes(life.execution) ||
+        !["not_reported", "uncertain"].includes(life.allocation) || !["not_reported", "unconfirmed"].includes(life.cleanup) ||
+        Object.values(life).every(value => value === "not_reported") ||
+        ["paired_terminal", "paired_results_available"].includes(v.phase) ||
+        (v.paired_terminal && (life.execution === "platform_denied" || life.allocation === "uncertain")) ||
+        (v.phase === "platform_denied" && life.execution !== "platform_denied") ||
+        (v.phase === "create_outcome_uncertain" && life.allocation !== "uncertain") ||
+        (v.phase === "cleanup_unconfirmed" && life.cleanup !== "unconfirmed") ||
+        ((life.execution === "platform_denied" || life.allocation === "uncertain") && ["arm_started", "isolated_workspace_created", "worker_natural_stop", "review_started", "review_finished"].includes(v.phase))) throw new Error("invalid");
+  } else if (["platform_denied", "create_outcome_uncertain"].includes(v.phase)) throw new Error("invalid");
   for (const a of Object.values(v.arms)) {
     if (!keys(a, ["status", "worker_calls"]) || !(terminalStates.has(a.status) || ["not_started", "running"].includes(a.status)) ||
         (a.worker_calls !== null && (!Number.isInteger(a.worker_calls) || a.worker_calls < 0 || a.worker_calls > 1000)) || (v.paired_terminal && !terminalStates.has(a.status))) throw new Error("invalid");

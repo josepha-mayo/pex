@@ -28,7 +28,12 @@ function renderWorkspace(view: WorkspaceView) {
   else if (evidence.state === "unavailable") add("p", "Run evidence is unavailable. No cached results are shown.");
   else if (evidence.state === "recorded") {
     const armStates = Object.values(evidence.arms).map(arm => arm.status);
-    const summary = evidence.phase === "cleanup_unconfirmed"
+    const lifecycle = evidence.lifecycle;
+    const summary = lifecycle?.execution === "platform_denied"
+      ? "Execution was denied by the platform. This is not a task failure; no comparison result is established."
+      : lifecycle?.allocation === "uncertain"
+        ? "Inconclusive: resource creation outcome is uncertain."
+        : evidence.phase === "cleanup_unconfirmed"
       ? "Cleanup is unconfirmed. This comparison is inconclusive."
       : armStates.some(value => value.includes("budget_terminal"))
         ? "Inconclusive: a recorded budget limit stopped this comparison."
@@ -38,6 +43,9 @@ function renderWorkspace(view: WorkspaceView) {
             ? "Both arms recorded terminal states. Task success is not established here."
             : "Paired run is not terminal.";
     add("p", `${summary} · ${evidence.phase.replaceAll("_", " ")}`);
+    if (lifecycle?.allocation === "uncertain") add("p", "A sandbox allocation may exist. Its creation and completed cleanup are not established by this metadata.");
+    if (lifecycle?.cleanup === "unconfirmed") add("p", "Cleanup is unconfirmed. Do not infer remote termination from a stopped controller or elapsed time.");
+    if (lifecycle) add("small", "Uncertain reservations are not automatically refunded. This read-only view cannot authorize a retry or start resources. Missing call counts remain unknown, not measured zero.");
     add("small", `Controller-recorded at ${evidence.observed_at}. Recorded worker model ID: ${evidence.worker_model}. Recorded supervisor model ID: ${evidence.supervisor_model}.`);
     for (const name of ["baseline", "pex"] as const) {
       const arm = evidence.arms[name];
