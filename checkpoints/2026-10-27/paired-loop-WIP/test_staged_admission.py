@@ -212,3 +212,16 @@ def test_pair14_preserves_zero_dispatch_failed13_identity(candidate,name):
     cfg,freeze=candidate;p=Path(cfg['predecessor']['path']);v=json.loads(p.read_bytes());v['ledgers'].pop(name)
     p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes());raw,grant=freeze()
     with pytest.raises(a.AdmissionRefused,match='complete_retained'):a.inspect_candidate(raw,grant)
+
+
+@pytest.mark.parametrize('name',['interrupted_staged14_workers','interrupted_staged14_supervisor','interrupted_staged14_compute','interrupted_staged14_config','interrupted_staged14_admission','interrupted_staged14_claim','interrupted_staged14_executed_sources','interrupted_staged14_interruption','interrupted_staged14_summary','interrupted_staged14_cleanup_scope','interrupted_staged14_cleanup_receipt','interrupted_staged14_cleanup_result','interrupted_staged14_local_cleanup','interrupted_staged14_recording_terminal'])
+def test_pair15_requires_interrupted14_without_refunding_unknown(candidate,name):
+    cfg,freeze=candidate;p=Path(cfg['predecessor']['path']);v=json.loads(p.read_bytes());v['ledgers'].pop(name)
+    p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes());raw,grant=freeze()
+    with pytest.raises(a.AdmissionRefused,match='complete_retained'):a.inspect_candidate(raw,grant)
+
+def test_pair15_full_uncertain_prior_still_fits_equal_frozen_profile(candidate):
+    cfg,freeze=candidate;p=Path(cfg['predecessor']['path']);v=json.loads(p.read_bytes())
+    v.update(provider_nano_usd=2650295400,compute_nano_usd=297495000);p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes())
+    raw,grant=freeze();e=a.inspect_candidate(raw,grant)
+    assert e['provider_reserved_ceiling']==4500295400 and e['compute_sequential_peak']==431182500 and e['compute_final_lifetime_bound']==342870000
