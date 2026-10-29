@@ -41,6 +41,7 @@ def candidate(tmp_path,monkeypatch):
     return cfg,freeze
 
 def test_default_gate_before_any_read(monkeypatch):
+    monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',None)
     monkeypatch.setattr(a,'read_pin',lambda *x,**k:pytest.fail('must not read'))
     with pytest.raises(a.AdmissionRefused,match='approval_pending'):a.load()
 
@@ -58,7 +59,7 @@ def test_changed_bytes_refused(candidate,field):
     else:Path(cfg[field]['path']).write_bytes(b'changed')
     with pytest.raises((a.AdmissionRefused,ValueError)):a.inspect_candidate(a.canonical(cfg),grant)
 
-@pytest.mark.parametrize('change',['proxy','ca','override','claim','output','expiry','budget','missing_prior','unequal'])
+@pytest.mark.parametrize('change',['proxy','ca','override','claim','output','expiry','budget','missing_prior','missing_pair03_supervisor','unequal'])
 def test_semantic_admission_refusals(candidate,monkeypatch,change):
     cfg,freeze=candidate
     if change=='proxy':monkeypatch.setenv('HTTPS_PROXY','http://changed.invalid:9')
@@ -70,7 +71,8 @@ def test_semantic_admission_refusals(candidate,monkeypatch,change):
     elif change=='budget':cfg['profile']['equal_worker_fresh']=1000000000
     elif change=='unequal':cfg['profile']['pex_worker_fresh']=1
     else:
-        p=Path(cfg['predecessor']['path']);v=json.loads(p.read_bytes());v['ledgers'].pop('null_function06')
+        p=Path(cfg['predecessor']['path']);v=json.loads(p.read_bytes())
+        v['ledgers'].pop('pair03_supervisor' if change=='missing_pair03_supervisor' else 'null_function06')
         p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes())
     raw,grant=freeze()
     with pytest.raises((a.AdmissionRefused,ValueError)):a.inspect_candidate(raw,grant)
