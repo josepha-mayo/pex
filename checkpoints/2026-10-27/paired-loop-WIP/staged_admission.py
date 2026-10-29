@@ -1,4 +1,4 @@
-"""WIP staged admission: one independently reviewed exploratory paired16 identity.
+"""WIP staged admission: one independently reviewed exploratory paired17 identity.
 
 A candidate inspection is not authority. The new source-reviewed identity below
 still requires an independently pinned root Grant and a fresh private claim. Historical
@@ -122,8 +122,8 @@ class Grant:
 # Exact independently reviewed config/source pins and unused claim remain required.
 APPROVED_STAGED_GRANT = GrantGate(
     approval_ref='Sentinel_b0b9b8667a5481918578997cbe4ff5e3',
-    run_id='stockroom-staged-pair-20261029-16',
-    config_path='/tmp/pex-paired-live-20261029/stockroom-staged-pair-20261029-16/pair.json',
+    run_id='stockroom-staged-pair-20261029-17',
+    config_path='/tmp/pex-paired-live-20261029/stockroom-staged-pair-20261029-17/pair.json',
     expires_at='2026-10-30T00:00:00+00:00')
 
 @dataclass(frozen=True, repr=False)
