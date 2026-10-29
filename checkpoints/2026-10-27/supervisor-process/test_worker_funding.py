@@ -81,6 +81,35 @@ def test_unknown_reservation_blocks_same_arm_not_other_arm(tmp_path):
     baseline.close();pex.close()
 
 
+def test_wire_reason_is_allowlisted_without_persisting_exception_text(tmp_path,monkeypatch):
+    db=ledger(tmp_path/'worker.sqlite');raw,sha=request();db.reserve('call',sha,raw)
+    def failed(*_):raise ValueError('AUTHORED_PRIVATE_EXCEPTION_MUST_NOT_LEAK')
+    monkeypatch.setattr(wf,'_wire_usage',failed)
+    result=db.settle_raw('call',sha,200,'text/event-stream',stream())
+    row=db.db.execute('SELECT receipt FROM calls').fetchone()[0]
+    assert result['state']=='uncertain' and result['charged_nano_usd']==wf.RESERVATION
+    assert json.loads(row)['usage_validation_code']=='wire_validation_unclassified'
+    assert 'AUTHORED_PRIVATE_EXCEPTION_MUST_NOT_LEAK' not in row
+    assert 'wire_evidence' not in json.loads(row)  # No legacy raw-body archival.
+    db.close()
+
+
+def test_wire_sink_failure_never_reduces_pending_reservation(tmp_path):
+    def failed(*_):raise OSError('AUTHORED evidence persistence failure')
+    db=ledger(tmp_path/'worker.sqlite',wire_evidence_sink=failed);raw,sha=request();db.reserve('call',sha,raw)
+    with pytest.raises(OSError):db.settle_raw('call',sha,200,'text/event-stream',stream())
+    assert db.db.execute('SELECT charged,state,receipt FROM calls').fetchone()==(wf.RESERVATION,'reserved_uncertain',None)
+    db.close()
+
+
+def test_oversized_wire_never_reaches_sink_or_refunds(tmp_path):
+    observed=[];db=ledger(tmp_path/'worker.sqlite',wire_evidence_sink=lambda *args:observed.append(args))
+    raw,sha=request();db.reserve('call',sha,raw)
+    with pytest.raises(ValueError):db.settle_raw('call',sha,200,'text/event-stream',b'x'*(wf.MAX_BYTES+1))
+    assert not observed and db.db.execute('SELECT charged,state FROM calls').fetchone()==(wf.RESERVATION,'reserved_uncertain')
+    db.close()
+
+
 def test_global_db_concurrent_requests_do_not_cross_subsidize(tmp_path):
     path=tmp_path/"worker.sqlite";ledger(path).close();raw,sha=request();barrier=Barrier(6)
     def attempt(index):

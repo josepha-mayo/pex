@@ -1,5 +1,6 @@
 """Synthetic closed grant/cumulative ledgers; no provider or real runtime evidence."""
 import json
+import base64
 from pathlib import Path
 import pytest
 from test_staged_sdk_binding import bound
@@ -88,6 +89,28 @@ def test_new_prospective_allocation_preserves_reservations_and_fresh_caps(funded
     assert bundle.supervisor.budget==SUPERVISOR_PRIOR+350000000
     assert RESERVATION==319488000 and bundle.supervisor.reservation==82329600
     assert 806031900+2*375000000+350000000==1906031900<2000000000
+
+
+@pytest.mark.parametrize('bad_details',[False,True])
+def test_new_composition_privately_preserves_exact_wire_and_reason_without_relaxation(funded,bad_details):
+    bundle,scope=funded;digest,raw=request();bundle.workers['baseline'].reserve('authored-wire',digest,raw)
+    value={'model':WORKER_MODEL,'choices':[{'index':0,'finish_reason':'stop'}],
+        'usage':{'prompt_tokens':11,'completion_tokens':1,'total_tokens':12,
+            'prompt_tokens_details':{'cached_tokens':12 if bad_details else 0}}}
+    body=canonical(value)
+    result=bundle.workers['baseline'].settle_raw('authored-wire',digest,200,'application/json',body)
+    row=json.loads(bundle.raw_workers['baseline'].db.execute('SELECT receipt FROM calls').fetchone()[0]);p=Path(row['wire_evidence']['path'])
+    assert p.parent==bundle.root/'worker-wire' and p.stat().st_mode&0o077==0 and p.stat().st_nlink==1
+    assert sha(p.read_bytes())==row['wire_evidence']['sha256']
+    captured=json.loads(p.read_bytes());assert base64.b64decode(captured['raw_response_base64'])==body
+    assert captured['response_sha256']==sha(body) and captured['request_sha256']==digest
+    assert captured['config_sha256']==scope.admitted.grant.config_sha256
+    assert captured['request_body_or_headers_captured'] is False
+    expected='invalid_usage_detail_count' if bad_details else 'validated_complete_wire'
+    assert row['usage_validation_code']==captured['usage_validation_code']==expected
+    assert result['state']==('uncertain' if bad_details else 'settled_raw_wire')
+    assert result['charged_nano_usd']==(RESERVATION if bad_details else 4500)
+    assert not scope.creates  # Authored local wire only, no VM/model/provider call.
     assert not scope.creates
 
 

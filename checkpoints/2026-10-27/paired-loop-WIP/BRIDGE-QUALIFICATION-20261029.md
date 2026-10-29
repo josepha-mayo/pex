@@ -182,3 +182,21 @@ only HTTP status, response hash and usage:null, not raw response bytes or a type
 rejection reason. The pinned CLI retained derived token values, but those are not
 substituted for missing exact raw-wire proof. No retrospective cache-only refund,
 stream relaxation, new resource, provider switch or model fallback was made.
+
+## Prospective exact wire diagnostics, without settlement relaxation
+
+NEW closed compositions now retain bounded HTTP response bytes in a separate
+private0600, atomic/exclusive artifact, bound to run/config/arm/call/request and
+response hashes. The ledger references that artifact and records an allowlisted
+validation code. Request bodies, authorization headers and arbitrary exception
+strings are not logged. Legacy ledger construction does not archive raw bodies;
+all original rows remain untouched. Evidence persistence failure rolls back to
+the full pending reservation rather than silently reducing it.
+
+54 focused authored tests passed, including actual CLI/SDK mock composition,
+exact private byte retention, malformed-detail full-charge retention, byte bounds,
+nonleaking error classification and persistence-failure behavior. No provider
+call, pricing change, parser relaxation, old-row reconciliation or model fallback
+was performed by this diagnostic change. In particular, old10 HTTP200 response
+hashes cannot reconstruct their missing raw bodies; client-derived token values
+remain insufficient for exact retrospective settlement.

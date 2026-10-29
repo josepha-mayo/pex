@@ -27,6 +27,23 @@ PRICING_SHA = "50e7bb6a6548514fbfe49c25148234644b39a29a2f3caf5cd6b85cd6fc8f20a4"
 ARMS = ("baseline", "pex")
 MAX_BYTES = 2 * 1024 * 1024
 ALLOWED_TOOLS = {"pex_remote_run", "pex_remote_read", "pex_remote_write", "pex_remote_list"}
+WIRE_USAGE_REASONS = frozenset((
+    'invalid worker accounting integer','duplicate wire field','nonfinite wire value',
+    'missing complete usage','wire usage outside envelope','invalid usage details',
+    'invalid usage detail count','response status uncertain','response size uncertain',
+    'response type uncertain','incomplete worker response','unsupported worker response type',
+    'truncated SSE framing','unsupported SSE field','SSE data after completion',
+    'SSE model/identity mismatch','mixed SSE responses','SSE choices invalid',
+    'SSE choice index invalid','SSE finish invalid','SSE output after finish',
+    'ambiguous/nonterminal SSE usage','missing terminal SSE usage'))
+
+
+def wire_usage_reason(error):
+    """Only static parser codes; never retain arbitrary exception text."""
+    if isinstance(error,json.JSONDecodeError):return 'wire_json_parse_invalid'
+    if isinstance(error,UnicodeError):return 'wire_UTF8_invalid'
+    value=error.args[0] if len(error.args)==1 else None
+    return value.replace(' ','_').replace('/','_') if type(value)is str and value in WIRE_USAGE_REASONS else 'wire_validation_unclassified'
 
 
 class WorkerBudgetExhausted(ValueError):
@@ -173,7 +190,9 @@ class _WorkerLedger:
     """Private pure-accounting implementation; never grants provider authority."""
     def __init__(self, path, *, arm, approved_config_digest, approval_ref, pricing_provenance_sha256,
                  prior_charged_nano_usd=None, predecessor_sha256=None,
-                 arm_budget_nano_usd=ARM_BUDGET, phase_limit_nano_usd=None):
+                 arm_budget_nano_usd=ARM_BUDGET, phase_limit_nano_usd=None,wire_evidence_sink=None):
+        if wire_evidence_sink is not None and not callable(wire_evidence_sink):raise ValueError('trusted wire evidence sink required')
+        self.wire_evidence_sink=wire_evidence_sink
         if arm not in ARMS or pricing_provenance_sha256 != PRICING_SHA:
             raise ValueError("worker arm/pricing identity refused")
         _digest(approved_config_digest)
@@ -302,16 +321,25 @@ class _WorkerLedger:
             if row!=(self.arm,request_sha256,"reserved_uncertain"):
                 raise ValueError("worker reservation missing/settled/identity mismatch")
             state,charge,usage="uncertain",RESERVATION,None
+            validation_code='validated_complete_wire'
             try:
                 usage=_wire_usage(status,content_type,rawbytes)
-            except (ValueError,TypeError,KeyError,UnicodeError):
-                pass
+            except (ValueError,TypeError,KeyError,UnicodeError) as error:
+                validation_code=wire_usage_reason(error)
             else:
                 charge=usage["input_tokens"]*INPUT_RATE+usage["output_tokens"]*OUTPUT_RATE
                 state="settled_raw_wire"
             receipt=dict(call_id=call_id,arm=self.arm,request_sha256=request_sha256,
                          response_sha256=hashlib.sha256(rawbytes).hexdigest(),
-                         status=status if type(status)is int else None,usage=usage)
+                         status=status if type(status)is int else None,usage=usage,
+                         usage_validation_code=validation_code)
+            if self.wire_evidence_sink is not None:
+                # NEW explicitly composed private evidence only. No legacy body
+                # logging, header/key capture, changed settlement or old-row edit.
+                evidence=self.wire_evidence_sink(self.arm,call_id,request_sha256,status,content_type,rawbytes,validation_code)
+                if type(evidence)is not dict or set(evidence)!={'path','sha256'} or type(evidence['path'])is not str:
+                    raise ValueError('exact private wire evidence pin required')
+                _digest(evidence['sha256']);receipt['wire_evidence']=evidence
             self.db.execute("UPDATE calls SET charged=?,state=?,receipt=? WHERE id=? AND state='reserved_uncertain'",(charge,state,json.dumps(receipt,sort_keys=True),call_id))
             self.db.execute("COMMIT")
         except BaseException:

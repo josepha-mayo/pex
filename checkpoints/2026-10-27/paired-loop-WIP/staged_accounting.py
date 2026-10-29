@@ -7,6 +7,7 @@ envelope is separate overhead and never reopens the original pool.
 No old WorkerFunding/supervisor approval is reopened by this module.
 """
 from pathlib import Path
+import base64
 import json
 import os
 from staged_admission import AdmissionRefused,canonical,sha,read_pin
@@ -45,12 +46,27 @@ class StagedAccounting:
         try:os.write(fd,self.identity);os.fsync(fd)
         finally:os.close(fd)
         self.raw_workers={};self.supervisor=None
+        wire_root=self.root/'worker-wire';wire_root.mkdir(mode=0o700)
+        def wire_evidence(arm,call_id,request_sha,status,content_type,rawbytes,validation_code):
+            self.validate_identity()  # No supervisor SQLite access on RPC threads.
+            from staged_composition import private_atomic_json
+            return private_atomic_json(wire_root/(sha(canonical([arm,call_id]))+'.json'),{
+                'schema':'pex.staged.private-worker-wire.v1','config_sha256':binding.admitted.grant.config_sha256,
+                'run_id':binding.admitted.grant.run_id,'arm':arm,'call_id':call_id,'request_sha256':request_sha,
+                'HTTP_status':status if type(status)is int else None,
+                'content_type':content_type if type(content_type)is str else None,
+                'raw_response_base64':base64.b64encode(rawbytes).decode('ascii'),
+                'response_sha256':sha(rawbytes),'usage_validation_code':validation_code,
+                'request_body_or_headers_captured':False,
+                'qualification':'Private bounded response evidence, not a settlement or permission to display model content.'},
+                limit=3*1024*1024)
         try:
             for arm in ('baseline','pex'):
                 self.raw_workers[arm]=_WorkerLedger(self.root/'workers.sqlite',arm=arm,
                     approved_config_digest=binding.admitted.grant.config_sha256,
                     approval_ref=binding.admitted.grant.approval_ref,pricing_provenance_sha256=PRICING_SHA,
-                    predecessor_sha256=self.cfg['predecessor']['sha256'],phase_limit_nano_usd=fresh)
+                    predecessor_sha256=self.cfg['predecessor']['sha256'],phase_limit_nano_usd=fresh,
+                    wire_evidence_sink=wire_evidence)
             self.routes=tuple(Route(ENDPOINT,MODEL,role,Limits(max_output_tokens=cap,max_usage_tokens=266240,timeout_seconds=60))
                               for role,cap in (('planner',1200),('verifier',900)))
             self.supervisor=Ledger(self.root/'supervisor.sqlite',budget=SUPERVISOR_OUTER,input_rate=300,output_rate=900,
