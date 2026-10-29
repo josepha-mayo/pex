@@ -7,7 +7,7 @@ import json
 from pathlib import Path,PurePosixPath
 import shlex
 import uuid
-from stockroom_task import TASK,FILES,PROTECTED,load_package,digest,encoded
+from stockroom_task import TASK,FILES,PROTECTED,load_package,package_contract,digest,encoded
 LIMITS=('same_vm_not_adversarially_hardened','candidate_can_inspect_grading_process','escaped_background_processes_not_proven_absent','default_user_sudo_not_removed','not_original_bwrap_grader','no_candidate_execution_on_controller_or_as_root')
 
 class RemoteGrade:
@@ -15,7 +15,8 @@ class RemoteGrade:
         if evidence_sink is not None and not callable(evidence_sink):raise ValueError('trusted_evidence_sink_required')
         self.evidence_sink=evidence_sink
         self.remotes,self.stopped,self.revoked=remotes,stopped,revoked
-        data=load_package(package)
+        data=load_package(package);contract=package_contract(package)
+        self.task=contract['task'];self.check_count=contract['protected_check_count']
         self.public={n:data['public/'+n] for n in FILES}
         self.protected={Path(n).name:data[n] for n in PROTECTED}
         self.exporter=(Path(__file__).parent/'export_candidate.py').read_text()
@@ -43,7 +44,7 @@ class RemoteGrade:
         if sum(map(len,actual.values()))>131072:raise ValueError('candidate_size_bound')
         return actual
     def _grade(self,condition):
-        report={'schema':'pex.stockroom-same-vm-grade.v1','task':TASK,'condition':condition,'status':'inconclusive','presentation_eligible':False,'task_tests_measured':False,'anti_tamper_limits':list(LIMITS),'protected_input_sha256':{n:digest(b) for n,b in self.protected.items()}}
+        report={'schema':'pex.stockroom-same-vm-grade.v1','task':self.task,'condition':condition,'status':'inconclusive','presentation_eligible':False,'task_tests_measured':False,'anti_tamper_limits':list(LIMITS),'protected_input_sha256':{n:digest(b) for n,b in self.protected.items()}}
         try:
             # Recheck before any snapshot/grading action, not only await boundary.
             if self.stopped(condition) is not True or self.revoked(condition) is not True:raise ValueError('stop_or_revocation_changed')
@@ -86,10 +87,10 @@ class RemoteGrade:
             required={'schema','checks','passed','failed','failure_instances','complete','all_pass'}
             if type(tests) is not dict or set(tests)!=required or tests['schema']!='stockroom.grade.v1':raise ValueError('invalid_grade_schema')
             if any(type(tests[k]) is not int or tests[k]<0 for k in ('checks','passed','failed','failure_instances')):raise ValueError('invalid_grade_counts')
-            if type(tests['complete']) is not bool or type(tests['all_pass']) is not bool or tests['checks']!=17 or tests['complete'] is not True:raise ValueError('incomplete_grade')
-            if tests['passed']+tests['failed']!=17 or tests['failure_instances']<tests['failed'] or tests['all_pass']!=(tests['failed']==0) or (tests['failed']==0)!=(tests['failure_instances']==0):raise ValueError('inconsistent_grade')
+            if type(tests['complete']) is not bool or type(tests['all_pass']) is not bool or tests['checks']!=self.check_count or tests['complete'] is not True:raise ValueError('incomplete_grade')
+            if tests['passed']+tests['failed']!=self.check_count or tests['failure_instances']<tests['failed'] or tests['all_pass']!=(tests['failed']==0) or (tests['failed']==0)!=(tests['failure_instances']==0):raise ValueError('inconsistent_grade')
             if result['exit_code'] not in (0,1) or (result['exit_code']==0)!=tests['all_pass']:raise ValueError('inconsistent_grade_exit')
-            report.update(status='graded_with_limits',task_tests_measured=True,tests=tests,summary={'passed':tests['passed'],'total':17,'all_pass':tests['all_pass'],'public_tests_pass':public['exit_code']==0},task_success=tests['all_pass'] and public['exit_code']==0)
+            report.update(status='graded_with_limits',task_tests_measured=True,tests=tests,summary={'passed':tests['passed'],'total':self.check_count,'all_pass':tests['all_pass'],'public_tests_pass':public['exit_code']==0},task_success=tests['all_pass'] and public['exit_code']==0)
         except Exception as error:report.update(status='inconclusive',error_type=type(error).__name__)
         finally:
             if self.evidence_sink is not None:

@@ -11,6 +11,8 @@ import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
+import stockroom_task
 from stockroom_task import FILES,MANIFEST_SHA256,PROTECTED,load_package,stage
 from stockroom_grade import RemoteGrade
 PACKAGE=Path(__file__).resolve().parent.parent/'pex-hard-task-candidate-20261027-1421'
@@ -174,5 +176,41 @@ class GradeTests(unittest.TestCase):
         r=FakeRemote();r.public_exit=124
         self.assertEqual(self.grade(self.grader(r))['status'],'inconclusive')
         self.assertFalse(any(n.endswith('/test_acceptance.py') for n in r._sandbox.files.writes))
+
+class FrozenTaskRegistryTests(unittest.TestCase):
+    def package(self,td,count=31):
+        target=Path(td)/'authored-contract';shutil.copytree(PACKAGE,target)
+        manifest=json.loads((target/'MANIFEST.json').read_bytes())
+        manifest.update(task='authored-new-task-not-live',protected_check_count=count)
+        raw=json.dumps(manifest,sort_keys=True).encode();(target/'MANIFEST.json').write_bytes(raw)
+        identity=hashlib.sha256(raw).hexdigest()
+        return target,identity,{'task':manifest['task'],'protected_check_count':count}
+    def test_unknown_caller_metadata_cannot_admit_task(self):
+        with tempfile.TemporaryDirectory()as td:
+            target,identity,contract=self.package(td)
+            with self.assertRaisesRegex(ValueError,'frozen_manifest_mismatch'):load_package(target)
+    def test_source_pinned_new_contract_stage_and_count_are_exact(self):
+        with tempfile.TemporaryDirectory()as td:
+            target,identity,contract=self.package(td)
+            with patch.dict(stockroom_task.FROZEN_TASKS,{identity:contract}):
+                frozen,_=stage(target,Path(td)/'staged')
+                self.assertEqual(frozen['task'],'authored-new-task-not-live');self.assertEqual(frozen['suite_manifest_sha256'],identity)
+                r=FakeRemote();r.grade.update(checks=31,passed=31)
+                g=RemoteGrade({'baseline':r},target,lambda c:True,revoked=lambda c:True)
+                report=asyncio.run(g.grade({'condition':'baseline'}))
+                self.assertEqual(report['status'],'graded_with_limits');self.assertEqual(report['summary']['total'],31)
+                self.assertEqual(report['task'],'authored-new-task-not-live')
+                r=FakeRemote();g=RemoteGrade({'baseline':r},target,lambda c:True,revoked=lambda c:True)
+                self.assertEqual(asyncio.run(g.grade({'condition':'baseline'}))['status'],'inconclusive')
+    def test_registry_count_and_manifest_metadata_cannot_disagree(self):
+        with tempfile.TemporaryDirectory()as td:
+            target,identity,contract=self.package(td)
+            with patch.dict(stockroom_task.FROZEN_TASKS,{identity:dict(contract,protected_check_count=32)}):
+                with self.assertRaisesRegex(ValueError,'contract_mismatch'):load_package(target)
+    def test_legacy_exact_manifest_and_seventeen_checks_unchanged(self):
+        contract=stockroom_task.package_contract(PACKAGE)
+        self.assertEqual(contract['manifest_sha256'],MANIFEST_SHA256)
+        self.assertEqual(contract['protected_check_count'],17)
+        self.assertEqual(contract['task'],'stockroom_v2_replay_revision')
 
 if __name__=='__main__':unittest.main()

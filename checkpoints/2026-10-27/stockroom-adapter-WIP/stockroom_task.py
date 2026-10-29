@@ -7,6 +7,8 @@ import stat
 
 TASK='stockroom_v2_replay_revision'
 MANIFEST_SHA256='c242f9128edd87b34c678e5e0db36527b556f0b2163533577e5c96320c3b5f19'
+# Every supported contract is source-pinned; caller metadata cannot add a task.
+FROZEN_TASKS={MANIFEST_SHA256:{'task':TASK,'protected_check_count':17}}
 PUBLIC_CHECK_COMMAND='python -m unittest discover -s tests -v'
 FILES=('.gitignore','README.md','TASK.md','stockroom/__init__.py','stockroom/__main__.py','stockroom/db.py','stockroom/records.py','stockroom/service.py','tests/test_legacy.py','tests/test_v2_examples.py')
 PROTECTED=('protected/run_grade.py','protected/test_acceptance.py')
@@ -23,10 +25,22 @@ def read_regular(root,relative):
         if (before.st_ino,before.st_size,before.st_mtime_ns,before.st_ctime_ns)!=(after.st_ino,after.st_size,after.st_mtime_ns,after.st_ctime_ns) or len(data)!=before.st_size:raise ValueError('source_changed')
         return data
     finally:os.close(fd)
+def package_contract(package):
+    raw=read_regular(Path(package).absolute(),'MANIFEST.json')
+    identity=digest(raw);expected=FROZEN_TASKS.get(identity)
+    if expected is None:raise ValueError('frozen_manifest_mismatch')
+    manifest=json.loads(raw)
+    if (type(manifest)is not dict or manifest.get('schema')!='pex.stockroom-task.v1'
+            or manifest.get('worker_files')!='PUBLIC_FILES.json'
+            or manifest.get('task')!=expected['task']
+            or type(manifest.get('protected_check_count'))is not int
+            or manifest['protected_check_count']!=expected['protected_check_count']
+            or not 1<=manifest['protected_check_count']<=256
+            or type(manifest.get('files'))is not dict):raise ValueError('frozen_task_contract_mismatch')
+    return {**expected,'manifest_sha256':identity,'files':manifest['files']}
+
 def load_package(package):
-    package=Path(package).absolute();raw=read_regular(package,'MANIFEST.json')
-    if digest(raw)!=MANIFEST_SHA256:raise ValueError('frozen_manifest_mismatch')
-    manifest=json.loads(raw)['files']
+    package=Path(package).absolute();manifest=package_contract(package)['files']
     data={}
     for rel in ['INITIAL_PROMPT.txt','PUBLIC_FILES.json']+['public/'+n for n in FILES]+list(PROTECTED):
         b=read_regular(package,rel)
@@ -41,10 +55,10 @@ def exclusive(path,data):
     with os.fdopen(fd,'wb') as f:f.write(data)
 
 def stage(package,destination):
-    data=load_package(package);destination=Path(destination).absolute()
+    data=load_package(package);contract=package_contract(package);destination=Path(destination).absolute()
     if destination.parent.resolve(strict=True)!=destination.parent:raise ValueError('linked_destination')
     public={n:data['public/'+n] for n in FILES};hashes={n:digest(b) for n,b in public.items()}
-    frozen={'schema':'pex.stockroom-pair-staging.v1','task':TASK,'suite_manifest_sha256':MANIFEST_SHA256,'public_files':hashes,'public_sha256':digest(encoded(hashes)),'prompt_sha256':digest(data['INITIAL_PROMPT.txt']),'execution_boundary_verified':False,'real_inference_calls':0,'quality_measured':False}
+    frozen={'schema':'pex.stockroom-pair-staging.v1','task':contract['task'],'suite_manifest_sha256':contract['manifest_sha256'],'public_files':hashes,'public_sha256':digest(encoded(hashes)),'prompt_sha256':digest(data['INITIAL_PROMPT.txt']),'execution_boundary_verified':False,'real_inference_calls':0,'quality_measured':False}
     destination.mkdir(mode=0o700,exist_ok=False)
     for condition in ('baseline','pex'):
         for name,b in public.items():exclusive(destination/'workers'/condition/name,b)
