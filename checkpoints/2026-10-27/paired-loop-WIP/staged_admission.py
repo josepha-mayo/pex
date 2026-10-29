@@ -1,4 +1,4 @@
-"""WIP exact fresh pair03 admission; no automatic launch or old-claim reopening.
+"""WIP staged admission CLOSED after consumed pair03 setup-wall failure.
 
 A candidate inspection is not authority. The new source-reviewed identity below
 still requires an independently pinned root Grant and a fresh private claim. Historical
@@ -79,15 +79,10 @@ class Grant:
     task_sha256: str
     expires_at: str
 
-# Fresh explicit Oct29 approval, not a retry/reopening of consumed pair02.
-# Raw pair02 ledgers stay pinned unchanged. A separately root-reviewed provider
-# history reconciliation establishes non-creation prospectively; no ledger refund.
-APPROVED_STAGED_GRANT = GrantGate(
-    'Sentinel_1787ce8a2b34819185c85ca37a847f46',
-    'stockroom-staged-pair-20261029-03',
-    '/workspace/scratch/c62c151ada7d/runtime-private/pex-pilot-20261027/stockroom-staged-pair-20261029-03/pair.json',
-    '2026-10-29T11:00:00+00:00',
-)
+# Pair03 consumed its claim: one verified VM, setup20s timeout, no model calls.
+# Its full330s compute charge remains; no retry/replacement or old-claim reopen.
+# Any later grant requires independently reviewed authority and cumulative bounds.
+APPROVED_STAGED_GRANT = None
 
 @dataclass(frozen=True, repr=False)
 class Admitted:
