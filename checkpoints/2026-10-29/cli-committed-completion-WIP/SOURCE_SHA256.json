@@ -1,0 +1,48 @@
+{
+  "base_commit": "fc6778e1d06ad0c2a60fbaf41a309bd4e97a2403",
+  "files": [
+    {
+      "bytes": 16194,
+      "git_blob_sha": "afdabac2b6d0f4678ff518843a8200db0fdb2840",
+      "path": "checkpoints/2026-10-27/paired-readiness/source/opencode_cli.py",
+      "sha256": "66364e130d8c89b97ae8cc257e36d1e50910f9078f9bdb2c38ac8ac0afe11cea"
+    },
+    {
+      "bytes": 9290,
+      "git_blob_sha": "44d29813adadd951b6a3306cac8cbf6839f07d3c",
+      "path": "checkpoints/2026-10-27/paired-loop-WIP/opencode_v2_receipt.py",
+      "sha256": "5114c085c0b75f59e7b3436ceb678cea099393d566e62e4297e96183ae25604a"
+    },
+    {
+      "bytes": 9290,
+      "git_blob_sha": "44d29813adadd951b6a3306cac8cbf6839f07d3c",
+      "path": "checkpoints/2026-10-27/paired-readiness/source/opencode_v2_receipt.py",
+      "sha256": "5114c085c0b75f59e7b3436ceb678cea099393d566e62e4297e96183ae25604a"
+    },
+    {
+      "bytes": 8880,
+      "git_blob_sha": "54568c2eeb3d74e88243c4300f375288c54fbab1",
+      "path": "checkpoints/2026-10-27/paired-readiness/source/test_cli_completion.py",
+      "sha256": "e63d562ce908e8a91ea371b31ee264fad1ed8b11a9579a79df42b6a3821bf441"
+    },
+    {
+      "bytes": 16699,
+      "git_blob_sha": "a87d4ea21ff4348e693b15d2a723c9926e1e0a01",
+      "path": "checkpoints/2026-10-27/paired-loop-WIP/nebius_worker.py",
+      "sha256": "36105cc27b0207dedb59e0f10f0d8de80d6f6f59ffd95ecec1459042ab8d8b26"
+    },
+    {
+      "bytes": 8899,
+      "git_blob_sha": "a92d985dcf173a5207f79858efc2d05a3024cbac",
+      "path": "checkpoints/2026-10-27/paired-loop-WIP/staged_worker.py",
+      "sha256": "6a05ef3b2b71918d00da75a5b4836fbe27d91b4fd62aa88cb0784be3a5786baa"
+    },
+    {
+      "bytes": 8287,
+      "git_blob_sha": "fd88c54d8ea7e8a98e97126ffbbaef4980b233e1",
+      "path": "checkpoints/2026-10-27/paired-loop-WIP/test_staged_worker.py",
+      "sha256": "9d2c4e4561d82cad0388e3fc45628b221d4c6a7c2c31d798d791d9872515a08b"
+    }
+  ],
+  "qualification": "prospective_source_only_no_live_repaired_run"
+}

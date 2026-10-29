@@ -73,6 +73,51 @@ async def test_changed_deadline_fails_after_retaining_owned_remote_for_cleanup(t
     # Even a prepare failure leaves the owned object available for release.
     await w.release(a);assert w.remotes['pex'].closed
 
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('condition',['baseline','pex'])
+async def test_unconfirmed_CLI_cleanup_remains_unconfirmed_after_VM_stop(tmp_path,condition):
+    class Unconfirmed(Inner):
+        async def execute_cli(self,*args,**kwargs):raise CliCleanupUnconfirmed('authored owned-process ambiguity')
+    worker=StagedWorker(Unconfirmed(tmp_path),Lifecycle());arm={'condition':condition}
+    await worker.prepare(arm,deadline=time.monotonic()+750)
+    with pytest.raises(CliCleanupUnconfirmed):
+        await worker.phase(arm,prompt='authored',session_id=None,phase_index=0,limit=PHASES[0])
+    await worker.stop(arm)
+    with pytest.raises(ProtocolInconclusive):await worker.release(arm)
+    assert worker.remotes[condition].closed and condition in worker.unconfirmed
+
+
+@pytest.mark.asyncio
+async def test_unconfirmed_CLI_cleanup_never_prepares_next_arm(tmp_path):
+    from staged_controller import run_staged_pair
+    class Unconfirmed(Inner):
+        async def execute_cli(self,*args,**kwargs):raise CliCleanupUnconfirmed('authored process ambiguity')
+    inner=Unconfirmed(tmp_path);worker=StagedWorker(inner,Lifecycle())
+    arms={c:{'condition':c,'prompt':'same authored prompt','public_sha256':'a'*64,
+             'worker_identity':'same authored worker','workspace':c} for c in ('baseline','pex')}
+    report=await run_staged_pair(arms,worker,None,None)
+    assert set(inner.states)=={'baseline'} and set(report['arms'])=={'baseline'}
+    assert report['arms']['baseline']['status']=='cleanup_unconfirmed'
+    assert report['cleanup_confirmed'] is False
+
+
+@pytest.mark.asyncio
+async def test_CLI_cleanup_uncertainty_not_masked_by_an_earlier_funding_refusal(tmp_path,monkeypatch):
+    from worker_funding import WorkerBudgetExhausted
+
+    import nebius_worker as cw
+    worker=object.__new__(cw.NebiusCLIWorker)
+    worker._start=lambda c:None
+    worker.states={'baseline':{'stopped':False,'profile':tmp_path,'case':tmp_path,'seq':0,
+                   'funding_channel':SimpleNamespace(last_error=WorkerBudgetExhausted('worker_attempt_cap_refused'))}}
+    worker.staged_binding=None;worker.binary=Path('/authored-never-executed')
+    worker.funding={'baseline':SimpleNamespace(usage_snapshot=lambda:{'calls':8,'input_tokens':8,'output_tokens':8,'uncertain_calls':0})}
+    async def failed(**kwargs):raise CliCleanupUnconfirmed('authored owned-process ambiguity')
+    monkeypatch.setattr(cw,'run_turn',failed)
+    with pytest.raises(CliCleanupUnconfirmed):
+        await worker.execute_cli({'condition':'baseline'},prompt='authored',session_id=None,remaining={'active_seconds':1})
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize('enabled,remaining,status,expected',[(False,50,'graded_with_limits',False),(True,50,'graded_with_limits',True),(True,20,'graded_with_limits',False),(True,50,'inconclusive',False)])
 async def test_optional_phase0_uses_only_original_grade_window(enabled,remaining,status,expected):

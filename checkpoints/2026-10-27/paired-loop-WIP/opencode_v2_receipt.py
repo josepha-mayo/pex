@@ -1,7 +1,9 @@
 """Pinned OpenCode2.1.4 terminal-record validation, not task scoring.
 
-CLI2 JSON may include optional legacy step events when MCP tools are enabled. A natural stop therefore needs both the
-fresh captured CLI message identity AND committed post-exit local session rows.
+CLI2 JSON may include optional legacy step events when MCP tools are enabled.
+Completion needs fresh captured text AND a committed trusted local stop/idle
+lineage. A pre-shutdown proof is only a candidate: the executor must confirm
+owned process-group exit and revalidate the same database proof afterwards.
 This reader is for an explicitly supplied disposable worker profile only.
 """
 
@@ -9,6 +11,7 @@ import hashlib
 import json
 import sqlite3
 from contextlib import contextmanager
+from dataclasses import replace
 from pathlib import Path
 
 from opencode_cli import (
@@ -31,12 +34,17 @@ def _open(path: Path):
         or not path.is_file()
     ):
         raise ValueError("explicit regular terminal database required")
-    db = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=1)
+    identity = (path.stat().st_dev, path.stat().st_ino)
+    db = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=0.05)
     db.execute("PRAGMA query_only=ON")
+    db.execute("BEGIN")  # One consistent snapshot for lineage/session/pending.
     try:
         yield db
     finally:
         db.close()
+        current = path.lstat()
+        if path.is_symlink() or (current.st_dev, current.st_ino) != identity:
+            raise ValueError("CLI2 terminal database path changed")
 
 
 def prior_sequence(path: Path, session_id: str | None = None) -> int:
@@ -71,8 +79,30 @@ def completed_turn_v2(
     after_sequence: int,
     expected_session: str | None = None,
 ) -> CliTurn:
-    if exit_code != 0 or not raw or len(raw) > MAX_OUTPUT_BYTES:
+    if type(exit_code) is not int or exit_code != 0:
         raise ValueError("unsuccessful bounded CLI2 turn")
+    return replace(committed_turn_v2(raw, database=database, prompt=prompt,
+        after_sequence=after_sequence, expected_session=expected_session),
+        completion_kind="process_exit_zero", actual_process_exit_code=exit_code)
+
+
+def committed_turn_v2(
+    raw: bytes,
+    *,
+    database: Path,
+    prompt: str,
+    after_sequence: int,
+    expected_session: str | None = None,
+) -> CliTurn:
+    """Strict terminal candidate, NOT proof of CLI exit or task correctness.
+
+    This must be observed before any executor shutdown and then revalidated
+    after confirmed owned-group exit with an identical committed-terminal hash.
+    A timeout, footer, partial reply, or forced mid-turn stop is insufficient.
+    """
+    if (not raw or len(raw) > MAX_OUTPUT_BYTES or type(after_sequence) is not int
+            or after_sequence < 0 or not isinstance(prompt, str)):
+        raise ValueError("unsuccessful bounded CLI2 terminal candidate")
     events = []
     messages = []
     session = None
@@ -121,6 +151,7 @@ def completed_turn_v2(
             messages.append(part["text"])
         events.append(event)
     with _open(database) as db:
+        db_identity = (database.stat().st_dev, database.stat().st_ino)
         session_row = db.execute(
             "SELECT version,idle_outcome FROM session_v2 WHERE id=?", (session,)
         ).fetchone()
@@ -132,6 +163,11 @@ def completed_turn_v2(
         ).fetchall()
         if not rows or len(rows) > 1000:
             raise ValueError("CLI2 terminal row bound")
+        if (sum(len(row[3].encode()) for row in rows) > MAX_OUTPUT_BYTES
+                or any(type(row[2]) is not int for row in rows)
+                or len({row[2] for row in rows}) != len(rows)
+                or len({row[0] for row in rows}) != len(rows)):
+            raise ValueError("CLI2 terminal lineage bound/identity invalid")
         if db.execute(
             "SELECT COUNT(*) FROM session_pending WHERE session_id=?", (session,)
         ).fetchone()[0]:
@@ -141,6 +177,8 @@ def completed_turn_v2(
         idle = [r for r in rows if r[1] == "idle"]
         if len(users) != 1 or not assistants or not idle:
             raise ValueError("CLI2 invocation lineage missing")
+        if any(r[1] == "error" or (r[1] == "assistant" and _json(r[3]).get("error")) for r in rows):
+            raise ValueError("CLI2 fresh invocation reports an error")
         user = _json(users[0][3])
         if user.get("text") != prompt:
             raise ValueError("CLI2 prompt changed or duplicated")
@@ -153,6 +191,7 @@ def completed_turn_v2(
             final[0] not in message_ids
             or not users[0][2] < final[2] < idle[-1][2]
             or outcome.get("outcome") != "succeeded"
+            or rows[-1] != idle[-1]
         ):
             raise ValueError("CLI2 final lineage invalid")
         if (
@@ -165,6 +204,8 @@ def completed_turn_v2(
         content = payload.get("content")
         if not isinstance(content, list):
             raise ValueError("CLI2 committed content invalid")  # noqa: TRY004 - invalid external record
+        if any(isinstance(part, dict) and part.get("type") == "tool" for part in content):
+            raise ValueError("CLI2 final stop still contains tool work")
         committed = [
             p.get("text")
             for p in content
@@ -177,6 +218,13 @@ def completed_turn_v2(
         ]
         if committed != captured:
             raise ValueError("CLI2 text differs from committed message")
+        terminal_sha = hashlib.sha256(json.dumps({
+            "session": session, "session_state": session_row,
+            "after_sequence": after_sequence, "rows": rows, "pending": 0,
+            "database_identity": db_identity,
+        }, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     return CliTurn(
-        session, tuple(messages), len(events), hashlib.sha256(raw).hexdigest(), len(raw)
+        session, tuple(messages), len(events), hashlib.sha256(raw).hexdigest(), len(raw),
+        completion_kind="committed_terminal_candidate_not_process_exit",
+        committed_terminal_sha256=terminal_sha,
     )

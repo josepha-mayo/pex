@@ -10,7 +10,7 @@ from pathlib import Path
 import sqlite3
 import time
 from dataclasses import asdict
-from opencode_cli import run_turn
+from opencode_cli import CliCleanupUnconfirmed, run_turn
 from opencode_v2_receipt import prior_sequence
 from remote_mcp import serve_remote
 from controller import PublicEvidenceInfrastructureError
@@ -158,6 +158,10 @@ class NebiusCLIWorker:
                                   environment=env,stdout_path=profile/f'turn-{index}.jsonl',stderr_path=profile/f'turn-{index}.stderr',
                                   deadline=time.monotonic()+remaining['active_seconds'],session_id=session_id,standalone=True,
                                   agent='paired',terminal_database=db)
+        except CliCleanupUnconfirmed:
+            # Never hide uncertain process ownership behind an earlier funding
+            # refusal. Staged orchestration must stop before the next VM.
+            raise
         except Exception:
             elapsed=time.monotonic()-cli_started
             channel=state['funding_channel']

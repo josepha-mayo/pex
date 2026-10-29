@@ -8,6 +8,7 @@ import asyncio
 import json
 import time
 from pathlib import Path
+from opencode_cli import CliCleanupUnconfirmed
 from staged_envelope import PHASES, SETUP_SECONDS, OBSERVATION_SECONDS, GRADE_MAX_SECONDS
 from staged_funding import PhaseFunding
 import nebius_worker
@@ -76,7 +77,8 @@ class StagedWorker:
             self.receipts[c]=(result['receipt'],receipt,phase_index)
             result['phase_stop_policy']='counted_forced_textual_finalization_not_task_completion'
             return result
-        except BaseException:
+        except BaseException as error:
+            if isinstance(error,CliCleanupUnconfirmed):self.unconfirmed.add(c)
             failed=True;funding.abort();raise
         finally:
             try: await remote.end_scope()

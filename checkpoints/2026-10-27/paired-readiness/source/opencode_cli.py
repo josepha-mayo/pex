@@ -11,14 +11,17 @@ import json
 import math
 import os
 import signal
+import sqlite3
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 MAX_OUTPUT_BYTES = 64 * 1024 * 1024
 MAX_LINE_BYTES = 1024 * 1024
 MAX_EVENTS = 10_000
+COMPLETION_POLL_SECONDS = 0.05
+PROCESS_CLEANUP_SECONDS = 1.0
 
 
 @dataclass(frozen=True)
@@ -28,6 +31,79 @@ class CliTurn:
     event_count: int
     stdout_sha256: str
     stdout_bytes: int
+    completion_kind: str = "process_exit_zero"
+    actual_process_exit_code: int | None = None
+    committed_terminal_sha256: str | None = None
+    terminal_observed_before_shutdown: bool = False
+    owned_process_group_exit_confirmed: bool = False
+
+
+class CliCleanupUnconfirmed(RuntimeError):
+    """Bounded owned-process cleanup failed; never a natural-stop receipt."""
+
+
+def _group_absent(pid):
+    try:
+        os.killpg(pid, 0)
+    except ProcessLookupError:
+        return True
+    return False
+
+
+def _consume(task):
+    if not task.cancelled():
+        task.exception()
+
+
+async def _stop_owned_process(process, tasks):
+    """Kill only our new-session process group, and never await it unboundedly.
+
+    A one-second cleanup-only grace is not extra worker/model time. A receipt
+    still requires the original deadline, drained bounded captures, reaping,
+    and group absence. Escaped pipe holders therefore fail closed, not hang.
+    """
+    sent = False
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+        sent = True
+    except ProcessLookupError:
+        pass
+    end = time.monotonic() + PROCESS_CLEANUP_SECONDS
+    confirmed = False
+    try:
+        while True:
+            if (process.returncode is not None and all(task.done() for task in tasks)
+                    and _group_absent(process.pid)):
+                confirmed = True
+                return sent
+            left = end - time.monotonic()
+            if left <= 0:
+                raise CliCleanupUnconfirmed("owned CLI process/capture exit unconfirmed")
+            pending = {task for task in tasks if not task.done()}
+            if pending:
+                await asyncio.wait(pending, timeout=min(COMPLETION_POLL_SECONDS, left))
+            else:
+                await asyncio.sleep(min(COMPLETION_POLL_SECONDS, left))
+    finally:
+        if not confirmed:
+            # Closing our subprocess transport releases only our pipe handles
+            # and owned parent. It is not proof that an escaped descendant died.
+            transport = getattr(process, "_transport", None)
+            if transport is not None:
+                transport.close()
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+            task.add_done_callback(_consume)
+
+
+def _save_process_evidence(path, value):
+    raw = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, "wb") as handle:
+        handle.write(raw)
+        handle.flush()
+        os.fsync(handle.fileno())
 
 
 def _object(pairs):
@@ -192,7 +268,16 @@ async def run_turn(
     remaining()
     process = None
     tasks = []
-    with stdout_path.open("x+b") as stdout, stderr_path.open("xb") as stderr:
+    candidate = None
+    shutdown_sent = False
+    cleanup_confirmed = False
+    failure_type = None
+    pre_shutdown_exit = None
+    # Unbuffered writes let the trusted-terminal probe inspect captured bytes,
+    # not an unflushed renderer buffer. pread never moves the writer's offset.
+    with stdout_path.open("x+b", buffering=0) as stdout, stderr_path.open("xb", buffering=0) as stderr:
+        os.fchmod(stdout.fileno(), 0o600)
+        os.fchmod(stderr.fileno(), 0o600)
         try:
             remaining()
             process = await asyncio.create_subprocess_exec(
@@ -206,57 +291,94 @@ async def run_turn(
                 stderr=asyncio.subprocess.PIPE,
                 start_new_session=True,
             )
-            if terminal_database is not None:
-                process.stdin.write(prompt.encode("utf-8"))
-                await asyncio.wait_for(process.stdin.drain(), timeout=remaining())
-                process.stdin.close()
             tasks = [
                 asyncio.create_task(capture(process.stdout, stdout)),
                 asyncio.create_task(capture(process.stderr, stderr)),
                 asyncio.create_task(process.wait()),
             ]
-            wait_budget = remaining()
-            captured = await asyncio.wait_for(
-                asyncio.gather(*tasks), timeout=wait_budget
-            )
+            if terminal_database is not None:
+                process.stdin.write(prompt.encode("utf-8"))
+                await asyncio.wait_for(process.stdin.drain(), timeout=remaining())
+                process.stdin.close()
+            while True:
+                for task in tasks:
+                    if task.done():
+                        task.result()  # Capture errors must not become terminals.
+                if all(task.done() for task in tasks):
+                    break
+                if terminal_database is not None and process.returncode in (None, 0):
+                    from opencode_v2_receipt import committed_turn_v2
+
+                    try:
+                        probe = os.pread(stdout.fileno(), MAX_OUTPUT_BYTES + 1, 0)
+                        candidate = committed_turn_v2(
+                            probe, expected_session=session_id, database=terminal_database,
+                            prompt=prompt, after_sequence=before_sequence,
+                        )
+                    except (ValueError, OSError, sqlite3.Error, UnicodeError):
+                        candidate = None  # A partial/busy/invalid DB is not completion.
+                    if candidate is not None:
+                        remaining()  # Never salvage a completion after expiry.
+                        break
+                await asyncio.wait(
+                    {task for task in tasks if not task.done()},
+                    timeout=min(COMPLETION_POLL_SECONDS, remaining()),
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
             remaining()
+        except BaseException as error:
+            failure_type = type(error).__name__
+            raise
         finally:
-            if process is not None:
-                try:
-                    os.killpg(process.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-                await process.wait()
-            for task in tasks:
-                if not task.done():
-                    task.cancel()
-            if tasks:
-                await asyncio.gather(*tasks, return_exceptions=True)
-            stdout.flush()
-            stderr.flush()
-        try:
-            os.killpg(process.pid, 0)
-        except ProcessLookupError:
-            pass
-        else:
-            raise RuntimeError("OpenCode CLI process-group exit is unproven")
+            try:
+                if process is not None:
+                    pre_shutdown_exit = process.returncode
+                    shutdown_sent = await _stop_owned_process(process, tasks)
+                    cleanup_confirmed = True
+            except BaseException as error:
+                failure_type = type(error).__name__
+                raise
+            finally:
+                stdout.flush()
+                stderr.flush()
+                retained_stdout = os.pread(stdout.fileno(), MAX_OUTPUT_BYTES + 1, 0)
+                _save_process_evidence(stdout_path.with_name(stdout_path.name + ".process.json"), {
+                    "schema": "pex.cli-owned-completion.v1", "prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
+                    "expected_session": session_id, "after_sequence": before_sequence if terminal_database is not None else None,
+                    "trusted_terminal_observed_before_shutdown": candidate is not None,
+                    "committed_terminal_sha256": None if candidate is None else candidate.committed_terminal_sha256,
+                    "terminal_session_id": None if candidate is None else candidate.session_id,
+                    "captured_stdout_sha256": hashlib.sha256(retained_stdout).hexdigest(),
+                    "captured_stdout_bytes": len(retained_stdout),
+                    "pre_shutdown_exit_code": pre_shutdown_exit,
+                    "actual_process_exit_code": None if process is None else process.returncode,
+                    "owned_group_SIGKILL_sent": shutdown_sent if cleanup_confirmed else None,
+                    "owned_process_group_exit_confirmed": cleanup_confirmed,
+                    "capture_tasks_completed": bool(tasks) and all(task.done() and not task.cancelled() for task in tasks[:2]),
+                    "failure_type": failure_type, "qualification": "process_evidence_only_not_task_success",
+                })
+        captured = [task.result() for task in tasks]
         descriptor = os.fstat(stdout.fileno())
         path = stdout_path.lstat()
         if (descriptor.st_dev, descriptor.st_ino) != (path.st_dev, path.st_ino):
             raise ValueError("OpenCode CLI output path changed")
-        stdout.seek(0)
-        raw = stdout.read(MAX_OUTPUT_BYTES + 1)
+        raw = os.pread(stdout.fileno(), MAX_OUTPUT_BYTES + 1, 0)
         if terminal_database is not None:
-            from opencode_v2_receipt import completed_turn_v2
+            from opencode_v2_receipt import committed_turn_v2, completed_turn_v2
 
-            turn = completed_turn_v2(
-                raw,
-                exit_code=process.returncode,
-                expected_session=session_id,
-                database=terminal_database,
-                prompt=prompt,
-                after_sequence=before_sequence,
-            )
+            options = {"expected_session": session_id, "database": terminal_database,
+                       "prompt": prompt, "after_sequence": before_sequence}
+            if candidate is None:
+                turn = completed_turn_v2(raw, exit_code=process.returncode, **options)
+            else:
+                if process.returncode != 0 and not (
+                        shutdown_sent and pre_shutdown_exit is None and process.returncode == -signal.SIGKILL):
+                    raise ValueError("CLI2 exited unsuccessfully before committed shutdown")
+                turn = committed_turn_v2(raw, **options)
+                if turn.committed_terminal_sha256 != candidate.committed_terminal_sha256:
+                    raise ValueError("CLI2 committed terminal changed during owned shutdown")
+                turn = replace(turn, completion_kind="committed_terminal_before_owned_shutdown",
+                               terminal_observed_before_shutdown=True)
         else:
             turn = completed_turn(
                 raw, exit_code=process.returncode, expected_session=session_id
@@ -264,4 +386,5 @@ async def run_turn(
         if (turn.stdout_sha256, turn.stdout_bytes) != captured[0]:
             raise ValueError("OpenCode CLI captured output changed")
         remaining()
-        return turn
+        return replace(turn, actual_process_exit_code=process.returncode,
+                       owned_process_group_exit_confirmed=cleanup_confirmed)
