@@ -1,4 +1,4 @@
-"""WIP staged admission: CLOSED after interrupted recovery06 and uncertain creation.
+"""WIP staged admission: one independently reviewed recorded recovery07 identity.
 
 A candidate inspection is not authority. The new source-reviewed identity below
 still requires an independently pinned root Grant and a fresh private claim. Historical
@@ -91,7 +91,11 @@ class Grant:
 # Pair06 consumed its claim: one uncertain create, no terminal, no model calls.
 # Its full330s compute charge remains; no retry/replacement or old-claim reopen.
 # Any later grant requires independently reviewed authority and cumulative bounds.
-APPROVED_STAGED_GRANT = None
+APPROVED_STAGED_GRANT = GrantGate(
+    approval_ref='Sentinel_3dd0c75c32048191a3b47145b5d3f267',
+    run_id='stockroom-staged-pair-20261029-07',
+    config_path='/workspace/scratch/c62c151ada7d/runtime-private/pex-pilot-20261027/stockroom-staged-pair-20261029-07/pair.json',
+    expires_at='2026-10-29T15:30:00+00:00')
 
 @dataclass(frozen=True, repr=False)
 class Admitted:
