@@ -110,3 +110,27 @@ seed plus350m fresh allowance. Old ledgers cannot reopen under changed limits.
 With all806,031,900 prior provider liabilities retained, its prospective ceiling
 is1,906,031,900 (under$2). Nine focused accounting/composition tests passed. This
 is not new spend authority or a guarantee of all12requests under any token usage.
+
+
+## Exploratory09 incomplete controller lifecycle
+
+09 produced12 validated baseline worker HTTP200 responses (96,440 input and
+15,183 output tokens), charged47,151,600 nanoUSD. No PEX worker or supervisor
+ledger rows were present at the final local observation. No final protected grade,
+exact candidate export or controller report was persisted, so this is not a
+completed comparison and does not establish task failure, success or PEX benefit.
+
+The already-dispatched manager session later returned Unknown process id without
+terminal output. The cause is unproven; a read-only poll denial does
+not establish why the process ended. In particular, per-exec isolated /proc absence
+cannot prove that another invocation's controller is absent. The append-only
+private correction preserves that qualification rather than rewriting evidence.
+Canonical authoritative history/active reads after manager-session absence found
+only its baseline creation, a provider killed event, and empty filtered active
+inventory. All raw ledgers remain unchanged, including its uncertain second-create
+reservation; no automatic accounting release or billing inference was made.
+
+The consumed09 gate is closed. No replacement, old-claim replay, alternate route
+or new resource was started. A stable native-terminal design must first qualify
+its own ordinary environment without importing another runtime's proxy values;
+that design is not yet an admitted run or an inference result.

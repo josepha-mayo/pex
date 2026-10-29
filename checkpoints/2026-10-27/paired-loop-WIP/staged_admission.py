@@ -92,14 +92,11 @@ class Grant:
     task_sha256: str
     expires_at: str
 
-# Pair08 consumed its claim:18 real worker calls, no supervisor, comparison inconclusive.
-# Its full330s compute charge remains; no retry/replacement or old-claim reopen.
-# Any later grant requires independently reviewed authority and cumulative bounds.
-APPROVED_STAGED_GRANT = GrantGate(
-    approval_ref='Sentinel_3dd0c75c32048191a3b47145b5d3f267',
-    run_id='stockroom-staged-pair-20261029-09',
-    config_path='/workspace/scratch/c62c151ada7d/runtime-private/pex-pilot-20261027/stockroom-staged-pair-20261029-09/pair.json',
-    expires_at='2026-10-29T16:30:00+00:00')
+# Pair09 consumed its claim:12 baseline worker responses; no PEX/supervisor rows.
+# Its manager session disappeared without a controller terminal report; cause unknown.
+# Raw uncertain compute reservation remains charged pending independent reconciliation.
+# No old claim reopen; any later grant needs fresh reviewed authority and bounds.
+APPROVED_STAGED_GRANT = None
 
 @dataclass(frozen=True, repr=False)
 class Admitted:
