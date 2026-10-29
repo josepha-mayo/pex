@@ -17,7 +17,8 @@ from urllib.parse import urlsplit
 from staged_envelope import PHASES, VM_SECONDS, WALL_PROFILE, reservation_envelope
 
 PROVIDER_CAP = 2_000_000_000
-COMPUTE_CAP = 120_000_000
+COMPUTE_CAP = 120_000_000  # Current ceiling; code capability is NOT spend authority.
+SUPPORTED_COMPUTE_CAPS = (COMPUTE_CAP,140_000_000)  # Future140m remains inactive behind None gate.
 WORKER_MODEL = 'deepseek-ai/DeepSeek-V4.1-Flash-1017'
 SUPERVISOR_MODEL = 'nvidia/nemotron-3-super-120b-a12b'
 REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',
@@ -28,7 +29,9 @@ REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',
     'failed_staged03_workers','failed_staged03_supervisor','failed_staged03_compute',
     'failed_staged03_terminal','failed_staged03_report',
     'failed_staged04_workers','failed_staged04_supervisor','failed_staged04_compute',
-    'failed_staged04_terminal','failed_staged04_report'))
+    'failed_staged04_terminal','failed_staged04_report',
+    'failed_staged05_workers','failed_staged05_supervisor','failed_staged05_compute',
+    'failed_staged05_terminal','failed_staged05_report'))
 _SEAL = object()
 
 class AdmissionRefused(PermissionError): pass
@@ -141,7 +144,9 @@ def inspect_candidate(raw, grant, *, now=None):
         raise AdmissionRefused('complete_pair_execution_window_required')
     profile = cfg['profile']
     if sha(canonical(profile)) != grant.profile_sha256: raise AdmissionRefused('frozen_profile_changed')
-    fixed = {'provider_cap':PROVIDER_CAP,'compute_cap':COMPUTE_CAP,'worker_model':WORKER_MODEL,
+    if type(profile)is not dict or type(profile.get('compute_cap'))is not int or profile['compute_cap'] not in SUPPORTED_COMPUTE_CAPS:
+        raise AdmissionRefused('supported_pinned_compute_profile_required')
+    fixed = {'provider_cap':PROVIDER_CAP,'compute_cap':profile['compute_cap'],'worker_model':WORKER_MODEL,
         'supervisor_model':SUPERVISOR_MODEL,'phases':[vars(p) for p in PHASES],
         'vm_seconds':VM_SECONDS,'wall_profile':dict(WALL_PROFILE),'supervisor_attempts':12,'forced_textual_finalization':True}
     if set(profile) != set(fixed)|{'equal_worker_fresh','supervisor_fresh','supervisor_pricing_sha256'} or any(profile[k] != v for k,v in fixed.items()):
@@ -184,7 +189,7 @@ def inspect_candidate(raw, grant, *, now=None):
             raise AdmissionRefused('existing_private_key_pin_required')
     return reservation_envelope(prior_provider=prior['provider_nano_usd'],equal_worker_fresh=profile['equal_worker_fresh'],
         supervisor_fresh=profile['supervisor_fresh'],provider_ceiling=PROVIDER_CAP,prior_compute=prior['compute_nano_usd'],
-        verified_vm_bound=9_982_500,uncertain_create_reserve=48_840_000,compute_ceiling=COMPUTE_CAP)
+        verified_vm_bound=9_982_500,uncertain_create_reserve=48_840_000,compute_ceiling=profile['compute_cap'])
 
 def load(grant=None):
     # CLOSED source gate precedes reads and caller input. A future trusted root

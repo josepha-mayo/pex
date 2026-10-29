@@ -113,3 +113,10 @@ def test_fixture_transport_aliases_are_all_synthetic(candidate):
     for name in ('HTTPS_PROXY','HTTP_PROXY','ALL_PROXY','https_proxy','http_proxy','all_proxy'):
         assert os.environ[name]=='http://authored.invalid:8888'
     assert os.environ['NO_PROXY']==os.environ['no_proxy']=='127.0.0.1,localhost'
+
+
+def test_future140_candidate_capability_is_not_dispatch_authority(candidate,monkeypatch):
+    cfg,freeze=candidate;cfg['profile']['compute_cap']=140_000_000
+    raw,grant=freeze();monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',None)
+    assert a.COMPUTE_CAP==120_000_000 and a.inspect_candidate(raw,grant)['compute_sequential_peak']<=140_000_000
+    with pytest.raises(a.AdmissionRefused,match='approval_pending'):a.load(grant)
