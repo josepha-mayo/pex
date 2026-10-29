@@ -1,4 +1,4 @@
-"""WIP staged admission: CLOSED after exploratory08 worker inference and inconclusive comparison.
+"""WIP staged admission: one independently reviewed exploratory recovery09 identity.
 
 A candidate inspection is not authority. The new source-reviewed identity below
 still requires an independently pinned root Grant and a fresh private claim. Historical
@@ -35,7 +35,9 @@ REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',
     'interrupted_staged06_workers','interrupted_staged06_supervisor','interrupted_staged06_compute',
     'interrupted_staged06_admission','interrupted_staged06_poll_denial','interrupted_staged06_cleanup',
     'failed_staged07_workers','failed_staged07_supervisor','failed_staged07_compute',
-    'failed_staged07_terminal','failed_staged07_report','failed_staged07_diagnostics'))
+    'failed_staged07_terminal','failed_staged07_report','failed_staged07_diagnostics',
+    'failed_staged08_workers','failed_staged08_supervisor','failed_staged08_compute',
+    'failed_staged08_terminal','failed_staged08_report','failed_staged08_diagnostics','failed_staged08_validated_summary'))
 _SEAL = object()
 
 class AdmissionRefused(PermissionError): pass
@@ -93,7 +95,11 @@ class Grant:
 # Pair08 consumed its claim:18 real worker calls, no supervisor, comparison inconclusive.
 # Its full330s compute charge remains; no retry/replacement or old-claim reopen.
 # Any later grant requires independently reviewed authority and cumulative bounds.
-APPROVED_STAGED_GRANT = None
+APPROVED_STAGED_GRANT = GrantGate(
+    approval_ref='Sentinel_3dd0c75c32048191a3b47145b5d3f267',
+    run_id='stockroom-staged-pair-20261029-09',
+    config_path='/workspace/scratch/c62c151ada7d/runtime-private/pex-pilot-20261027/stockroom-staged-pair-20261029-09/pair.json',
+    expires_at='2026-10-29T16:30:00+00:00')
 
 @dataclass(frozen=True, repr=False)
 class Admitted:
@@ -152,7 +158,8 @@ def inspect_candidate(raw, grant, *, now=None):
         raise AdmissionRefused('supported_pinned_compute_profile_required')
     fixed = {'provider_cap':PROVIDER_CAP,'compute_cap':profile['compute_cap'],'worker_model':WORKER_MODEL,
         'supervisor_model':SUPERVISOR_MODEL,'phases':[vars(p) for p in PHASES],
-        'vm_seconds':VM_SECONDS,'wall_profile':dict(WALL_PROFILE),'supervisor_attempts':12,'forced_textual_finalization':True}
+        'vm_seconds':VM_SECONDS,'wall_profile':dict(WALL_PROFILE),'equal_worker_fresh':375000000,
+        'supervisor_fresh':350000000,'supervisor_attempts':12,'forced_textual_finalization':True}
     if set(profile) != set(fixed)|{'equal_worker_fresh','supervisor_fresh','supervisor_pricing_sha256'} or any(profile[k] != v for k,v in fixed.items()):
         raise AdmissionRefused('equal_frozen_staged_protocol_required')
     if not digest(profile['supervisor_pricing_sha256']): raise AdmissionRefused('frozen_supervisor_pricing_identity_required')
