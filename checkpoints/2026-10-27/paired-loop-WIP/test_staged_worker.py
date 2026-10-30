@@ -38,7 +38,7 @@ class Inner:
 @pytest.mark.asyncio
 async def test_integrated_phase_config_ledger_observation_and_release(tmp_path):
     inner=Inner(tmp_path);worker=StagedWorker(inner,Lifecycle());arm={'condition':'pex'}
-    await worker.prepare(arm,deadline=time.monotonic()+330)
+    await worker.prepare(arm,deadline=time.monotonic()+750)
     first=await worker.phase(arm,prompt='authored',session_id=None,phase_index=0,limit=PHASES[0])
     assert await worker.observe(arm,first)=={'public':'authored'}
     second=await worker.phase(arm,prompt='authored',session_id='pex',phase_index=1,limit=PHASES[1])
@@ -149,3 +149,21 @@ async def test_phase0_error_does_not_replace_final_grade():
     result=await g.grade({'condition':'pex'})
     assert result['summary']=={'passed':40};assert result['pre_intervention_grade']['status']=='inconclusive'
     assert remote.scope is None
+
+
+@pytest.mark.asyncio
+async def test_observation_remote_uses_same_borrowed_window_and_revokes_on_cancel(tmp_path):
+    ticks=[100.0]
+    worker=StagedWorker(Inner(tmp_path),Lifecycle(),clock=lambda:ticks[0]);arm={'condition':'pex'}
+    remote=Remote(750);worker.remotes['pex']=remote;worker.deadlines['pex']=750
+    worker.receipts['pex']=({'first':True},'authored',0)
+    def observe(*args):
+        assert remote.scope==160
+        raise asyncio.CancelledError()
+    worker.worker.collect_observation=observe
+    with pytest.raises(asyncio.CancelledError):await worker.observe(arm,{'receipt':{'first':True}})
+    assert remote.scope is None and remote.vm_deadline==750
+    ticks[0]=421
+    with pytest.raises(Exception,match='guaranteed_observation_window_unavailable'):
+        await worker.observe(arm,{'receipt':{'first':True}})
+    assert remote.scope is None and remote.vm_deadline==750

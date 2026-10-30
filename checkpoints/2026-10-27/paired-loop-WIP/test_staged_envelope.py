@@ -53,3 +53,14 @@ def test_frozen_partition_and_grade_only_borrows_actual_unused_wall():
     assert grade_allowance(life,600,20)==60
     with pytest.raises(WallBudgetExhausted):grade_allowance(life,701,20)
     assert grade_allowance(life,703,17)==30  # Stop already used3s of SAME cleanup20.
+
+@pytest.mark.parametrize('now,expected',[(0,60),(370,60),(410,20),(420,10)])
+def test_observation_borrows_only_unused_wall_with_full_future_reserve(now,expected):
+    life=Lifetime(0)
+    assert observation_allowance(life.deadline,now)==expected
+    assert life.deadline==750
+    assert now+expected+90+180+30+20<=life.deadline
+
+@pytest.mark.parametrize('now',[420.001,500,750])
+def test_observation_refuses_exhausted_remaining_wall(now):
+    with pytest.raises(WallBudgetExhausted):observation_allowance(750,now)

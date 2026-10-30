@@ -244,3 +244,17 @@ def test_allowlisted_local_admission_reason_is_not_hidden_as_class_only():
     _,report=run(Refused())
     assert all(x['local_admission_reason_code']=='ambiguous_child_proxy_alias_refused' for x in report['arms'].values())
     assert report['cleanup_confirmed']
+
+
+def test_three_slow_public_commands_borrow_unused_wall_not_worker_budget():
+    ticks=[0.0]
+    class SlowObservation(Worker):
+        async def observe(self,arm,turn):
+            for _ in range(3):ticks[0]+=15  # Authored virtual remote command latency.
+            return await super().observe(arm,turn)
+    _,report=run(SlowObservation(),clock=lambda:ticks[0])
+    for state in report['arms'].values():
+        assert state['status']=='staged_natural_stop'
+        assert state['observation_wall_allowance_seconds']==60
+        assert state['observation_seconds']==45
+        assert state['worker_active_seconds']==2 and state['calls']==12

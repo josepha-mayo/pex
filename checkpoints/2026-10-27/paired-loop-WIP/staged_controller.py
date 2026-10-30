@@ -14,7 +14,7 @@ import time
 from controller import WorkerBudgetTerminal
 from staged_envelope import (PHASES, TOTAL, Lifetime, WallBudgetExhausted,
     SETUP_SECONDS, OBSERVATION_SECONDS, REVIEW_SECONDS, GRADE_SECONDS, CLEANUP_SECONDS,
-    WALL_PROFILE,grade_allowance)
+    WALL_PROFILE,grade_allowance,observation_allowance)
 
 BASELINE_RESUME = 'Continue the same task in this session using the remaining phase allowance.'
 
@@ -125,8 +125,15 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
                     if index == 1:
                         state['status'] = 'staged_natural_stop'
                         break
-                    observation = await bounded(lambda:worker.observe(arm, turn), OBSERVATION_SECONDS,
-                                                 retain=REVIEW_SECONDS+PHASES[1].active_seconds+GRADE_SECONDS+CLEANUP_SECONDS)
+                    observation_seconds = observation_allowance(life.deadline, clock())
+                    state['observation_wall_allowance_seconds'] = observation_seconds
+                    observation_started = clock()
+                    try:
+                        observation = await bounded(lambda:worker.observe(arm, turn), observation_seconds,
+                                                     retain=REVIEW_SECONDS+PHASES[1].active_seconds+GRADE_SECONDS+CLEANUP_SECONDS)
+                    finally:
+                        # Infrastructure observation overhead is never worker time.
+                        state['observation_seconds'] = clock() - observation_started
                     observation_digest = digest(observation)
                     state['checkpoint_sha256'] = observation_digest
                     if condition == 'baseline':

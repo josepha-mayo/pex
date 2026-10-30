@@ -20,12 +20,15 @@ TOTAL = Phase(12, 196608, 540)
 VM_SECONDS = 750
 SETUP_SECONDS = 60
 OBSERVATION_SECONDS = 10
+OBSERVATION_MAX_SECONDS = 60
 REVIEW_SECONDS = 90
 GRADE_SECONDS = 30
 GRADE_MAX_SECONDS = 60
 CLEANUP_SECONDS = 20
 WALL_PROFILE = {'setup_seconds':SETUP_SECONDS,'worker_active_seconds':TOTAL.active_seconds,
-    'observation_seconds':OBSERVATION_SECONDS,'review_seconds':REVIEW_SECONDS,
+    'observation_seconds':OBSERVATION_SECONDS,'observation_unused_slack_max_seconds':OBSERVATION_MAX_SECONDS,
+    'observation_borrow_rule':'actual_unused_prior_wall_only_absolute_VM_deadline_full_remaining_stages_retained',
+    'review_seconds':REVIEW_SECONDS,
     'grade_guaranteed_seconds':GRADE_SECONDS,'grade_unused_slack_max_seconds':GRADE_MAX_SECONDS,
     'cleanup_shared_seconds':CLEANUP_SECONDS,
     'grade_borrow_rule':'actual_unused_prior_wall_only_absolute_VM_deadline_cleanup_retained'}
@@ -99,3 +102,17 @@ def grade_allowance(lifetime,now,cleanup_remaining):
     available=lifetime.deadline-now-cleanup_remaining
     if available<GRADE_SECONDS:raise WallBudgetExhausted('guaranteed_grade_window_unavailable')
     return min(GRADE_MAX_SECONDS,available)
+
+
+def observation_allowance(deadline, now):
+    """Same prospective public-observation rule for both arms; no VM extension.
+
+    Only elapsed unused setup/phase0 wall may be borrowed. Keep the full
+    remaining worker phase, review, guaranteed grading and cleanup windows.
+    """
+    deadline=_number(deadline);now=_number(now)
+    retain=REVIEW_SECONDS+PHASES[1].active_seconds+GRADE_SECONDS+CLEANUP_SECONDS
+    available=deadline-now-retain
+    if available<OBSERVATION_SECONDS:
+        raise WallBudgetExhausted('guaranteed_observation_window_unavailable')
+    return min(OBSERVATION_MAX_SECONDS,available)

@@ -9,7 +9,7 @@ import json
 import time
 from pathlib import Path
 from opencode_cli import CliCleanupUnconfirmed
-from staged_envelope import PHASES, SETUP_SECONDS, OBSERVATION_SECONDS, GRADE_MAX_SECONDS
+from staged_envelope import PHASES, SETUP_SECONDS, OBSERVATION_SECONDS, GRADE_MAX_SECONDS, observation_allowance
 from staged_funding import PhaseFunding
 import nebius_worker
 from staged_controller import ProtocolInconclusive
@@ -92,7 +92,8 @@ class StagedWorker:
         if saved is None or saved[0] != turn['receipt'] or saved[2] != 0:
             raise ProtocolInconclusive('fresh_first_phase_observation_required')
         remote=self.remotes[c]
-        remote.set_scope_deadline(min(self.deadlines[c],self.clock()+OBSERVATION_SECONDS))
+        now=self.clock()
+        remote.set_scope_deadline(now+observation_allowance(self.deadlines[c],now))
         try:
             return await asyncio.to_thread(self.worker.collect_observation,arm,saved[1])
         finally:
