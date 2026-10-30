@@ -195,6 +195,7 @@ def preflight_worker_configuration(cfg,directory,*,check_credentials=False):
             or directory.stat().st_mode&0o077):raise AdmissionRefused('local_worker_preflight_directory_required')
     raw=read_pin(cfg['cli']['binary'],limit=512*1024*1024)
     if hashlib.sha256(raw).hexdigest()!=PIN:raise AdmissionRefused('local_worker_CLI_identity_changed')
+    del raw  # Release verified 240MB binary before starting the separate CLI process.
     package=json.loads(read_pin(cfg['cli']['plugin_package']))
     if package.get('version')!='2.1.4':raise AdmissionRefused('local_worker_plugin_identity_changed')
     if check_credentials:
@@ -208,7 +209,7 @@ def preflight_worker_configuration(cfg,directory,*,check_credentials=False):
         env=prepare_child_environment(cfg,Path(temporary)/'profile')
         try:
             version=subprocess.run([cfg['cli']['binary']['path'],'--version'],cwd=temporary,
-                env=env,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=10)
+                env=env,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=30)
         except subprocess.TimeoutExpired:raise AdmissionRefused('local_worker_CLI_version_timeout') from None
         if version.returncode!=0 or version.stdout.strip()!=b'opencode v2.1.4':
             raise AdmissionRefused('local_worker_CLI_version_unproven')

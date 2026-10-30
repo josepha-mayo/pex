@@ -19,6 +19,13 @@ def test_actual_local_preflight_passes_before_any_claim_or_VM(candidate,tmp_path
     cfg,_=candidate;actual_CLI(cfg)
     monkeypatch.setenv('ALL_PROXY','http://127.0.0.1:1');monkeypatch.setenv('all_proxy','http://127.0.0.1:2')
     tmp_path.chmod(0o700)
+    import subprocess,inspect
+    original=subprocess.run
+    def checked(*args,**kwargs):
+        assert kwargs['timeout']==30
+        assert 'raw' not in inspect.currentframe().f_back.f_locals
+        return original(*args,**kwargs)
+    monkeypatch.setattr(subprocess,'run',checked)
     result=preflight_worker_configuration(cfg,tmp_path,check_credentials=False)
     assert result['status']=='passed' and result['CLI_version']=='2.1.4'
     assert result['SDK_clients_or_claims_created']==result['provider_or_model_calls']==0
@@ -32,4 +39,16 @@ def test_preflight_route_mismatch_refuses_before_CLI_or_VM(candidate,tmp_path,mo
     monkeypatch.setenv('HTTPS_PROXY','http://AUTHORED-WRONG.invalid')
     monkeypatch.setattr(subprocess,'run',lambda *a,**k:pytest.fail('CLI must not start after admission mismatch'))
     with pytest.raises(AdmissionRefused,match='proxy_changed'):preflight_worker_configuration(cfg,tmp_path)
+    assert not(tmp_path/'launch.claim').exists() and not(tmp_path/'run').exists()
+
+
+def test_local_version_timeout_still_refuses_without_claim(candidate,tmp_path,monkeypatch):
+    import subprocess
+    cfg,_=candidate;actual_CLI(cfg);tmp_path.chmod(0o700)
+    def timeout(*args,**kwargs):
+        assert kwargs['timeout']==30
+        raise subprocess.TimeoutExpired(args[0],30)
+    monkeypatch.setattr(subprocess,'run',timeout)
+    with pytest.raises(AdmissionRefused,match='local_worker_CLI_version_timeout'):
+        preflight_worker_configuration(cfg,tmp_path,check_credentials=False)
     assert not(tmp_path/'launch.claim').exists() and not(tmp_path/'run').exists()
