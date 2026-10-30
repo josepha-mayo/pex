@@ -29,6 +29,7 @@ _EVIDENCE_NAMES = frozenset(
         "get_recent_events",
         "get_scores",
         "inspect_acceptance",
+        "inspect_public_snapshot",
         "get_context",
         "get_context_items",
         "get_decisions",
