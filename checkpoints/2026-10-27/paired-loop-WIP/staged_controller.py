@@ -90,6 +90,7 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
             cleanup_failed = False
             pending_worker_phase = False
             current_limit = None
+            stage = 'setup'
 
             async def bounded(call, seconds, retain=0, *, setup=False):
                 if _composition is not None:_composition.verify(arms,worker,review,grader)
@@ -110,6 +111,7 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
                     current_limit = limit
                     retain = (OBSERVATION_SECONDS+REVIEW_SECONDS+PHASES[1].active_seconds+GRADE_SECONDS+CLEANUP_SECONDS
                               if index == 0 else GRADE_SECONDS+CLEANUP_SECONDS)
+                    stage = 'worker_phase'
                     pending_worker_phase = True
                     turn = await bounded(lambda:worker.phase(arm, prompt=prompt, session_id=session,
                                         phase_index=index, limit=limit), limit.active_seconds, retain)
@@ -125,6 +127,7 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
                     if index == 1:
                         state['status'] = 'staged_natural_stop'
                         break
+                    stage = 'public_observation'
                     observation_seconds = observation_allowance(life.deadline, clock())
                     state['observation_wall_allowance_seconds'] = observation_seconds
                     observation_started = clock()
@@ -139,6 +142,7 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
                     if condition == 'baseline':
                         prompt = BASELINE_RESUME
                     else:
+                        stage = 'supervisor_review'
                         started = clock()
                         try:
                             decision = await bounded(lambda:review.review(arm, observation, session_id=session),
@@ -160,6 +164,8 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
                         if type(prompt) is not str or not prompt.strip():
                             raise ProtocolInconclusive('empty_model_continuation')
             except WorkerBudgetTerminal as error:
+                state['failure_stage']=stage
+                state['failure_kind']='worker_budget'
                 state['status']='worker_budget_terminal_inconclusive'
                 state['budget_terminal_reason']=error.code
                 if error.usage is None:
@@ -182,7 +188,10 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
                         or state['worker_active_seconds'] > TOTAL.active_seconds):
                     state['status']='protocol_inconclusive'
                     state['error_type']='worker_phase_enforcement_failed'
+                    state['failure_kind']='protocol'
             except (TimeoutError, WallBudgetExhausted) as error:
+                state['failure_stage']=stage
+                state['failure_kind']='wall_timeout'
                 state['status']='wall_budget_terminal_inconclusive'
                 state['error_type']=type(error).__name__
                 # Interrupted worker receipts may be unavailable; zero is not proof.
@@ -190,6 +199,8 @@ async def run_staged_pair(arms, worker, review, grader, *, mode='authored-only',
                     state['worker_usage_exact']=False
                     state['worker_active_time_exact']=False
             except Exception as error:
+                state['failure_stage']=stage
+                state['failure_kind']='protocol' if isinstance(error,ProtocolInconclusive) else 'infrastructure'
                 state['status']='protocol_inconclusive' if isinstance(error,ProtocolInconclusive) else 'infrastructure_inconclusive'
                 state['error_type']=type(error).__name__
                 from staged_admission import AdmissionRefused

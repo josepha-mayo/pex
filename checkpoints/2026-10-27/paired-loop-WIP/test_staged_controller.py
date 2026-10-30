@@ -120,6 +120,7 @@ def test_budget_exception_preserves_partial_receipt_without_review():
                 input_tokens=10,output_tokens=4,uncertain_calls=0),worker_active_seconds=9)
     w,r=run(Bad())
     assert all(s['calls']==8 and s['worker_active_seconds']==9 for s in r['arms'].values())
+    assert all(s['failure_stage']=='worker_phase' and s['failure_kind']=='worker_budget' for s in r['arms'].values())
     assert not any(e[0]=='review' for e in w.events)
 
 
@@ -258,3 +259,34 @@ def test_three_slow_public_commands_borrow_unused_wall_not_worker_budget():
         assert state['observation_wall_allowance_seconds']==60
         assert state['observation_seconds']==45
         assert state['worker_active_seconds']==2 and state['calls']==12
+
+
+@pytest.mark.parametrize('stage',['setup','worker_phase','public_observation','supervisor_review'])
+def test_timeout_classification_records_exact_stage_not_task_failure(stage):
+    class FailingWorker(Worker):
+        async def prepare(self,*args,**kwargs):
+            if stage=='setup':raise TimeoutError('AUTHORED private string never exported')
+            return await super().prepare(*args,**kwargs)
+        async def phase(self,*args,**kwargs):
+            if stage=='worker_phase':raise TimeoutError('AUTHORED')
+            return await super().phase(*args,**kwargs)
+        async def observe(self,*args,**kwargs):
+            if stage=='public_observation':raise TimeoutError('AUTHORED')
+            return await super().observe(*args,**kwargs)
+    class FailingReview(Review):
+        async def review(self,*args,**kwargs):raise TimeoutError('AUTHORED')
+    worker=FailingWorker();_,report=run(worker,FailingReview(worker) if stage=='supervisor_review' else Review(worker))
+    state=report['arms']['pex']
+    assert state['failure_stage']==stage and state['failure_kind']=='wall_timeout'
+    assert state['status']=='wall_budget_terminal_inconclusive'
+    assert state['error_type']=='TimeoutError'
+    assert 'AUTHORED' not in json.dumps(state)
+    assert state['worker_usage_exact'] is (stage!='worker_phase')
+
+
+def test_observation_infrastructure_is_not_a_task_or_worker_budget_failure():
+    class Failing(Worker):
+        async def observe(self,*args,**kwargs):raise ConnectionError('PRIVATE')
+    _,report=run(Failing())
+    assert all(s['failure_stage']=='public_observation' and s['failure_kind']=='infrastructure'
+               and s['status']=='infrastructure_inconclusive' for s in report['arms'].values())
