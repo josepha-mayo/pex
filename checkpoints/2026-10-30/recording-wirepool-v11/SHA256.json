@@ -1,0 +1,37 @@
+{
+  "files": {
+    "README.md": "0b36bbb1fabd5f0b6543e4cb912c93ceea3e491c7f670ac2e3fa4a4a51f76b82",
+    "grade_summaries.py": "b6a66a35618650861f47aac6cfac8d0cafdef58ccad849a618533f332dfd5ac3",
+    "ledger_sidecar.py": "19ed5d27ff0593e6f383b4723d4592058e425d8d350d09a74a49fdd402cf3bb8",
+    "native_session.py": "861b06ded19c58036d789a1ee57d379891ca30fe0767c39f484e6bde781bdebd",
+    "preview_grade_display.py": "9430742e741fd6ce9dfcfb98773ba7859ed07f9847ea7068242350762f18387c",
+    "qualification_fixture.py": "07320c6c5e827d58f1f748527e2b1a9aca08a621ed0a31786c2d47d45f3507fa",
+    "record_support.py": "2761cf24c0328ab43eae0795195a4679c80b9abbc6fa841e1c920eedc6884b49",
+    "reviewed_excerpts.py": "2861f9bdaf8d89c1847797c7298868f0c03ad04d8ffd5ed62409fd45bc0ae428",
+    "safe_feed_writer.py": "d37a7e6ca7bf42098274d3ec99ea51d338f36788507661d216b06c253b5fb4d4",
+    "supervisor_excerpts.py": "01233dee401a0e34d04c177da45afded25d5b3f5fff1197b11c02a9081ffe10e",
+    "test_fixture_namespace.py": "345bacacc0ec77fa36158ef93ecbbc7713b9700d3a7cb620e5307bcad866df2b",
+    "test_grade_summaries.py": "2e818b020e5ab1e55edb94c67d68565672c6b61be7f1d4e56896c86c5ee488de",
+    "test_ledger_sidecar.py": "a661258ae81c1f0af110cb4f4cd9e8afab2a1a54ee24da5983509ab3e7ed5177",
+    "test_output_profile.py": "12c79eef16f40a27f753a3b2f5a893efa9f833f18f30cae80e269779d2a59617",
+    "test_readable_display.py": "45d70ce0db57fe961595b2ad3c79c75c46da302ac22dc696194ee9b18f203118",
+    "test_record_support.py": "253c1414e1b5aaedd09ed44e7591d73b2a4e4847c3a60a1572cd6553e6fc4fce",
+    "test_reviewed_excerpts.py": "c0df0fc6f264c4d1205089a1f5ca77b948aaf4c9e924933e7d8f23168cc31cd4",
+    "test_split_storage.py": "0ddaa8503d54d1fc038c0adc94dd30552de6790851e9e3648d4a064ebe46012e",
+    "test_stage_classification.py": "3b15e65e2b67834499bfbe45fa23465c09ee5a3b671d54dbfbf5b467e6a5e544",
+    "test_supervisor_excerpts.py": "3fcd0a37c3f5ba3c1eeee36722b3546c3be87115bba4f636461d5f525382a885",
+    "test_wirepool_feed_contract.py": "d2e98716a0f34b4be1a36b51e69b7f7dd961c54e38278c4b4f11acd032a17399",
+    "test_wirepool_grade_chain.py": "6670053a458839b2e4e2668b403c0c65645446372aa3918ad647cb3b270b5a69"
+  },
+  "local_tests": {
+    "passed": 181,
+    "qualification": "authored fixtures only; no model inference or grade result",
+    "runtime_seconds": 3.41,
+    "subtests_passed": 92
+  },
+  "schema": "pex.recorder-support-v11-source-hashes.v1",
+  "scope": "Isolated source/tests only; no live run, provider, VM or capture",
+  "task": "wirepool_v1_cancel_safe_resp_client",
+  "task_manifest_sha256": "65763af6bd289cfc7bcffe8f855ab5b0f748cc234a0f296345a57738ad83d733",
+  "upstream": "V10 copied without pycache/evidence; V10 unchanged"
+}
