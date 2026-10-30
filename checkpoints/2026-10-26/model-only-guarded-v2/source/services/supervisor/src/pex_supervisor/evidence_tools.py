@@ -141,7 +141,7 @@ def _validated_public_snapshot(request: SupervisorRequest) -> dict | None:
     metadata = request.session.metadata or {}
     prefixes = {"stockroom", "tests"}
     if metadata.get("benchmark_task_id") == "asyncpool_v1_cancel_safe_dual_limit":
-        if metadata.get("benchmark_manifest_sha256") != "004e6037238251871d8c478efef82bdf3a9af5ba06810f9854877ac8c05f10cc":
+        if metadata.get("benchmark_manifest_sha256") != "d80e8e2edb81bad1d538988bcc98124473e1efc92116c5247698de54354a3c5d":
             return None
         prefixes = {"asyncpool", "tests"}
     copied = {}

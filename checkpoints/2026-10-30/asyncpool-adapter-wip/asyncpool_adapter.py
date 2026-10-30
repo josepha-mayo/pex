@@ -12,7 +12,7 @@ from types import MappingProxyType
 from stockroom_task import read_regular
 
 TASK_ID='asyncpool_v1_cancel_safe_dual_limit'
-MANIFEST_SHA256='004e6037238251871d8c478efef82bdf3a9af5ba06810f9854877ac8c05f10cc'
+MANIFEST_SHA256='d80e8e2edb81bad1d538988bcc98124473e1efc92116c5247698de54354a3c5d'
 PUBLIC_FILES=('README.md','TASK.md','asyncpool/__init__.py','tests/test_public.py')
 INITIAL_PROMPT_SHA256='80d111cf5728095f26ad3bcc432589e510f7dfd22a947246a24218fc27d609ef'
 PUBLIC_SHA256='f25a47c64ea7d689714fc443281d515bfb449264c1ef5f2c92ca62129d742215'
@@ -74,6 +74,11 @@ def allowed_snapshot_path(name):
 
 
 def validate_snapshot(value):
+    if type(value)is dict and value.get('schema')=='pex.asyncpool-import-grade.v1':
+        if set(value)!={'schema','outcome','checks','passed','failed','expected_checks','loader_errors','complete','all_pass'}:raise ValueError('asyncpool_import_schema')
+        if value['outcome'] not in ('candidate_import_failure','grader_import_infrastructure'):raise ValueError('asyncpool_import_outcome')
+        if any(type(value[k])is not int or value[k]!=0 for k in ('checks','passed','failed')) or type(value['loader_errors'])is not int or value['loader_errors']!=1 or type(value['expected_checks'])is not int or value['expected_checks']!=8 or value['complete']is not False or value['all_pass']is not False:raise ValueError('asyncpool_import_counts')
+        return value
     if type(value)is not dict or set(value)!={'schema','files','snapshot_sha256'} or value['schema']!='pex.public-candidate-snapshot.v1':raise ValueError('asyncpool_snapshot_shape')
     files=value['files']
     if type(files)is not dict or not 1<=len(files)<=128 or 'TASK.md' not in files:raise ValueError('asyncpool_snapshot_files')
@@ -116,6 +121,11 @@ def build_monitor_request(package,arm,observation,session_id):
 
 def parse_grade(raw):
     value=json.loads(raw)
+    if type(value)is dict and value.get('schema')=='pex.asyncpool-import-grade.v1':
+        if set(value)!={'schema','outcome','checks','passed','failed','expected_checks','loader_errors','complete','all_pass'}:raise ValueError('asyncpool_import_schema')
+        if value['outcome'] not in ('candidate_import_failure','grader_import_infrastructure'):raise ValueError('asyncpool_import_outcome')
+        if any(type(value[k])is not int or value[k]!=0 for k in ('checks','passed','failed')) or type(value['loader_errors'])is not int or value['loader_errors']!=1 or type(value['expected_checks'])is not int or value['expected_checks']!=8 or value['complete']is not False or value['all_pass']is not False:raise ValueError('asyncpool_import_counts')
+        return value
     if type(value)is not dict or set(value)!={'schema','checks','passed','failed','complete','all_pass'} or value['schema']!='pex.asyncpool-grade.v1':raise ValueError('asyncpool_grade_schema')
     if any(type(value[k])is not int or not 0<=value[k]<=8 for k in ('checks','passed','failed')) or value['checks']!=8 or value['passed']+value['failed']!=8:raise ValueError('asyncpool_grade_counts')
     if value['complete'] is not True or type(value['all_pass'])is not bool or value['all_pass']!=(value['failed']==0):raise ValueError('asyncpool_grade_consistency')

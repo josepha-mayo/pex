@@ -95,3 +95,24 @@ def test_isolated_grader_refuses_linked_candidate_directory(tmp_path):
     link=tmp_path/'linked';link.symlink_to(ROOT/'reference',target_is_directory=True)
     result=subprocess.run([sys.executable,'-I',str(ROOT/'heldout/run_grade.py'),str(link)],capture_output=True,text=True,timeout=10)
     assert result.returncode!=0 and 'plain candidate directory required' in result.stderr
+
+@pytest.mark.parametrize('source',['def broken(:\n','import dependency_not_in_stdlib_pex\n','x = 1\n'])
+def test_authored_candidate_import_failure_preserves_zero_executed(tmp_path,source):
+    import subprocess,sys
+    candidate=tmp_path/'candidate';(candidate/'asyncpool').mkdir(parents=True)
+    (candidate/'asyncpool/__init__.py').write_text(source)
+    result=subprocess.run([sys.executable,'-I',str(ROOT/'heldout/run_grade.py'),str(candidate)],capture_output=True,text=True,timeout=10)
+    value=a.parse_grade(result.stdout)
+    assert result.returncode==1 and value['outcome']=='candidate_import_failure'
+    assert value['checks']==0 and value['loader_errors']==1 and not value['complete']
+
+
+def test_grader_dependency_failure_not_candidate_failure(tmp_path):
+    import subprocess,sys
+    # Authored grader-environment defect, not an actual worker candidate.
+    (tmp_path/'run_grade.py').write_bytes((ROOT/'heldout/run_grade.py').read_bytes())
+    (tmp_path/'test_acceptance.py').write_text('import missing_grader_dependency_pex\n')
+    result=subprocess.run([sys.executable,'-I',str(tmp_path/'run_grade.py'),str(ROOT/'reference')],capture_output=True,text=True,timeout=10)
+    assert result.returncode==2
+    value=a.parse_grade(result.stdout)
+    assert value['outcome']=='grader_import_infrastructure' and value['checks']==0 and value['loader_errors']==1

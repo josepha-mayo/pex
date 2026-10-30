@@ -80,3 +80,20 @@ async def test_saved_phase0_requires_both_workers_revoked():
     result=await grade.grade_phase0({'condition':'pex'})
     assert result['status']=='graded_with_limits'
     assert sum(e[0]=='export' for e in remote.events)==1
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('outcome,code,status',[('candidate_import_failure',1,'graded_with_limits'),('grader_import_infrastructure',2,'inconclusive')])
+async def test_import_failure_has_honest_zero_check_classification(outcome,code,status):
+    class ImportRemote(FakeRemote):
+        def run(self,command,timeout=None):
+            result=super().run(command,timeout)
+            if 'pex.asyncpool-upload-verified.v1' in command and json.loads(shlex.split(command)[-1])['mode']=='protected':
+                prefix=result['stdout'].split('\n')[0]+'\n'
+                result={'exit_code':code,'stderr':'','stdout':prefix+json.dumps({'schema':'pex.asyncpool-import-grade.v1','outcome':outcome,'checks':0,'passed':0,'failed':0,'expected_checks':8,'loader_errors':1,'complete':False,'all_pass':False})}
+            return result
+    remote=ImportRemote();grade=RemoteGrade({'baseline':remote},ROOT,lambda c:True,revoked=lambda c:True)
+    result=await grade.grade({'condition':'baseline'})
+    assert result['status']==status and result['failure_category']==outcome
+    assert result['task_tests_measured'] is False and result['tests']['checks']==0
+    if outcome=='candidate_import_failure':assert result['task_success'] is False
+    else:assert 'task_success' not in result

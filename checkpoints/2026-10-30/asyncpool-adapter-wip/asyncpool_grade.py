@@ -109,8 +109,14 @@ class RemoteGrade:
             remote._sandbox.files.write_files({base+'/'+n:b for n,b in self.protected.items()},user='user',request_timeout=15)
             result=verified_result(remote.run(verify_command('protected',{**uploads,**self.protected}),timeout=30),{**uploads,**self.protected})
             report.update(stdout=result['stdout'],stderr=result['stderr'],returncode=result['exit_code'],uploaded_sha256={**{n:digest(b) for n,b in uploads.items()},**{n:digest(b) for n,b in self.protected.items()}})
-            tests=json.loads(result['stdout'])
             tests=parse_grade(result['stdout'])
+            if tests.get('outcome')=='grader_import_infrastructure':
+                report.update(status='inconclusive',failure_category='grader_import_infrastructure',task_tests_measured=False,tests=tests)
+                return report
+            if tests.get('outcome')=='candidate_import_failure':
+                if result['exit_code']!=1:raise ValueError('inconsistent_import_exit')
+                report.update(status='graded_with_limits',failure_category='candidate_import_failure',task_tests_measured=False,tests=tests,summary={'passed':0,'total':self.check_count,'executed':0,'all_pass':False,'public_tests_pass':public['exit_code']==0},task_success=False)
+                return report
             if result['exit_code'] not in (0,1) or (result['exit_code']==0)!=tests['all_pass']:raise ValueError('inconsistent_grade_exit')
             report.update(status='graded_with_limits',task_tests_measured=True,tests=tests,summary={'passed':tests['passed'],'total':self.check_count,'all_pass':tests['all_pass'],'public_tests_pass':public['exit_code']==0},task_success=tests['all_pass'] and public['exit_code']==0)
         except Exception as error:report.update(status='inconclusive',error_type=type(error).__name__)
