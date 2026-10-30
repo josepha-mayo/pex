@@ -12,7 +12,7 @@ from types import MappingProxyType
 from stockroom_task import read_regular
 
 TASK_ID='asyncpool_v1_cancel_safe_dual_limit'
-MANIFEST_SHA256='d80e8e2edb81bad1d538988bcc98124473e1efc92116c5247698de54354a3c5d'
+MANIFEST_SHA256='dcfdef0ac5790762e8b27639e8c3c8b47eb2a3cca24c4ed57603cadba5e72c76'
 PUBLIC_FILES=('README.md','TASK.md','asyncpool/__init__.py','tests/test_public.py')
 INITIAL_PROMPT_SHA256='80d111cf5728095f26ad3bcc432589e510f7dfd22a947246a24218fc27d609ef'
 PUBLIC_SHA256='f25a47c64ea7d689714fc443281d515bfb449264c1ef5f2c92ca62129d742215'

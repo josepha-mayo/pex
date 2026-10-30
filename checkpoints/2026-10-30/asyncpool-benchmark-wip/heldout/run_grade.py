@@ -22,7 +22,10 @@ if __name__ == '__main__':
     try:
         with contextlib.redirect_stdout(capture), contextlib.redirect_stderr(capture):
             module = importlib.import_module('asyncpool')
-            if Path(module.__file__).resolve() != candidate / 'asyncpool/__init__.py':
+            origin_file=getattr(module,'__file__',None)
+            if origin_file is None and not (candidate/'asyncpool/__init__.py').is_file():
+                import_problem='candidate_import_failure'
+            elif origin_file is None or Path(origin_file).resolve() != candidate / 'asyncpool/__init__.py':
                 raise RuntimeError('candidate_module_origin_unproven')
             if not hasattr(module, 'Pool'):
                 import_problem = 'candidate_import_failure'

@@ -122,3 +122,14 @@ def test_import_grade_never_accepted_as_public_snapshot():
     value={'schema':'pex.asyncpool-import-grade.v1','outcome':'candidate_import_failure','checks':0,'passed':0,'failed':0,'expected_checks':8,'loader_errors':1,'complete':False,'all_pass':False}
     assert a.parse_grade(json.dumps(value))==value
     with pytest.raises(ValueError,match='snapshot_shape'):a.validate_snapshot(value)
+
+
+@pytest.mark.parametrize('helper',[False,True])
+def test_deleted_required_candidate_init_is_candidate_failure(tmp_path,helper):
+    import subprocess,sys
+    (tmp_path/'asyncpool').mkdir()
+    if helper:(tmp_path/'asyncpool/helper.py').write_text('AUTHORED = True\n')
+    result=subprocess.run([sys.executable,'-I',str(ROOT/'heldout/run_grade.py'),str(tmp_path)],capture_output=True,text=True,timeout=10)
+    value=a.parse_grade(result.stdout)
+    assert result.returncode==1 and value['outcome']=='candidate_import_failure'
+    assert value['checks']==0 and value['loader_errors']==1
