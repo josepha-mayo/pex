@@ -14,12 +14,12 @@ def info(**changes):
 
 
 def test_provider_full_lifetime_includes_pause():
-    assert validate_provider_lifetime(info())['admitted_full_lifetime_seconds']==330
+    assert validate_provider_lifetime(info())['admitted_full_lifetime_seconds']==750
     assert validate_provider_lifetime(info())['paused_time_discounted'] is False
 
 
 @pytest.mark.parametrize('changes',[{'cpu_count':True},{'memory_mb':8192},{'template_id':'other'},
-    {'end_at':datetime.now(timezone.utc)+timedelta(seconds=400)},{'started_at':datetime.now()}])
+    {'end_at':datetime.now(timezone.utc)+timedelta(seconds=800)},{'started_at':datetime.now()}])
 def test_unproven_provider_lifetime_refused(changes):
     with pytest.raises(BoundedRemoteError): validate_provider_lifetime(info(**changes))
 
@@ -210,3 +210,19 @@ async def test_read_cancellation_deadline_is_not_completed_timeout_exemption():
     with pytest.raises(BoundedRemoteError):await asyncio.to_thread(remote.read,'safe.txt')
     await remote.end_scope()
     assert remote.poisoned and remote.diagnostics['completed_read_connect_timeouts']==0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("task",["stockroom","asyncpool"])
+async def test_exact_private_batch_task_prefix_actual_guard(task):
+    remote=BoundedAsyncRemote(None,vm_deadline=time.monotonic()+5,evaluation_task=task)
+    captured=[];remote._batch=lambda entries:captured.extend(entries)
+    root='/tmp/pex-'+task+'-evaluation-'+'a'*32
+    values={root+'/candidate/asyncpool/__init__.py':b'AUTHORED',root+'/run_grade.py':b'AUTHORED',root+'/test_acceptance.py':b'AUTHORED'}
+    remote._write_absolute_files(values)
+    assert captured==[{'path':p,'data':b}for p,b in values.items()]
+    for name in (root.replace(task,'asyncpool' if task=='stockroom' else 'stockroom')+'/candidate/a.py',root+'/candidate/../run_grade.py',root+'/candidate//a.py',root+'/private.py'):
+        with pytest.raises(ValueError,match='private_evaluation_snapshot_path_required'):
+            remote._write_absolute_files({name:b'AUTHORED'})
+    with pytest.raises(ValueError,match='one_evaluation_snapshot_required'):
+        remote._write_absolute_files({root+'/candidate/a.py':b'AUTHORED',root.replace('a'*32,'b'*32)+'/candidate/a.py':b'AUTHORED'})

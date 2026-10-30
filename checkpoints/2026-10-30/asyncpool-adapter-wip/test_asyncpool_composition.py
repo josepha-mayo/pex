@@ -26,6 +26,7 @@ def test_exact_asyncpool_composition_same_science_no_external_effect(funded,boun
         composition.verify(composition.arms,composition.worker,composition.review,composition.grader)
         assert accounting.cfg['task']['sha256']==MANIFEST_SHA256
         assert composition.worker.worker.task_profile=='asyncpool-v1'
+        assert composition.worker.lifecycle.evaluation_task=='asyncpool'
         assert composition.grader.grade_impl.task=='asyncpool_v1_cancel_safe_dual_limit'
         assert composition.grader.grade_impl.check_count==8
         assert composition.supervisor.config['public_sha256']==PUBLIC_SHA256

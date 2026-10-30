@@ -23,6 +23,10 @@ class StagedLifecycle:
         elif (mode != 'authored-only' or getattr(sdk_api,'AUTHORED_FAKE_ONLY',False) is not True
                 or getattr(sdk_api,'__module__','').startswith('e2b')):
             raise PermissionError('staged_live_lifecycle_not_admitted')
+        self.evaluation_task="stockroom"
+        if mode=="closed-admitted-sdk":
+            from staged_admission import ASYNCPOOL_MANIFEST
+            if sdk_api.binding.admitted.grant.task_sha256==ASYNCPOOL_MANIFEST:self.evaluation_task="asyncpool"
         self.mode=mode
         if not inspect.iscoroutinefunction(stage_public) or not re.fullmatch('[a-z0-9-]{1,128}',run_id):
             raise ValueError('bounded_async_public_stager_and_run_identity_required')
@@ -82,7 +86,7 @@ class StagedLifecycle:
                 try: await self._cleanup_raw(c,self.clock()+CLEANUP_SECONDS)
                 except Exception: pass
                 raise BoundedRemoteError('late_create_after_deadline_or_uncertainty_no_resume')
-            remote=BoundedAsyncRemote(sdk,vm_deadline=deadline,clock=self.clock)
+            remote=BoundedAsyncRemote(sdk,vm_deadline=deadline,clock=self.clock,evaluation_task=self.evaluation_task)
             self.remotes[c]=remote
             return sdk,remote
         try:

@@ -38,7 +38,9 @@ def validate_provider_lifetime(info):
 
 
 class BoundedAsyncRemote:
-    def __init__(self, sandbox, *, vm_deadline, clock=time.monotonic):
+    def __init__(self, sandbox, *, vm_deadline, clock=time.monotonic, evaluation_task="stockroom"):
+        if evaluation_task not in ("stockroom","asyncpool"):raise ValueError("exact_evaluation_task_required")
+        self.evaluation_task=evaluation_task
         if type(vm_deadline) not in (int,float) or not math.isfinite(vm_deadline) or vm_deadline <= clock():
             raise ValueError('future_finite_VM_deadline_required')
         self._sdk=sandbox;self.clock=clock;self.vm_deadline=vm_deadline
@@ -203,7 +205,7 @@ class BoundedAsyncRemote:
         entries=[];roots=set()
         for name,content in files.items():
             if (type(name)is not str or '\0' in name or str(PurePosixPath(name))!=name or '..' in PurePosixPath(name).parts
-                    or not re.fullmatch(r'/tmp/pex-stockroom-evaluation-[0-9a-f]{32}/(?:candidate/.+|run_grade\.py|test_acceptance\.py)',name)):
+                    or not re.fullmatch(r'/tmp/pex-'+self.evaluation_task+r'-evaluation-[0-9a-f]{32}/(?:candidate/.+|run_grade\.py|test_acceptance\.py)',name)):
                 raise ValueError('private_evaluation_snapshot_path_required')
             roots.add(name.split('/')[2]);entries.append({'path':name,'data':content})
         if len(roots)!=1:raise ValueError('one_evaluation_snapshot_required')
