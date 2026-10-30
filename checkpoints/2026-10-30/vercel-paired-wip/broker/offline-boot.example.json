@@ -1,0 +1,12 @@
+{
+  "rpc_root": "/workspace/scratch/c62c151ada7d/runtime-private/pex-offline-example/native-rpc",
+  "config": {
+    "run_id": "offline-example-do-not-run",
+    "config_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "team_id": "team_jhvNBbOx4MhdfPGY8eFf75wB",
+    "project_id": "prj_OfflineOnly",
+    "image": "vercel/sandbox/universal",
+    "deadline_utc": "2026-10-30T17:00:00Z",
+    "producer_sha256": "7c6330ed63b16dcc7dc1f281ba9a5efa26d4b57c4fafb3ec9d70d83dea8c19bd"
+  }
+}
