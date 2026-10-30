@@ -20,7 +20,7 @@ def checkpoint():
 
 
 def test_default_closed_before_even_config_parsing_or_credential_reads():
-    assert r.APPROVED_DIAGNOSTIC is None
+    assert r.APPROVED_DIAGNOSTIC == "retrospective-pair20-baseline-phase0-20261030-01"
     with pytest.raises(PermissionError,match='retrospective_root_review_pending'):r.inspect(b'not json',None)
 
 
@@ -122,3 +122,14 @@ async def test_failure_preserves_durable_accounting_and_does_not_retry(offline_r
     assert (runtime.root/'main_before_model_and_credential.json').exists()
     assert (runtime.root/'review_failed.json').exists()
     assert json.loads((runtime.root/'failure.json').read_text())['error_type']=='TimeoutError'
+
+
+def test_dependencies_match_existing_managed_runtime_and_drift_refuses(monkeypatch):
+    r.check_packages()
+    original=r.version
+    monkeypatch.setattr(r,'version',lambda name:'0.0.0' if name=='httpx' else original(name))
+    with pytest.raises(ValueError,match='dependency_identity'):r.check_packages()
+
+def test_unreviewed_diagnostic_id_refused_before_config_parse():
+    grant=r.Grant('retrospective-unreviewed','a'*64,'b'*64,'c'*64,'d'*64)
+    with pytest.raises(PermissionError):r.inspect(b'not JSON',grant)

@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime,timezone
 import hashlib
 import importlib
+from importlib.metadata import version
 import json
 import os
 from pathlib import Path
@@ -16,7 +17,7 @@ import re
 from urllib.parse import urlsplit
 
 QUALIFICATION='RETROSPECTIVE_CODE_REVIEW_NOT_PAIRED_BENCHMARK'
-APPROVED_DIAGNOSTIC=None
+APPROVED_DIAGNOSTIC='retrospective-pair20-baseline-phase0-20261030-01'
 FRESH_NANO_USD=350_000_000
 PRIOR_PROVIDER=2_809_730_700
 PRIOR_COMPUTE=610_245_000
@@ -92,9 +93,15 @@ class Grant:
     sources_sha256:str
 
 
+def check_packages():
+    expected={'strands-agents':'1.53.0','httpx':'0.28.1','opentelemetry-api':'1.45.1'}
+    if any(version(name)!=value for name,value in expected.items()):raise ValueError('diagnostic_dependency_identity_changed')
+
+
 def inspect(config_raw,grant,*,initial=True):
     """Closed before credentials, ledger, claim, transport or model construction."""
     if APPROVED_DIAGNOSTIC is None or type(grant)is not Grant or grant.run_id!=APPROVED_DIAGNOSTIC:raise PermissionError('retrospective_root_review_pending')
+    check_packages()
     if sha(config_raw)!=grant.config_sha256:raise ValueError('exact_config_required')
     cfg=json.loads(config_raw)
     fields={'schema','qualification','run_id','approval_ref','expires_utc','created_utc','source_checkpoint','source_backup','request',
