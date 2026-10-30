@@ -3,8 +3,8 @@ All historical unknown reservations remain charged. These are accounting
 identities, not permission or a replacement for root source/config review.
 """
 PRIOR_PROVIDER=3_078_865_500
-PRIOR_COMPUTE=857_370_000
-COMPUTE_ENVELOPE=1_079_370_000  # prior + two111m worst-case reservations, not user cap.
+PRIOR_COMPUTE=968_370_000
+COMPUTE_ENVELOPE=1_190_370_000  # prior + two111m worst-case reservations, not user cap.
 PAIR21_NAMES=('pair21_claim', 'pair21_cleanup_1-receipt', 'pair21_cleanup_2-receipt', 'pair21_cleanup_3-receipt', 'pair21_cleanup_owned-identity', 'pair21_cleanup_result', 'pair21_cleanup_scope', 'pair21_compute', 'pair21_config', 'pair21_interrupted_manifest', 'pair21_owned', 'pair21_recording_qualification', 'pair21_supervisor', 'pair21_workers')
 RETROSPECTIVE_FILES=('PRESERVATION.json', 'config.json', 'executed-source/accounting', 'executed-source/managed_chat', 'executed-source/managed_tool_chat', 'executed-source/pex_protocol.actions', 'executed-source/pex_protocol.enums', 'executed-source/pex_protocol.goal', 'executed-source/pex_protocol.redaction', 'executed-source/pex_protocol.session', 'executed-source/pex_protocol.supervisor', 'executed-source/pex_supervisor.evidence_observations', 'executed-source/pex_supervisor.evidence_tools', 'executed-source/pex_supervisor.loop', 'executed-source/process_adapter', 'executed-source/retrospective_review', 'executed-source/review', 'executed-source/stockroom_request', 'executed-source/stockroom_task', 'executed-source/strands_bridge', 'executed-source/successor_admission', 'executed-source/successor_budget', 'executed-source/successor_supervisor', 'executed-source/tool_protocol', 'launch_once.py', 'owner_once.py', 'predecessor.json', 'request.json', 'run/admission.json', 'run/launch.claim', 'run/main_before_model_and_credential.json', 'run/supervisor.sqlite', 'run/supervisor.sqlite-journal', 'run/wire/65be5209758d7c9a0278320065471526ae40d9b2c7ee3d17e5f4fa51948dcd85.json', 'same-exec-owner.json', 'trusted_root_grant.py')
 def retrospective_name(path):return 'retrospective01_'+path.replace('/','__')
@@ -18,5 +18,7 @@ PAIR08_FILES=('preserved/PRESERVATION.json', 'preserved/pair.json', 'preserved/p
 def pair08_name(path):return "asyncpool08_"+path.replace("/","__")
 PAIR09_FILES=PAIR08_FILES
 def pair09_name(path):return "asyncpool09_"+path.replace("/","__")
+PAIR10_FILES=('preserved/PRESERVATION.json','preserved/pair.json','preserved/predecessor.json','preserved/launch.claim','preserved/launcher-admission.json','preserved/compute.sqlite','preserved/run/workers.sqlite','preserved/run/supervisor.sqlite','cleanup-fullroute-approved/scope.json','cleanup-fullroute-approved/1-receipt.json','cleanup-fullroute-approved/result.json')
+def pair10_name(path):return "asyncpool10_"+path.replace("/","__")
 def required_predecessors(legacy):
-    return frozenset(legacy)|frozenset(PAIR21_NAMES)|frozenset(retrospective_name(p) for p in RETROSPECTIVE_FILES)|frozenset(pair05_name(p) for p in PAIR05_FILES)|frozenset(pair06_name(p) for p in PAIR06_FILES)|frozenset(pair07_name(p) for p in PAIR07_FILES)|frozenset(pair08_name(p) for p in PAIR08_FILES)|frozenset(pair09_name(p) for p in PAIR09_FILES)
+    return frozenset(legacy)|frozenset(PAIR21_NAMES)|frozenset(retrospective_name(p) for p in RETROSPECTIVE_FILES)|frozenset(pair05_name(p) for p in PAIR05_FILES)|frozenset(pair06_name(p) for p in PAIR06_FILES)|frozenset(pair07_name(p) for p in PAIR07_FILES)|frozenset(pair08_name(p) for p in PAIR08_FILES)|frozenset(pair09_name(p) for p in PAIR09_FILES)|frozenset(pair10_name(p) for p in PAIR10_FILES)
