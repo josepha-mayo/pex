@@ -31,6 +31,7 @@ class ToolInvocation:
     history: tuple = field(repr=False)
     offered_specs_json: str = field(repr=False)
     tool_choice_json: str = "null"
+    schema_retry_of: str | None = None
 
     def __post_init__(self):
         if type(self.invocation_id) is not str or not _ID.fullmatch(self.invocation_id):
@@ -39,6 +40,8 @@ class ToolInvocation:
             raise Refusal("unsupported_protocol_contract")
         _text(self.offered_specs_json, 262144)
         _text(self.tool_choice_json, 1024)
+        if self.schema_retry_of is not None and (type(self.schema_retry_of) is not str or not _ID.fullmatch(self.schema_retry_of)):
+            raise Refusal("invalid_schema_retry_identity")
         offered = self.offered()
         choice = self.choice()
         wire_choice = self.contract.tool_choice(choice, offered)
@@ -87,13 +90,14 @@ class ManagedToolChatCandidate(ManagedChatCandidate):
     validates and RETURNS tool calls; it never executes them or opens a PEX gate.
     """
 
-    __slots__ = ("_contract",)
+    __slots__ = ("_contract", "_schema_rejections")
 
     def __init__(self, route, contract):
         super().__init__(route)
         if type(contract) is not ProtocolContract or contract.role != route.role:
             raise Refusal("route_protocol_role_mismatch")
         self._contract = contract
+        self._schema_rejections = {}
 
     @property
     def contract(self):
@@ -110,6 +114,21 @@ class ManagedToolChatCandidate(ManagedChatCandidate):
         messages, _ = serialize_history(
             self.contract, invocation.history, allow_forced_final=invocation.forced()
         )
+        if invocation.schema_retry_of is not None:
+            prior = self.receipt(invocation.schema_retry_of)
+            expected = self._schema_rejections.pop(invocation.schema_retry_of, None)
+            context = (invocation.history, invocation.offered_specs_json, invocation.tool_choice_json)
+            if (expected != context or prior is None or prior.http_status != 200
+                    or prior.usage is None or prior.outcome != "uncertain" or prior.attempts != 1
+                    or prior.reason != "tool_arguments_schema_mismatch"):
+                raise Refusal("schema_retry_requires_exact_completed_rejected_response")
+            # Fixed validation feedback only. Never coerce rejected arguments,
+            # fabricate a decision, or copy malformed/untrusted content.
+            messages.append({"role": "user", "content":
+                "Your previous final tool call was rejected because its arguments did not match the advertised JSON schema. "
+                "Re-emit a valid final tool call using that exact schema. Array fields must be JSON arrays, not strings. "
+                "Do not invent evidence or citations; retain only independently observed evidence. "
+                "No action from the rejected call was executed."})
         return {
             "model": self.route.model_id,
             "stream": False,
@@ -189,7 +208,15 @@ class ManagedToolChatCandidate(ManagedChatCandidate):
         _, seen = serialize_history(
             self.contract, invocation.history, allow_forced_final=invocation.forced()
         )
-        validate_calls(self.contract, tuple(calls), invocation.offered(), seen)
+        try:
+            validate_calls(self.contract, tuple(calls), invocation.offered(), seen)
+        except Refusal as exc:
+            if (str(exc) == "tool_arguments_schema_mismatch" and len(calls) == 1
+                    and calls[0].name == self.contract.final_name
+                    and invocation.schema_retry_of is None):
+                self._schema_rejections[invocation.invocation_id] = (
+                    invocation.history, invocation.offered_specs_json, invocation.tool_choice_json)
+            raise
         if type(wire_choice) is dict and any(
             call.name != wire_choice["function"]["name"] for call in calls
         ):

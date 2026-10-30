@@ -122,6 +122,7 @@ class ManagedPEXModel(Model):
             raise Refusal("role_output_cap_exceeded")
         self._candidate = ManagedToolChatCandidate(route, self._bound.contract)
         self._rounds = 0
+        self._schema_retry_used = False
         self._committed = (TextMessage("user", self.protocol.initial_prompt),)
         self._pending = frozenset()
         self._plain_reply = False
@@ -416,22 +417,29 @@ class ManagedPEXModel(Model):
             history = _decode_messages(messages)
             self._validate_extension(history)
             call_id = hashlib.sha256(self.protocol.invocation_id.encode()).hexdigest()[:40]
-            invocation = ToolInvocation(
-                f"{call_id}.{self._rounds + 1}",
-                self.protocol,
-                history,
-                _canonical(self._translate_specs(tool_specs), 262144),
-                _canonical(tool_choice),
-            )
-            self._rounds += 1  # Forced-final consumes the SAME finite allowance.
+            schema_retry_of = None
             if runtime_cycle is not None:
                 self._runtime_cycles.append(runtime_cycle)
-            try:
-                completion = await self._candidate._execute_owned(invocation, credential)
-            finally:
-                receipt = self._candidate.receipt(invocation.invocation_id)
-                if receipt is not None:
-                    self._receipts.append(receipt)
+            while True:
+                invocation = ToolInvocation(
+                    f"{call_id}.{self._rounds + 1}", self.protocol, history,
+                    _canonical(self._translate_specs(tool_specs), 262144),
+                    _canonical(tool_choice), schema_retry_of=schema_retry_of,
+                )
+                self._rounds += 1  # Schema retry consumes the SAME finite allowance.
+                try:
+                    completion = await self._candidate._execute_owned(invocation, credential)
+                finally:
+                    receipt = self._candidate.receipt(invocation.invocation_id)
+                    if receipt is not None:
+                        self._receipts.append(receipt)
+                if (not self._schema_retry_used and self._rounds < self.protocol.max_rounds
+                        and completion.receipt.reason == "tool_arguments_schema_mismatch"
+                        and invocation.invocation_id in self._candidate._schema_rejections):
+                    self._schema_retry_used = True
+                    schema_retry_of = invocation.invocation_id
+                    continue
+                break
             if completion.receipt.outcome != "succeeded" or completion.reply is None:
                 raise Refusal("managed_transport_not_validated")
             if self._terminal:
