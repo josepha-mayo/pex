@@ -280,7 +280,7 @@ def test_pair20_requires_pair19_timeout_evidence(candidate,suffix):
 
 
 def test_pair20_unchanged_science_with_retained_pair19_timeout(candidate):
-    cfg,freeze=candidate;cfg['profile']['compute_cap']=a.NEXT_RETRY_ENVELOPE
+    cfg,freeze=candidate;cfg['profile']['compute_cap']=a.OBSERVATION_RETRY_ENVELOPE
     p=Path(cfg['predecessor']['path']);v=json.loads(p.read_bytes())
     v.update(provider_nano_usd=2690466600,compute_nano_usd=542182500)
     p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes())

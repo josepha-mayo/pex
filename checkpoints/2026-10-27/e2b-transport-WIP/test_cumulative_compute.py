@@ -189,3 +189,17 @@ def test_retry_envelope_retains_pair19_timeout_and_two_full_reservations(tmp_pat
     b=ComputeBudget(tmp_path/'retry.sqlite',**kwargs);assert b.total()==764_182_500;b.close()
     with pytest.raises(ValueError,match='predecessor compute identity'):
         ComputeBudget(tmp_path/'retry.sqlite',**dict(kwargs,prior_upper_bound_nano_usd=431_182_500))
+
+
+def test_observation_retry_retains_all_pair20_actual_charges(tmp_path):
+    from cumulative_compute import OBSERVATION_RETRY_ENVELOPE
+    tmp_path.chmod(0o700)
+    kwargs=dict(prior_upper_bound_nano_usd=587_557_500,evidence_sha256='e'*64,
+                cap_nano_usd=OBSERVATION_RETRY_ENVELOPE,vm_seconds=750)
+    b=ComputeBudget(tmp_path/'observation-retry.sqlite',**kwargs)
+    b.reserve('baseline');assert b.total()==698_557_500
+    b.reserve('pex');assert b.total()==809_557_500
+    with pytest.raises(ValueError,match='reservation refused'):b.reserve('third')
+    b.close()
+    with pytest.raises(ValueError,match='predecessor compute identity'):
+        ComputeBudget(tmp_path/'observation-retry.sqlite',**dict(kwargs,prior_upper_bound_nano_usd=542_182_500))
