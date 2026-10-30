@@ -64,7 +64,7 @@ def test_supervisor_shared_attempts_separate_fresh_overhead(funded):
 def test_revocation_blocks_reserve_without_refunding_unknown(funded,monkeypatch):
     bundle,scope=funded;digest,raw=request()
     bundle.workers['baseline'].reserve('authored-one',digest,raw)
-    monkeypatch.setattr(a,'APPROVED_ASYNCPOOL_GRANT' if is_asyncpool else 'APPROVED_STAGED_GRANT',None)
+    monkeypatch.setattr(a,'APPROVED_ASYNCPOOL_GRANT' if bundle.cfg['run_id'].startswith('asyncpool-staged-pair-') else 'APPROVED_STAGED_GRANT',None)
     with pytest.raises(AdmissionRefused):bundle.workers['pex'].reserve('authored-two',digest,raw)
     assert bundle.summary()['worker_fresh_nano_usd']['baseline']==RESERVATION
 

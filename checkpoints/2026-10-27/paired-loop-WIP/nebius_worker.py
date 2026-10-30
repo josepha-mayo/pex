@@ -106,23 +106,59 @@ class NebiusCLIWorker:
         case=profile/'case';case.mkdir(mode=0o700)
         (case/'plugins/guard').mkdir(parents=True)
         (profile/'node_modules').symlink_to(self.modules,target_is_directory=True)
-        cm=serve_remote(remote,profile/'rpc');sock=cm.__enter__()
-        budget_cm=serve_budget(self.funding[condition]);funding_rpc=budget_cm.__enter__()
-        cfg={'baseURL':BASE,'endpoint':BASE+'/chat/completions','model':MODEL,'funding':funding_rpc,
-             'maxCalls':self.max_calls,'outputPerCall':self.output_per_call,
-             'maxResponseBytes':getattr(self.funding[condition],'max_response_bytes',2*1024*1024),'keyPath':self.key_path}
-        guard=Path(__file__).with_name('nebius_guard.ts').read_text().replace('CONFIGURATION',json.dumps(cfg))
-        (case/'plugins/guard/index.ts').write_text(guard)
-        conf={'update':'disable','warming':False,'share':'disabled','model':'nebius/'+MODEL,'default_agent':'paired','plugins':['./plugins/guard'],
-              'mcp':{'servers':{'pex_remote':{'type':'local','command':['/usr/bin/python3',str(Path(__file__).with_name('remote_mcp.py').resolve()),'--socket',str(sock)],'codemode':False,'protocol':'legacy','timeout':{'startup':10000,'catalog':10000,'execution':65000}}}},
-              'policies':[{'action':'provider.use','resource':'*','effect':'deny'},{'action':'provider.use','resource':'nebius','effect':'allow'},
-                          {'action':'tool.use','resource':'*','effect':'deny'}]+[{'action':'tool.use','resource':n+':*','effect':'allow'} for n in TOOLS],
-              'providers':{'nebius':{'package':'@opencode/ai/providers/openai-compatible','settings':{'baseURL':BASE,'apiKey':'PEX-INERT-NONSECRET-NOT-A-KEY','provider':'nebius','transport':'http','encoding':'none'},'models':{MODEL:{'modelID':MODEL,'body':{'max_completion_tokens':self.output_per_call,'stream_options':{'include_usage':True}},'capabilities':{'tools':True,'input':['text'],'output':['text']}}}}},
-              'agents':{'paired':{'mode':'primary','model':'nebius/'+MODEL,'steps':self.max_calls,
-                  'system':'Work on the user task autonomously using only pex_remote tools. All task files and commands belong to that isolated remote workspace, not this controller. Do not use local tools.',
-                  'permissions':[{'action':'*','resource':'*','effect':'deny'}]+[{'action':n,'resource':'*','effect':'allow'} for n in TOOLS]}}}
-        config=case/'opencode.json';config.write_text(json.dumps(conf));config.chmod(0o600)
-        self.states[condition]={'profile':profile,'case':case,'cm':cm,'budget_cm':budget_cm,'funding_channel':funding_rpc,'seq':0,'stopped':False}
+        # Retain ownership before each entered context. Startup errors must not
+        # leave private MCP/budget servers invisible to stop()/cleanup().
+        state={'profile':profile,'case':case,'seq':0,'stopped':False,
+               'remote_entered':False,'budget_entered':False,'startup_complete':False}
+        self.states[condition]=state
+        try:
+            cm=serve_remote(remote,profile/'rpc');state['cm']=cm;state['remote_enter_attempted']=True
+            sock=cm.__enter__();state['remote_entered']=True
+            budget_cm=serve_budget(self.funding[condition]);state['budget_cm']=budget_cm;state['budget_enter_attempted']=True
+            funding_rpc=budget_cm.__enter__();state['budget_entered']=True
+            cfg={'baseURL':BASE,'endpoint':BASE+'/chat/completions','model':MODEL,'funding':funding_rpc,
+                 'maxCalls':self.max_calls,'outputPerCall':self.output_per_call,
+                 'maxResponseBytes':getattr(self.funding[condition],'max_response_bytes',2*1024*1024),'keyPath':self.key_path}
+            guard=Path(__file__).with_name('nebius_guard.ts').read_text().replace('CONFIGURATION',json.dumps(cfg))
+            (case/'plugins/guard/index.ts').write_text(guard)
+            conf={'update':'disable','warming':False,'share':'disabled','model':'nebius/'+MODEL,'default_agent':'paired','plugins':['./plugins/guard'],
+                  'mcp':{'servers':{'pex_remote':{'type':'local','command':['/usr/bin/python3',str(Path(__file__).with_name('remote_mcp.py').resolve()),'--socket',str(sock)],'codemode':False,'protocol':'legacy','timeout':{'startup':10000,'catalog':10000,'execution':65000}}}},
+                  'policies':[{'action':'provider.use','resource':'*','effect':'deny'},{'action':'provider.use','resource':'nebius','effect':'allow'},
+                              {'action':'tool.use','resource':'*','effect':'deny'}]+[{'action':'tool.use','resource':n+':*','effect':'allow'} for n in TOOLS],
+                  'providers':{'nebius':{'package':'@opencode/ai/providers/openai-compatible','settings':{'baseURL':BASE,'apiKey':'PEX-INERT-NONSECRET-NOT-A-KEY','provider':'nebius','transport':'http','encoding':'none'},'models':{MODEL:{'modelID':MODEL,'body':{'max_completion_tokens':self.output_per_call,'stream_options':{'include_usage':True}},'capabilities':{'tools':True,'input':['text'],'output':['text']}}}}},
+                  'agents':{'paired':{'mode':'primary','model':'nebius/'+MODEL,'steps':self.max_calls,
+                      'system':'Work on the user task autonomously using only pex_remote tools. All task files and commands belong to that isolated remote workspace, not this controller. Do not use local tools.',
+                      'permissions':[{'action':'*','resource':'*','effect':'deny'}]+[{'action':n,'resource':'*','effect':'allow'} for n in TOOLS]}}}
+            config=case/'opencode.json';config.write_text(json.dumps(conf));config.chmod(0o600)
+            state['funding_channel']=funding_rpc;state['startup_complete']=True
+        except BaseException:
+            state['startup_failed']=True
+            try:self._stop_state(state)
+            except BaseException:pass  # Flags retain unconfirmed custody; preserve original setup error.
+            raise
+
+    @staticmethod
+    def _stop_state(state):
+        if state.get('stopped'):
+            if state.get('local_cleanup_unconfirmed'):raise RuntimeError('local_worker_cleanup_unconfirmed')
+            return
+        state['stopped']=True
+        errors=[]
+        for name,entered,attempted,confirmed in (
+                ('cm','remote_entered','remote_enter_attempted','mcp_revoked'),
+                ('budget_cm','budget_entered','budget_enter_attempted','funding_revoked')):
+            cm=state.get(name)
+            if state.get(entered,cm is not None):
+                try:cm.__exit__(None,None,None);state[confirmed]=True
+                except BaseException as error:state[confirmed]=False;errors.append(type(error).__name__)
+            else:
+                state[confirmed]=not state.get(attempted,False)
+                if not state[confirmed]:errors.append('context_enter_unconfirmed')
+        state['local_cleanup_unconfirmed']=bool(errors)
+        if errors:
+            state['local_cleanup_error_types']=errors
+            raise RuntimeError('local_worker_cleanup_unconfirmed')
+
 
 
     async def turn(self,arm,*,prompt,session_id,remaining):
@@ -220,18 +256,15 @@ class NebiusCLIWorker:
 
     async def stop(self,arm):
         if arm['condition'] not in self.states: return
-        state=self.states[arm['condition']]
-        if not state['stopped']:
-            state['stopped']=True
-            state['mcp_revoked']=False
-            try:
-                state['cm'].__exit__(None,None,None)
-                state['mcp_revoked']=True
-            finally: state['budget_cm'].__exit__(None,None,None)
+        self._stop_state(self.states[arm['condition']])
         # Remote background processes are NOT proven quiescent by MCP revocation.
         # The isolated protected grader must enforce its own post-stop boundary.
 
     async def cleanup(self):
-        for condition,state in self.states.items():
-            if not state['stopped']: await self.stop({'condition':condition})
-        self.pool.close()
+        errors=[]
+        for condition in self.states:
+            try:await self.stop({'condition':condition})
+            except Exception as error:errors.append(type(error).__name__)
+        try:self.pool.close()
+        except Exception as error:errors.append(type(error).__name__)
+        if errors:raise RuntimeError('local_worker_cleanup_unconfirmed')
