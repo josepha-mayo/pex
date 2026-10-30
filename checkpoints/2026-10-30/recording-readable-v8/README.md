@@ -1,0 +1,1 @@
+WIP v8 readability-only follower. Persistent per-arm counters and latest root-reviewed excerpt; unknown values stay unknown. Full safe-feed and trace bytes/provenance unchanged. Long excerpt display is labeled prefix-only; private trace retains complete approved bytes. Fixture screens must show SIMULATED / NOT REAL INFERENCE. No provider behavior or benchmark outcomes changed.
