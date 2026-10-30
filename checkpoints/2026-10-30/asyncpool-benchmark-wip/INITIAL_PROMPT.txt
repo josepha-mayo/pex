@@ -1,0 +1,5 @@
+Implement the new cancellation-safe bounded asynchronous pool described in TASK.md.
+Use only the supplied public repository and Python standard library. Keep supplied
+specification/tests unchanged, implement asyncpool/, and add your own tests if
+useful. Run the public unittest command. Report only work/tests actually completed;
+do not claim success for checks you have not run.
