@@ -12,6 +12,7 @@ import asyncpool_history as history
 
 
 def test_new_task_gate_default_closed_before_any_read(monkeypatch):
+    monkeypatch.setattr(admission,'APPROVED_ASYNCPOOL_GRANT',None)
     assert admission.APPROVED_ASYNCPOOL_GRANT is None
     grant=admission.Grant('AUTHORED','asyncpool-staged-pair-authored','/absent/pair.json',*(['a'*64]*5),'2099-01-01T00:00:00+00:00')
     monkeypatch.setattr(admission,'read_pin',lambda *a,**k:pytest.fail('closed gate must precede reads'))
@@ -71,3 +72,13 @@ def test_new_task_identity_and_retained_history_are_mandatory(candidate,change):
         Path(cfg['predecessor']['path']).write_bytes(admission.canonical(prior));cfg['predecessor']['sha256']=admission.sha(admission.canonical(prior))
     raw,grant=freeze()
     with pytest.raises(admission.AdmissionRefused):admission.inspect_candidate(raw,grant)
+
+
+def test_retry_retains_unknown_compute_and_next_pair(tmp_path):
+    from cumulative_compute import ComputeBudget
+    tmp_path.chmod(0o700)
+    b=ComputeBudget(tmp_path/'compute.sqlite',prior_upper_bound_nano_usd=history.PRIOR_COMPUTE,evidence_sha256='a'*64,cap_nano_usd=history.COMPUTE_ENVELOPE,vm_seconds=750)
+    assert b.total()==721245000
+    b.reserve('first');b.reserve('second')
+    assert b.total()==943245000
+    assert 'asyncpool05_compute.sqlite' in history.required_predecessors(set())
