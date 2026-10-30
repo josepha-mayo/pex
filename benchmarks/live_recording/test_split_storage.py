@@ -10,14 +10,14 @@ from safe_feed_writer import SafeFeedWriter
 
 
 def paths(tmp_path):
-    run_id='authored-split-not-inference'
+    run_id='authored-recorder-split-not-inference'
     actual=tmp_path/'source'/run_id;display=tmp_path/'display'/run_id
     actual.mkdir(parents=True);display.mkdir(parents=True)
     (actual/'pair.json').write_text(json.dumps({'profile':{'worker_output_per_call':16384}}))
     config=s.sha((actual/'pair.json').read_bytes())
     start=display/'recording-live/display/follower-start.json';start.parent.mkdir(parents=True)
     start.write_text(json.dumps({'schema':'pex-recorder-follower/v1','run_id':run_id,
-        'qualification':'setup_only_no_inference','started_utc':r.utc(),
+        'qualification':'setup_only_no_inference','authored_fixture':True,'started_utc':r.utc(),
         'feed_path_sha256':r.sha(str((display/'safe-display.jsonl').resolve()).encode()),
         'source_code_sha256':r.sha(Path(r.__file__).read_bytes())}))
     args=SimpleNamespace(run_prefix=str(actual),display_prefix=str(display),run_id=run_id,

@@ -13,6 +13,8 @@ import subprocess
 import sys
 import time
 
+from record_support import validate_fixture_mode
+
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
@@ -23,7 +25,8 @@ def main():
     p.add_argument('--max-seconds',type=int,default=1800)
     args = p.parse_args()
     if not 1<=args.max_seconds<=1800: raise ValueError('capture_duration_bound')
-    if args.authored_fixture and (not args.run_id.startswith('authored-recorder-') or args.max_seconds>30):
+    validate_fixture_mode(args.run_id, args.authored_fixture)
+    if args.authored_fixture and args.max_seconds>30:
         raise ValueError('bounded_authored_fixture_only')
     os.umask(0o077)
     if not os.environ.get('DISPLAY') or args.window_id <= 0: raise ValueError('native_display_and_window_required')

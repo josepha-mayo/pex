@@ -19,6 +19,7 @@ import signal
 import subprocess
 import sys
 import time
+import textwrap
 import unicodedata
 
 SCHEMA = 'pex-safe-display/v1'
@@ -49,7 +50,8 @@ ENUMS = {
                  'worker_budget_terminal_inconclusive', 'wall_budget_terminal_inconclusive',
                  'cleanup_unconfirmed', 'platform_denied', 'admission_refused', 'cancelled', 'outcome_inconclusive'},
     'failure_category': {'none', 'platform_denied', 'quota', 'resource', 'transport',
-                         'admission', 'budget', 'timeout', 'protocol', 'cleanup', 'unknown'},
+                         'admission', 'budget', 'timeout', 'protocol', 'cleanup', 'unknown',
+                         'setup_infrastructure','observation_infrastructure','supervisor_infrastructure'},
     'qualification': {'setup_only_no_inference', 'live_current_run_status',
                       'live_current_run_reviewed_excerpt', 'terminal_inconclusive',
                       'terminal_recorded_not_publication_approved','authored_fixture_reviewed_excerpt'},
@@ -98,8 +100,20 @@ def read_approvals(path):
     return found
 
 
+def validate_fixture_mode(run_id, authored_fixture):
+    """Reserved authored IDs must never enter a live-labeled display or feed."""
+    if type(authored_fixture) is not bool:
+        raise ValueError('invalid_authored_fixture_flag')
+    if authored_fixture:
+        if not run_id.startswith('authored-recorder-'):
+            raise ValueError('authored_fixture_namespace')
+    elif run_id.startswith('authored-'):
+        raise ValueError('authored_fixture_flag_required')
+
+
 def validate(record, *, run_id, expected_seq, not_before, now, approvals=frozenset(), authored_fixture=False):
     """Fail closed. No input text/errors are reflected onto the safe display."""
+    validate_fixture_mode(run_id, authored_fixture)
     if type(record) is not dict or not REQUIRED <= set(record) or not set(record) <= ALLOWED:
         raise ValueError('invalid_fields')
     if record['schema'] != SCHEMA or record['run_id'] != run_id:
@@ -137,7 +151,6 @@ def validate(record, *, run_id, expected_seq, not_before, now, approvals=frozens
                 or record['qualification'] != ('authored_fixture_reviewed_excerpt' if authored_fixture else 'live_current_run_reviewed_excerpt')
                 or record['event'] not in {'worker_response', 'supervisor_response'}):
             raise ValueError('unapproved_excerpt')
-        if authored_fixture and not run_id.startswith('authored-recorder-'): raise ValueError('authored_fixture_namespace')
         if 'excerpt_origin' not in record: raise ValueError('excerpt_origin_required')
         if timestamp(record.get('reviewed_utc')) > at:
             raise ValueError('review_after_display')
@@ -158,12 +171,65 @@ def private_write(path, value):
         f.write(canonical(value) + '\n')
 
 
+class EvidenceDisplay:
+    """Presentation only, consuming already validated records; never feed authority."""
+    def __init__(self, run_id, fixture=False):
+        validate_fixture_mode(run_id, fixture)
+        self.run_id=run_id;self.fixture=fixture;self.arms={};self.latest=None;self.excerpt=None
+
+    def update(self, record):
+        self.latest=dict(record)
+        if record.get('arm') in ('baseline','pex'):
+            self.arms.setdefault(record['arm'],{}).update({k:v for k,v in record.items()
+                if k in COUNTS | {'event','at_utc','terminal'}})
+        if 'model_excerpt' in record:self.excerpt=dict(record)
+        return self.render()
+
+    def render(self):
+        row=self.latest or {};lines=[TITLE,
+            'SIMULATED / AUTHORED FIXTURE - NOT REAL INFERENCE' if self.fixture else 'LIVE CURRENT RUN - verified feed, not full model output',
+            'Run: '+self.run_id,
+            'Latest feed UTC: '+row.get('at_utc','not observed')+' | event: '+row.get('event','waiting')]
+        for arm in ('baseline','pex'):
+            a=self.arms.get(arm,{})
+            lines.append(arm.upper()+' | requests '+str(a.get('worker_requests','not observed'))+
+                ' | input tokens '+str(a.get('worker_input_tokens','not observed'))+
+                ' | output tokens '+str(a.get('worker_output_tokens','not observed')))
+            lines.append('  Last evidence: '+a.get('terminal',a.get('event','not observed'))+' | UTC '+a.get('at_utc','not observed'))
+        a=self.arms.get('pex',{})
+        lines.append('SUPERVISOR (separate) | requests '+str(a.get('supervisor_requests','not observed'))+
+            ' | input '+str(a.get('supervisor_input_tokens','not observed'))+' | output '+str(a.get('supervisor_output_tokens','not observed')))
+        if row.get('event')=='run_terminal':
+            lines.append('TERMINAL: '+row.get('terminal','unknown')+' | cause: '+row.get('failure_category','unknown'))
+            lines.append('Cleanup confirmed: '+str(row.get('cleanup_confirmed','unknown'))+
+                ' | comparison complete: '+str(row.get('comparison_complete','unknown')))
+        lines.append('-'*96)
+        excerpt=self.excerpt
+        if excerpt is None:
+            lines+=['No root-reviewed model excerpt observed yet.','Counts/status alone do not demonstrate PEX benefit.']
+        else:
+            lines.append(('SIMULATED / ' if self.fixture else 'LIVE CURRENT RUN / ')+'REVIEW-DELAYED EXACT EXCERPT | LATEST ROOT-REVIEWED | '+excerpt.get('arm','unknown').upper()+
+                (' / '+excerpt['supervisor_role'] if 'supervisor_role' in excerpt else '')+' | REVIEW-DELAYED')
+            lines.append('Reviewed UTC: '+excerpt['reviewed_utc']+' | feed UTC: '+excerpt['at_utc'])
+            lines.append('Origin: '+excerpt['excerpt_origin']+' | Source received UTC: unavailable')
+            if 'source_captured_utc' in excerpt:lines.append('Source archive observation UTC: '+excerpt['source_captured_utc']+' (not server time)')
+            wrapped=[]
+            for line in excerpt['model_excerpt'].split('\n'):
+                wrapped.extend(textwrap.wrap(line,width=96,replace_whitespace=False,drop_whitespace=False) or [''])
+            lines.extend(wrapped[:8])
+            if len(wrapped)>8:lines.append('[DISPLAY PREFIX ONLY - full exact approved excerpt retained in private safe trace]')
+            lines.append('Full approved excerpt SHA256: '+excerpt['model_excerpt_sha256'])
+        lines+=['Not raw streaming or full response. No task success or PEX lift inferred.',
+                'Private evidence only. Raw safe feed and provenance remain unchanged.']
+        return '\n'.join(lines)
+
+
 def follow(args):
     os.umask(0o077)
     if not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,127}', args.run_id):
         raise ValueError('invalid_run_id')
     fixture=getattr(args,'authored_fixture',False)
-    if fixture and not args.run_id.startswith('authored-recorder-'): raise ValueError('authored_fixture_namespace')
+    validate_fixture_mode(args.run_id, fixture)
     feed = Path(args.feed)
     if feed.is_symlink() or (feed.exists() and feed.stat().st_size):
         raise ValueError('preexisting_feed_refused_no_replay')
@@ -178,11 +244,12 @@ def follow(args):
                   'approvals_path_sha256': sha(str(args.approvals.resolve()).encode()) if args.approvals else None,
                   'source_code_sha256': sha(Path(__file__).read_bytes())})
     print('\033]0;' + TITLE + '\007\033[2J\033[H' + TITLE, flush=True)
-    print('AUTHORED FIXTURE — NOT REAL INFERENCE | LOCAL RECORDER QUALIFICATION' if fixture else
+    print('SIMULATED / AUTHORED FIXTURE — NOT REAL INFERENCE | LOCAL RECORDER QUALIFICATION' if fixture else
           'LIVE CURRENT RUN STATUS | SETUP / WAITING — no inference result yet.', flush=True)
     print('UTC ' + utc() + ' | run ' + args.run_id, flush=True)
     print('Raw prompts, source, provider errors, credentials and private IDs are withheld.', flush=True)
     print('Exact excerpts require private review; review-delayed, not raw streaming. REPLAY UNSUPPORTED.', flush=True)
+    panel = EvidenceDisplay(args.run_id,fixture)
     trace = out / 'safe-trace.jsonl'
     expected, inode, offset, last_event_at = 1, None, 0, not_before
     started = time.monotonic()
@@ -218,19 +285,7 @@ def follow(args):
                                 result = 'trace_size_limit'; stop = True; break
                             log.write(clean + '\n'); log.flush()
                             os.fsync(log.fileno())
-                            display = {k: v for k, v in record.items() if k not in {'schema', 'run_id', 'model_excerpt', 'model_excerpt_sha256'}}
-                            print(canonical(display), flush=True)
-                            if 'model_excerpt' in record:
-                                print(('AUTHORED FIXTURE / ' if fixture else 'LIVE CURRENT RUN / ') + 'REVIEW-DELAYED EXACT EXCERPT (not full response):', flush=True)
-                                print('Verified origin: ' + record['excerpt_origin'] + ' (not a claim of omitted role metadata).', flush=True)
-                                print('Source received UTC: unavailable | reviewed UTC: ' + record['reviewed_utc'] +
-                                      ' | displayed UTC: ' + record['at_utc'], flush=True)
-                                if 'source_captured_utc' in record:
-                                    print('Monitor role: ' + record['supervisor_role'] + ' | source archive observation UTC: ' +
-                                          record['source_captured_utc'] + ' (not received/server time).', flush=True)
-                                print('Exact approved assistant content only; omissions are not reconstructed.', flush=True)
-                                print(record['model_excerpt'], flush=True)
-                                print('EXCERPT SHA256 ' + record['model_excerpt_sha256'], flush=True)
+                            print('\033[2J\033[H'+panel.update(record),flush=True)
                             offset += len(raw); expected += 1; last_event_at = timestamp(record['at_utc'])
                             if record['event'] == 'run_terminal':
                                 result = 'terminal_record_received'; stop = True; break

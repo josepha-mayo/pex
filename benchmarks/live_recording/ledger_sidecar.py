@@ -160,6 +160,32 @@ def snapshot_db(path, *, config_sha, worker, output_bound=4096):
     return metrics, proof
 
 
+def caught_failure_category(report):
+    """Finite prospective labels from hash-bound report, never error text.
+
+    Older reports lacking stage/kind remain unknown; no historical inference.
+    Mixed categories stay unknown rather than claiming one dominant cause.
+    """
+    if type(report) is not dict or type(report.get('arms')) is not dict:return 'unknown'
+    arms=report['arms']
+    if set(arms)-{'baseline','pex'}:return 'unknown'
+    categories=set()
+    for arm in arms.values():
+        if type(arm) is not dict:return 'unknown'
+        if arm.get('status')=='staged_natural_stop':continue
+        stage=arm.get('failure_stage');kind=arm.get('failure_kind');status=arm.get('status')
+        if any(type(value) is not str for value in (stage,kind,status)):return 'unknown'
+        if kind=='worker_budget' and stage=='worker_phase' and status=='worker_budget_terminal_inconclusive':
+            categories.add('budget')
+        elif ((kind=='wall_timeout' and status=='wall_budget_terminal_inconclusive') or
+              (kind=='infrastructure' and status=='infrastructure_inconclusive')):
+            category={'setup':'setup_infrastructure','public_observation':'observation_infrastructure',
+                      'supervisor_review':'supervisor_infrastructure','worker_phase':'timeout' if kind=='wall_timeout' else 'unknown'}.get(stage,'unknown')
+            categories.add(category)
+        else:categories.add('unknown')
+    return next(iter(categories)) if len(categories)==1 else 'unknown'
+
+
 def terminal_record(root, run_id, config_sha):
     path = root / 'launcher-terminal.json'
     if not path.exists(): return None
@@ -169,6 +195,7 @@ def terminal_record(root, run_id, config_sha):
             or value.get('status') not in {'comparison_complete', 'inconclusive'}
             or type(value.get('cleanup_confirmed')) is not bool or type(value.get('comparison_complete')) is not bool):
         raise ValueError('terminal_binding')
+    report = None
     report_sha = value.get('report_sha256')
     proof = {'launcher_terminal_sha256': sha(raw)}
     if report_sha is not None:
@@ -184,6 +211,8 @@ def terminal_record(root, run_id, config_sha):
                 'WorkerBudgetExhausted': 'budget', 'WorkerBudgetTerminal': 'budget',
                 'ProtocolInconclusive': 'protocol'}.get(raw_category,
                 'none' if raw_category is None and value['comparison_complete'] else 'unknown')
+    if raw_category is None and not value['comparison_complete'] and report is not None:
+        category = caught_failure_category(report)
     cleanup_errors = value.get('cleanup_errors', [])
     if type(cleanup_errors) is not list: raise ValueError('invalid_cleanup_error_list')
     if raw_category is None and cleanup_errors and not value['cleanup_confirmed']:
@@ -193,6 +222,8 @@ def terminal_record(root, run_id, config_sha):
     terminal = 'finished' if value['comparison_complete'] else {
         'budget': 'worker_budget_terminal_inconclusive', 'timeout': 'wall_budget_terminal_inconclusive',
         'admission': 'admission_refused', 'protocol': 'protocol_inconclusive', 'cleanup': 'cleanup_unconfirmed',
+        'setup_infrastructure':'infrastructure_inconclusive', 'observation_infrastructure':'infrastructure_inconclusive',
+        'supervisor_infrastructure':'infrastructure_inconclusive',
     }.get(category, 'outcome_inconclusive')
     fields = dict(cleanup_confirmed=value['cleanup_confirmed'], comparison_complete=value['comparison_complete'],
                   failure_category=category, phase='terminal',

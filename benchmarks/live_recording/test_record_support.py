@@ -20,13 +20,13 @@ r = importlib.util.module_from_spec(spec); spec.loader.exec_module(r)
 class SafeFeedTests(unittest.TestCase):
     def setUp(self):
         self.now = r.timestamp('2026-10-29T09:00:00Z')
-        self.value = {'schema': r.SCHEMA, 'run_id': 'authored-test-not-inference', 'seq': 1,
+        self.value = {'schema': r.SCHEMA, 'run_id': 'authored-recorder-test-not-inference', 'seq': 1,
                       'at_utc': '2026-10-29T09:00:00Z', 'event': 'waiting',
                       'qualification': 'setup_only_no_inference', 'source_sha256': '1' * 64}
 
     def check(self, value=None, approvals=frozenset()):
         return r.validate(self.value if value is None else value, run_id=self.value['run_id'],
-                          expected_seq=1, not_before=self.now - 1, now=self.now, approvals=approvals)
+                          expected_seq=1, not_before=self.now - 1, now=self.now, approvals=approvals, authored_fixture=True)
 
     def test_minimal(self):
         self.assertEqual(self.check(), self.value)
@@ -65,7 +65,7 @@ class SafeFeedTests(unittest.TestCase):
 
     def test_excerpt_exact_approval_and_lineage(self):
         text = 'AUTHORED FIXTURE ONLY — NOT A MODEL RESPONSE'
-        value = dict(self.value, event='worker_response', qualification='live_current_run_reviewed_excerpt',
+        value = dict(self.value, event='worker_response', qualification='authored_fixture_reviewed_excerpt',
                      model_excerpt=text, model_excerpt_sha256=r.sha(text.encode()), reviewed_utc=self.value['at_utc'],
                      excerpt_origin='worker_json_assistant_content')
         approval = {(value['run_id'], value['source_sha256'], value['model_excerpt_sha256'])}
@@ -76,7 +76,7 @@ class SafeFeedTests(unittest.TestCase):
 
     def test_excerpt_terminal_controls_refused_even_if_approved(self):
         for text in ('a\x1bb', 'a\x00b', 'a\u202eb', 'a\x85b'):
-            value = dict(self.value, event='worker_response', qualification='live_current_run_reviewed_excerpt',
+            value = dict(self.value, event='worker_response', qualification='authored_fixture_reviewed_excerpt',
                          model_excerpt=text, model_excerpt_sha256=r.sha(text.encode()), reviewed_utc=self.value['at_utc'],
                          excerpt_origin='worker_json_assistant_content')
             approval = {(value['run_id'], value['source_sha256'], value['model_excerpt_sha256'])}
@@ -109,7 +109,7 @@ class SafeFeedWriterTests(unittest.TestCase):
         feed = root / 'authored-fixture-feed.jsonl'
         start = root / 'follower-start.json'
         start.write_text(json.dumps({'schema': 'pex-recorder-follower/v1',
-            'run_id': 'authored-test-not-inference', 'qualification': 'setup_only_no_inference',
+            'run_id': 'authored-recorder-test-not-inference', 'qualification': 'setup_only_no_inference', 'authored_fixture': True,
             'started_utc': r.utc(), 'feed_path_sha256': r.sha(str(feed.resolve()).encode()),
             'source_code_sha256': r.sha(Path(r.__file__).read_bytes())}))
         return feed, start
@@ -117,7 +117,7 @@ class SafeFeedWriterTests(unittest.TestCase):
     def test_append_exact_metadata_and_no_implicit_events(self):
         with tempfile.TemporaryDirectory(prefix='pex-writer-authored-') as name:
             root = Path(name); feed, start = self.start(root)
-            with SafeFeedWriter(run_id='authored-test-not-inference', feed_path=feed, follower_start_path=start) as writer:
+            with SafeFeedWriter(run_id='authored-recorder-test-not-inference', feed_path=feed, follower_start_path=start) as writer:
                 self.assertEqual(feed.read_bytes(), b'')
                 self.assertEqual(feed.stat().st_mode & 0o777, 0o600)
                 row = writer.emit(event='waiting', qualification='setup_only_no_inference', source_sha256='1' * 64)
@@ -135,9 +135,9 @@ class SafeFeedWriterTests(unittest.TestCase):
             root = Path(name); feed, start = self.start(root)
             with self.assertRaises(ValueError):
                 SafeFeedWriter(run_id='wrong', feed_path=feed, follower_start_path=start)
-            with SafeFeedWriter(run_id='authored-test-not-inference', feed_path=feed, follower_start_path=start) as writer:
+            with SafeFeedWriter(run_id='authored-recorder-test-not-inference', feed_path=feed, follower_start_path=start) as writer:
                 with self.assertRaises(FileExistsError):
-                    SafeFeedWriter(run_id='authored-test-not-inference', feed_path=feed, follower_start_path=start)
+                    SafeFeedWriter(run_id='authored-recorder-test-not-inference', feed_path=feed, follower_start_path=start)
                 for extra in ({'model_excerpt': 'AUTHORED TEST ONLY'}, {'seq': 8}, {'api_key': 'DO_NOT_DISPLAY'}, {'worker_requests': 0}):
                     with self.subTest(extra=extra), self.assertRaises(ValueError):
                         writer.emit(event='waiting', qualification='setup_only_no_inference', source_sha256='1' * 64, **extra)

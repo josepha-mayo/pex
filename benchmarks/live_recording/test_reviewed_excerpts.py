@@ -23,7 +23,7 @@ from safe_feed_writer import SafeFeedWriter
 class ReviewedExcerptTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='pex-excerpt-AUTHORED-')
-        self.root = getattr(self,'external_fixture_root',Path(self.temp.name) / 'authored-test-not-inference')
+        self.root = getattr(self,'external_fixture_root',Path(self.temp.name) / 'authored-recorder-test-not-inference')
         if hasattr(self,'external_fixture_root'):
             if not self.root.name.startswith('authored-recorder-') or (self.root/'pair.json').exists():
                 raise ValueError('fresh_authored_fixture_only')
@@ -160,7 +160,7 @@ class ReviewedExcerptTests(unittest.TestCase):
 
     def test_follower_must_opt_in_to_exact_approval_path(self):
         feed=self.root/'safe-display.jsonl';start=self.root/'follower-start.json'
-        self.put(start,{'schema':'pex-recorder-follower/v1','run_id':self.root.name,'qualification':'setup_only_no_inference',
+        self.put(start,{'schema':'pex-recorder-follower/v1','run_id':self.root.name,'qualification':'setup_only_no_inference','authored_fixture':True,
             'started_utc':r.utc(),'feed_path_sha256':r.sha(str(feed).encode()),
             'source_code_sha256':r.sha(Path(r.__file__).read_bytes())})
         with SafeFeedWriter(run_id=self.root.name,feed_path=feed,follower_start_path=start) as writer:
@@ -198,13 +198,13 @@ class ReviewedExcerptTests(unittest.TestCase):
         fields=self.verify()
         event=dict(fields,schema=r.SCHEMA,run_id=self.root.name,seq=1,at_utc=r.utc(),
                    event='worker_response',qualification='replay')
-        with self.assertRaises(ValueError):r.validate(event,run_id=self.root.name,expected_seq=1,not_before=self.started,now=time.time(),approvals=self.approvals)
-        event['qualification']='live_current_run_reviewed_excerpt';event.pop('reviewed_utc')
-        with self.assertRaises(ValueError):r.validate(event,run_id=self.root.name,expected_seq=1,not_before=self.started,now=time.time(),approvals=self.approvals)
+        with self.assertRaises(ValueError):r.validate(event,run_id=self.root.name,expected_seq=1,not_before=self.started,now=time.time(),approvals=self.approvals,authored_fixture=True)
+        event['qualification']='authored_fixture_reviewed_excerpt';event.pop('reviewed_utc')
+        with self.assertRaises(ValueError):r.validate(event,run_id=self.root.name,expected_seq=1,not_before=self.started,now=time.time(),approvals=self.approvals,authored_fixture=True)
 
     def test_one_writer_deduplicates_and_refuses_late_injection(self):
         feed=self.root/'safe-display.jsonl';start=self.root/'follower-start.json'
-        self.put(start,{'schema':'pex-recorder-follower/v1','run_id':self.root.name,'qualification':'setup_only_no_inference',
+        self.put(start,{'schema':'pex-recorder-follower/v1','run_id':self.root.name,'qualification':'setup_only_no_inference','authored_fixture':True,
             'started_utc':dt.datetime.fromtimestamp(self.started,dt.timezone.utc).isoformat().replace('+00:00','Z'),
             'excerpt_mode':'root_reviewed_worker_wire','approvals_path_sha256':r.sha(str((self.root/'reviewed-excerpts.json').resolve()).encode()),
             'feed_path_sha256':r.sha(str(feed).encode()),'source_code_sha256':r.sha(Path(r.__file__).read_bytes())})
@@ -221,7 +221,7 @@ class ReviewedExcerptTests(unittest.TestCase):
     def test_follower_integration_labels_and_exact_selection_only(self):
         feed=self.root/'safe-display.jsonl';out=self.root/'display'
         command=[sys.executable,'-B',str(Path(r.__file__)),'follow','--run-id',self.root.name,
-            '--feed',str(feed),'--output-dir',str(out),'--approvals',str(self.root/'reviewed-excerpts.json'),'--max-seconds','10']
+            '--feed',str(feed),'--output-dir',str(out),'--approvals',str(self.root/'reviewed-excerpts.json'),'--authored-fixture','--max-seconds','10']
         proc=subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
         try:
             deadline=time.monotonic()+3
@@ -234,7 +234,8 @@ class ReviewedExcerptTests(unittest.TestCase):
                 writer.emit(event='run_terminal',qualification='terminal_inconclusive',source_sha256='9'*64,terminal='outcome_inconclusive')
             stdout,stderr=proc.communicate(timeout=4)
             self.assertEqual(proc.returncode,0);self.assertEqual(stderr,'')
-            self.assertIn('LIVE CURRENT RUN / REVIEW-DELAYED EXACT EXCERPT',stdout)
+            self.assertIn('SIMULATED / REVIEW-DELAYED EXACT EXCERPT',stdout)
+            self.assertNotIn('LIVE CURRENT RUN',stdout)
             self.assertIn('Source received UTC: unavailable',stdout)
             self.assertIn('REPLAY UNSUPPORTED',stdout);self.assertIn(self.text,stdout)
             self.assertNotIn('WITHHELD_FIXTURE_NOT_SELECTED',stdout)

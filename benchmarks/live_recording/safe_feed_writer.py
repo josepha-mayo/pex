@@ -10,7 +10,7 @@ from pathlib import Path
 import threading
 import time
 
-from record_support import MAX_LINE, SCHEMA, canonical, sha, timestamp, utc, validate
+from record_support import MAX_LINE, SCHEMA, canonical, sha, timestamp, utc, validate, validate_fixture_mode
 
 
 class SafeFeedWriter:
@@ -32,8 +32,8 @@ class SafeFeedWriter:
                 or start.get('source_code_sha256') != sha(Path(__file__).with_name('record_support.py').read_bytes())):
             raise ValueError('wrong_follower_binding')
         self.started = timestamp(start['started_utc'])
-        self.authored_fixture=start.get('authored_fixture',False) is True
-        if self.authored_fixture and not run_id.startswith('authored-recorder-'): raise ValueError('authored_fixture_namespace')
+        self.authored_fixture=start.get('authored_fixture',False)
+        validate_fixture_mode(run_id, self.authored_fixture)
         self.reviewed_excerpts_enabled = (start.get('excerpt_mode') == 'root_reviewed_worker_wire' and
             start.get('approvals_path_sha256') == sha(str((self.path.parent / 'reviewed-excerpts.json').resolve()).encode()))
         if not 0 <= time.time() - self.started <= 3600:
@@ -58,7 +58,7 @@ class SafeFeedWriter:
             record = dict(metadata, schema=SCHEMA, run_id=self.run_id, seq=self.seq + 1,
                           at_utc=utc(), event=event, qualification=qualification, source_sha256=source_sha256)
             record = validate(record, run_id=self.run_id, expected_seq=self.seq + 1,
-                              not_before=self.started, now=time.time())
+                              not_before=self.started, now=time.time(), authored_fixture=self.authored_fixture)
             raw = (canonical(record) + '\n').encode()
             if len(raw) > MAX_LINE:
                 raise ValueError('oversized_record')
