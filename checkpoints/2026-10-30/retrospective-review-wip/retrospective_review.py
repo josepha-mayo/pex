@@ -17,7 +17,7 @@ import re
 from urllib.parse import urlsplit
 
 QUALIFICATION='RETROSPECTIVE_CODE_REVIEW_NOT_PAIRED_BENCHMARK'
-APPROVED_DIAGNOSTIC='retrospective-pair20-baseline-phase0-20261030-01'
+APPROVED_DIAGNOSTIC=None  # Consumed/interrupted identity; no replay or fresh dispatch.
 FRESH_NANO_USD=350_000_000
 PRIOR_PROVIDER=2_809_730_700
 PRIOR_COMPUTE=610_245_000

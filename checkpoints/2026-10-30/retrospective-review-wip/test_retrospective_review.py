@@ -20,7 +20,7 @@ def checkpoint():
 
 
 def test_default_closed_before_even_config_parsing_or_credential_reads():
-    assert r.APPROVED_DIAGNOSTIC == "retrospective-pair20-baseline-phase0-20261030-01"
+    assert r.APPROVED_DIAGNOSTIC is None
     with pytest.raises(PermissionError,match='retrospective_root_review_pending'):r.inspect(b'not json',None)
 
 

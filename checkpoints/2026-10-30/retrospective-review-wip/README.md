@@ -4,7 +4,7 @@ This is **RETROSPECTIVE_CODE_REVIEW_NOT_PAIRED_BENCHMARK**. It constructs a sepa
 
 No E2B, worker controls, candidate execution, protected grading, web tools, or PEX-benefit claim. The existing managed main/verifier, readonly evidence tools, citation checks, transport and durable reservations are reused. No action proposal is dispatched. A main NOOP is retained without forcing a verifier.
 
-The gate admits only `retrospective-pair20-baseline-phase0-20261030-01` after root reviewed the exact original public archive and scoped diagnostic. All other IDs remain closed. Exact request/config/source/predecessor review and a fresh diagnostic identity are required before any model call. This source checkpoint does not grant that review.
+The gate is CLOSED again after the reviewed diagnostic was interrupted by an external disclosure denial. Its one-use identity must not be replayed. No completed inference or diagnostic finding was verified. Exact request/config/source/predecessor review and a fresh diagnostic identity are required before any model call. This source checkpoint does not grant that review.
 
 Current qualification: 33 authored offline tests pass, including real Ledger construction, retained uncertain reservations across reopen, exact-prior enforcement, planner/verifier protocol construction, and refusal of duplicate or mutated review identities. Admission in runtime composition tests is explicitly substituted with authored input; full immutable production config review and real inference remain unperformed. Exact fresh config and root Grant are still required; no paid inference occurred during these tests.
 
