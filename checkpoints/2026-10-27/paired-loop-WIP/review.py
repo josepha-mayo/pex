@@ -79,7 +79,7 @@ class OwnedReview:
         vrefs, valid, tools = evidence(request, verifier, verdict, "verifier")
         observed = tools & {"get_context", "get_recent_events", "get_scores", "get_session_state",
                             "inspect_acceptance", "inspect_workspace", "inspect_git", "inspect_file",
-                            "inspect_artifact", "inspect_process", "run_verification"}
+                            "inspect_artifact", "inspect_process", "run_verification", "inspect_public_snapshot"}
         receipt["verifier_evidence_refs"] = vrefs
         receipt["verifier_observed"] = bool(valid and observed and not loop._uncertain_verification_only(request, tools))
         if supervisor_request_digest(request) != digest:
