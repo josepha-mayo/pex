@@ -257,3 +257,13 @@ def test_next_pair_retains_pair18_unknown_and_unchanged_worker_science(candidate
     assert envelope['provider_reserved_ceiling']==4540466600
     assert envelope['compute_sequential_peak']==564870000
     assert envelope['compute_final_lifetime_bound']==476557500
+
+
+@pytest.mark.parametrize('suffix',['workers','supervisor','compute','config','admission','claim',
+    'executed_sources','interruption','cleanup_scope','cleanup_result','review_denial','recording_terminal'])
+def test_pair19_requires_pair18_uncertain_evidence(candidate,suffix):
+    cfg,freeze=candidate;p=Path(cfg['predecessor']['path']);v=json.loads(p.read_bytes())
+    v['ledgers'].pop('interrupted_staged18_'+suffix)
+    p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes());raw,grant=freeze()
+    with pytest.raises(a.AdmissionRefused,match='complete_retained_predecessor_set_required'):
+        a.inspect_candidate(raw,grant)

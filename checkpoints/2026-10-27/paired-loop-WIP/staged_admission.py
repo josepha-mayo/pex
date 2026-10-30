@@ -1,4 +1,4 @@
-"""WIP staged admission: one independently reviewed exploratory paired18 identity.
+"""WIP staged admission: one independently reviewed exploratory paired19 identity.
 
 A candidate inspection is not authority. The new source-reviewed identity below
 still requires an independently pinned root Grant and a fresh private claim. Historical
@@ -66,7 +66,12 @@ REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',
     'interrupted_staged17_executed_sources','interrupted_staged17_owned_vm','interrupted_staged17_interruption',
     'interrupted_staged17_cleanup_scope','interrupted_staged17_cleanup_result','interrupted_staged17_cleanup_before',
     'interrupted_staged17_cleanup_delete','interrupted_staged17_cleanup_after','interrupted_staged17_local_recovery',
-    'interrupted_staged17_recording_terminal'))
+    'interrupted_staged17_recording_terminal',
+    'interrupted_staged18_workers','interrupted_staged18_supervisor','interrupted_staged18_compute',
+    'interrupted_staged18_config','interrupted_staged18_admission','interrupted_staged18_claim',
+    'interrupted_staged18_executed_sources','interrupted_staged18_interruption',
+    'interrupted_staged18_cleanup_scope','interrupted_staged18_cleanup_result',
+    'interrupted_staged18_review_denial','interrupted_staged18_recording_terminal'))
 _SEAL = object()
 
 class AdmissionRefused(PermissionError): pass
@@ -126,13 +131,15 @@ class Grant:
 # Pair14 and all earlier uncertain reservations remain fully retained.
 # Fresh user approval explicitly covers authored task/code/public-test payload to Nebius.
 # All uncertain model/compute charges remain retained; no old claim can reopen.
-# Fresh user-approved cumulative $5 inference/$0.50 compute scope; not an unlimited grant.
+# Pair18 unknown creation retains its entire 111000000 reservation.
+# User approved E2B authored benchmark/candidate transfer and continued resources.
+# Operational envelopes bound this run; they do not redefine user spending approval.
 # Exact independently reviewed config/source pins and unused claim remain required.
 APPROVED_STAGED_GRANT = GrantGate(
-    approval_ref='Sentinel_b0b9b8667a5481918578997cbe4ff5e3',
-    run_id='stockroom-staged-pair-20261029-18',
-    config_path='/tmp/pex-paired-live-20261029/stockroom-staged-pair-20261029-18/pair.json',
-    expires_at='2026-10-30T01:00:00+00:00')
+    approval_ref='Sentinel_5ad659664cb48191842ac9c9406468d1',
+    run_id='stockroom-staged-pair-20261030-19',
+    config_path='/tmp/pex-paired-live-20261029/stockroom-staged-pair-20261030-19/pair.json',
+    expires_at='2026-10-30T02:00:00+00:00')
 
 @dataclass(frozen=True, repr=False)
 class Admitted:
