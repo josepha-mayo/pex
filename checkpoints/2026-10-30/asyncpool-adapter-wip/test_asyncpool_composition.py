@@ -79,11 +79,13 @@ def test_retry_retains_unknown_compute_and_next_pair(tmp_path):
     from cumulative_compute import ComputeBudget
     tmp_path.chmod(0o700)
     b=ComputeBudget(tmp_path/'compute.sqlite',prior_upper_bound_nano_usd=history.PRIOR_COMPUTE,evidence_sha256='a'*64,cap_nano_usd=history.COMPUTE_ENVELOPE,vm_seconds=750)
-    assert b.total()==968370000
+    assert b.total()==1079370000
     b.reserve('first');b.reserve('second')
-    assert b.total()==1190370000
+    assert b.total()==1301370000
     assert 'asyncpool05_compute.sqlite' in history.required_predecessors(set())
 
     assert "asyncpool09_preserved__compute.sqlite" in history.required_predecessors(set())
 
     assert "asyncpool10_preserved__compute.sqlite" in history.required_predecessors(set())
+
+    assert "asyncpool11_preserved__compute.sqlite" in history.required_predecessors(set())
