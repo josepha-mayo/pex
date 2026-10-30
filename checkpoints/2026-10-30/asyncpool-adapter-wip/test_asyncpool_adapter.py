@@ -116,3 +116,9 @@ def test_grader_dependency_failure_not_candidate_failure(tmp_path):
     assert result.returncode==2
     value=a.parse_grade(result.stdout)
     assert value['outcome']=='grader_import_infrastructure' and value['checks']==0 and value['loader_errors']==1
+
+
+def test_import_grade_never_accepted_as_public_snapshot():
+    value={'schema':'pex.asyncpool-import-grade.v1','outcome':'candidate_import_failure','checks':0,'passed':0,'failed':0,'expected_checks':8,'loader_errors':1,'complete':False,'all_pass':False}
+    assert a.parse_grade(json.dumps(value))==value
+    with pytest.raises(ValueError,match='snapshot_shape'):a.validate_snapshot(value)

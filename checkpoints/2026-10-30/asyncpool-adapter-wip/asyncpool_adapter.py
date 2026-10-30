@@ -74,11 +74,6 @@ def allowed_snapshot_path(name):
 
 
 def validate_snapshot(value):
-    if type(value)is dict and value.get('schema')=='pex.asyncpool-import-grade.v1':
-        if set(value)!={'schema','outcome','checks','passed','failed','expected_checks','loader_errors','complete','all_pass'}:raise ValueError('asyncpool_import_schema')
-        if value['outcome'] not in ('candidate_import_failure','grader_import_infrastructure'):raise ValueError('asyncpool_import_outcome')
-        if any(type(value[k])is not int or value[k]!=0 for k in ('checks','passed','failed')) or type(value['loader_errors'])is not int or value['loader_errors']!=1 or type(value['expected_checks'])is not int or value['expected_checks']!=8 or value['complete']is not False or value['all_pass']is not False:raise ValueError('asyncpool_import_counts')
-        return value
     if type(value)is not dict or set(value)!={'schema','files','snapshot_sha256'} or value['schema']!='pex.public-candidate-snapshot.v1':raise ValueError('asyncpool_snapshot_shape')
     files=value['files']
     if type(files)is not dict or not 1<=len(files)<=128 or 'TASK.md' not in files:raise ValueError('asyncpool_snapshot_files')
