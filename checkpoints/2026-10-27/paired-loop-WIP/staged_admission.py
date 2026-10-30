@@ -161,8 +161,8 @@ APPROVED_ASYNCPOOL_GRANT=GrantGate(
 # Fresh exact task/run gate; independent literal Grant and recording still required.
 APPROVED_WIREPOOL_GRANT=GrantGate(
     approval_ref='Sentinel_f5c45ad501c08191a3425bfbf14bd618',
-    run_id='wirepool-staged-pair-20261030-03',
-    config_path='/tmp/pex-paired-live-20261030/wirepool-staged-pair-20261030-03/pair.json',
+    run_id='wirepool-staged-pair-20261030-04',
+    config_path='/tmp/pex-paired-live-20261030/wirepool-staged-pair-20261030-04/pair.json',
     expires_at='2026-10-30T16:40:00+00:00')
 
 def task_gate(grant):
