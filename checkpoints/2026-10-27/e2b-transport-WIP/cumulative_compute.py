@@ -33,10 +33,13 @@ def allocation_bounds(vm_seconds):
         raise ValueError('exact supported compute lifetime required')
     return (RESERVATION,VERIFIED_FULL_LIFETIME) if vm_seconds==330 else (111_000_000,22_687_500)
 
+# Full prior liabilities plus two conservative next-pair reservations; not a user spending limit.
+ASYNCPOOL_PUBLIC_RETRY_ENVELOPE=1_079_370_000
+
 class ComputeBudget:
     def __init__(self,path,*,prior_upper_bound_nano_usd,evidence_sha256,cap_nano_usd=CAP,vm_seconds=330):
         path=Path(path)
-        if type(cap_nano_usd)is not int or cap_nano_usd not in (CAP,120_000_000,140_000_000,250_000_000,500_000_000,NEXT_PAIR_ENVELOPE,NEXT_RETRY_ENVELOPE,OBSERVATION_RETRY_ENVELOPE,ASYNCPOOL_PAIR_ENVELOPE,ASYNCPOOL_RETRY_ENVELOPE,ASYNCPOOL_REPAIRED_ENVELOPE,ASYNCPOOL_CONNECT_RETRY_ENVELOPE,ASYNCPOOL_POLICY_RETRY_ENVELOPE):
+        if type(cap_nano_usd)is not int or cap_nano_usd not in (CAP,120_000_000,140_000_000,250_000_000,500_000_000,NEXT_PAIR_ENVELOPE,NEXT_RETRY_ENVELOPE,OBSERVATION_RETRY_ENVELOPE,ASYNCPOOL_PAIR_ENVELOPE,ASYNCPOOL_RETRY_ENVELOPE,ASYNCPOOL_REPAIRED_ENVELOPE,ASYNCPOOL_CONNECT_RETRY_ENVELOPE,ASYNCPOOL_POLICY_RETRY_ENVELOPE,ASYNCPOOL_PUBLIC_RETRY_ENVELOPE):
             raise ValueError('explicit supported compute ceiling required')
         self.cap=cap_nano_usd
         self.vm_seconds=vm_seconds
