@@ -7,6 +7,7 @@ fakes qualify integration; an authored mode label is never live permission.
 import asyncio
 import json
 import time
+import threading
 from pathlib import Path
 from opencode_cli import CliCleanupUnconfirmed
 from staged_envelope import PHASES, SETUP_SECONDS, OBSERVATION_SECONDS, GRADE_MAX_SECONDS, observation_allowance
@@ -28,7 +29,7 @@ class StagedWorker:
         if set(worker.funding) != {'baseline','pex'} or any(type(f) is not PhaseFunding for f in worker.funding.values()):
             raise ValueError('trusted_phase_funding_required')
         self.worker=worker;self.lifecycle=lifecycle;self.clock=clock
-        self.remotes={};self.deadlines={};self.receipts={};self.released=set();self.unconfirmed=set()
+        self.remotes={};self.deadlines={};self.receipts={};self.released=set();self.unconfirmed=set();self.start_tasks={};self.start_custody={}
 
     async def prepare(self, arm, *, deadline):
         c=arm['condition']
@@ -40,10 +41,32 @@ class StagedWorker:
             raise ProtocolInconclusive('unchanged_VM_deadline_required')
         self.worker.remotes[c]=remote
         remote.set_scope_deadline(min(deadline,self.clock()+SETUP_SECONDS))
+        custody={'lock':threading.Lock(),'phase':'starting','stop_requested':False}
+        self.start_custody[c]=custody
+        def start_owned():
+            try:self.worker._start(c)
+            finally:
+                with custody['lock']:
+                    close=custody['stop_requested']
+                    custody['phase']='closing' if close else 'finished'
+                if close:
+                    try:asyncio.run(self.worker.stop(arm))
+                    finally:
+                        with custody['lock']:custody['phase']='finished'
+        task=asyncio.create_task(asyncio.to_thread(start_owned));self.start_tasks[c]=task
+        def retain_outcome(completed):
+            try:completed.result();custody['outcome']='completed'
+            except BaseException as error:custody['outcome']='failed';custody['error_type']=type(error).__name__
+        task.add_done_callback(retain_outcome)
         try:
-            await asyncio.to_thread(self.worker._start,c)
+            await asyncio.shield(task)  # Cancellation cannot erase ownership of the running thread.
+        except asyncio.CancelledError:
+            self.unconfirmed.add(c)
+            with custody['lock']:custody['stop_requested']=True
+            raise
         finally:
-            await remote.end_scope()
+            try:await remote.end_scope()
+            except BaseException:self.unconfirmed.add(c);raise
 
     def _phase_config(self, condition, index):
         state=self.worker.states[condition];limit=PHASES[index]
@@ -106,6 +129,14 @@ class StagedWorker:
         try: await self.remotes[c].end_scope()
         except Exception as exc: error=exc;self.unconfirmed.add(c)
         self.worker.funding[c].abort()
+        custody=self.start_custody.get(c)
+        if custody is not None:
+            with custody['lock']:
+                custody['stop_requested']=True
+                pending=custody['phase']!='finished'
+            if pending:
+                self.unconfirmed.add(c)
+                raise ProtocolInconclusive('local_worker_start_thread_unconfirmed')
         # Existing stop revokes private MCP/funding servers synchronously; keep
         # that work off the owner loop used by pending async SDK cancellations.
         await asyncio.to_thread(lambda:asyncio.run(self.worker.stop(arm)))
@@ -133,7 +164,7 @@ class StagedWorker:
         if callable(cleanup):
             try: await cleanup()
             except Exception: errors.append('lifecycle')
-        if errors: raise ProtocolInconclusive('staged_owned_cleanup_unconfirmed')
+        if errors or self.unconfirmed: raise ProtocolInconclusive('staged_owned_cleanup_unconfirmed')
 
 
 class StagedGrade:
