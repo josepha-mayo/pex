@@ -245,3 +245,15 @@ def test_pair18_retained_liabilities_fit_unchanged_equal_profile(candidate):
     assert envelope['provider_reserved_ceiling']==4540466600
     assert envelope['compute_sequential_peak']==453870000
     assert envelope['compute_final_lifetime_bound']==365557500
+
+
+def test_next_pair_retains_pair18_unknown_and_unchanged_worker_science(candidate):
+    cfg,freeze=candidate
+    cfg['profile']['compute_cap']=a.NEXT_PAIR_ENVELOPE
+    p=Path(cfg['predecessor']['path']);v=json.loads(p.read_bytes())
+    v.update(provider_nano_usd=2690466600,compute_nano_usd=431182500)
+    p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes())
+    raw,grant=freeze(); envelope=a.inspect_candidate(raw,grant)
+    assert envelope['provider_reserved_ceiling']==4540466600
+    assert envelope['compute_sequential_peak']==564870000
+    assert envelope['compute_final_lifetime_bound']==476557500

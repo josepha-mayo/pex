@@ -147,3 +147,30 @@ def test_750_profile_unknown_is_not_discounted_and_allocation_tamper_fails(tmp_p
 def test_only_exact_reviewed_allocation_profiles(tmp_path,seconds):
     tmp_path.chmod(0o700)
     with pytest.raises(ValueError,match='exact supported'):ComputeBudget(tmp_path/'bad.sqlite',prior_upper_bound_nano_usd=0,evidence_sha256='b'*64,vm_seconds=seconds)
+
+
+def test_next_pair_envelope_retains_unknowns_and_bounds_both_creates(tmp_path):
+    from cumulative_compute import NEXT_PAIR_ENVELOPE
+    tmp_path.chmod(0o700)
+    kwargs=dict(prior_upper_bound_nano_usd=431_182_500,evidence_sha256='c'*64,
+                cap_nano_usd=NEXT_PAIR_ENVELOPE,vm_seconds=750)
+    b=ComputeBudget(tmp_path/'next-pair.sqlite',**kwargs)
+    b.reserve('baseline'); assert b.total()==542_182_500
+    b.reserve('pex'); assert b.total()==653_182_500
+    with pytest.raises(ValueError,match='reservation refused'): b.reserve('third')
+    b.close()
+    b=ComputeBudget(tmp_path/'next-pair.sqlite',**kwargs)
+    assert b.total()==653_182_500
+    b.close()
+    with pytest.raises(ValueError,match='ceiling identity'):
+        ComputeBudget(tmp_path/'next-pair.sqlite',**dict(kwargs,cap_nano_usd=500_000_000))
+
+
+def test_next_pair_envelope_cannot_widen_existing_ledger(tmp_path):
+    from cumulative_compute import NEXT_PAIR_ENVELOPE
+    tmp_path.chmod(0o700)
+    kwargs=dict(prior_upper_bound_nano_usd=431_182_500,evidence_sha256='c'*64,
+                cap_nano_usd=500_000_000,vm_seconds=750)
+    b=ComputeBudget(tmp_path/'old.sqlite',**kwargs); b.close()
+    with pytest.raises(ValueError,match='ceiling identity'):
+        ComputeBudget(tmp_path/'old.sqlite',**dict(kwargs,cap_nano_usd=NEXT_PAIR_ENVELOPE))

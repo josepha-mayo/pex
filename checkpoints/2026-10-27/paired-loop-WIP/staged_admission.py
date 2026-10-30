@@ -15,11 +15,11 @@ import re
 import stat
 from urllib.parse import urlsplit
 from staged_envelope import PHASES, VM_SECONDS, WALL_PROFILE, WORKER_OUTPUT_PER_CALL, reservation_envelope
-from cumulative_compute import allocation_bounds
+from cumulative_compute import allocation_bounds, NEXT_PAIR_ENVELOPE
 
 PROVIDER_CAP = 5_000_000_000  # Fresh contextualized user approval; cumulative, never reset.
 COMPUTE_CAP = 120_000_000  # Legacy default; an exact per-run Grant pins its ceiling.
-SUPPORTED_COMPUTE_CAPS = (COMPUTE_CAP,140_000_000,250_000_000,500_000_000)  # Capability alone is never spend authority.
+SUPPORTED_COMPUTE_CAPS = (COMPUTE_CAP,140_000_000,250_000_000,500_000_000,NEXT_PAIR_ENVELOPE)  # Capability alone is never spend authority.
 WORKER_MODEL = 'deepseek-ai/DeepSeek-V4.1-Flash-1017'
 SUPERVISOR_MODEL = 'nvidia/nemotron-3-super-120b-a12b'
 REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',

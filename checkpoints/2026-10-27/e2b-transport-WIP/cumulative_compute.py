@@ -10,6 +10,9 @@ from pathlib import Path
 CAP=100_000_000
 RESERVATION=48_840_000
 VERIFIED_FULL_LIFETIME=9_982_500
+# Conservative next-pair admission bound, not a user spending limit.
+# Retains 431182500 historical liability plus both 111000000 reservations.
+NEXT_PAIR_ENVELOPE=653_182_500
 
 def allocation_bounds(vm_seconds):
     if type(vm_seconds) is not int or vm_seconds not in (330,750):
@@ -19,7 +22,7 @@ def allocation_bounds(vm_seconds):
 class ComputeBudget:
     def __init__(self,path,*,prior_upper_bound_nano_usd,evidence_sha256,cap_nano_usd=CAP,vm_seconds=330):
         path=Path(path)
-        if type(cap_nano_usd)is not int or cap_nano_usd not in (CAP,120_000_000,140_000_000,250_000_000,500_000_000):
+        if type(cap_nano_usd)is not int or cap_nano_usd not in (CAP,120_000_000,140_000_000,250_000_000,500_000_000,NEXT_PAIR_ENVELOPE):
             raise ValueError('explicit supported compute ceiling required')
         self.cap=cap_nano_usd
         self.vm_seconds=vm_seconds
