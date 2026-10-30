@@ -81,3 +81,17 @@ def test_forged_public_package_cannot_change_staged_task(tmp_path):
 def test_forged_initial_prompt_refused(tmp_path):
     from dataclasses import replace
     with pytest.raises(ValueError,match='exact_public_package'):a.stage_public(replace(package(),initial_prompt='forged'),tmp_path/'forged')
+
+
+def test_isolated_grader_loads_only_authored_reference_explicitly():
+    import subprocess,sys
+    result=subprocess.run([sys.executable,'-I',str(ROOT/'heldout/run_grade.py'),str(ROOT/'reference')],capture_output=True,text=True,timeout=10)
+    assert result.returncode==0, result.stderr
+    assert a.parse_grade(result.stdout)['passed']==8
+
+
+def test_isolated_grader_refuses_linked_candidate_directory(tmp_path):
+    import subprocess,sys
+    link=tmp_path/'linked';link.symlink_to(ROOT/'reference',target_is_directory=True)
+    result=subprocess.run([sys.executable,'-I',str(ROOT/'heldout/run_grade.py'),str(link)],capture_output=True,text=True,timeout=10)
+    assert result.returncode!=0 and 'plain candidate directory required' in result.stderr
