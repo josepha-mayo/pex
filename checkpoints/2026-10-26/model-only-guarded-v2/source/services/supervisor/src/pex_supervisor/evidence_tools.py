@@ -136,6 +136,14 @@ def _validated_public_snapshot(request: SupervisorRequest) -> dict | None:
     files = value["files"]
     if type(files) is not dict or not 1 <= len(files) <= 128:
         return None
+    # New benchmark namespace is selected only by its exact frozen identity.
+    # This still reads in-memory bytes only; it grants no filesystem authority.
+    metadata = request.session.metadata or {}
+    prefixes = {"stockroom", "tests"}
+    if metadata.get("benchmark_task_id") == "asyncpool_v1_cancel_safe_dual_limit":
+        if metadata.get("benchmark_manifest_sha256") != "ce3b9788869112d50a024ea5494690b759b9c8f65280f7e0c24ec00cc6618a04":
+            return None
+        prefixes = {"asyncpool", "tests"}
     copied = {}
     total = 0
     for path, entry in files.items():
@@ -157,7 +165,7 @@ def _validated_public_snapshot(request: SupervisorRequest) -> dict | None:
         ):
             return None
         if path not in {"TASK.md", "README.md"} and not (
-            len(parts) > 1 and parts[0] in {"stockroom", "tests"}
+            len(parts) > 1 and parts[0] in prefixes
         ):
             return None
         if type(entry) is not dict or set(entry) != {"content", "sha256"}:
