@@ -152,8 +152,8 @@ APPROVED_STAGED_GRANT = GrantGate(
 # New task requires its own independently reviewed exact gate; no legacy reuse.
 APPROVED_ASYNCPOOL_GRANT=GrantGate(
     approval_ref='Sentinel_6dbbc3710b3881919e6650c9b3b2170e',
-    run_id='asyncpool-staged-pair-20261030-07',
-    config_path='/tmp/pex-paired-live-20261030/asyncpool-staged-pair-20261030-07/pair.json',
+    run_id='asyncpool-staged-pair-20261030-08',
+    config_path='/tmp/pex-paired-live-20261030/asyncpool-staged-pair-20261030-08/pair.json',
     expires_at='2026-10-30T16:00:00+00:00')
 
 def task_gate(grant):

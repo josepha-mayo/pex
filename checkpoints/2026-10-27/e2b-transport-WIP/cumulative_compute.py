@@ -23,6 +23,8 @@ ASYNCPOOL_PAIR_ENVELOPE=832_245_000
 ASYNCPOOL_RETRY_ENVELOPE=943_245_000
 # Pair06 actual verified full lifetimes retained before repaired fresh comparison.
 ASYNCPOOL_REPAIRED_ENVELOPE=988_620_000
+# Pair07 verified lifetimes retained; buffered-connect recovery adds no VM time.
+ASYNCPOOL_CONNECT_RETRY_ENVELOPE=1_033_995_000
 
 def allocation_bounds(vm_seconds):
     if type(vm_seconds) is not int or vm_seconds not in (330,750):
@@ -32,7 +34,7 @@ def allocation_bounds(vm_seconds):
 class ComputeBudget:
     def __init__(self,path,*,prior_upper_bound_nano_usd,evidence_sha256,cap_nano_usd=CAP,vm_seconds=330):
         path=Path(path)
-        if type(cap_nano_usd)is not int or cap_nano_usd not in (CAP,120_000_000,140_000_000,250_000_000,500_000_000,NEXT_PAIR_ENVELOPE,NEXT_RETRY_ENVELOPE,OBSERVATION_RETRY_ENVELOPE,ASYNCPOOL_PAIR_ENVELOPE,ASYNCPOOL_RETRY_ENVELOPE,ASYNCPOOL_REPAIRED_ENVELOPE):
+        if type(cap_nano_usd)is not int or cap_nano_usd not in (CAP,120_000_000,140_000_000,250_000_000,500_000_000,NEXT_PAIR_ENVELOPE,NEXT_RETRY_ENVELOPE,OBSERVATION_RETRY_ENVELOPE,ASYNCPOOL_PAIR_ENVELOPE,ASYNCPOOL_RETRY_ENVELOPE,ASYNCPOOL_REPAIRED_ENVELOPE,ASYNCPOOL_CONNECT_RETRY_ENVELOPE):
             raise ValueError('explicit supported compute ceiling required')
         self.cap=cap_nano_usd
         self.vm_seconds=vm_seconds
