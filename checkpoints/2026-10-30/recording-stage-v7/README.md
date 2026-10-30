@@ -1,0 +1,1 @@
+WIP prospective v7 recorder. Adds finite caught-failure classification from exact launcher-hash-bound report stage/kind. Historical v6 evidence is unchanged; missing/mixed stages remain unknown. No provider calls, benchmark control, credentials, or public grades are added. Local authored tests only until separately pinned live use.
