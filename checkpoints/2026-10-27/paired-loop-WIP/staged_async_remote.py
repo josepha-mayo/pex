@@ -39,7 +39,7 @@ def validate_provider_lifetime(info):
 
 class BoundedAsyncRemote:
     def __init__(self, sandbox, *, vm_deadline, clock=time.monotonic, evaluation_task="stockroom"):
-        if evaluation_task not in ("stockroom","asyncpool"):raise ValueError("exact_evaluation_task_required")
+        if evaluation_task not in ("stockroom","asyncpool","wirepool"):raise ValueError("exact_evaluation_task_required")
         self.evaluation_task=evaluation_task
         if type(vm_deadline) not in (int,float) or not math.isfinite(vm_deadline) or vm_deadline <= clock():
             raise ValueError('future_finite_VM_deadline_required')

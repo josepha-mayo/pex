@@ -22,13 +22,14 @@ def bound(candidate,monkeypatch,tmp_path,request):
     cfg['sdk_sources']=b.installed_source_pins()
     key=tmp_path/'SYNTHETIC-KEY';key.write_bytes(b'AUTHORED-NOT-A-CREDENTIAL');key.chmod(0o600)
     cfg['e2b_key']={'path':str(key),'sha256':a.sha(key.read_bytes())}
-    if getattr(request,'param',None) in ('stockroom','composition','composition-v3','composition-asyncpool'):
+    if getattr(request,'param',None) in ('stockroom','composition','composition-v3','composition-asyncpool','composition-wirepool'):
         task=(Path(__file__).resolve().parents[1]/('runtime-private/pex-pilot-20261027/stockroom-v3-candidate-20261029/MANIFEST.json' if getattr(request,'param',None)=='composition-v3' else 'pex-hard-task-candidate-20261027-1421/MANIFEST.json'))
+        if getattr(request,'param',None)=='composition-wirepool':task=Path(__file__).resolve().parents[1]/'pex-wirepool-benchmark-WIP-20261030/MANIFEST.json'
         if getattr(request,'param',None)=='composition-asyncpool':task=Path(__file__).resolve().parents[1]/'pex-asyncpool-benchmark-WIP-20261030/MANIFEST.json'
         if not task.is_file():pytest.skip('private frozen v3 fixture not distributed with source')
         cfg['task']={'path':str(task),'sha256':a.sha(task.read_bytes())}
         cfg['nebius_key']=dict(cfg['e2b_key'])  # Synthetic authored key, not a real provider key.
-    if getattr(request,'param',None) in ('composition','composition-v3','composition-asyncpool'):
+    if getattr(request,'param',None) in ('composition','composition-v3','composition-asyncpool','composition-wirepool'):
         from staged_composition import source_pins
         root=Path(__file__).resolve().parents[1]
         binary=root/'opencode-qualification-20261027/install/node_modules/@opencode/cli-linux-x64/bin/opencode'
@@ -38,9 +39,13 @@ def bound(candidate,monkeypatch,tmp_path,request):
                     'plugin_package':{'path':str(plugin),'sha256':a.sha(plugin.read_bytes())}}
         cfg['sources']=source_pins()
     is_asyncpool=getattr(request,'param',None)=='composition-asyncpool'
-    if is_asyncpool:
-        import asyncpool_history as h
-        cfg['run_id']='asyncpool-staged-pair-authored'
+    is_wirepool=getattr(request,'param',None)=='composition-wirepool'
+    is_new=is_asyncpool or is_wirepool
+    if is_new:
+        if is_wirepool:import wirepool_history as h
+        else:import asyncpool_history as h
+        cfg['run_id']=('wirepool' if is_wirepool else 'asyncpool')+'-staged-pair-authored'
+        if is_wirepool:cfg['profile']['provider_cap']=h.PROVIDER_ENVELOPE
         cfg['profile']['compute_cap']=h.COMPUTE_ENVELOPE
         prior=json.loads(Path(cfg['predecessor']['path']).read_bytes())
         for name in h.required_predecessors(a.REQUIRED_PREDECESSORS)-set(prior['ledgers']):
@@ -48,11 +53,11 @@ def bound(candidate,monkeypatch,tmp_path,request):
             prior['ledgers'][name]={'path':str(path),'sha256':a.sha(path.read_bytes())}
         prior.update(provider_nano_usd=h.PRIOR_PROVIDER,compute_nano_usd=h.PRIOR_COMPUTE)
         path=Path(cfg['predecessor']['path']);path.write_bytes(a.canonical(prior));cfg['predecessor']['sha256']=a.sha(path.read_bytes())
-    raw,grant=freeze();monkeypatch.setattr(a,'APPROVED_ASYNCPOOL_GRANT' if is_asyncpool else 'APPROVED_STAGED_GRANT',a.GrantGate.identity(grant))
+    raw,grant=freeze();monkeypatch.setattr(a,'APPROVED_WIREPOOL_GRANT' if is_wirepool else 'APPROVED_ASYNCPOOL_GRANT' if is_asyncpool else 'APPROVED_STAGED_GRANT',a.GrantGate.identity(grant))
     admitted=a.load(grant)
     import e2b.api.client_async as c
     for n in ('_transports','_pools','_httpx_transports'):monkeypatch.setattr(c,n,{})
-    compute=ComputeBudget(tmp_path/'compute.sqlite',prior_upper_bound_nano_usd=h.PRIOR_COMPUTE if is_asyncpool else 100,evidence_sha256=cfg['predecessor']['sha256'],cap_nano_usd=cfg['profile']['compute_cap'],vm_seconds=VM_SECONDS)
+    compute=ComputeBudget(tmp_path/'compute.sqlite',prior_upper_bound_nano_usd=h.PRIOR_COMPUTE if is_new else 100,evidence_sha256=cfg['predecessor']['sha256'],cap_nano_usd=cfg['profile']['compute_cap'],vm_seconds=VM_SECONDS)
     wire=[];pools=[];behavior={'mode':'normal'}
     class MockPool:
         def __init__(self,**opts):
@@ -472,7 +477,7 @@ async def test_actual_SDK_completed_file_connect_timeout_does_not_block_next_rea
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('bound',['composition-asyncpool'],indirect=True)
+@pytest.mark.parametrize('bound',['composition-asyncpool','composition-wirepool'],indirect=True)
 @pytest.mark.parametrize('batch',[False,True])
 @pytest.mark.parametrize('case',['connect_once','connect_always','read_timeout'])
 async def test_actual_SDK_buffered_write_predispatch_only_retry(bound,batch,case):
@@ -481,16 +486,17 @@ async def test_actual_SDK_buffered_write_predispatch_only_retry(bound,batch,case
     scope,compute,wire,pools,behavior=bound
     with scope:
         sdk=await create(scope,compute);behavior['buffered_write_case']=case
-        remote=BoundedAsyncRemote(sdk,vm_deadline=time.monotonic()+5,evaluation_task='asyncpool')
+        task='wirepool' if scope.cfg['run_id'].startswith('wirepool-') else 'asyncpool'
+        remote=BoundedAsyncRemote(sdk,vm_deadline=time.monotonic()+5,evaluation_task=task)
         deadline=time.monotonic()+3;remote.set_scope_deadline(deadline)
-        operation=(lambda:remote._write_absolute_files({'/tmp/pex-asyncpool-evaluation-'+'a'*32+'/candidate/safe.txt':b'AUTHORED'})) if batch else (lambda:remote.write('safe.txt','AUTHORED'))
+        operation=(lambda:remote._write_absolute_files({'/tmp/pex-'+task+'-evaluation-'+'a'*32+'/candidate/safe.txt':b'AUTHORED'})) if batch else (lambda:remote.write('safe.txt','AUTHORED'))
         if case=='connect_once':await asyncio.to_thread(operation)
         else:
             with pytest.raises(BoundedRemoteError):await asyncio.to_thread(operation)
         assert behavior['write_attempts']==(1 if case=='read_timeout' else 2)
         assert all(x==behavior['multipart_attempts'][0]for x in behavior['multipart_attempts'])
         assert behavior['multipart_attempts'][0][1][0][2]==b'AUTHORED'
-        expected_path=('/tmp/pex-asyncpool-evaluation-'+'a'*32+'/candidate/safe.txt') if batch else '/home/user/pex-task/safe.txt'
+        expected_path=('/tmp/pex-'+task+'-evaluation-'+'a'*32+'/candidate/safe.txt') if batch else '/home/user/pex-task/safe.txt'
         assert expected_path in str(behavior['multipart_attempts'][0])
         assert remote.poisoned==(case=='read_timeout')
         assert remote.deadline==deadline and len(scope.creates)==1

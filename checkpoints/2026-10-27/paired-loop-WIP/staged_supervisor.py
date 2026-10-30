@@ -11,6 +11,8 @@ from successor_supervisor import ManagedSuccessor,_telemetry
 from stockroom_task import load_package,FILES,digest,encoded,package_contract
 from asyncpool_adapter import MANIFEST_SHA256 as ASYNCPOOL_MANIFEST
 from asyncpool_integration import frozen_inputs as asyncpool_inputs
+from wirepool_adapter import MANIFEST_SHA256 as WIREPOOL_MANIFEST
+from wirepool_integration import frozen_inputs as wirepool_inputs
 
 
 class StagedSupervisor(ManagedSuccessor):
@@ -38,8 +40,8 @@ class StagedSupervisor(ManagedSuccessor):
         cfg=self.accounting.cfg
         read_pin(cfg['task'])
         package=Path(cfg['task']['path']).parent
-        if cfg['task']['sha256']==ASYNCPOOL_MANIFEST:
-            public,objective=asyncpool_inputs(package)
+        if cfg['task']['sha256'] in (ASYNCPOOL_MANIFEST,WIREPOOL_MANIFEST):
+            public,objective=(wirepool_inputs if cfg['task']['sha256']==WIREPOOL_MANIFEST else asyncpool_inputs)(package)
             net=cfg['network']
             return {'public_sha256':public,'key':dict(cfg['nebius_key']),
                 'platform_proxy':{'proxy_sha256':net['proxy_sha256'],'ca_path':net['ca']['path'],'ca_sha256':net['ca']['sha256']}},objective

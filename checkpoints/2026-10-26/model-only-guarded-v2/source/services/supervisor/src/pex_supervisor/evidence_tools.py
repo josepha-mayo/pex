@@ -144,6 +144,9 @@ def _validated_public_snapshot(request: SupervisorRequest) -> dict | None:
         if metadata.get("benchmark_manifest_sha256") != "dcfdef0ac5790762e8b27639e8c3c8b47eb2a3cca24c4ed57603cadba5e72c76":
             return None
         prefixes = {"asyncpool", "tests"}
+    if metadata.get("benchmark_task_id") == "wirepool_v1_cancel_safe_resp_client":
+        if metadata.get("benchmark_manifest_sha256") != '65763af6bd289cfc7bcffe8f855ab5b0f748cc234a0f296345a57738ad83d733':return None
+        prefixes = {"wirepool", "tests"}
     copied = {}
     total = 0
     for path, entry in files.items():

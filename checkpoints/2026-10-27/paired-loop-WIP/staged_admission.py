@@ -18,6 +18,8 @@ from staged_envelope import PHASES, VM_SECONDS, WALL_PROFILE, WORKER_OUTPUT_PER_
 from cumulative_compute import allocation_bounds, NEXT_PAIR_ENVELOPE, NEXT_RETRY_ENVELOPE, OBSERVATION_RETRY_ENVELOPE
 from asyncpool_adapter import MANIFEST_SHA256 as ASYNCPOOL_MANIFEST
 import asyncpool_history
+from wirepool_adapter import MANIFEST_SHA256 as WIREPOOL_MANIFEST
+import wirepool_history
 
 PROVIDER_CAP = 5_000_000_000  # Fresh contextualized user approval; cumulative, never reset.
 COMPUTE_CAP = 120_000_000  # Legacy default; an exact per-run Grant pins its ceiling.
@@ -156,7 +158,11 @@ APPROVED_ASYNCPOOL_GRANT=GrantGate(
     config_path='/tmp/pex-paired-live-20261030/asyncpool-staged-pair-20261030-13/pair.json',
     expires_at='2026-10-30T16:00:00+00:00')
 
+APPROVED_WIREPOOL_GRANT=None  # New task, default closed before all reads.
+
 def task_gate(grant):
+    if type(grant)is Grant and grant.run_id.startswith('wirepool-staged-pair-'):
+        return APPROVED_WIREPOOL_GRANT
     if type(grant)is Grant and grant.run_id.startswith('asyncpool-staged-pair-'):
         return APPROVED_ASYNCPOOL_GRANT
     return APPROVED_STAGED_GRANT
@@ -213,13 +219,17 @@ def inspect_candidate(raw, grant, *, now=None):
     if expiry.tzinfo is None or (now or datetime.now(timezone.utc))+timedelta(seconds=2*VM_SECONDS+30) >= expiry:
         raise AdmissionRefused('complete_pair_execution_window_required')
     is_asyncpool=grant.task_sha256==ASYNCPOOL_MANIFEST
+    is_wirepool=grant.task_sha256==WIREPOOL_MANIFEST
+    if is_wirepool != grant.run_id.startswith("wirepool-staged-pair-"):raise AdmissionRefused("separate_wirepool_task_identity_required")
+    history=wirepool_history if is_wirepool else asyncpool_history
+    is_new=is_asyncpool or is_wirepool
     if is_asyncpool != grant.run_id.startswith('asyncpool-staged-pair-'):
         raise AdmissionRefused('separate_asyncpool_task_identity_required')
     profile = cfg['profile']
     if sha(canonical(profile)) != grant.profile_sha256: raise AdmissionRefused('frozen_profile_changed')
-    if type(profile)is not dict or type(profile.get('compute_cap'))is not int or profile['compute_cap'] not in ((asyncpool_history.COMPUTE_ENVELOPE,) if is_asyncpool else SUPPORTED_COMPUTE_CAPS):
+    if type(profile)is not dict or type(profile.get('compute_cap'))is not int or profile['compute_cap'] not in ((history.COMPUTE_ENVELOPE,) if is_new else SUPPORTED_COMPUTE_CAPS):
         raise AdmissionRefused('supported_pinned_compute_profile_required')
-    fixed = {'provider_cap':PROVIDER_CAP,'compute_cap':profile['compute_cap'],'worker_model':WORKER_MODEL,
+    fixed = {'provider_cap':wirepool_history.PROVIDER_ENVELOPE if is_wirepool else PROVIDER_CAP,'compute_cap':profile['compute_cap'],'worker_model':WORKER_MODEL,
         'supervisor_model':SUPERVISOR_MODEL,'phases':[vars(p) for p in PHASES],
         'vm_seconds':VM_SECONDS,'wall_profile':dict(WALL_PROFILE),'equal_worker_fresh':750000000,'worker_output_per_call':WORKER_OUTPUT_PER_CALL,
         'supervisor_fresh':350000000,'supervisor_attempts':12,'forced_textual_finalization':True,'public_snapshot_inspection':True,'grade_phase0_after_final':True,
@@ -233,9 +243,9 @@ def inspect_candidate(raw, grant, *, now=None):
     prior = json.loads(read_pin(cfg['predecessor'],private=True))
     if (type(prior) is not dict or set(prior) != {'schema','provider_nano_usd','compute_nano_usd','ledgers','uncertain_reservations_retained'}
             or prior['schema'] != 'pex.staged.predecessors.v1' or prior['uncertain_reservations_retained'] is not True
-            or set(prior['ledgers']) != (asyncpool_history.required_predecessors(REQUIRED_PREDECESSORS) if is_asyncpool else REQUIRED_PREDECESSORS)):
+            or set(prior['ledgers']) != (history.required_predecessors(REQUIRED_PREDECESSORS) if is_new else REQUIRED_PREDECESSORS)):
         raise AdmissionRefused('complete_retained_predecessor_set_required')
-    if is_asyncpool and (prior['provider_nano_usd']!=asyncpool_history.PRIOR_PROVIDER or prior['compute_nano_usd']!=asyncpool_history.PRIOR_COMPUTE):raise AdmissionRefused('asyncpool_all_historical_charges_required')
+    if is_new and (prior['provider_nano_usd']!=history.PRIOR_PROVIDER or prior['compute_nano_usd']!=history.PRIOR_COMPUTE):raise AdmissionRefused('asyncpool_all_historical_charges_required')
     for pin in prior['ledgers'].values(): read_pin(pin,private=True,limit=32*1024*1024)
     for name in ('sources','sdk_sources'):
         if not isinstance(cfg[name],dict) or not cfg[name]: raise AdmissionRefused('source_identity_required')
@@ -266,7 +276,7 @@ def inspect_candidate(raw, grant, *, now=None):
         if set(cfg[key]) != {'path','sha256'} or not digest(cfg[key]['sha256']):
             raise AdmissionRefused('existing_private_key_pin_required')
     return reservation_envelope(prior_provider=prior['provider_nano_usd'],equal_worker_fresh=profile['equal_worker_fresh'],
-        supervisor_fresh=profile['supervisor_fresh'],provider_ceiling=PROVIDER_CAP,prior_compute=prior['compute_nano_usd'],
+        supervisor_fresh=profile['supervisor_fresh'],provider_ceiling=profile['provider_cap'],prior_compute=prior['compute_nano_usd'],
         verified_vm_bound=allocation_bounds(VM_SECONDS)[1],uncertain_create_reserve=allocation_bounds(VM_SECONDS)[0],compute_ceiling=profile['compute_cap'])
 
 def load(grant=None):

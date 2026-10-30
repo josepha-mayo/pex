@@ -25,6 +25,10 @@ from staged_public_setup import stage_public_files
 from stockroom_request import make_public_request
 from stockroom_grade import RemoteGrade
 from asyncpool_adapter import MANIFEST_SHA256 as ASYNCPOOL_MANIFEST
+import wirepool_integration
+import wirepool_setup
+from wirepool_adapter import MANIFEST_SHA256 as WIREPOOL_MANIFEST
+from wirepool_grade import RemoteGrade as WirepoolRemoteGrade
 import asyncpool_integration
 import asyncpool_setup
 from asyncpool_grade import RemoteGrade as AsyncpoolRemoteGrade
@@ -32,7 +36,7 @@ from nebius_worker import NebiusCLIWorker,MODEL
 from review import OwnedReview
 from successor_runner import private_write,json_default
 
-SOURCE_MODULES=('asyncpool_history','asyncpool_adapter','asyncpool_integration','asyncpool_setup','asyncpool_request','asyncpool_grade','staged_admission','staged_accounting','staged_sdk_binding','staged_sdk_lifecycle',
+SOURCE_MODULES=('wirepool_history','wirepool_adapter','wirepool_integration','wirepool_setup','wirepool_request','wirepool_grade','asyncpool_history','asyncpool_adapter','asyncpool_integration','asyncpool_setup','asyncpool_request','asyncpool_grade','staged_admission','staged_accounting','staged_sdk_binding','staged_sdk_lifecycle',
     'staged_lifecycle','staged_async_remote','staged_public_setup','staged_composition','staged_envelope','staged_controller',
     'staged_funding','staged_worker_admission','staged_worker','staged_supervisor','staged_review',
     'nebius_worker','worker_funding','controller','review','stockroom_task','stockroom_request','stockroom_grade',
@@ -41,7 +45,7 @@ SOURCE_MODULES=('asyncpool_history','asyncpool_adapter','asyncpool_integration',
     'process_adapter','managed_chat','managed_tool_chat','strands_bridge','tool_protocol',
     'pex_protocol.actions','pex_protocol.supervisor','pex_supervisor.loop',
     'pex_supervisor.evidence_tools','pex_supervisor.evidence_observations')
-ADJACENT={'asyncpool_export_candidate':('asyncpool_grade','export_candidate.py'),
+ADJACENT={'wirepool_export_candidate':('wirepool_grade','export_candidate.py'),'wirepool_grade_upload_verify':('wirepool_grade','grade_upload_verify.py'),'wirepool_public_diff':('wirepool_request','public_diff.py'),'asyncpool_export_candidate':('asyncpool_grade','export_candidate.py'),
     'asyncpool_grade_upload_verify':('asyncpool_grade','grade_upload_verify.py'),
     'asyncpool_public_diff':('asyncpool_request','public_diff.py'),'nebius_guard':('nebius_worker','nebius_guard.ts'),
     'staged_nebius_guard':('nebius_worker','staged_nebius_guard.ts'),
@@ -135,10 +139,11 @@ def build_composition(accounting):
     accounting.before_reserve();cfg=accounting.cfg;_sources(cfg)
     output=accounting.root;package=Path(cfg['task']['path']).parent
     is_asyncpool=cfg['task']['sha256']==ASYNCPOOL_MANIFEST
-    stage_task=asyncpool_integration.stage if is_asyncpool else stage
-    upload_task=asyncpool_setup.stage_public_files if is_asyncpool else stage_public_files
-    request_task=asyncpool_integration.make_public_request if is_asyncpool else make_public_request
-    grade_type=AsyncpoolRemoteGrade if is_asyncpool else RemoteGrade
+    is_wirepool=cfg['task']['sha256']==WIREPOOL_MANIFEST
+    stage_task=wirepool_integration.stage if is_wirepool else asyncpool_integration.stage if is_asyncpool else stage
+    upload_task=wirepool_setup.stage_public_files if is_wirepool else asyncpool_setup.stage_public_files if is_asyncpool else stage_public_files
+    request_task=wirepool_integration.make_public_request if is_wirepool else asyncpool_integration.make_public_request if is_asyncpool else make_public_request
+    grade_type=WirepoolRemoteGrade if is_wirepool else AsyncpoolRemoteGrade if is_asyncpool else RemoteGrade
     evidence_root=output/'evidence';evidence_root.mkdir(mode=0o700)
     def grade_evidence(condition,kind,payload):
         if condition not in ('baseline','pex','pex-phase0') or kind not in ('candidate-export','grade-report'):
@@ -168,7 +173,7 @@ def build_composition(accounting):
     funding={c:PhaseFunding(ledger,mode='closed-admitted') for c,ledger in accounting.workers.items()}
     inner=NebiusCLIWorker(remotes={c:None for c in arms},private_root=output/'cli',
         binary=cfg['cli']['binary']['path'],modules=cfg['cli']['modules_path'],key_path=cfg['nebius_key']['path'],
-        pool=SimpleNamespace(close=lambda:None),activate=True,funding=funding,task_profile='asyncpool-v1' if is_asyncpool else 'stockroom-v1',
+        pool=SimpleNamespace(close=lambda:None),activate=True,funding=funding,task_profile='wirepool-v1' if is_wirepool else 'asyncpool-v1' if is_asyncpool else 'stockroom-v1',
         public_check_command=PUBLIC_CHECK_COMMAND,staged_binding=accounting.binding,
         capture_public_snapshot=cfg['profile']['public_snapshot_inspection'])
     worker=StagedWorker(inner,life,mode='closed-admitted')

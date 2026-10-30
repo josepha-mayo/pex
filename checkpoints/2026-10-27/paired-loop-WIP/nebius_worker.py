@@ -46,9 +46,9 @@ class NebiusCLIWorker:
     def __init__(self, *, remotes, private_root, binary, modules, key_path, pool,
                  max_calls=12, output_per_call=None, activate=False, funding=None, authored=False,
                  public_check_command="python -m unittest discover -s tests -p test_smoke.py", task_profile="legacy-task05", staged_binding=None, capture_public_snapshot=False):
-        if task_profile not in ("legacy-task05","stockroom-v1","asyncpool-v1"):raise ValueError("frozen_task_profile_required")
-        if task_profile in ("stockroom-v1","asyncpool-v1") and public_check_command!="python -m unittest discover -s tests -v":raise ValueError("stockroom_public_check_required")
-        if type(capture_public_snapshot)is not bool or (capture_public_snapshot and task_profile not in ('stockroom-v1','asyncpool-v1')):raise ValueError('explicit_public_snapshot_profile_required')
+        if task_profile not in ("legacy-task05","stockroom-v1","asyncpool-v1","wirepool-v1"):raise ValueError("frozen_task_profile_required")
+        if task_profile in ("stockroom-v1","asyncpool-v1","wirepool-v1") and public_check_command!="python -m unittest discover -s tests -v":raise ValueError("stockroom_public_check_required")
+        if type(capture_public_snapshot)is not bool or (capture_public_snapshot and task_profile not in ('stockroom-v1','asyncpool-v1','wirepool-v1')):raise ValueError('explicit_public_snapshot_profile_required')
         self.capture_public_snapshot=capture_public_snapshot
         self.public_checkpoints={}
         self.task_profile=task_profile
@@ -59,12 +59,13 @@ class NebiusCLIWorker:
         if set(funding or {})!={'baseline','pex'}: raise PermissionError('worker_funding_required')
         self.staged_binding=staged_binding
         if staged_binding is not None:
-            if authored or BASE!='https://api.tokenfactory.nebius.com/v1' or task_profile not in ('stockroom-v1','asyncpool-v1'):
+            if authored or BASE!='https://api.tokenfactory.nebius.com/v1' or task_profile not in ('stockroom-v1','asyncpool-v1','wirepool-v1'):
                 raise PermissionError('closed_staged_worker_exact_route_required')
             from staged_worker_admission import validate_worker
             cfg=validate_worker(staged_binding,funding,private_root=private_root,binary=binary,modules=modules,key_path=key_path)
             from asyncpool_adapter import MANIFEST_SHA256 as ASYNCPOOL_MANIFEST
-            if (task_profile=='asyncpool-v1')!=(cfg['task']['sha256']==ASYNCPOOL_MANIFEST):raise PermissionError('task_profile_manifest_mismatch')
+            from wirepool_adapter import MANIFEST_SHA256 as WIREPOOL_MANIFEST
+            if (task_profile=='asyncpool-v1')!=(cfg['task']['sha256']==ASYNCPOOL_MANIFEST) or (task_profile=='wirepool-v1')!=(cfg['task']['sha256']==WIREPOOL_MANIFEST):raise PermissionError('task_profile_manifest_mismatch')
             if capture_public_snapshot is not cfg['profile'].get('public_snapshot_inspection',False):raise PermissionError('frozen_public_snapshot_profile_required')
             expected_output=cfg['profile']['worker_output_per_call']
             if output_per_call is None:output_per_call=expected_output
@@ -73,7 +74,7 @@ class NebiusCLIWorker:
             from staged_worker_admission import prepare_child_environment
             # Same production projection is checked locally BEFORE any VM.
             for arm in ('baseline','pex'):prepare_child_environment(cfg,Path(private_root)/arm)
-        elif task_profile=='asyncpool-v1':raise PermissionError('asyncpool_requires_new_staged_admission')
+        elif task_profile in ('asyncpool-v1','wirepool-v1'):raise PermissionError('asyncpool_requires_new_staged_admission')
         elif authored:
             if not BASE.startswith('http://127.0.0.1:'): raise PermissionError('authored_loopback_only')
         elif any(type(v) is not WorkerFunding for v in funding.values()):
@@ -223,8 +224,10 @@ class NebiusCLIWorker:
 
     def collect_observation(self,arm,receipt):
         remote=self.remotes[arm['condition']]
-        if getattr(self,'task_profile','legacy-task05') in ('stockroom-v1','asyncpool-v1'):
-            if self.task_profile=='asyncpool-v1':
+        if getattr(self,'task_profile','legacy-task05') in ('stockroom-v1','asyncpool-v1','wirepool-v1'):
+            if self.task_profile=='wirepool-v1':
+                from wirepool_request import collect_public_observation
+            elif self.task_profile=='asyncpool-v1':
                 from asyncpool_request import collect_public_observation
             else:
                 from stockroom_request import collect_public_observation

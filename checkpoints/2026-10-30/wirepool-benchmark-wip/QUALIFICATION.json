@@ -1,0 +1,266 @@
+{
+  "PEX_benefit_measured": false,
+  "candidate_worker_code_executed_locally": false,
+  "cases": [
+    {
+      "case": "reference",
+      "exit_code": 0,
+      "expected": "pass",
+      "failed_groups": [],
+      "kind": "AUTHORED_REFERENCE",
+      "log_sha256": "a6c3f7906b09eda006c68c05abeba02854d15744fd0fa9ac3e7ee522fa9da0aa",
+      "source_sha256": {
+        "__init__.py": "59d92cb4b883184b2777bc86802e99598547a3385916b78d77b4ae5b1fc1a89e",
+        "client.py": "2055cfff3d2bfb3296d9d04d76812434d60e7c3f4a37659e02c14dc57014945a",
+        "connection.py": "2d8aee6d1cdcdb319fd5d5ab1d8d6b32162afda1f8ab4a2af8222439102074c5",
+        "pool.py": "62c471112de5493e24784812f16ee428a18f63f9e7a3063b374675b84df49c8c",
+        "protocol.py": "3bde583499488d2be02e6366086b92ad211c7f23accbbae8baae06f73b4e049b"
+      },
+      "timed_out": false
+    },
+    {
+      "case": "catch_exception_not_cancellation",
+      "exit_code": 1,
+      "expected": "rejected",
+      "failed_groups": [
+        "test_03_cancel_at_send_and_partial_reply_boundaries",
+        "test_07_transport_protocol_and_baseexception_cleanup",
+        "test_cancel_accepted_send_retires_connection",
+        "test_cancel_ordinary_read_retires_connection"
+      ],
+      "kind": "AUTHORED_MUTATION",
+      "log_sha256": "d3d6aa80e7adf8130035d5e60bd3c72e3340dca96153a9fb6eecba59f24653ad",
+      "source_sha256": {
+        "__init__.py": "59d92cb4b883184b2777bc86802e99598547a3385916b78d77b4ae5b1fc1a89e",
+        "client.py": "2055cfff3d2bfb3296d9d04d76812434d60e7c3f4a37659e02c14dc57014945a",
+        "connection.py": "5080060a4048beabd1869cde7547a128436ff419278dc8fa7abb41b0595c468a",
+        "pool.py": "62c471112de5493e24784812f16ee428a18f63f9e7a3063b374675b84df49c8c",
+        "protocol.py": "3bde583499488d2be02e6366086b92ad211c7f23accbbae8baae06f73b4e049b"
+      },
+      "timed_out": false
+    },
+    {
+      "case": "raise_pipeline_error_before_draining",
+      "exit_code": 1,
+      "expected": "rejected",
+      "failed_groups": [
+        "test_02_pipeline_errors_are_values_until_fully_drained",
+        "test_server_errors_drain_pipeline_and_preserve_reuse"
+      ],
+      "kind": "AUTHORED_MUTATION",
+      "log_sha256": "b429cc2a50f04cb9cd67e22dd5d0f5fc7e2d235d209a16f630abad6df3ab8241",
+      "source_sha256": {
+        "__init__.py": "59d92cb4b883184b2777bc86802e99598547a3385916b78d77b4ae5b1fc1a89e",
+        "client.py": "2055cfff3d2bfb3296d9d04d76812434d60e7c3f4a37659e02c14dc57014945a",
+        "connection.py": "636991d6637b9c323cb7343124d610d32f781a420c0658f1e6795a2c14951e47",
+        "pool.py": "62c471112de5493e24784812f16ee428a18f63f9e7a3063b374675b84df49c8c",
+        "protocol.py": "3bde583499488d2be02e6366086b92ad211c7f23accbbae8baae06f73b4e049b"
+      },
+      "timed_out": false
+    },
+    {
+      "case": "leak_lease_on_baseexception",
+      "exit_code": 1,
+      "expected": "rejected",
+      "failed_groups": [
+        "test_03_cancel_at_send_and_partial_reply_boundaries",
+        "test_07_transport_protocol_and_baseexception_cleanup",
+        "test_cancel_ordinary_read_retires_connection"
+      ],
+      "kind": "AUTHORED_MUTATION",
+      "log_sha256": "0d5ea176569779409215ee4d746a4d85a3cec7c4483b403ec6d2bde49bcaa478",
+      "source_sha256": {
+        "__init__.py": "59d92cb4b883184b2777bc86802e99598547a3385916b78d77b4ae5b1fc1a89e",
+        "client.py": "e5126c85d3c1898a4fe1adccbbbe8f846f521e5fb85836d825872c261f7bcc5b",
+        "connection.py": "2d8aee6d1cdcdb319fd5d5ab1d8d6b32162afda1f8ab4a2af8222439102074c5",
+        "pool.py": "62c471112de5493e24784812f16ee428a18f63f9e7a3063b374675b84df49c8c",
+        "protocol.py": "3bde583499488d2be02e6366086b92ad211c7f23accbbae8baae06f73b4e049b"
+      },
+      "timed_out": false
+    },
+    {
+      "case": "lose_assigned_handoff_on_cancel",
+      "exit_code": 1,
+      "expected": "rejected",
+      "failed_groups": [
+        "test_04_waiter_cancellation_before_and_after_handoff"
+      ],
+      "kind": "AUTHORED_MUTATION",
+      "log_sha256": "ec7502ff4d857e1130dc4ff974fa5a4bf3d0ee34f488017af3c91308b92c9c66",
+      "source_sha256": {
+        "__init__.py": "59d92cb4b883184b2777bc86802e99598547a3385916b78d77b4ae5b1fc1a89e",
+        "client.py": "2055cfff3d2bfb3296d9d04d76812434d60e7c3f4a37659e02c14dc57014945a",
+        "connection.py": "2d8aee6d1cdcdb319fd5d5ab1d8d6b32162afda1f8ab4a2af8222439102074c5",
+        "pool.py": "a0540336a594223c6c91f3c4c0cb4fc917868a330d4cfe05c85d108599421240",
+        "protocol.py": "3bde583499488d2be02e6366086b92ad211c7f23accbbae8baae06f73b4e049b"
+      },
+      "timed_out": false
+    },
+    {
+      "case": "accept_invalid_decimal_grammar",
+      "exit_code": 1,
+      "expected": "rejected",
+      "failed_groups": [
+        "test_01_codec_fragmentation_grammar_and_limits"
+      ],
+      "kind": "AUTHORED_MUTATION",
+      "log_sha256": "367c07fb3943ee4df7dcd1de18b6cd7c75803a286ffdfb6202adbd3706e7a2f3",
+      "source_sha256": {
+        "__init__.py": "59d92cb4b883184b2777bc86802e99598547a3385916b78d77b4ae5b1fc1a89e",
+        "client.py": "2055cfff3d2bfb3296d9d04d76812434d60e7c3f4a37659e02c14dc57014945a",
+        "connection.py": "2d8aee6d1cdcdb319fd5d5ab1d8d6b32162afda1f8ab4a2af8222439102074c5",
+        "pool.py": "62c471112de5493e24784812f16ee428a18f63f9e7a3063b374675b84df49c8c",
+        "protocol.py": "a73ed879dbb90867a58505a7acf6b1f1c2ecb8934d5f326ef9edff6404efc94c"
+      },
+      "timed_out": false
+    },
+    {
+      "case": "return_factory_after_shutdown",
+      "exit_code": 1,
+      "expected": "rejected",
+      "failed_groups": [
+        "test_05_inflight_factory_capacity_failure_cancel_and_shutdown"
+      ],
+      "kind": "AUTHORED_MUTATION",
+      "log_sha256": "d1f37c14779433010f96f854354e6efd482e0464548b69fa4f549836539d811d",
+      "source_sha256": {
+        "__init__.py": "59d92cb4b883184b2777bc86802e99598547a3385916b78d77b4ae5b1fc1a89e",
+        "client.py": "2055cfff3d2bfb3296d9d04d76812434d60e7c3f4a37659e02c14dc57014945a",
+        "connection.py": "2d8aee6d1cdcdb319fd5d5ab1d8d6b32162afda1f8ab4a2af8222439102074c5",
+        "pool.py": "c2404257b08908c613b2d582f99a55a4366f6fb8a5f7d1ad397e12a40a214b60",
+        "protocol.py": "3bde583499488d2be02e6366086b92ad211c7f23accbbae8baae06f73b4e049b"
+      },
+      "timed_out": false
+    },
+    {
+      "case": "double_release_duplicates_idle_connection",
+      "exit_code": 1,
+      "expected": "rejected",
+      "failed_groups": [
+        "test_06_fifo_no_barging_double_release_and_close_handoff"
+      ],
+      "kind": "AUTHORED_MUTATION",
+      "log_sha256": "df17b1344cedf6195f85bb5215541950fc26e489c6ab85c861b35521792ddb30",
+      "source_sha256": {
+        "__init__.py": "59d92cb4b883184b2777bc86802e99598547a3385916b78d77b4ae5b1fc1a89e",
+        "client.py": "2055cfff3d2bfb3296d9d04d76812434d60e7c3f4a37659e02c14dc57014945a",
+        "connection.py": "2d8aee6d1cdcdb319fd5d5ab1d8d6b32162afda1f8ab4a2af8222439102074c5",
+        "pool.py": "01243d9923ef7a8f5161c15e66455274e4b19f0a2df99482ada96e28f6e8d0ca",
+        "protocol.py": "3bde583499488d2be02e6366086b92ad211c7f23accbbae8baae06f73b4e049b"
+      },
+      "timed_out": false
+    },
+    {
+      "case": "reset_decoder_between_exchanges",
+      "exit_code": 1,
+      "expected": "rejected",
+      "failed_groups": [
+        "test_07_transport_protocol_and_baseexception_cleanup"
+      ],
+      "kind": "AUTHORED_MUTATION",
+      "log_sha256": "00083c8cb838a16f765ef9df1bce0147e7b834c36c132c152a469138cbf981d7",
+      "source_sha256": {
+        "__init__.py": "59d92cb4b883184b2777bc86802e99598547a3385916b78d77b4ae5b1fc1a89e",
+        "client.py": "2055cfff3d2bfb3296d9d04d76812434d60e7c3f4a37659e02c14dc57014945a",
+        "connection.py": "0934162854755610a9e997273f0276df282eb1408356c789159b113822c0cdf0",
+        "pool.py": "62c471112de5493e24784812f16ee428a18f63f9e7a3063b374675b84df49c8c",
+        "protocol.py": "3bde583499488d2be02e6366086b92ad211c7f23accbbae8baae06f73b4e049b"
+      },
+      "timed_out": false
+    },
+    {
+      "case": "shutdown_exception_overrides_cancellation",
+      "exit_code": 1,
+      "expected": "rejected",
+      "failed_groups": [
+        "test_04_waiter_cancellation_before_and_after_handoff"
+      ],
+      "kind": "AUTHORED_MUTATION",
+      "log_sha256": "d80f8eb319d448cb7e82acc902c5261a51cb0d4d49af2d2fe4f384f45da0dd41",
+      "source_sha256": {
+        "__init__.py": "59d92cb4b883184b2777bc86802e99598547a3385916b78d77b4ae5b1fc1a89e",
+        "client.py": "2055cfff3d2bfb3296d9d04d76812434d60e7c3f4a37659e02c14dc57014945a",
+        "connection.py": "2d8aee6d1cdcdb319fd5d5ab1d8d6b32162afda1f8ab4a2af8222439102074c5",
+        "pool.py": "054c89ec8fc49fcbba729d0b7aa7235bb825c39dcfe5d169e95920b981b3085f",
+        "protocol.py": "3bde583499488d2be02e6366086b92ad211c7f23accbbae8baae06f73b4e049b"
+      },
+      "timed_out": false
+    },
+    {
+      "case": "count_capacity_only_after_factory_returns",
+      "exit_code": 1,
+      "expected": "rejected",
+      "failed_groups": [
+        "test_05_inflight_factory_capacity_failure_cancel_and_shutdown"
+      ],
+      "kind": "AUTHORED_MUTATION",
+      "log_sha256": "e013094b5e098a374d8314fe146620b01b1f41d02d22cbb7a2d31045ec58cbd3",
+      "source_sha256": {
+        "__init__.py": "59d92cb4b883184b2777bc86802e99598547a3385916b78d77b4ae5b1fc1a89e",
+        "client.py": "2055cfff3d2bfb3296d9d04d76812434d60e7c3f4a37659e02c14dc57014945a",
+        "connection.py": "2d8aee6d1cdcdb319fd5d5ab1d8d6b32162afda1f8ab4a2af8222439102074c5",
+        "pool.py": "cdc14a18cb6059b4132f6dfe4f06759f86910249b25e0b54611be8738a3ae59e",
+        "protocol.py": "3bde583499488d2be02e6366086b92ad211c7f23accbbae8baae06f73b4e049b"
+      },
+      "timed_out": false
+    },
+    {
+      "case": "starter",
+      "exit_code": 1,
+      "expected": "rejected",
+      "failed_groups": [
+        "test_01_codec_fragmentation_grammar_and_limits",
+        "test_02_pipeline_errors_are_values_until_fully_drained",
+        "test_03_cancel_at_send_and_partial_reply_boundaries",
+        "test_04_waiter_cancellation_before_and_after_handoff",
+        "test_05_inflight_factory_capacity_failure_cancel_and_shutdown",
+        "test_06_fifo_no_barging_double_release_and_close_handoff",
+        "test_07_transport_protocol_and_baseexception_cleanup",
+        "test_08_concurrent_clients_waiter_cancellation_and_validation",
+        "test_cancel_accepted_send_retires_connection",
+        "test_cancel_ordinary_read_retires_connection",
+        "test_codec_fragmentation_and_multiple_frames",
+        "test_invalid_input_is_validated_before_acquisition",
+        "test_protocol_fault_and_eof_close_connection",
+        "test_server_errors_drain_pipeline_and_preserve_reuse",
+        "test_shutdown_wakes_waiter_but_leased_connection_finishes"
+      ],
+      "kind": "AUTHORED_STARTER",
+      "log_sha256": "042506c8b9d6a5b68e9f73b60a6ce5b4dc743b3be28883dd4ae2a954020c9e14",
+      "source_sha256": {
+        "__init__.py": "59d92cb4b883184b2777bc86802e99598547a3385916b78d77b4ae5b1fc1a89e",
+        "client.py": "47406157e9e00baa7c0254e4f65ced1b1f906df26a73aceac5d90441381412dd",
+        "connection.py": "dec0ae2d5a4329fa642a09a6840bacb6ac65abc2ad01a3e4f50f708efd1b3515",
+        "pool.py": "ff87266295d0d2b7eaf9ffd59f890e7c33a2f8b9fd2ddc7ae28b0abe2b7d9501",
+        "protocol.py": "5ed2f630897ad7e4cb4be5e3daa7ecb3ada158f5933e524d87b7708528cec0c7"
+      },
+      "timed_out": false
+    }
+  ],
+  "mutants_rejected": 10,
+  "pre_freeze_iteration_disclosure": [
+    {
+      "cause": "Unbounded invalid-input probe awaited pool capacity in authored starter; final oracle uses watchdog and final starter run terminates with failures.",
+      "iteration": 1,
+      "mutants_rejected": 10,
+      "reference_pass": true,
+      "starter_timed_out": true,
+      "summary_sha256": "31b6a0fcfb3ac654311ca564de32547916e749b181d81f67401bf0db360c90c9"
+    },
+    {
+      "cause": "Unbounded invalid-input probe awaited pool capacity in authored starter; final oracle uses watchdog and final starter run terminates with failures.",
+      "iteration": 2,
+      "mutants_rejected": 10,
+      "reference_pass": true,
+      "starter_timed_out": true,
+      "summary_sha256": "a87e657fe0871120b70ad40851879c49785621e55c0f7687a1071ac399b3aee1"
+    }
+  ],
+  "python_implementation": "CPython",
+  "python_version": "3.12.14",
+  "real_inference": false,
+  "reference_protected_groups": 8,
+  "reference_public_checks": 8,
+  "schema": "pex.wirepool-authored-qualification.v1",
+  "source_compatibility": "All authored Python files parse with ast.parse(feature_version=(3,11)); actual local executions used CPython3.12.14, target3.11.6 not locally available."
+}

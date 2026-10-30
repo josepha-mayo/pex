@@ -16,7 +16,7 @@ def funded(bound,monkeypatch):
     cfg=scope.cfg;cfg['profile']['equal_worker_fresh']=750000000
     cfg['profile']['worker_output_per_call']=16384
     cfg['profile']['supervisor_fresh']=SUPERVISOR_FRESH
-    p=Path(cfg['predecessor']['path']);prior=json.loads(p.read_bytes());is_asyncpool=cfg['run_id'].startswith('asyncpool-staged-pair-');prior['provider_nano_usd']=prior['provider_nano_usd'] if is_asyncpool else SUPERVISOR_PRIOR+100
+    p=Path(cfg['predecessor']['path']);prior=json.loads(p.read_bytes());is_asyncpool=cfg['run_id'].startswith('asyncpool-staged-pair-');is_wirepool=cfg['run_id'].startswith('wirepool-staged-pair-');prior['provider_nano_usd']=prior['provider_nano_usd'] if is_asyncpool or is_wirepool else SUPERVISOR_PRIOR+100
     p.write_bytes(canonical(prior));cfg['predecessor']['sha256']=sha(p.read_bytes())
     # New compute object must carry the exact new synthetic predecessor pin.
     from cumulative_compute import ComputeBudget
@@ -25,7 +25,7 @@ def funded(bound,monkeypatch):
     raw=canonical(cfg);Path(scope.admitted.grant.config_path).write_bytes(raw)
     from dataclasses import replace
     grant=replace(scope.admitted.grant,config_sha256=sha(raw),profile_sha256=sha(canonical(cfg['profile'])),predecessor_sha256=cfg['predecessor']['sha256'])
-    monkeypatch.setattr(a,'APPROVED_ASYNCPOOL_GRANT' if is_asyncpool else 'APPROVED_STAGED_GRANT',a.GrantGate.identity(grant))
+    monkeypatch.setattr(a,'APPROVED_WIREPOOL_GRANT' if is_wirepool else 'APPROVED_ASYNCPOOL_GRANT' if is_asyncpool else 'APPROVED_STAGED_GRANT',a.GrantGate.identity(grant))
     replacement=SDKTransportBinding(a.load(grant),compute)
     with replacement:
         bundle=StagedAccounting(replacement)
