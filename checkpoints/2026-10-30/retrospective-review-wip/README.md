@@ -6,6 +6,6 @@ No E2B, worker controls, candidate execution, protected grading, web tools, or P
 
 The default gate is CLOSED. Exact request/config/source/predecessor review and a fresh diagnostic identity are required before any model call. This source checkpoint does not grant that review.
 
-Current qualification: request/shape/private-pin tests pass offline. Runtime composition presently refuses the proposed new accounting pool because the existing Ledger only admits its older historical profiles. Three authored runtime integration tests expose that refusal. No credential or provider call has occurred. Do not weaken or impersonate an older admission to pass it. A separately reviewed exact accounting profile remains needed.
+Current qualification: 33 authored offline tests pass, including real Ledger construction, retained uncertain reservations across reopen, exact-prior enforcement, planner/verifier protocol construction, and refusal of duplicate or mutated review identities. Admission in runtime composition tests is explicitly substituted with authored input; full immutable production config review and real inference remain unperformed. The default gate remains CLOSED.
 
 Prior liabilities are retained (provider 2,809,730,700 nanoUSD; compute 610,245,000 nanoUSD), with a proposed fresh supervisor-only 350,000,000 nanoUSD reservation envelope and 12 attempted calls maximum. These are accounting admission bounds, not newly invented user spending restrictions. No VM is created.

@@ -88,11 +88,14 @@ class Ledger:
                 or any(replace(r, role=route.role, limits=replace(r.limits, max_output_tokens=route.limits.max_output_tokens)) != route for r in approved_routes)
                 or any(not 1 <= r.limits.max_output_tokens <= 4096 for r in approved_routes)
                 or type(max_attempts) is not int or max_attempts != 12
-                or type(budget) is not int or budget not in (250000000,300000000,1009514900,1180535400)
+                or type(budget) is not int or budget not in (250000000,300000000,1009514900,1180535400,3159730700)
             ):
                 raise ValueError("shared pilot requires exact two roles, legacy/successor pool and 12 attempts")
             if budget in (1009514900,1180535400) and prior_charged_nano_usd != 659514900:
                 raise ValueError("exact pending USD2 supervisor predecessor required")
+            # Separate retrospective profile: all historical provider liability retained.
+            if budget == 3159730700 and prior_charged_nano_usd != 2809730700:
+                raise ValueError("exact retrospective provider predecessor required")
             routes = tuple(sorted(approved_routes, key=lambda r: r.role))
         else:
             routes = (route,)
