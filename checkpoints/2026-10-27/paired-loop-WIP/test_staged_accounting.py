@@ -16,16 +16,16 @@ def funded(bound,monkeypatch):
     cfg=scope.cfg;cfg['profile']['equal_worker_fresh']=750000000
     cfg['profile']['worker_output_per_call']=16384
     cfg['profile']['supervisor_fresh']=SUPERVISOR_FRESH
-    p=Path(cfg['predecessor']['path']);prior=json.loads(p.read_bytes());prior['provider_nano_usd']=SUPERVISOR_PRIOR+100
+    p=Path(cfg['predecessor']['path']);prior=json.loads(p.read_bytes());is_asyncpool=cfg['run_id'].startswith('asyncpool-staged-pair-');prior['provider_nano_usd']=prior['provider_nano_usd'] if is_asyncpool else SUPERVISOR_PRIOR+100
     p.write_bytes(canonical(prior));cfg['predecessor']['sha256']=sha(p.read_bytes())
     # New compute object must carry the exact new synthetic predecessor pin.
     from cumulative_compute import ComputeBudget
     compute.close();Path(p.parent/'compute.sqlite').unlink()
-    compute=ComputeBudget(p.parent/'compute.sqlite',prior_upper_bound_nano_usd=100,evidence_sha256=cfg['predecessor']['sha256'],cap_nano_usd=cfg['profile']['compute_cap'],vm_seconds=cfg['profile']['vm_seconds'])
+    compute=ComputeBudget(p.parent/'compute.sqlite',prior_upper_bound_nano_usd=prior['compute_nano_usd'],evidence_sha256=cfg['predecessor']['sha256'],cap_nano_usd=cfg['profile']['compute_cap'],vm_seconds=cfg['profile']['vm_seconds'])
     raw=canonical(cfg);Path(scope.admitted.grant.config_path).write_bytes(raw)
     from dataclasses import replace
     grant=replace(scope.admitted.grant,config_sha256=sha(raw),profile_sha256=sha(canonical(cfg['profile'])),predecessor_sha256=cfg['predecessor']['sha256'])
-    monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',a.GrantGate.identity(grant))
+    monkeypatch.setattr(a,'APPROVED_ASYNCPOOL_GRANT' if is_asyncpool else 'APPROVED_STAGED_GRANT',a.GrantGate.identity(grant))
     replacement=SDKTransportBinding(a.load(grant),compute)
     with replacement:
         bundle=StagedAccounting(replacement)
@@ -64,7 +64,7 @@ def test_supervisor_shared_attempts_separate_fresh_overhead(funded):
 def test_revocation_blocks_reserve_without_refunding_unknown(funded,monkeypatch):
     bundle,scope=funded;digest,raw=request()
     bundle.workers['baseline'].reserve('authored-one',digest,raw)
-    monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',None)
+    monkeypatch.setattr(a,'APPROVED_ASYNCPOOL_GRANT' if is_asyncpool else 'APPROVED_STAGED_GRANT',None)
     with pytest.raises(AdmissionRefused):bundle.workers['pex'].reserve('authored-two',digest,raw)
     assert bundle.summary()['worker_fresh_nano_usd']['baseline']==RESERVATION
 

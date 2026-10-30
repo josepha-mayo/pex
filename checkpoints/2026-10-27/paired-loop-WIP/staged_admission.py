@@ -16,6 +16,8 @@ import stat
 from urllib.parse import urlsplit
 from staged_envelope import PHASES, VM_SECONDS, WALL_PROFILE, WORKER_OUTPUT_PER_CALL, reservation_envelope
 from cumulative_compute import allocation_bounds, NEXT_PAIR_ENVELOPE, NEXT_RETRY_ENVELOPE, OBSERVATION_RETRY_ENVELOPE
+from asyncpool_adapter import MANIFEST_SHA256 as ASYNCPOOL_MANIFEST
+import asyncpool_history
 
 PROVIDER_CAP = 5_000_000_000  # Fresh contextualized user approval; cumulative, never reset.
 COMPUTE_CAP = 120_000_000  # Legacy default; an exact per-run Grant pins its ceiling.
@@ -147,6 +149,14 @@ APPROVED_STAGED_GRANT = GrantGate(
     config_path='/tmp/pex-paired-live-20261029/stockroom-staged-pair-20261030-21/pair.json',
     expires_at='2026-10-30T02:00:00+00:00')
 
+# New task requires its own independently reviewed exact gate; no legacy reuse.
+APPROVED_ASYNCPOOL_GRANT=None
+
+def task_gate(grant):
+    if type(grant)is Grant and grant.run_id.startswith('asyncpool-staged-pair-'):
+        return APPROVED_ASYNCPOOL_GRANT
+    return APPROVED_STAGED_GRANT
+
 @dataclass(frozen=True, repr=False)
 class Admitted:
     grant: Grant
@@ -159,8 +169,8 @@ class Admitted:
 
 def check_authority(admitted):
     if (type(admitted) is not Admitted or admitted._seal is not _SEAL
-            or type(APPROVED_STAGED_GRANT) is not GrantGate
-            or GrantGate.identity(admitted.grant) != APPROVED_STAGED_GRANT):
+            or type(task_gate(admitted.grant)) is not GrantGate
+            or GrantGate.identity(admitted.grant) != task_gate(admitted.grant)):
         raise AdmissionRefused('fresh_staged_pair_approval_pending')
     expiry = datetime.fromisoformat(admitted.grant.expires_at)
     if expiry.tzinfo is None or datetime.now(timezone.utc) >= expiry:
@@ -198,9 +208,12 @@ def inspect_candidate(raw, grant, *, now=None):
     expiry = datetime.fromisoformat(grant.expires_at)
     if expiry.tzinfo is None or (now or datetime.now(timezone.utc))+timedelta(seconds=2*VM_SECONDS+30) >= expiry:
         raise AdmissionRefused('complete_pair_execution_window_required')
+    is_asyncpool=grant.task_sha256==ASYNCPOOL_MANIFEST
+    if is_asyncpool != grant.run_id.startswith('asyncpool-staged-pair-'):
+        raise AdmissionRefused('separate_asyncpool_task_identity_required')
     profile = cfg['profile']
     if sha(canonical(profile)) != grant.profile_sha256: raise AdmissionRefused('frozen_profile_changed')
-    if type(profile)is not dict or type(profile.get('compute_cap'))is not int or profile['compute_cap'] not in SUPPORTED_COMPUTE_CAPS:
+    if type(profile)is not dict or type(profile.get('compute_cap'))is not int or profile['compute_cap'] not in ((asyncpool_history.COMPUTE_ENVELOPE,) if is_asyncpool else SUPPORTED_COMPUTE_CAPS):
         raise AdmissionRefused('supported_pinned_compute_profile_required')
     fixed = {'provider_cap':PROVIDER_CAP,'compute_cap':profile['compute_cap'],'worker_model':WORKER_MODEL,
         'supervisor_model':SUPERVISOR_MODEL,'phases':[vars(p) for p in PHASES],
@@ -216,8 +229,9 @@ def inspect_candidate(raw, grant, *, now=None):
     prior = json.loads(read_pin(cfg['predecessor'],private=True))
     if (type(prior) is not dict or set(prior) != {'schema','provider_nano_usd','compute_nano_usd','ledgers','uncertain_reservations_retained'}
             or prior['schema'] != 'pex.staged.predecessors.v1' or prior['uncertain_reservations_retained'] is not True
-            or set(prior['ledgers']) != REQUIRED_PREDECESSORS):
+            or set(prior['ledgers']) != (asyncpool_history.required_predecessors(REQUIRED_PREDECESSORS) if is_asyncpool else REQUIRED_PREDECESSORS)):
         raise AdmissionRefused('complete_retained_predecessor_set_required')
+    if is_asyncpool and (prior['provider_nano_usd']!=asyncpool_history.PRIOR_PROVIDER or prior['compute_nano_usd']!=asyncpool_history.PRIOR_COMPUTE):raise AdmissionRefused('asyncpool_all_historical_charges_required')
     for pin in prior['ledgers'].values(): read_pin(pin,private=True,limit=32*1024*1024)
     for name in ('sources','sdk_sources'):
         if not isinstance(cfg[name],dict) or not cfg[name]: raise AdmissionRefused('source_identity_required')
@@ -255,7 +269,7 @@ def load(grant=None):
     # CLOSED source gate precedes reads and caller input. A future trusted root
     # launcher must supply its independently reviewed immutable full Grant, NOT
     # deserialize authority from candidate bytes, worker input or environment.
-    gate = APPROVED_STAGED_GRANT
+    gate = task_gate(grant)
     if type(gate) is not GrantGate: raise AdmissionRefused('fresh_staged_pair_approval_pending')
     if GrantGate.identity(grant) != gate:
         raise AdmissionRefused('independent_grant_gate_identity_changed')

@@ -22,12 +22,13 @@ def bound(candidate,monkeypatch,tmp_path,request):
     cfg['sdk_sources']=b.installed_source_pins()
     key=tmp_path/'SYNTHETIC-KEY';key.write_bytes(b'AUTHORED-NOT-A-CREDENTIAL');key.chmod(0o600)
     cfg['e2b_key']={'path':str(key),'sha256':a.sha(key.read_bytes())}
-    if getattr(request,'param',None) in ('stockroom','composition','composition-v3'):
+    if getattr(request,'param',None) in ('stockroom','composition','composition-v3','composition-asyncpool'):
         task=(Path(__file__).resolve().parents[1]/('runtime-private/pex-pilot-20261027/stockroom-v3-candidate-20261029/MANIFEST.json' if getattr(request,'param',None)=='composition-v3' else 'pex-hard-task-candidate-20261027-1421/MANIFEST.json'))
+        if getattr(request,'param',None)=='composition-asyncpool':task=Path(__file__).resolve().parents[1]/'pex-asyncpool-benchmark-WIP-20261030/MANIFEST.json'
         if not task.is_file():pytest.skip('private frozen v3 fixture not distributed with source')
         cfg['task']={'path':str(task),'sha256':a.sha(task.read_bytes())}
         cfg['nebius_key']=dict(cfg['e2b_key'])  # Synthetic authored key, not a real provider key.
-    if getattr(request,'param',None) in ('composition','composition-v3'):
+    if getattr(request,'param',None) in ('composition','composition-v3','composition-asyncpool'):
         from staged_composition import source_pins
         root=Path(__file__).resolve().parents[1]
         binary=root/'opencode-qualification-20261027/install/node_modules/@opencode/cli-linux-x64/bin/opencode'
@@ -36,11 +37,22 @@ def bound(candidate,monkeypatch,tmp_path,request):
         cfg['cli']={'binary':{'path':str(binary),'sha256':a.sha(binary.read_bytes())},'modules_path':str(modules),
                     'plugin_package':{'path':str(plugin),'sha256':a.sha(plugin.read_bytes())}}
         cfg['sources']=source_pins()
-    raw,grant=freeze();monkeypatch.setattr(a,'APPROVED_STAGED_GRANT',a.GrantGate.identity(grant))
+    is_asyncpool=getattr(request,'param',None)=='composition-asyncpool'
+    if is_asyncpool:
+        import asyncpool_history as h
+        cfg['run_id']='asyncpool-staged-pair-authored'
+        cfg['profile']['compute_cap']=h.COMPUTE_ENVELOPE
+        prior=json.loads(Path(cfg['predecessor']['path']).read_bytes())
+        for name in h.required_predecessors(a.REQUIRED_PREDECESSORS)-set(prior['ledgers']):
+            path=tmp_path/name;path.write_bytes(b'AUTHORED-HISTORY');path.chmod(0o600)
+            prior['ledgers'][name]={'path':str(path),'sha256':a.sha(path.read_bytes())}
+        prior.update(provider_nano_usd=h.PRIOR_PROVIDER,compute_nano_usd=h.PRIOR_COMPUTE)
+        path=Path(cfg['predecessor']['path']);path.write_bytes(a.canonical(prior));cfg['predecessor']['sha256']=a.sha(path.read_bytes())
+    raw,grant=freeze();monkeypatch.setattr(a,'APPROVED_ASYNCPOOL_GRANT' if is_asyncpool else 'APPROVED_STAGED_GRANT',a.GrantGate.identity(grant))
     admitted=a.load(grant)
     import e2b.api.client_async as c
     for n in ('_transports','_pools','_httpx_transports'):monkeypatch.setattr(c,n,{})
-    compute=ComputeBudget(tmp_path/'compute.sqlite',prior_upper_bound_nano_usd=100,evidence_sha256=cfg['predecessor']['sha256'],cap_nano_usd=cfg['profile']['compute_cap'],vm_seconds=VM_SECONDS)
+    compute=ComputeBudget(tmp_path/'compute.sqlite',prior_upper_bound_nano_usd=h.PRIOR_COMPUTE if is_asyncpool else 100,evidence_sha256=cfg['predecessor']['sha256'],cap_nano_usd=cfg['profile']['compute_cap'],vm_seconds=VM_SECONDS)
     wire=[];pools=[];behavior={'mode':'normal'}
     class MockPool:
         def __init__(self,**opts):

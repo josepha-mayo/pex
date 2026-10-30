@@ -24,11 +24,15 @@ from stockroom_task import stage,PUBLIC_CHECK_COMMAND
 from staged_public_setup import stage_public_files
 from stockroom_request import make_public_request
 from stockroom_grade import RemoteGrade
+from asyncpool_adapter import MANIFEST_SHA256 as ASYNCPOOL_MANIFEST
+import asyncpool_integration
+import asyncpool_setup
+from asyncpool_grade import RemoteGrade as AsyncpoolRemoteGrade
 from nebius_worker import NebiusCLIWorker,MODEL
 from review import OwnedReview
 from successor_runner import private_write,json_default
 
-SOURCE_MODULES=('staged_admission','staged_accounting','staged_sdk_binding','staged_sdk_lifecycle',
+SOURCE_MODULES=('asyncpool_history','asyncpool_adapter','asyncpool_integration','asyncpool_setup','asyncpool_request','asyncpool_grade','staged_admission','staged_accounting','staged_sdk_binding','staged_sdk_lifecycle',
     'staged_lifecycle','staged_async_remote','staged_public_setup','staged_composition','staged_envelope','staged_controller',
     'staged_funding','staged_worker_admission','staged_worker','staged_supervisor','staged_review',
     'nebius_worker','worker_funding','controller','review','stockroom_task','stockroom_request','stockroom_grade',
@@ -37,7 +41,9 @@ SOURCE_MODULES=('staged_admission','staged_accounting','staged_sdk_binding','sta
     'process_adapter','managed_chat','managed_tool_chat','strands_bridge','tool_protocol',
     'pex_protocol.actions','pex_protocol.supervisor','pex_supervisor.loop',
     'pex_supervisor.evidence_tools','pex_supervisor.evidence_observations')
-ADJACENT={'nebius_guard':('nebius_worker','nebius_guard.ts'),
+ADJACENT={'asyncpool_export_candidate':('asyncpool_grade','export_candidate.py'),
+    'asyncpool_grade_upload_verify':('asyncpool_grade','grade_upload_verify.py'),
+    'asyncpool_public_diff':('asyncpool_request','public_diff.py'),'nebius_guard':('nebius_worker','nebius_guard.ts'),
     'staged_nebius_guard':('nebius_worker','staged_nebius_guard.ts'),
     'grade_upload_verify':('stockroom_grade','grade_upload_verify.py'),
     'export_candidate':('stockroom_grade','export_candidate.py'),'public_diff':('stockroom_request','public_diff.py')}
@@ -128,6 +134,11 @@ def build_composition(accounting):
     if type(accounting) is not StagedAccounting:raise AdmissionRefused('closed_staged_accounting_required')
     accounting.before_reserve();cfg=accounting.cfg;_sources(cfg)
     output=accounting.root;package=Path(cfg['task']['path']).parent
+    is_asyncpool=cfg['task']['sha256']==ASYNCPOOL_MANIFEST
+    stage_task=asyncpool_integration.stage if is_asyncpool else stage
+    upload_task=asyncpool_setup.stage_public_files if is_asyncpool else stage_public_files
+    request_task=asyncpool_integration.make_public_request if is_asyncpool else make_public_request
+    grade_type=AsyncpoolRemoteGrade if is_asyncpool else RemoteGrade
     evidence_root=output/'evidence';evidence_root.mkdir(mode=0o700)
     def grade_evidence(condition,kind,payload):
         if condition not in ('baseline','pex','pex-phase0') or kind not in ('candidate-export','grade-report'):
@@ -139,7 +150,7 @@ def build_composition(accounting):
             'sources_sha256':accounting.binding.admitted.grant.sources_sha256,
             'task_sha256':accounting.binding.admitted.grant.task_sha256,
             'condition':condition,'kind':kind,'payload':payload,'partial_pair_evidence_only':True})
-    frozen,prompt=stage(package,output/'staged')
+    frozen,prompt=stage_task(package,output/'staged')
     arms={c:{'condition':c,'workspace':str(output/'staged/workers'/c),'prompt':prompt,
              'public_sha256':frozen['public_sha256'],'worker_identity':'nebius/'+MODEL} for c in ('baseline','pex')}
     private_write(output/'frozen-staged-inputs.json',{'task':frozen,'profile':cfg['profile'],
@@ -149,7 +160,7 @@ def build_composition(accounting):
     async def stage_public(arm,remote):
         accounting.before_reserve()
         def upload():
-            stage_public_files(remote,output/'staged/workers'/arm['condition'],frozen['public_files'],
+            upload_task(remote,output/'staged/workers'/arm['condition'],frozen['public_files'],
                 lambda evidence:private_write(output/('setup-timing-'+arm['condition']+'.json'),evidence),
                 runtime_contract=cfg['profile']['runtime_contract'])
         await asyncio.to_thread(upload)
@@ -157,12 +168,12 @@ def build_composition(accounting):
     funding={c:PhaseFunding(ledger,mode='closed-admitted') for c,ledger in accounting.workers.items()}
     inner=NebiusCLIWorker(remotes={c:None for c in arms},private_root=output/'cli',
         binary=cfg['cli']['binary']['path'],modules=cfg['cli']['modules_path'],key_path=cfg['nebius_key']['path'],
-        pool=SimpleNamespace(close=lambda:None),activate=True,funding=funding,task_profile='stockroom-v1',
+        pool=SimpleNamespace(close=lambda:None),activate=True,funding=funding,task_profile='asyncpool-v1' if is_asyncpool else 'stockroom-v1',
         public_check_command=PUBLIC_CHECK_COMMAND,staged_binding=accounting.binding,
         capture_public_snapshot=cfg['profile']['public_snapshot_inspection'])
     worker=StagedWorker(inner,life,mode='closed-admitted')
     supervisor=StagedSupervisor(accounting)
-    review=OwnedReview(staged_request_builder(make_public_request(package)),supervisor.model_factory,
+    review=OwnedReview(staged_request_builder(request_task(package)),supervisor.model_factory,
         mode='live-pilot',admission=accounting.binding.admitted,
         request_recorder=lambda digest,raw:private_write(output/('public-observation-'+digest+'.json'),raw))
     def saved_phase0(condition):
@@ -179,7 +190,7 @@ def build_composition(accounting):
                 or value['config_sha256']!=accounting.binding.admitted.grant.config_sha256
                 or value['snapshot_sha256']!=capture['snapshot_sha256']):raise AdmissionRefused('public_checkpoint_identity_changed')
         return value['public_export']
-    grade=RemoteGrade(remotes=worker.remotes,package=package,
+    grade=grade_type(remotes=worker.remotes,package=package,
         stopped=lambda c:inner.states.get(c,{}).get('stopped') is True,
         revoked=lambda c:inner.states.get(c,{}).get('mcp_revoked') is True,evidence_sink=grade_evidence,
         saved_phase0=saved_phase0 if cfg['profile']['grade_phase0_after_final'] else None)
