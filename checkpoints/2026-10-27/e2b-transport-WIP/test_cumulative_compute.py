@@ -174,3 +174,18 @@ def test_next_pair_envelope_cannot_widen_existing_ledger(tmp_path):
     b=ComputeBudget(tmp_path/'old.sqlite',**kwargs); b.close()
     with pytest.raises(ValueError,match='ceiling identity'):
         ComputeBudget(tmp_path/'old.sqlite',**dict(kwargs,cap_nano_usd=NEXT_PAIR_ENVELOPE))
+
+
+def test_retry_envelope_retains_pair19_timeout_and_two_full_reservations(tmp_path):
+    from cumulative_compute import NEXT_RETRY_ENVELOPE
+    tmp_path.chmod(0o700)
+    kwargs=dict(prior_upper_bound_nano_usd=542_182_500,evidence_sha256='d'*64,
+                cap_nano_usd=NEXT_RETRY_ENVELOPE,vm_seconds=750)
+    b=ComputeBudget(tmp_path/'retry.sqlite',**kwargs)
+    b.reserve('baseline');assert b.total()==653_182_500
+    b.reserve('pex');assert b.total()==764_182_500
+    with pytest.raises(ValueError,match='reservation refused'):b.reserve('third')
+    b.close()
+    b=ComputeBudget(tmp_path/'retry.sqlite',**kwargs);assert b.total()==764_182_500;b.close()
+    with pytest.raises(ValueError,match='predecessor compute identity'):
+        ComputeBudget(tmp_path/'retry.sqlite',**dict(kwargs,prior_upper_bound_nano_usd=431_182_500))

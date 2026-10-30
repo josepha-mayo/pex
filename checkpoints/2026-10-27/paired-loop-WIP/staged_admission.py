@@ -1,4 +1,4 @@
-"""WIP staged admission: one independently reviewed exploratory paired19 identity.
+"""WIP staged admission: one independently reviewed exploratory paired20 identity.
 
 A candidate inspection is not authority. The new source-reviewed identity below
 still requires an independently pinned root Grant and a fresh private claim. Historical
@@ -15,11 +15,11 @@ import re
 import stat
 from urllib.parse import urlsplit
 from staged_envelope import PHASES, VM_SECONDS, WALL_PROFILE, WORKER_OUTPUT_PER_CALL, reservation_envelope
-from cumulative_compute import allocation_bounds, NEXT_PAIR_ENVELOPE
+from cumulative_compute import allocation_bounds, NEXT_PAIR_ENVELOPE, NEXT_RETRY_ENVELOPE
 
 PROVIDER_CAP = 5_000_000_000  # Fresh contextualized user approval; cumulative, never reset.
 COMPUTE_CAP = 120_000_000  # Legacy default; an exact per-run Grant pins its ceiling.
-SUPPORTED_COMPUTE_CAPS = (COMPUTE_CAP,140_000_000,250_000_000,500_000_000,NEXT_PAIR_ENVELOPE)  # Capability alone is never spend authority.
+SUPPORTED_COMPUTE_CAPS = (COMPUTE_CAP,140_000_000,250_000_000,500_000_000,NEXT_PAIR_ENVELOPE,NEXT_RETRY_ENVELOPE)  # Capability alone is never spend authority.
 WORKER_MODEL = 'deepseek-ai/DeepSeek-V4.1-Flash-1017'
 SUPERVISOR_MODEL = 'nvidia/nemotron-3-super-120b-a12b'
 REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',
@@ -71,7 +71,12 @@ REQUIRED_PREDECESSORS = frozenset(('original_workers', 'original_supervisor',
     'interrupted_staged18_config','interrupted_staged18_admission','interrupted_staged18_claim',
     'interrupted_staged18_executed_sources','interrupted_staged18_interruption',
     'interrupted_staged18_cleanup_scope','interrupted_staged18_cleanup_result',
-    'interrupted_staged18_review_denial','interrupted_staged18_recording_terminal'))
+    'interrupted_staged18_review_denial','interrupted_staged18_recording_terminal',
+    'failed_staged19_workers','failed_staged19_supervisor','failed_staged19_compute',
+    'failed_staged19_config','failed_staged19_admission','failed_staged19_claim',
+    'failed_staged19_executed_sources','failed_staged19_terminal','failed_staged19_report',
+    'failed_staged19_preservation','failed_staged19_cleanup_scope','failed_staged19_cleanup_result',
+    'failed_staged19_recording_terminal'))
 _SEAL = object()
 
 class AdmissionRefused(PermissionError): pass
@@ -137,8 +142,8 @@ class Grant:
 # Exact independently reviewed config/source pins and unused claim remain required.
 APPROVED_STAGED_GRANT = GrantGate(
     approval_ref='Sentinel_5ad659664cb48191842ac9c9406468d1',
-    run_id='stockroom-staged-pair-20261030-19',
-    config_path='/tmp/pex-paired-live-20261029/stockroom-staged-pair-20261030-19/pair.json',
+    run_id='stockroom-staged-pair-20261030-20',
+    config_path='/tmp/pex-paired-live-20261029/stockroom-staged-pair-20261030-20/pair.json',
     expires_at='2026-10-30T02:00:00+00:00')
 
 @dataclass(frozen=True, repr=False)

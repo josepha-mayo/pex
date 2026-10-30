@@ -267,3 +267,24 @@ def test_pair19_requires_pair18_uncertain_evidence(candidate,suffix):
     p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes());raw,grant=freeze()
     with pytest.raises(a.AdmissionRefused,match='complete_retained_predecessor_set_required'):
         a.inspect_candidate(raw,grant)
+
+
+@pytest.mark.parametrize('suffix',['workers','supervisor','compute','config','admission','claim',
+    'executed_sources','terminal','report','preservation','cleanup_scope','cleanup_result','recording_terminal'])
+def test_pair20_requires_pair19_timeout_evidence(candidate,suffix):
+    cfg,freeze=candidate;p=Path(cfg['predecessor']['path']);v=json.loads(p.read_bytes())
+    v['ledgers'].pop('failed_staged19_'+suffix)
+    p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes());raw,grant=freeze()
+    with pytest.raises(a.AdmissionRefused,match='complete_retained_predecessor_set_required'):
+        a.inspect_candidate(raw,grant)
+
+
+def test_pair20_unchanged_science_with_retained_pair19_timeout(candidate):
+    cfg,freeze=candidate;cfg['profile']['compute_cap']=a.NEXT_RETRY_ENVELOPE
+    p=Path(cfg['predecessor']['path']);v=json.loads(p.read_bytes())
+    v.update(provider_nano_usd=2690466600,compute_nano_usd=542182500)
+    p.write_bytes(a.canonical(v));cfg['predecessor']['sha256']=a.sha(p.read_bytes())
+    raw,grant=freeze();e=a.inspect_candidate(raw,grant)
+    assert e['provider_reserved_ceiling']==4540466600
+    assert e['compute_sequential_peak']==675870000
+    assert e['compute_final_lifetime_bound']==587557500
