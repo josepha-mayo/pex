@@ -58,7 +58,7 @@ def offline_runtime(tmp_path,monkeypatch):
     grant=r.Grant(request.session.id,'a'*64,r.sha(request.model_dump_json().encode()),'b'*64,'c'*64)
     cfg={'output_dir':str(tmp_path/request.session.id),'key':{'path':'/DO_NOT_READ','sha256':'d'*64},
          'platform_proxy':{'proxy_sha256':'e'*64,'ca_path':'/DO_NOT_READ','ca_sha256':'f'*64},'pricing_provenance_sha256':'1'*64}
-    monkeypatch.setattr(r,'inspect',lambda raw,g:(cfg,request,{}))
+    monkeypatch.setattr(r,'inspect',lambda raw,g,**kw:(cfg,request,{}))
     runtime=r.RetrospectiveRuntime(b'authored offline admission',grant)
     yield runtime
     runtime.close()
@@ -103,3 +103,22 @@ def test_changed_pin_and_nonprivate_pin_rejected(tmp_path):
     with pytest.raises(ValueError,match='pin_changed'):r.read_pin(pin)
     p.chmod(0o644)
     with pytest.raises(ValueError,match='private_pin_required'):r.read_pin(pin,private=True)
+
+
+@pytest.mark.asyncio
+async def test_failure_preserves_durable_accounting_and_does_not_retry(offline_runtime,monkeypatch):
+    runtime=offline_runtime;calls=[]
+    async def fail(runner):
+        calls.append(1)
+        runner.phase('main_before_model_and_credential')
+        runner.ledger.reserve('authored-unknown-call',runner.routes[0])
+        raise TimeoutError('AUTHORED timeout, no real provider')
+    monkeypatch.setattr(r,'review_once',fail)
+    with pytest.raises(TimeoutError):await r.execute_review(runtime)
+    assert calls==[1] and runtime.closed
+    summary=json.loads((runtime.root/'accounting-terminal.json').read_text())
+    assert summary['fresh_supervisor_charged_nano_usd']==82329600
+    assert summary['provider_cumulative_nano_usd']==r.PRIOR_PROVIDER+82329600
+    assert (runtime.root/'main_before_model_and_credential.json').exists()
+    assert (runtime.root/'review_failed.json').exists()
+    assert json.loads((runtime.root/'failure.json').read_text())['error_type']=='TimeoutError'

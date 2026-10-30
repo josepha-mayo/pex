@@ -3,6 +3,7 @@
 Reuse existing owned semantic models, tool schemas, citations and accounting.
 No E2B import/key, worker adapter/control, candidate execution or grading.
 """
+import asyncio
 import base64
 from dataclasses import dataclass
 from datetime import datetime,timezone
@@ -20,7 +21,7 @@ FRESH_NANO_USD=350_000_000
 PRIOR_PROVIDER=2_809_730_700
 PRIOR_COMPUTE=610_245_000
 ALLOWED_TOOLS={'inspect_acceptance','inspect_public_snapshot','get_goal'}
-REQUIRED_SOURCES={'retrospective_review','successor_supervisor','accounting','managed_chat','managed_tool_chat','strands_bridge','tool_protocol','stockroom_request','review','pex_protocol.actions','pex_protocol.enums','pex_protocol.goal','pex_protocol.session','pex_protocol.supervisor','pex_protocol.redaction','pex_supervisor.loop','pex_supervisor.evidence_tools','pex_supervisor.evidence_observations'}
+REQUIRED_SOURCES={'retrospective_review','successor_supervisor','accounting','managed_chat','managed_tool_chat','strands_bridge','tool_protocol','stockroom_request','review','pex_protocol.actions','pex_protocol.enums','pex_protocol.goal','pex_protocol.session','pex_protocol.supervisor','pex_protocol.redaction','pex_supervisor.loop','pex_supervisor.evidence_tools','pex_supervisor.evidence_observations','successor_admission','successor_budget','process_adapter','stockroom_task'}
 
 
 def canonical(value):return json.dumps(value,sort_keys=True,separators=(',',':'),allow_nan=False).encode()
@@ -91,7 +92,7 @@ class Grant:
     sources_sha256:str
 
 
-def inspect(config_raw,grant):
+def inspect(config_raw,grant,*,initial=True):
     """Closed before credentials, ledger, claim, transport or model construction."""
     if APPROVED_DIAGNOSTIC is None or type(grant)is not Grant or grant.run_id!=APPROVED_DIAGNOSTIC:raise PermissionError('retrospective_root_review_pending')
     if sha(config_raw)!=grant.config_sha256:raise ValueError('exact_config_required')
@@ -101,7 +102,7 @@ def inspect(config_raw,grant):
     if set(cfg)!=fields or cfg['schema']!='pex.retrospective-config.v1' or cfg['qualification']!=QUALIFICATION or cfg['run_id']!=grant.run_id:raise ValueError('diagnostic_config_scope')
     if cfg['fresh_nano_usd']!=FRESH_NANO_USD or cfg['max_attempts']!=12 or not cfg['approval_ref']:raise ValueError('diagnostic_exact_budget')
     expiry=datetime.fromisoformat(cfg['expires_utc'])
-    if expiry.tzinfo is None or (expiry-datetime.now(timezone.utc)).total_seconds()<400:raise ValueError('diagnostic_expired')
+    if expiry.tzinfo is None or (expiry-datetime.now(timezone.utc)).total_seconds()<(400 if initial else 0):raise ValueError('diagnostic_expired')
     raw=read_pin(cfg['source_checkpoint'],private=True);backup=read_pin(cfg['source_backup'],private=True)
     if raw!=backup:raise ValueError('original_backup_mismatch')
     request=build_request(raw,run_id=cfg['run_id'],created_utc=cfg['created_utc'])
@@ -156,9 +157,13 @@ class RetrospectiveRuntime(ManagedSuccessor):
             'fresh_supervisor_envelope_nano_usd':FRESH_NANO_USD,'compute_retained_nano_usd':PRIOR_COMPUTE,'VMs_created':0,
             'worker_actions_available':False,'execution_verification_available':False})
 
+    def phase(self,name):
+        if name not in {"main_before_model_and_credential","verifier_before_model_and_credential","review_complete","review_failed"}:raise ValueError("finite_diagnostic_phase")
+        write_new(self.root/(name+".json"),{"qualification":QUALIFICATION,"phase":name,"utc":datetime.now(timezone.utc).isoformat()})
+
     def revalidate(self):
         if self.closed:raise ValueError('retrospective_closed')
-        cfg,request,_=inspect(self.raw,self.grant)
+        cfg,request,_=inspect(self.raw,self.grant,initial=False)
         if cfg!=self.cfg or request.model_dump_json()!=self.request.model_dump_json():raise ValueError('retrospective_inputs_changed')
         self.ledger._validate_stored();_telemetry()
         return self.config
@@ -212,12 +217,14 @@ async def review_once(runtime):
     request=runtime.request
     result={'qualification':QUALIFICATION,'request_sha256':runtime.grant.request_sha256,'execution_verified':False,
             'worker_intervention':False,'paired_comparison':False,'benefit_claim':False}
+    runtime.phase('main_before_model_and_credential')
     planner=runtime.model_factory('planner',request,None)
     decision=(await planner.invoke_async()).structured_output
     if type(decision)is not loop.SupervisorDecision:raise ValueError('main_schema_mismatch')
     refs,valid,tools=evidence(request,planner,decision,'planner')
     result['main']={'decision':decision.model_dump(mode='json'),'receipts':list(planner.receipts),
         'observations':[o.model_dump(mode='json')for o in planner.observations],'resolved_evidence_refs':refs,'lineage_valid':valid}
+    write_new(runtime.root/'main-result.json',result['main'])
     proposal=loop._decision_proposal(decision)
     if not proposal['evidence'] and valid:proposal['evidence']=refs
     action=loop._action_from_proposal(request,proposal)
@@ -225,6 +232,7 @@ async def review_once(runtime):
     elif not valid:result['status']='main_evidence_unqualified_no_verifier'
     else:
         # Proposal is reviewed as data only. No action is executed, regardless of type.
+        runtime.phase('verifier_before_model_and_credential')
         verifier=runtime.model_factory('verifier',request,action)
         verdict=(await verifier.invoke_async()).structured_output
         if type(verdict)is not loop.IndependentVerifierDecision:raise ValueError('verifier_schema_mismatch')
@@ -235,3 +243,20 @@ async def review_once(runtime):
         result['status']='retrospective_review_complete_not_execution_verified'
     write_new(runtime.root/'review-result.json',result)
     return result
+
+
+async def execute_review(runtime):
+    """One bounded diagnostic; preserve uncertain reservations on every failure."""
+    try:
+        async with asyncio.timeout(360):
+            result=await review_once(runtime)
+        runtime.phase('review_complete')
+        return result
+    except BaseException as exc:
+        runtime.phase('review_failed')
+        write_new(runtime.root/'failure.json',{'qualification':QUALIFICATION,'error_type':type(exc).__name__,
+            'execution_verified':False,'paired_comparison':False,'benefit_claim':False,
+            'note':'Failure is diagnostic infrastructure/protocol, not task outcome. No retry.'})
+        raise
+    finally:
+        runtime.close()
