@@ -61,7 +61,7 @@ async def test_exact_builder_runner_CLI_SDK_public_and_protected_boundaries(fund
                     if req.method=='GET' and sid in scope.owned and sid not in scope.kill_attempted:
                         sdk_wire.append((req.method,req.url,req.content));now=datetime.now(timezone.utc)
                         return reply({'templateID':'rki5dems9wqfm4r03t7g','sandboxID':sid,'clientID':'authored',
-                            'startedAt':now.isoformat(),'endAt':(now+timedelta(seconds=330)).isoformat(),
+                            'startedAt':now.isoformat(),'endAt':(now+timedelta(seconds=accounting.cfg['profile']['vm_seconds'])).isoformat(),
                             'envdVersion':'0.5.7','cpuCount':2,'memoryMB':512,'diskSizeMB':1024,'state':'running'})
                     return await inner.execute(req)
                 arm=next(c for c,sid in scope.owned_by_arm.items() if sid in (u.hostname or '') or sid==req.headers.get('e2b-sandbox-id'))
@@ -101,11 +101,13 @@ async def test_exact_builder_runner_CLI_SDK_public_and_protected_boundaries(fund
                     command=shlex.split(body['process']['args'][-1])[-1]
                     output='AUTHORED command receipt';code=0
                     if command.startswith('python3 -I -c ') and 'pex.public-setup.v1' in command:
-                        expected=json.loads(shlex.split(command)[-1])
+                        parts=shlex.split(command)
+                        expected=json.loads(parts[-2]);runtime=json.loads(parts[-1])
+                        assert runtime==accounting.cfg['profile']['runtime_contract']
                         assert set(expected)==set(FILES)
                         import hashlib
                         assert expected=={n:hashlib.sha256(files[(arm,ROOT+'/'+n)]).hexdigest() for n in FILES}
-                        output=json.dumps({'schema':'pex.public-setup.v1','files':expected},sort_keys=True,separators=(',',':'))+'\n'
+                        output=json.dumps({'schema':'pex.public-setup.v1','files':expected,'runtime':runtime},sort_keys=True,separators=(',',':'))+'\n'
                     elif 'pex.stockroom-export.v1' in command:
                         output=json.dumps({'schema':'pex.stockroom-export.v1','files':{
                             n:base64.b64encode(files[(arm,ROOT+'/'+n)]).decode() for n in FILES}})
@@ -142,6 +144,7 @@ async def test_exact_builder_runner_CLI_SDK_public_and_protected_boundaries(fund
             n=len(workers)+1;final=n in (8,12,20,24)
             assert self.headers.get('Authorization')=='Bearer AUTHORED-NOT-A-CREDENTIAL'
             assert (body.get('tool_choice')=='none')==final
+            assert body['max_completion_tokens']==accounting.cfg['profile']['worker_output_per_call']==16384
             assert all(json.dumps(task[n].decode())[1:-1] not in json.dumps(body) for n in PROTECTED)
             workers.append(body)
             if final:delta={'role':'assistant','content':'Authored forced phase finalization'};finish='stop'

@@ -28,7 +28,7 @@ from staged_review import staged_request_builder
 from review import OwnedReview
 from stockroom_request import make_public_request
 from stockroom_task import load_package
-from cumulative_compute import VERIFIED_FULL_LIFETIME
+from cumulative_compute import allocation_bounds
 
 ROOT=Path(__file__).resolve().parents[1]
 TASK=ROOT/'pex-hard-task-candidate-20261027-1421'
@@ -46,7 +46,7 @@ async def test_closed_funded_CLI_SDK_and_full_supervisor(funded,bound,monkeypatc
                 if req.method=='GET' and path.startswith('/sandboxes/') and sid not in scope.kill_attempted:
                     sdk_wire.append((req.method,req.url,req.content));now=datetime.now(timezone.utc)
                     value={'templateID':'rki5dems9wqfm4r03t7g','sandboxID':sid,'clientID':'authored',
-                        'startedAt':now.isoformat(),'endAt':(now+timedelta(seconds=330)).isoformat(),
+                        'startedAt':now.isoformat(),'endAt':(now+timedelta(seconds=accounting.cfg['profile']['vm_seconds'])).isoformat(),
                         'envdVersion':'0.5.7','cpuCount':2,'memoryMB':512,'diskSizeMB':1024,'state':'running'}
                     return Response(status=200,headers=Headers({'content-type':'application/json'}),content=json.dumps(value).encode())
                 return await inner.execute(req)
@@ -58,6 +58,7 @@ async def test_closed_funded_CLI_SDK_and_full_supervisor(funded,bound,monkeypatc
             n=len(worker_wire)+1;final=n in (8,12,20,24)
             assert self.headers.get('Authorization')=='Bearer SYNTHETIC-COMPOSED-ONLY'
             assert (body.get('tool_choice')=='none')==final
+            assert body['max_completion_tokens']==accounting.cfg['profile']['worker_output_per_call']==16384
             worker_wire.append(n)
             if final:delta={'role':'assistant','content':'Authored forced phase finalization'};finish='stop'
             else:
@@ -81,7 +82,7 @@ async def test_closed_funded_CLI_SDK_and_full_supervisor(funded,bound,monkeypatc
     inner=cw.NebiusCLIWorker(remotes={'baseline':None,'pex':None},private_root=tmp_path/'cli',
         binary=ROOT/'opencode-qualification-20261027/install/node_modules/@opencode/cli-linux-x64/bin/opencode',
         modules=ROOT/'opencode-qualification-20261027/mock/node_modules',key_path=key,pool=SimpleNamespace(close=lambda:None),
-        activate=True,funding={c:PhaseFunding(l) for c,l in accounting.workers.items()},authored=True,
+        activate=True,output_per_call=accounting.cfg['profile']['worker_output_per_call'],funding={c:PhaseFunding(l) for c,l in accounting.workers.items()},authored=True,
         public_check_command='python -m unittest discover -s tests -v',task_profile='stockroom-v1')
     worker=StagedWorker(inner,life)
     import managed_chat
@@ -122,7 +123,7 @@ async def test_closed_funded_CLI_SDK_and_full_supervisor(funded,bound,monkeypatc
         assert summary['worker_fresh_nano_usd']['baseline']==summary['worker_fresh_nano_usd']['pex']>0
         assert summary['supervisor_wire_attempts']==4 and summary['supervisor_fresh_overhead_nano_usd']>0
         assert summary['provider_cumulative_nano_usd']==summary['prior_provider_nano_usd']+sum(summary['worker_fresh_nano_usd'].values())+summary['supervisor_fresh_overhead_nano_usd']
-        assert summary['compute_cumulative_bound_nano_usd']==100+2*VERIFIED_FULL_LIFETIME
+        assert summary['compute_cumulative_bound_nano_usd']==100+2*allocation_bounds(accounting.cfg['profile']['vm_seconds'])[1]
         assert report['real_inference_calls']==0 and report['pex_lift'] is None
     finally:
         await worker.cleanup();supervisor.close();server.shutdown();server.server_close()
