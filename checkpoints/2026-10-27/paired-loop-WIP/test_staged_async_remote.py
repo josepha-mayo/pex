@@ -192,13 +192,15 @@ async def test_completed_read_ConnectTimeout_is_visible_then_same_VM_read_recove
 
 
 @pytest.mark.asyncio
-async def test_identical_ConnectTimeout_on_write_still_poisons():
+async def test_buffered_ConnectTimeout_exhaustion_retains_clean_scope():
     import httpx
     async def write(*a,**kw):raise httpx.ConnectTimeout('AUTHORED')
     remote=BoundedAsyncRemote(SimpleNamespace(files=SimpleNamespace(write=write)),vm_deadline=time.monotonic()+2)
     remote.set_scope_deadline(time.monotonic()+1)
     with pytest.raises(BoundedRemoteError):await asyncio.to_thread(remote.write,'safe.txt','data')
-    assert remote.poisoned and remote.diagnostics['completed_read_connect_timeouts']==0
+    assert not remote.poisoned and remote.diagnostics['completed_read_connect_timeouts']==0
+    assert remote.diagnostics['completed_file_connect_timeouts']==1
+    assert remote.diagnostics['buffered_file_connect_retries']==1
     await remote.end_scope()
 
 
@@ -210,6 +212,8 @@ async def test_read_cancellation_deadline_is_not_completed_timeout_exemption():
     with pytest.raises(BoundedRemoteError):await asyncio.to_thread(remote.read,'safe.txt')
     await remote.end_scope()
     assert remote.poisoned and remote.diagnostics['completed_read_connect_timeouts']==0
+    assert remote.diagnostics['completed_file_connect_timeouts']==0
+    assert remote.diagnostics['buffered_file_connect_retries']==0
 
 
 @pytest.mark.asyncio
@@ -226,3 +230,50 @@ async def test_exact_private_batch_task_prefix_actual_guard(task):
             remote._write_absolute_files({name:b'AUTHORED'})
     with pytest.raises(ValueError,match='one_evaluation_snapshot_required'):
         remote._write_absolute_files({root+'/candidate/a.py':b'AUTHORED',root.replace('a'*32,'b'*32)+'/candidate/a.py':b'AUTHORED'})
+
+
+@pytest.mark.asyncio
+async def test_buffered_retry_cancellation_never_extends_stage_or_becomes_clean():
+    import httpx
+    entered=asyncio.Event();calls=[]
+    async def write(*args,**kw):
+        calls.append(kw['request_timeout'])
+        if len(calls)==1:raise httpx.ConnectTimeout('AUTHORED predispatch')
+        entered.set();await asyncio.Event().wait()
+    remote=BoundedAsyncRemote(SimpleNamespace(files=SimpleNamespace(write=write)),vm_deadline=time.monotonic()+1)
+    deadline=time.monotonic()+.04;remote.set_scope_deadline(deadline)
+    with pytest.raises(BoundedRemoteError):await asyncio.to_thread(remote.write,'safe.txt','AUTHORED')
+    await remote.end_scope()
+    assert entered.is_set() and len(calls)==2 and calls[1]<=calls[0] and remote.poisoned
+    assert remote.vm_deadline>deadline
+    with pytest.raises(BoundedRemoteError):remote.set_scope_deadline(time.monotonic()+.2)
+
+@pytest.mark.asyncio
+async def test_generic_command_connect_timeout_is_not_retried_or_unpoisoned():
+    import httpx
+    calls=[]
+    async def run(*args,**kw):calls.append(args);raise httpx.ConnectTimeout('AUTHORED')
+    remote=BoundedAsyncRemote(SimpleNamespace(commands=SimpleNamespace(run=run)),vm_deadline=time.monotonic()+1)
+    remote.set_scope_deadline(time.monotonic()+.5)
+    with pytest.raises(BoundedRemoteError):await asyncio.to_thread(remote.run,'AUTHORED',.3)
+    assert len(calls)==1 and remote.poisoned
+    await remote.end_scope()
+
+
+@pytest.mark.asyncio
+async def test_buffered_batch_retry_uses_same_frozen_path_and_bytes():
+    import httpx
+    source={'/tmp/pex-asyncpool-evaluation-'+'a'*32+'/candidate/a.py':b'AUTHORED original'}
+    attempts=[]
+    async def write_files(entries,**kw):
+        attempts.append([dict(e)for e in entries])
+        if len(attempts)==1:
+            source.clear();entries[0]['path']='/different';entries[0]['data']=b'changed'
+            raise httpx.ConnectTimeout('AUTHORED predispatch')
+        return True
+    remote=BoundedAsyncRemote(SimpleNamespace(files=SimpleNamespace(write_files=write_files)),vm_deadline=time.monotonic()+1,evaluation_task='asyncpool')
+    remote.set_scope_deadline(time.monotonic()+.5)
+    await asyncio.to_thread(remote._write_absolute_files,source)
+    assert len(attempts)==2 and attempts[0]==attempts[1]
+    assert not remote.poisoned
+    await remote.end_scope()

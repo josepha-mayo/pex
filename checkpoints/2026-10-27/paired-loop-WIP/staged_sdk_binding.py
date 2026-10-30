@@ -28,7 +28,8 @@ from e2b_transport import BASE_TEMPLATE
 
 SDK_MODULES = ('e2b.api.client_async','e2b.envd.client_async','e2b.connection_config',
     'e2b.sandbox_async.main','e2b.sandbox_async.sandbox_api','e2b.retry',
-    'e2b.api.client.client','pyqwest','pyqwest.httpx')
+    'e2b.api.client.client','pyqwest','pyqwest.httpx',
+    'pyqwest.httpx._transport','pyqwest._errors','e2b.sandbox_async.filesystem.filesystem','e2b.envd.api')
 SDK_VERSIONS = {'e2b':'2.61.0','connectrpc':'0.12.1','pyqwest':'0.12.0','httpx':'0.28.1'}
 _ACTIVE = None
 
@@ -191,7 +192,7 @@ class SDKTransportBinding:
             ca=read_pin(self.cfg['network']['ca'],limit=4*1024*1024)
             inner=HTTPTransport(tls_ca_cert=ca,tls_include_system_certs=False,
                 proxy=Proxy(os.environ['HTTPS_PROXY'],no_proxy=''),http_version=HTTPVersion.HTTP1,
-                follow_redirects=False,connect_timeout=15,read_timeout=read_timeout,
+                follow_redirects=False,connect_timeout=30,read_timeout=read_timeout,
                 pool_max_idle_per_host=0,max_connections_per_address=2,enable_otel=False)
             owner=self
             class Guard:

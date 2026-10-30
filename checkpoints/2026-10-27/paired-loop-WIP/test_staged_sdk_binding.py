@@ -95,6 +95,24 @@ def bound(candidate,monkeypatch,tmp_path,request):
                 import httpx
                 behavior['file_timeout_injected']=True
                 raise httpx.ConnectTimeout('AUTHORED')
+            if p=='/files' and request.method=='POST' and behavior.get('buffered_write_case'):
+                from email.parser import BytesParser
+                content_type=request.headers.get('content-type')
+                assert content_type.startswith('multipart/form-data;')
+                raw=request.content
+                if not isinstance(raw,bytes):raw=b''.join([chunk async for chunk in raw])
+                message=BytesParser().parsebytes(('Content-Type: '+content_type+'\r\nMIME-Version: 1.0\r\n\r\n').encode()+raw)
+                parts=[(part.get_param('name',header='content-disposition'),part.get_filename(),part.get_payload(decode=True)) for part in message.get_payload()]
+                behavior.setdefault('multipart_attempts',[]).append((request.url,parts))
+                behavior['write_attempts']=behavior.get('write_attempts',0)+1
+                case=behavior['buffered_write_case']
+                if case=='connect_always' or (case=='connect_once' and behavior['write_attempts']==1):
+                    from pyqwest import ConnectTimeout
+                    raise ConnectTimeout('AUTHORED predispatch')
+                if case=='read_timeout':raise TimeoutError('AUTHORED afterdispatch ambiguity')
+                return Response(status=200,headers=Headers({'content-type':'application/json'}),content=b'[{"name":"safe.txt","path":"/home/user/pex-task/safe.txt","type":"file"}]')
+            if p=='/health' and behavior.get('buffered_write_case'):
+                return Response(status=200,content=b'{}')
             if p=='/health':return Response(status=502,content=b'{"message":"sandbox not found"}')
             if p.startswith('/sandboxes/'):
                 if mode=='ambiguous_info':return Response(status=502,content=b'{"message":"unreachable"}')
@@ -451,3 +469,37 @@ async def test_actual_SDK_completed_file_connect_timeout_does_not_block_next_rea
         assert await asyncio.to_thread(remote.read,'safe.txt')=='authored file'
         assert len(scope.creates)==1
         await remote.end_scope();await remote.close();assert remote.closed
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('bound',['composition-asyncpool'],indirect=True)
+@pytest.mark.parametrize('batch',[False,True])
+@pytest.mark.parametrize('case',['connect_once','connect_always','read_timeout'])
+async def test_actual_SDK_buffered_write_predispatch_only_retry(bound,batch,case):
+    import time
+    from staged_async_remote import BoundedAsyncRemote,BoundedRemoteError
+    scope,compute,wire,pools,behavior=bound
+    with scope:
+        sdk=await create(scope,compute);behavior['buffered_write_case']=case
+        remote=BoundedAsyncRemote(sdk,vm_deadline=time.monotonic()+5,evaluation_task='asyncpool')
+        deadline=time.monotonic()+3;remote.set_scope_deadline(deadline)
+        operation=(lambda:remote._write_absolute_files({'/tmp/pex-asyncpool-evaluation-'+'a'*32+'/candidate/safe.txt':b'AUTHORED'})) if batch else (lambda:remote.write('safe.txt','AUTHORED'))
+        if case=='connect_once':await asyncio.to_thread(operation)
+        else:
+            with pytest.raises(BoundedRemoteError):await asyncio.to_thread(operation)
+        assert behavior['write_attempts']==(1 if case=='read_timeout' else 2)
+        assert all(x==behavior['multipart_attempts'][0]for x in behavior['multipart_attempts'])
+        assert behavior['multipart_attempts'][0][1][0][2]==b'AUTHORED'
+        expected_path=('/tmp/pex-asyncpool-evaluation-'+'a'*32+'/candidate/safe.txt') if batch else '/home/user/pex-task/safe.txt'
+        assert expected_path in str(behavior['multipart_attempts'][0])
+        assert remote.poisoned==(case=='read_timeout')
+        assert remote.deadline==deadline and len(scope.creates)==1
+        assert remote.diagnostics['buffered_file_connect_retries']==(0 if case=='read_timeout' else 1)
+        assert all(p['connect_timeout']==30 for p in pools)
+        await remote.end_scope()
+        if not remote.poisoned:
+            remote.set_scope_deadline(time.monotonic()+1)
+            observed=await asyncio.to_thread(remote.run,'printf AUTHORED',1)
+            assert observed['exit_code']==0
+            await remote.end_scope()
+        await remote.close();assert remote.closed

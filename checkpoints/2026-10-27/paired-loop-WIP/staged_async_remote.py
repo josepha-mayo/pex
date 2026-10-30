@@ -48,7 +48,7 @@ class BoundedAsyncRemote:
         self.deadline=None;self.poisoned=False;self.closed=False;self.active=set()
         self.cancellation_unconfirmed=False;self.cleanup_evidence={}
         self.diagnostics={'exception_types':[],'scope_refusals':[],'acknowledged_terminal_commands':0,
-            'unacknowledged_process_kill_attempts':0,'completed_read_connect_timeouts':0,'diagnostic_overflow':False}
+            'unacknowledged_process_kill_attempts':0,'completed_read_connect_timeouts':0,'buffered_file_connect_retries':0,'completed_file_connect_timeouts':0,'diagnostic_overflow':False}
         self._sandbox=SimpleNamespace(files=SimpleNamespace(make_dir=self._make_dir,write=self._write_absolute,write_files=self._write_absolute_files))
 
     def _exception(self,operation,error):
@@ -84,7 +84,7 @@ class BoundedAsyncRemote:
         task.add_done_callback(done)
         return task
 
-    async def _invoke(self, factory, *, read_only=False):
+    async def _invoke(self, factory, *, read_only=False, predispatch_file=False):
         # wait_for waits for cancellation to finish and therefore is not a hard
         # return bound when an SDK suppresses cancellation. Track the underlying
         # task separately and retain ambiguity instead of awaiting it forever.
@@ -95,25 +95,25 @@ class BoundedAsyncRemote:
             if not done: raise TimeoutError('SDK_stage_deadline')
             return task.result()
         except BaseException as error:
-            recoverable=(read_only and task.done() and not task.cancelled()
-                and isinstance(error,httpx.ConnectTimeout))
-            self._exception('completed_read_connect_timeout' if recoverable else 'sdk_await',error)
-            if recoverable:self.diagnostics['completed_read_connect_timeouts']+=1
+            recoverable=((read_only or predispatch_file) and task.done() and not task.cancelled()
+                and task.cancelling()==0 and isinstance(error,httpx.ConnectTimeout))
+            self._exception(('completed_file_connect_timeout' if predispatch_file else 'completed_read_connect_timeout') if recoverable else 'sdk_await',error)
+            if recoverable:self.diagnostics['completed_file_connect_timeouts' if predispatch_file else 'completed_read_connect_timeouts']+=1
             else:task.cancel();self.poisoned=True
             raise
 
-    def _call(self, factory, *, read_only=False):
+    def _call(self, factory, *, read_only=False, predispatch_file=False):
         if threading.get_ident()==self.owner_thread:
             raise BoundedRemoteError('blocking_SDK_bridge_on_owner_loop_forbidden')
         timeout=self.remaining()
-        future=asyncio.run_coroutine_threadsafe(self._invoke(factory,read_only=read_only),self.loop)
+        future=asyncio.run_coroutine_threadsafe(self._invoke(factory,read_only=read_only,predispatch_file=predispatch_file),self.loop)
         try:
             return future.result(timeout=timeout)
         except BaseException as error:
-            recoverable=(read_only and future.done() and not future.cancelled()
+            recoverable=((read_only or predispatch_file) and future.done() and not future.cancelled()
                 and isinstance(error,httpx.ConnectTimeout) and not self.poisoned)
-            self._exception('completed_read_connect_timeout_bridge' if recoverable else 'bridge_wait',error)
-            if recoverable:raise BoundedRemoteError('read_only_connection_timeout_no_state_change') from None
+            self._exception(('completed_file_connect_timeout_bridge' if predispatch_file else 'completed_read_connect_timeout_bridge') if recoverable else 'bridge_wait',error)
+            if recoverable:raise BoundedRemoteError('buffered_file_connect_timeout_before_dispatch' if predispatch_file else 'read_only_connection_timeout_no_state_change') from None
             future.cancel();self.poisoned=True
             raise BoundedRemoteError('remote_operation_inconclusive') from None
 
@@ -182,10 +182,24 @@ class BoundedAsyncRemote:
                 await reader.aclose()
         return self._call(read_all,read_only=True)
 
+    def _buffered_file_call(self, factory):
+        # Exact pinned E2B multipart str/bytes upload only. pyqwest ConnectTimeout
+        # is pre-connection/pre-request; ReadTimeout/WriteError/cancellation are
+        # NOT safe to replay. No command or VM-create operation uses this seam.
+        async def bounded_retry():
+            for attempt in range(2):
+                try:return await factory()
+                except httpx.ConnectTimeout:
+                    if asyncio.current_task().cancelling():raise asyncio.CancelledError
+                    if attempt:raise
+                    self.remaining()  # Same absolute scope, never renew its time.
+                    self.diagnostics['buffered_file_connect_retries']+=1
+        return self._call(bounded_retry,predispatch_file=True)
+
     def _write_absolute(self, name, content, *, user='user', request_timeout=15):
-        if user!='user' or not isinstance(content,(str,bytes)) or len(content.encode() if isinstance(content,str) else content)>MAX_BYTES:
+        if user!='user' or type(name)is not str or type(content) not in (str,bytes) or len(content.encode() if type(content)is str else content)>MAX_BYTES:
             raise ValueError('bounded_user_file_required')
-        return self._call(lambda:self._sdk.files.write(name,content,user=user,request_timeout=min(15,self.remaining())))
+        return self._buffered_file_call(lambda:self._sdk.files.write(name,content,user=user,request_timeout=min(30,self.remaining())))
 
     def _make_dir(self, name, *, user='user', request_timeout=15):
         if user!='user': raise ValueError('unprivileged_user_required')
@@ -195,8 +209,9 @@ class BoundedAsyncRemote:
         if any(type(e['data']) is not bytes or len(e['data'])>MAX_BYTES for e in entries):
             raise ValueError('bounded_batch_bytes_required')
         if sum(len(e['data']) for e in entries)>MAX_BYTES:raise ValueError('batch_size_bound')
-        return self._call(lambda:self._sdk.files.write_files(entries,user='user',
-            request_timeout=min(15,self.remaining())))
+        frozen=tuple((e['path'],e['data']) for e in entries)
+        return self._buffered_file_call(lambda:self._sdk.files.write_files([{'path':p,'data':b} for p,b in frozen],user='user',
+            request_timeout=min(30,self.remaining())))
 
     def _write_absolute_files(self,files,*,user='user',request_timeout=15):
         # Private post-stop grader seam, never exposed by worker MCP tools.
