@@ -1,0 +1,6 @@
+Repair the multi-file wirepool client described in TASK.md. This is a clean-room
+Python standard-library task, not the earlier asyncpool benchmark. Keep supplied
+specification/tests unchanged; repair wirepool/ and add your own tests if useful.
+Read the whole contract: codec, pool handoff/factory accounting, cancellation,
+pipeline draining, and shutdown interact. Run the public unittest command.
+Report only work and tests actually completed. No baseline outcome is prescribed.

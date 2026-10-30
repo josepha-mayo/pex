@@ -1,0 +1,63 @@
+{
+  "schema": "pex.judge-kit.sanitized-evidence.v1",
+  "generated_utc": "2026-10-30T16:37:00Z",
+  "claim": "No verified quality-lift claim",
+  "records": [
+    {
+      "id": "asyncpool13",
+      "kind": "Real inference",
+      "title": "Asyncpool \u2022 run 13",
+      "utc": "2026-10-30",
+      "status": "Incomplete comparison",
+      "baseline": "8 / 8 protected checks passed",
+      "pex": "8 worker calls; 2 real NVIDIA supervisor responses",
+      "result": "Supervisor final tool arguments failed strict schema validation. No verifier approval, correction or final PEX grade was produced. Baseline success is not evidence of supervisor benefit.",
+      "source_commit": "42964cce821e9d321e188bb2879a76c31291f1b8",
+      "source_qualification": "This commit is the subsequent schema-feedback repair, not the executed run source. Offline repair tests do not change the historical outcome.",
+      "sha256": "3d39537e9b4fedc0984fcd86d0f7b8c4ca0cb7752f9d0359a8aa444548dfa0b2",
+      "hash_subject": "Subsequent managed_tool_chat source; NOT a raw run receipt"
+    },
+    {
+      "id": "wirepool04",
+      "kind": "Real inference",
+      "title": "Wirepool \u2022 run 04",
+      "utc": "2026-10-30T15:49:26Z",
+      "status": "Interrupted",
+      "baseline": "3 settled baseline calls",
+      "pex": "Not reached",
+      "result": "Execution was interrupted before phase-0 export, grading, monitor or comparison. The owned sandbox was stopped; this is not a task-failure or quality-lift result.",
+      "source_commit": "08aa10d9525faff1128342af4ddac1e36129e2ee",
+      "source_qualification": "Executed source gate checkpoint; task and source were frozen before dispatch.",
+      "sha256": "292fcff37e615a07ac8452cf81d33cc52ca15a5bbfadad19edc9d63bf2a9a395",
+      "hash_subject": "Frozen run configuration SHA256; configuration contents are deliberately not included"
+    },
+    {
+      "id": "reference",
+      "kind": "Local authored checks",
+      "title": "Wirepool \u2022 oracle qualification",
+      "utc": "2026-10-30",
+      "status": "Locally qualified",
+      "baseline": "Authored reference: 16 / 16 checks",
+      "pex": "10 / 10 authored mutants rejected",
+      "result": "These are author-written reference and mutation checks, not agent inference, not a benchmark win. Run the bundled Python command to reproduce locally. No generated worker candidate is executed by this kit.",
+      "source_commit": "9f6dc7c748f52221b26d42fd63c34304179f278f",
+      "source_qualification": "Original qualification used Python 3.12.14. Your runtime is reported when rerun.",
+      "sha256": "65763af6bd289cfc7bcffe8f855ab5b0f748cc234a0f296345a57738ad83d733",
+      "hash_subject": "Frozen task MANIFEST.json"
+    },
+    {
+      "id": "protocol",
+      "kind": "Local authored checks",
+      "title": "Strict protocol \u2022 schema feedback",
+      "utc": "2026-10-30",
+      "status": "Offline tests passed",
+      "baseline": "102 targeted bridge tests passed",
+      "pex": "No live qualification inferred",
+      "result": "Malformed tool responses remain rejected. A bounded model re-emission can receive schema feedback without authored corrections or relaxed evidence guards. These are offline fixture tests, separate from live results.",
+      "source_commit": "42964cce821e9d321e188bb2879a76c31291f1b8",
+      "source_qualification": "Independently reviewed local test result; test dependencies are not bundled in this no-install inspector.",
+      "sha256": "38bc483b946c7b9a7e765546e4ad1c51d0761ca6edf5352125d945d808bd4c1a",
+      "hash_subject": "Reviewed schema-feedback regression test source"
+    }
+  ]
+}
