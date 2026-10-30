@@ -158,7 +158,12 @@ APPROVED_ASYNCPOOL_GRANT=GrantGate(
     config_path='/tmp/pex-paired-live-20261030/asyncpool-staged-pair-20261030-13/pair.json',
     expires_at='2026-10-30T16:00:00+00:00')
 
-APPROVED_WIREPOOL_GRANT=None  # New task, default closed before all reads.
+# Fresh exact task/run gate; independent literal Grant and recording still required.
+APPROVED_WIREPOOL_GRANT=GrantGate(
+    approval_ref='Sentinel_f5c45ad501c08191a3425bfbf14bd618',
+    run_id='wirepool-staged-pair-20261030-01',
+    config_path='/tmp/pex-paired-live-20261030/wirepool-staged-pair-20261030-01/pair.json',
+    expires_at='2026-10-30T16:40:00+00:00')
 
 def task_gate(grant):
     if type(grant)is Grant and grant.run_id.startswith('wirepool-staged-pair-'):
