@@ -16,6 +16,7 @@ import time
 from record_support import HEX, RESERVE, canonical, sha, utc, ENUMS
 from safe_feed_writer import SafeFeedWriter
 from reviewed_excerpts import drain_approved
+from grade_summaries import final_grade_records
 
 STATES = {'settled_raw_wire', 'uncertain', 'reserved_uncertain'}
 WORKER_RESERVE = 1048576 * 300 + 4096 * 1200
@@ -296,7 +297,16 @@ def run(args):
                 measurements += [dict(arm=arm, **metric) for arm, metric in workers.items()]
                 if supervisor: measurements.append(dict(arm='pex', **supervisor))
             terminal = terminal_record(root, args.run_id, config_sha)
-            if terminal: proof['terminal'] = terminal[1]
+            grades = []
+            if terminal:
+                proof['terminal'] = terminal[1]
+                if getattr(args, 'final_grades', False):
+                    try:
+                        grades, grade_proof = final_grade_records(root, run_id=args.run_id,
+                            config_sha=config_sha, terminal_proof=terminal[1])
+                        proof['final_grade_verification'] = grade_proof
+                    except (ValueError, OSError, KeyError, TypeError, UnicodeError, RecursionError):
+                        proof['final_grade_verification'] = {'withheld': 'unavailable_or_invalid'}
             fingerprint = sha(canonical(proof).encode())
             if fingerprint != previous:
                 if index >= 1800: raise ValueError('snapshot_bound')
@@ -310,6 +320,12 @@ def run(args):
                 for fields in measurements:
                     writer.emit(event='measurement', qualification='live_current_run_status', source_sha256=source_sha, **fields)
                 if terminal:
+                    # Final receipts are observed before the terminal event closes
+                    # this feed. Never reopen/rewrite it for late grade evidence.
+                    for fields in grades:
+                        writer.emit(event='grade_summary',
+                            qualification='authored_fixture_grade' if writer.authored_fixture else 'live_current_run_grade_with_limits',
+                            source_sha256=source_sha, **fields)
                     writer.emit(event='run_terminal', qualification='terminal_recorded_not_publication_approved',
                                 source_sha256=source_sha, **terminal[0])
                     return 0
@@ -335,6 +351,7 @@ def main():
     parser.add_argument('--display-prefix', help='Explicit shared native display prefix; source artifacts remain under run-prefix')
     parser.add_argument('--config-sha256', required=True); parser.add_argument('--follower-start', required=True)
     parser.add_argument('--max-seconds', type=int, default=1800)
+    parser.add_argument('--final-grades', action='store_true', help='Opt-in exact hash-bound final grade summaries; no raw test output or lift inference')
     parser.add_argument('--reviewed-excerpts', action='store_true', help='Opt-in root-reviewed current worker wire selections; replay refused')
     args = parser.parse_args()
     if not 1 <= args.max_seconds <= 3600: parser.error('max-seconds must be 1..3600')

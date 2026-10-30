@@ -24,6 +24,7 @@ import unicodedata
 
 SCHEMA = 'pex-safe-display/v1'
 TITLE = 'PEX Live Evidence'
+SIMULATED_TITLE = 'PEX Evidence - SIMULATED'
 MAX_LINE = 32768
 MAX_TRACE = 2 * 1024 * 1024
 MAX_VIDEO = 30 * 1024 * 1024
@@ -40,7 +41,7 @@ ENUMS = {
     'supervisor_role': {'planner','verifier'},
     'event': {'setup', 'waiting', 'admitted', 'arm_started', 'phase_started',
               'worker_response', 'supervisor_response', 'arm_terminal',
-              'run_terminal', 'resource_failure', 'cleanup', 'measurement'},
+              'run_terminal', 'resource_failure', 'cleanup', 'measurement', 'grade_summary'},
     'phase': {'waiting_for_admission', 'setup', 'baseline_phase1', 'baseline_phase2',
               'pex_phase1', 'review', 'pex_phase2', 'cleanup', 'terminal'},
     'arm': {'baseline', 'pex'},
@@ -52,11 +53,17 @@ ENUMS = {
     'failure_category': {'none', 'platform_denied', 'quota', 'resource', 'transport',
                          'admission', 'budget', 'timeout', 'protocol', 'cleanup', 'unknown',
                          'setup_infrastructure','observation_infrastructure','supervisor_infrastructure'},
-    'qualification': {'setup_only_no_inference', 'live_current_run_status',
+    'task_id': {'asyncpool_v1_cancel_safe_dual_limit', 'stockroom_v3_atomic_reservations'},
+    'grade_outcome': {'complete_all_pass', 'complete_some_failed', 'candidate_import_failure', 'grader_import_infrastructure'},
+    'public_test_status': {'passed', 'failed'},
+    'grade_limits': {'same_vm_not_adversarially_hardened'},
+    'qualification': {'live_current_run_grade_with_limits', 'authored_fixture_grade', 'setup_only_no_inference', 'live_current_run_status',
                       'live_current_run_reviewed_excerpt', 'terminal_inconclusive',
                       'terminal_recorded_not_publication_approved','authored_fixture_reviewed_excerpt'},
 }
-ALLOWED = {'schema', 'run_id', 'seq', 'at_utc', 'model_excerpt', 'reviewed_utc', 'source_captured_utc', 'supervisor_seconds'} | COUNTS | BOOLS | HASHES | set(ENUMS)
+GRADE_COUNTS = {'expected_checks', 'executed_checks', 'passed_checks', 'expected_public_checks'}
+GRADE_FIELDS = GRADE_COUNTS | {'task_id', 'grade_outcome', 'public_test_status', 'grade_limits'}
+ALLOWED = {'schema', 'run_id', 'seq', 'at_utc', 'model_excerpt', 'reviewed_utc', 'source_captured_utc', 'supervisor_seconds'} | COUNTS | BOOLS | HASHES | set(ENUMS) | GRADE_COUNTS
 REQUIRED = {'schema', 'run_id', 'seq', 'at_utc', 'event', 'qualification', 'source_sha256'}
 
 
@@ -140,6 +147,26 @@ def validate(record, *, run_id, expected_seq, not_before, now, approvals=frozens
     if 'supervisor_seconds' in record and (type(record['supervisor_seconds']) not in (int, float)
             or not math.isfinite(record['supervisor_seconds']) or not 0 <= record['supervisor_seconds'] <= 86400):
         raise ValueError('invalid_duration')
+    if record['event'] == 'grade_summary':
+        required_grade = GRADE_FIELDS - {'passed_checks'}
+        if (not required_grade <= set(record) or record.get('arm') not in {'baseline', 'pex'}
+                or record['qualification'] != ('authored_fixture_grade' if authored_fixture else 'live_current_run_grade_with_limits')
+                or 'model_excerpt' in record):
+            raise ValueError('grade_summary_fields')
+        expected, public_expected = {'asyncpool_v1_cancel_safe_dual_limit': (8, 4),
+            'stockroom_v3_atomic_reservations': (40, 6)}[record['task_id']]
+        if (any(type(record[k]) is not int or not 0 <= record[k] <= 40 for k in GRADE_COUNTS & record.keys())
+                or record['expected_checks'] != expected or record['expected_public_checks'] != public_expected):
+            raise ValueError('grade_summary_counts')
+        if record['grade_outcome'].startswith('complete_'):
+            if ('passed_checks' not in record or record['executed_checks'] != expected
+                    or record['passed_checks'] > expected
+                    or (record['passed_checks'] == expected) != (record['grade_outcome'] == 'complete_all_pass')):
+                raise ValueError('complete_grade_summary_counts')
+        elif expected != 8 or record['executed_checks'] != 0 or 'passed_checks' in record:
+            raise ValueError('import_grade_not_measured')
+    elif GRADE_FIELDS & set(record) or record['qualification'] in {'authored_fixture_grade', 'live_current_run_grade_with_limits'}:
+        raise ValueError('grade_fields_wrong_event')
     if 'model_excerpt' in record:
         excerpt = record['model_excerpt']
         if (type(excerpt) is not str or not 1 <= len(excerpt) <= 4000
@@ -181,12 +208,12 @@ class EvidenceDisplay:
         self.latest=dict(record)
         if record.get('arm') in ('baseline','pex'):
             self.arms.setdefault(record['arm'],{}).update({k:v for k,v in record.items()
-                if k in COUNTS | {'event','at_utc','terminal'}})
+                if k in COUNTS | GRADE_FIELDS | {'event','at_utc','terminal'}})
         if 'model_excerpt' in record:self.excerpt=dict(record)
         return self.render()
 
     def render(self):
-        row=self.latest or {};lines=[TITLE,
+        row=self.latest or {};lines=[SIMULATED_TITLE if self.fixture else TITLE,
             'SIMULATED / AUTHORED FIXTURE - NOT REAL INFERENCE' if self.fixture else 'LIVE CURRENT RUN - verified feed, not full model output',
             'Run: '+self.run_id,
             'Latest feed UTC: '+row.get('at_utc','not observed')+' | event: '+row.get('event','waiting')]
@@ -197,6 +224,18 @@ class EvidenceDisplay:
                 ' | output tokens '+str(a.get('worker_output_tokens','not observed')))
             lines.append('  Last evidence: '+a.get('terminal',a.get('event','not observed'))+' | UTC '+a.get('at_utc','not observed'))
         a=self.arms.get('pex',{})
+        lines.append('FINAL GRADES — observed after worker stop; no baseline-to-PEX lift inferred')
+        for arm in ('baseline', 'pex'):
+            grade = self.arms.get(arm, {})
+            if 'grade_outcome' not in grade:
+                lines.append(arm.upper() + ' | final protected grade: not observed (not zero)')
+            else:
+                lines.append(arm.upper() + ' | task ' + grade['task_id'] + ' | ' + grade['grade_outcome'])
+                lines.append('  Protected expected ' + str(grade['expected_checks']) + ' | executed ' +
+                    str(grade['executed_checks']) + ' | passed ' + str(grade.get('passed_checks', 'NOT MEASURED')))
+                lines.append('  Public expected ' + str(grade['expected_public_checks']) + ' | command ' +
+                    grade['public_test_status'] + ' | executed count not independently reported')
+                lines.append('  SAME-VM LIMITS: not adversarially hardened; not publication approved')
         lines.append('SUPERVISOR (separate) | requests '+str(a.get('supervisor_requests','not observed'))+
             ' | input '+str(a.get('supervisor_input_tokens','not observed'))+' | output '+str(a.get('supervisor_output_tokens','not observed')))
         if row.get('event')=='run_terminal':
@@ -243,7 +282,7 @@ def follow(args):
                   'authored_fixture': fixture,
                   'approvals_path_sha256': sha(str(args.approvals.resolve()).encode()) if args.approvals else None,
                   'source_code_sha256': sha(Path(__file__).read_bytes())})
-    print('\033]0;' + TITLE + '\007\033[2J\033[H' + TITLE, flush=True)
+    print('\033]0;' + TITLE + '\007\033[2J\033[H' + (SIMULATED_TITLE if fixture else TITLE), flush=True)
     print('SIMULATED / AUTHORED FIXTURE — NOT REAL INFERENCE | LOCAL RECORDER QUALIFICATION' if fixture else
           'LIVE CURRENT RUN STATUS | SETUP / WAITING — no inference result yet.', flush=True)
     print('UTC ' + utc() + ' | run ' + args.run_id, flush=True)

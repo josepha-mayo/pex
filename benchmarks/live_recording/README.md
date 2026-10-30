@@ -1,37 +1,68 @@
-# PEX recording support V9 — local qualification, not inference
+# PEX final-grade recording V10 — WIP, authored-qualified only
 
-This is an explicit upgrade of the active `benchmarks/live_recording` source
-from its previous version through the immutable V7 stage-classification and
-V8 readable-display checkpoints, plus the V9 authored-namespace guard.
-The V8 checkpoint and historical recordings are unchanged.
+Explicit upgrade from V9. Old V8/V9 checkpoints, Stockroom source, historical
+recordings, and frozen benchmark configurations are unchanged. This code does
+not run a benchmark, a provider, a VM, credentials, candidate code, or a capture.
 
-## Repair
+## Opt-in observer and trust boundary
 
-V8 allowed `EvidenceDisplay('authored-recorder-example').render()` and a follower
-started with the same authored run ID but without `--authored-fixture` to emit
-LIVE labels. The renderer, follower, event validator, metadata writer, and native
-wrapper now reject known `authored-*` IDs without explicit fixture mode.
-Fixture mode requires the reserved `authored-recorder-*` namespace and a literal
-boolean flag. Tests that previously exercised authored prose through LIVE labels
-now use explicit fixture mode and assert no LIVE label appears.
+The sidecar's new `--final-grades` opt-in reads an already-finalized current-run
+receipt. The independently root-reviewed exact configuration SHA remains its
+external authority: root must review the **entire** source/SDK graph and the
+real admitted producer, not just this observer. The observer additionally pins
+core source versions whose grade semantics it understands. Those compatibility
+pins are not a substitute for admission or source review.
 
-This guards accidental known-fixture mislabeling; it is not cryptographic proof
-that arbitrary operator-authored input is a provider response. Root review and
-hash-bound wire/ledger provenance remain mandatory. No automatic prose approval,
-provider call, VM, credential read, or native capture is performed by this change.
+Custody checks: configuration bytes and run identity; hash-bound launcher
+terminal; exact closed-admitted report; per-arm durable grade artifact pin;
+exact envelope run/config/full-source-set/task/arm/kind identities; exact payload
+agreement (excluding the self-pin and separately attached phase0 result); raw
+grade JSON, return code, summary, and protected grader hashes. Only finite safe
+fields leave the private parser; raw test stdout/stderr is never displayed.
 
-## Asyncpool audit
+These hashes establish custody inside the root-controlled producer trust
+boundary, not adversarial authenticity. A person controlling all inputs could
+fabricate matching hashes. The retained same-VM limits remain visible; neither
+this observer nor a hash proves real inference, a hardened grader, PEX benefit,
+or publication eligibility.
 
-The frozen asyncpool ID format is supported. The 16,384-output-token profile,
-worker/planner/verifier parser, split source/display storage, root approval
-triples, and terminal refusal remain supported. Recorder code has no Stockroom
-name or check-count assumption. It intentionally does not display grades: eight
-asyncpool checks are therefore neither shown nor mistaken for Stockroom's forty.
-Counts/status and reviewed prose alone do not prove PEX benefit.
+## Exact task identities and unknowns
 
-Local authored verification: 85 tests and 88 subtests passed. All fixtures are
-SIMULATED / NOT REAL INFERENCE. The change does not establish actual inference,
-a completed benchmark, a real benefit, or publication readiness.
+- `asyncpool_v1_cancel_safe_dual_limit`: protected expected 8, public expected 4;
+  manifest `dcfdef0ac5790762e8b27639e8c3c8b47eb2a3cca24c4ed57603cadba5e72c76`.
+- `stockroom_v3_atomic_reservations`: protected expected 40, public expected 6;
+  manifest `90b1d9042ba5b223c75820dd70989c0d227216b884503d76926af21b1cbc5d60`.
 
-Future live use requires explicit source review and fresh frozen recording
-source identities; do not rewrite an already-frozen run configuration.
+Complete protected receipts show expected/executed/passed. Asyncpool candidate
+or grader import failure shows executed 0 and passed **NOT MEASURED**, never
+8 executed/failed. Missing, partial, stale, substituted, unbound, or unsupported
+receipts emit no grade counters: unknown stays unknown, not zero. Public command
+pass/fail is retained, but executed public-test counts are not independently
+reported and are not inferred from expected counts. No baseline-to-PEX lift is
+calculated. Final grades cannot be replaced by phase0 grades.
+
+## Ordering and immutability
+
+The sidecar observes the finalized receipt, emits any verified grade summaries,
+and only then emits its single terminal event, which closes the feed. It never
+reopens or rewrites a completed feed for a late artifact. If a grade is missing
+at terminal observation it stays unknown in that recording. Malformed grade
+artifacts do not suppress otherwise valid terminal status.
+
+## Local qualification
+
+137 tests plus 92 subtests passed; all evidence fixtures are SIMULATED / NOT REAL
+INFERENCE. Coverage includes worker/planner/verifier excerpts, namespace guards,
+8/40 task separation, public expectations, import failure, source/config/task/arm
+and cross-run substitutions, forged return codes, partial/raw/summary mismatch,
+malformed JSON/shapes, phase0 confusion, and late-arrival terminal ordering.
+`preview_grade_display.py` is a no-file/no-network SIMULATED visual-fit preview;
+its worst-case panel has 36 lines, maximum 96 columns. No native visual fit or
+screen capture is asserted by these unit tests. Root independently inspected the
+SIMULATED preview in a 1177x808 native terminal: all 36 lines fit, both grade rows
+and NOT MEASURED were readable, and the eight-line excerpt was unclipped. That
+was a visual check only, not a recording or model call. Fixture body headers
+now say `PEX Evidence - SIMULATED`; the reserved native-window title is unchanged.
+
+Future live use needs independent review and fresh frozen recording source
+identities. Current E2B transfer/admission blockers remain unchanged.

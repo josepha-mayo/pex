@@ -10,6 +10,8 @@ def sample(**kw):
 
 def test_unknown_is_not_zero_and_fixture_is_unmissable():
     text=EvidenceDisplay('authored-recorder-readable',True).render()
+    assert text.splitlines()[0] == 'PEX Evidence - SIMULATED'
+    assert 'PEX Live Evidence' not in text
     assert 'SIMULATED / AUTHORED FIXTURE - NOT REAL INFERENCE' in text
     assert 'PEX | requests not observed' in text
     assert 'No root-reviewed model excerpt' in text
@@ -43,3 +45,8 @@ def test_terminal_does_not_claim_success_from_finished_receipt():
     text=view.update(sample(event='run_terminal',terminal='infrastructure_inconclusive',failure_category='observation_infrastructure',cleanup_confirmed=True,comparison_complete=False))
     assert 'cause: observation_infrastructure' in text
     assert 'comparison complete: False' in text and 'No task success or PEX lift inferred.' in text
+
+
+def test_live_header_is_retained_only_for_nonfixture_identity():
+    text=EvidenceDisplay('asyncpool-staged-pair-20990101-identity-only',False).render()
+    assert text.splitlines()[0]=='PEX Live Evidence'
